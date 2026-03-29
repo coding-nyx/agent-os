@@ -28,6 +28,18 @@ import { registerAtlasFieldActions } from './modules/atlas/actions/atlas-field-a
 import { registerLedgerActions } from './modules/ledger/services/actions'
 import { registerLedgerFieldActions } from './modules/ledger/actions/ledger-field-actions'
 import { registerLedgerTransactionActions } from './modules/ledger/actions/transaction-actions'
+import { registerLedgerAccountActions } from './modules/ledger/actions/account-actions'
+import { registerLedgerCreditActions } from './modules/ledger/actions/credit-actions'
+import { registerLedgerAutomationActions } from './modules/ledger/actions/automation-actions'
+import { registerLedgerInvestmentActions } from './modules/ledger/actions/investment-actions'
+import { registerLedgerRetirementActions } from './modules/ledger/actions/retirement-actions'
+import { registerLedgerSubscriptionActions } from './modules/ledger/actions/subscription-actions'
+import { registerLedgerInsuranceActions } from './modules/ledger/actions/insurance-actions'
+import { registerLedgerTaxActions } from './modules/ledger/actions/tax-actions'
+import { registerLedgerReceiptActions } from './modules/ledger/actions/receipt-actions'
+import { registerLedgerAlertActions } from './modules/ledger/actions/alert-actions'
+import { registerLedgerExportActions } from './modules/ledger/actions/export-actions'
+import { registerLedgerRecurringActions } from './modules/ledger/actions/recurring-actions'
 import { registerTitanActions } from './modules/titan/services/actions'
 import { registerScoutActions } from './modules/scout/services/actions'
 import { registerScoutProjectionListeners } from './modules/scout/services/scout-projection-listener'
@@ -68,6 +80,18 @@ registerAtlasFieldActions();
 registerLedgerActions();
 registerLedgerFieldActions();
 registerLedgerTransactionActions();
+registerLedgerAccountActions();
+registerLedgerCreditActions();
+registerLedgerAutomationActions();
+registerLedgerInvestmentActions();
+registerLedgerRetirementActions();
+registerLedgerSubscriptionActions();
+registerLedgerInsuranceActions();
+registerLedgerTaxActions();
+registerLedgerReceiptActions();
+registerLedgerAlertActions();
+registerLedgerExportActions();
+registerLedgerRecurringActions();
 registerTitanActions();
 registerScoutActions();
 registerScoutProjectionListeners();

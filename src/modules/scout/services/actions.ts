@@ -2,7 +2,6 @@ import { ActionHub } from '@/lib/actions/action-hub';
 import {
   loadScoutProfile,
   saveScoutProfile,
-  createEmptyScoutProfile,
   addKnowledgeNode,
   loadKnowledgeNodes,
   queryKnowledgeNodes,
@@ -10,19 +9,17 @@ import {
   deleteKnowledgeNode,
 } from './scout-knowledge-service';
 import { ScoutWebSearchService } from './scout-web-search-service';
-import { addSource, loadSources, normalizeUrl } from './scout-sources-service';
+import { addSource, loadSources, normalizeUrl, updateSource } from './scout-sources-service';
 import { createSession, updateSession, getSession, loadSessions } from './scout-session-service';
 import { generateDigest } from './scout-digest-service';
 import { ScoutQueryService } from './scout-query-service';
 import { generateJSONWithAgent } from '@/lib/ai-adapters/json-generation-agent';
-import { Spine } from '@/lib/spine/spine-event-bus';
 import { SourceEntry } from '../types';
 
 let registered = false;
 
 async function loadProfile(userId?: string | null, encryptionKey?: CryptoKey | null) {
-  const profile = await loadScoutProfile({ userId, encryptionKey });
-  return profile ?? createEmptyScoutProfile();
+  return loadScoutProfile({ userId, encryptionKey });
 }
 
 export function registerScoutActions() {
@@ -35,16 +32,16 @@ export function registerScoutActions() {
   });
 
   ActionHub.registerMultiple('scout', {
-    create_research_request: async ({ moduleId, payload }) => {
-      Spine.emit({
-        type: 'DRAFT_PROPOSED',
-        source: moduleId,
-        target: typeof payload?.target === 'string' ? payload.target : moduleId,
-        domain: 'system',
-        data: payload,
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+    create_research_request: async ({ moduleId, payload, emitSpineEvent }) => {
+      emitSpineEvent(
+        'DRAFT_PROPOSED',
+        payload as Record<string, unknown>,
+        {
+          domain: 'system',
+          priority: 'info',
+          target: typeof payload?.target === 'string' ? payload.target : moduleId,
+        }
+      );
     },
 
     /**
@@ -67,7 +64,7 @@ export function registerScoutActions() {
      * Switch context to an existing session.
      */
     resume_session: async (context) => {
-      const { userId, payload, pushAssistantMessage } = context;
+      const { userId, payload, pushAssistantMessage, emitSpineEvent } = context;
       const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : undefined;
       const topic = typeof payload?.topic === 'string' ? payload.topic : undefined;
 
@@ -80,14 +77,11 @@ export function registerScoutActions() {
       }
 
       if (targetSession) {
-        Spine.emit({
-          type: 'SESSION_STARTED' as any,
-          source: 'scout',
-          domain: 'C',
-          data: { sessionId: targetSession.id, topic: targetSession.topic },
-          cascadeDepth: 0,
-          priority: 'info'
-        });
+        emitSpineEvent(
+          'SESSION_STARTED',
+          { sessionId: targetSession.id, topic: targetSession.topic },
+          { domain: 'C', priority: 'info' }
+        );
         pushAssistantMessage?.(`📚 Resuming our research on: **${targetSession.topic}**`);
       } else {
         pushAssistantMessage?.("I couldn't find that specific session. Could you clarify the topic?");
@@ -132,19 +126,16 @@ export function registerScoutActions() {
      * Start a new persistent research session.
      */
     start_session: async (context) => {
-      const { userId, payload, pushAssistantMessage } = context;
+      const { userId, payload, pushAssistantMessage, emitSpineEvent } = context;
       const topic = typeof payload?.topic === 'string' ? payload.topic : 'New Research';
       
       const session = await createSession(topic, { userId: userId ?? null });
       if (session) {
-        Spine.emit({
-          type: 'SESSION_STARTED' as any,
-          source: 'scout',
-          domain: 'C',
-          data: { sessionId: session.id, topic: session.topic },
-          cascadeDepth: 0,
-          priority: 'info'
-        });
+        emitSpineEvent(
+          'SESSION_STARTED',
+          { sessionId: session.id, topic: session.topic },
+          { domain: 'C', priority: 'info' }
+        );
         pushAssistantMessage?.(`🔬 Started new research session: "${topic}"`);
       }
     },
@@ -153,7 +144,7 @@ export function registerScoutActions() {
      * Add sources to the library and optionally link to a session/node.
      */
     add_sources: async (context) => {
-      const { userId, encryptionKey, payload, pushAssistantMessage } = context;
+      const { userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent } = context;
       const sources = Array.isArray(payload?.sources) ? payload.sources : [];
       const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : undefined;
 
@@ -186,14 +177,11 @@ export function registerScoutActions() {
         pushAssistantMessage?.(`📥 Added ${sources.length} sources to your research library.`);
       }
       
-      Spine.emit({
-        type: 'SOURCE_ADDED' as any,
-        source: 'scout',
-        domain: 'C',
-        data: { count: sources.length, sessionId, sources: addedSources },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
+      emitSpineEvent(
+        'SOURCE_ADDED',
+        { count: sources.length, sessionId, sources: addedSources },
+        { domain: 'C', priority: 'info' }
+      );
     },
 
     /**
@@ -201,7 +189,7 @@ export function registerScoutActions() {
      * Checks for near-duplicate nodes (similarity ≥ 0.82) before creating.
      */
     synthesize_knowledge: async (context) => {
-      const { userId, encryptionKey, payload, pushAssistantMessage } = context;
+      const { userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent } = context;
       const claim = typeof payload?.claim === 'string' ? payload.claim : '';
       const confidence = typeof payload?.confidence === 'number' ? payload.confidence : 0.5;
       const evidence = Array.isArray(payload?.evidence) ? payload.evidence : [];
@@ -236,14 +224,11 @@ export function registerScoutActions() {
           await updateSession(sessionId, { resultNodeId: node.id, status: 'complete' }, { userId: userId ?? null });
         }
 
-        Spine.emit({
-          type: 'KNOWLEDGE_SYNTHESIZED' as any,
-          source: 'scout',
-          domain: 'C',
-          data: { userId, nodeId: node.id, claim, sessionId, node },
-          cascadeDepth: 0,
-          priority: 'info'
-        });
+        emitSpineEvent(
+          'KNOWLEDGE_SYNTHESIZED',
+          { userId, nodeId: node.id, claim, sessionId, node },
+          { domain: 'C', priority: 'info' }
+        );
 
         pushAssistantMessage?.(`💡 Synthesized new finding: "${claim}"`);
       }
@@ -253,20 +238,17 @@ export function registerScoutActions() {
      * Global web search capability (shared with Nexus/Forge).
      */
     web_search: async (context) => {
-      const { userId, encryptionKey, payload, pushAssistantMessage } = context;
+      const { userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent } = context;
       const query = typeof payload?.query === 'string' ? payload.query : '';
       if (!query) return;
 
       pushAssistantMessage?.(`🌐 Searching the web for: "${query}"...`);
 
-      Spine.emit({
-        type: 'RESEARCH_SEARCHING' as any,
-        source: 'scout',
-        domain: 'C',
-        data: { query },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
+      emitSpineEvent(
+        'RESEARCH_SEARCHING',
+        { query },
+        { domain: 'C', priority: 'info' }
+      );
 
       try {
         // Use ScoutWebSearchService so results are auto-indexed into the KB
@@ -286,14 +268,11 @@ export function registerScoutActions() {
         const summary = response.results.slice(0, 3).map((r, i) => `${i + 1}. **${r.title}** - ${r.url}`).join('\n');
         pushAssistantMessage?.(`I found some information:\n\n${summary}\n\n${response.answer || ''}\n\n*Results auto-indexed into your knowledge base.*`);
 
-        Spine.emit({
-          type: 'RESEARCH_RESULTS' as any,
-          source: 'scout',
-          domain: 'C',
-          data: { query, results: response.results, answer: response.answer },
-          cascadeDepth: 0,
-          priority: 'info'
-        });
+        emitSpineEvent(
+          'RESEARCH_RESULTS',
+          { query, results: response.results, answer: response.answer },
+          { domain: 'C', priority: 'info' }
+        );
 
         // Auto-add to sources if in Scout context
         if (context.moduleId === 'scout' && userId && encryptionKey) {
@@ -331,6 +310,7 @@ export function registerScoutActions() {
       }
       
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      if (!profile) return;
       const nodes = await loadKnowledgeNodes({ userId: userId ?? null, encryptionKey });
       const sources = await loadSources({ userId: userId ?? null, encryptionKey });
 
@@ -353,7 +333,7 @@ export function registerScoutActions() {
      * Deep research specialized trigger.
      */
     start_deep_research: async (context) => {
-      const { payload, pushAssistantMessage } = context;
+      const { payload, pushAssistantMessage, emitSpineEvent } = context;
       const query = typeof payload?.query === 'string' ? payload.query : '';
       
       if (!query) {
@@ -362,22 +342,16 @@ export function registerScoutActions() {
       }
 
       // In v2, this opens the specialized DeepResearchPanel via Spine event
-      Spine.emit({
-        type: 'DEEP_RESEARCH_REQUESTED',
-        source: 'scout',
-        domain: 'C',
-        data: { query },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
-      Spine.emit({
-        type: 'DEEP_RESEARCH_STARTED',
-        source: 'scout',
-        domain: 'C',
-        data: { query },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
+      emitSpineEvent(
+        'DEEP_RESEARCH_REQUESTED',
+        { query },
+        { domain: 'C', priority: 'info' }
+      );
+      emitSpineEvent(
+        'DEEP_RESEARCH_STARTED',
+        { query },
+        { domain: 'C', priority: 'info' }
+      );
       
       pushAssistantMessage?.(`🔬 Initiating deep research protocol for: "${query}"`);
     },
@@ -536,16 +510,104 @@ export function registerScoutActions() {
     /**
      * Finalizes the current research turn and signals all consumers via Spine.
      */
-    commit_research: async ({ userId, pushAssistantMessage }) => {
+    commit_research: async ({ userId, pushAssistantMessage, emitSpineEvent }) => {
       pushAssistantMessage?.('Research workbench committed. All findings and sources have been saved.');
-      Spine.emit({
-        type: 'SCOUT_PROFILE_UPDATED',
-        source: 'scout',
-        domain: 'C',
-        data: { userId, committed: true },
-        cascadeDepth: 0,
-        priority: 'info'
-      });
+      emitSpineEvent(
+        'SCOUT_PROFILE_UPDATED',
+        { userId, committed: true },
+        { domain: 'C', priority: 'info' }
+      );
+    },
+
+    /**
+     * Update the read status of a source in the library.
+     *
+     * Payload: { sourceId: string; status: 'reading' | 'read' | 'archived' | 'saved' }
+     */
+    scout_update_source_status: async (context) => {
+      const { userId, encryptionKey, payload, pushAssistantMessage } = context;
+      const sourceId = typeof payload?.sourceId === 'string' ? payload.sourceId : '';
+      const status = typeof payload?.status === 'string' ? payload.status : '';
+
+      if (!sourceId || !status) {
+        pushAssistantMessage?.('Source ID and status are required.');
+        return;
+      }
+
+      const validStatuses = ['reading', 'read', 'archived', 'saved'];
+      if (!validStatuses.includes(status)) {
+        pushAssistantMessage?.(`Invalid status "${status}". Must be one of: ${validStatuses.join(', ')}.`);
+        return;
+      }
+
+      // 'archived' maps to the archived boolean flag; everything else maps to readStatus.
+      const patch: Record<string, unknown> =
+        status === 'archived'
+          ? { archived: true }
+          : { readStatus: status === 'saved' ? 'unread' : status as 'reading' | 'read' };
+
+      await updateSource(sourceId, patch, { userId: userId ?? null, encryptionKey });
+      pushAssistantMessage?.('Source status updated.');
+    },
+
+    /**
+     * Manually verify or contest a knowledge node.
+     *
+     * Payload: { nodeId: string; verified: boolean; verificationNote?: string }
+     */
+    scout_verify_knowledge_node: async (context) => {
+      const { userId, encryptionKey, payload, pushAssistantMessage } = context;
+      const nodeId = typeof payload?.nodeId === 'string' ? payload.nodeId : '';
+      const verified = typeof payload?.verified === 'boolean' ? payload.verified : true;
+      const verificationNote =
+        typeof payload?.verificationNote === 'string' ? payload.verificationNote : undefined;
+
+      if (!nodeId) {
+        pushAssistantMessage?.('Node ID is required.');
+        return;
+      }
+
+      const newStatus: 'verified' | 'contested' = verified ? 'verified' : 'contested';
+
+      const patch: Record<string, unknown> = { status: newStatus };
+      if (verificationNote) {
+        // Store verificationNote in the tags array as a prefixed string so it
+        // surfaces in UI without requiring a schema change.
+        const nodes = await loadKnowledgeNodes({ userId: userId ?? null, encryptionKey });
+        const existing = nodes.find(n => n.id === nodeId);
+        const existingTags = existing?.tags ?? [];
+        const filteredTags = existingTags.filter(t => !t.startsWith('note:'));
+        patch.tags = [...filteredTags, `note:${verificationNote.slice(0, 200)}`];
+      }
+
+      await updateKnowledgeNode(nodeId, patch, { userId: userId ?? null, encryptionKey });
+      pushAssistantMessage?.(`Knowledge node ${newStatus}.`);
+    },
+
+    /**
+     * Create a new research session from the AI.
+     *
+     * Payload: { topic: string; description?: string }
+     */
+    scout_create_session: async (context) => {
+      const { userId, payload, pushAssistantMessage, emitSpineEvent } = context;
+      const topic =
+        typeof payload?.topic === 'string' && payload.topic.trim()
+          ? payload.topic.trim()
+          : 'New Research';
+
+      const session = await createSession(topic, { userId: userId ?? null });
+      if (!session) {
+        pushAssistantMessage?.('Failed to create research session.');
+        return;
+      }
+
+      emitSpineEvent(
+        'SESSION_STARTED',
+        { sessionId: session.id, topic: session.topic },
+        { domain: 'C', priority: 'info' },
+      );
+      pushAssistantMessage?.(`Research session started: ${topic}.`);
     },
   });
 }
@@ -566,6 +628,7 @@ async function updateInterestTrends(
   if (!userId || !encryptionKey) return;
   try {
     const profile = await loadProfile(userId, encryptionKey);
+    if (!profile) return;
     const queryLower = query.toLowerCase();
     const now = new Date().toISOString();
 

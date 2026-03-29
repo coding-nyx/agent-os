@@ -27,6 +27,7 @@ export function DashboardTab({
   onToggleDocumentAnalysis
 }: DashboardTabProps) {
   const { onAddTransaction, onAskAI } = useLedgerActions();
+  const accounts = profile.accounts ?? [];
   const [view, setView] = useState<'overview' | 'analytics'>('overview');
 
   return (
@@ -44,6 +45,7 @@ export function DashboardTab({
         <QuickLogPanel
           categories={categories}
           currency={profile.currency}
+          accounts={accounts}
           onAddTransaction={onAddTransaction}
         />
       </div>

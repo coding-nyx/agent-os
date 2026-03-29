@@ -75,6 +75,7 @@ export const routineActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
 
     await persistProfile(next, userId ?? null, encryptionKey ?? null);
 
+    emitSpineEvent('FLATTEN_ENERGY_WAVE', { flattenedUntil, reason: typeof payload?.reason === 'string' ? payload.reason : 'schedule_flattened' }, { domain: 'C', priority: 'alert' });
     emitSpineEvent('ATLAS_RECOVERY_SCHEDULED', {
       flattenedUntil,
       reason: typeof payload?.reason === 'string' ? payload.reason : 'schedule_flattened'

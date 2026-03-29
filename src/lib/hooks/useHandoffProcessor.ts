@@ -256,12 +256,12 @@ export function useHandoffProcessor({
       }
     };
 
-    // 1. Process anything waiting in sessionStorage (cross-tab or cross-navigation)
-    const handoff = NexusHandoffService.consume(moduleId);
-    if (handoff) {
+    // 1. Process anything waiting (same-tab cache or Firestore for cross-tab / refresh)
+    void NexusHandoffService.consume(moduleId).then((handoff) => {
+      if (!handoff) return;
       handoffProcessedRef.current = true;
       processHandoff(handoff);
-    }
+    });
 
     // 2. Subscribe to active session handoffs
     const unsubscribe = Spine.subscribe('MODULE_DELEGATED', (event) => {

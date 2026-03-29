@@ -20,6 +20,9 @@ import { NexusChat } from '@/core/components/NexusChat';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { buildAgnesSessionPrompt } from './prompts/agnes-session-prompt';
+import { formatNSVForModulePrompt } from '@/lib/services/nsv-service';
+import { NSV_READ_PERMISSIONS } from '@/lib/services/nsv-ownership';
+import type { NeuralStateVector } from '@/lib/types';
 import { Agnes3DEnvironment } from './components/Agnes3DEnvironment';
 import { AgnesSettingsPanel } from './components/AgnesSettingsPanel';
 import { AgnesDashboard } from './components/AgnesDashboard';
@@ -220,16 +223,23 @@ function AgnesContent({
   );
   const activeModeDefinition = AGNES_ENGAGEMENT_MODE_DEFINITIONS[engagementMode];
   const systemPrompt = useMemo(
-    () => buildAgnesSessionPrompt(
-      AGNES_PERSONA,
-      isImpromptu ? null : profile?.baseContext,
-      coreProfile?.agentPersonalityProvision?.agentGenders?.agnes,
-      {
-        engagementMode,
-        continuity: modeContinuity,
-      }
-    ),
-    [isImpromptu, profile?.baseContext, coreProfile?.agentPersonalityProvision?.agentGenders?.agnes, engagementMode, modeContinuity]
+    () => {
+      const nsv = globalSoul?.crossFunctionalState as NeuralStateVector | undefined;
+      const nsvBlock = (!isImpromptu && nsv)
+        ? formatNSVForModulePrompt(nsv, NSV_READ_PERMISSIONS['agnes'])
+        : undefined;
+      return buildAgnesSessionPrompt(
+        AGNES_PERSONA,
+        isImpromptu ? null : profile?.baseContext,
+        coreProfile?.agentPersonalityProvision?.agentGenders?.agnes,
+        {
+          engagementMode,
+          continuity: modeContinuity,
+          nsvBlock,
+        }
+      );
+    },
+    [isImpromptu, profile?.baseContext, coreProfile?.agentPersonalityProvision?.agentGenders?.agnes, engagementMode, modeContinuity, globalSoul?.crossFunctionalState]
   );
 
   const {

@@ -25,6 +25,8 @@ import {
   validateFieldValue,
   LEDGER_VALIDATION_CONTEXT,
 } from '../services/ledger-field-validator';
+import { loadLedgerProfile, saveLedgerProfile } from '@/modules/ledger/services/ledger-intake-service';
+import { spineEventService } from '@/modules/ledger/services/spine-event-service';
 
 // ============================================================================
 // Spine Event Types
@@ -581,6 +583,97 @@ async function handleSetFieldValue(context: ActionContext): Promise<void> {
 }
 
 // ============================================================================
+// Budget Category + Transaction patch handlers
+// ============================================================================
+
+/**
+ * Handle ledger_update_budget_category_name — renames a budget category by ID.
+ *
+ * Payload: { categoryId: string; name: string }
+ */
+async function handleUpdateBudgetCategoryName(context: ActionContext): Promise<void> {
+  const { payload, userId, encryptionKey, markProfileDirty, emitSpineEvent } = context;
+
+  const categoryId = typeof payload.categoryId === 'string' ? payload.categoryId.trim() : '';
+  const rawName = typeof payload.name === 'string' ? payload.name.trim().slice(0, 100) : '';
+
+  if (!categoryId || !rawName) {
+    console.warn('[Ledger] ledger_update_budget_category_name: missing categoryId or name');
+    return;
+  }
+
+  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  if (!profile) return;
+
+  const categories = profile.budgetCategories ?? [];
+  const idx = categories.findIndex(c => c.id === categoryId);
+  if (idx === -1) {
+    console.warn(`[Ledger] ledger_update_budget_category_name: category "${categoryId}" not found`);
+    return;
+  }
+
+  const updated = categories.map((c, i) => i === idx ? { ...c, name: rawName } : c);
+  const now = new Date().toISOString();
+
+  await saveLedgerProfile(
+    { ...profile, budgetCategories: updated, updatedAt: now },
+    { userId: userId ?? null, encryptionKey: encryptionKey ?? null },
+  );
+  markProfileDirty?.();
+
+  emitSpineEvent('BUDGET_UPDATED', {
+    moduleId: 'ledger',
+    categoryId,
+    name: rawName,
+    message: 'Budget category renamed.',
+  });
+}
+
+/**
+ * Handle ledger_update_transaction_notes — sets the notes field on a transaction.
+ *
+ * Payload: { transactionId: string; notes: string }
+ */
+async function handleUpdateTransactionNotes(context: ActionContext): Promise<void> {
+  const { payload, userId, encryptionKey, markProfileDirty, emitSpineEvent } = context;
+
+  const transactionId = typeof payload.transactionId === 'string' ? payload.transactionId.trim() : '';
+  const notes = typeof payload.notes === 'string' ? payload.notes.trim().slice(0, 500) : '';
+
+  if (!transactionId) {
+    console.warn('[Ledger] ledger_update_transaction_notes: missing transactionId');
+    return;
+  }
+
+  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  if (!profile) return;
+
+  const transactions = profile.transactions ?? [];
+  const idx = transactions.findIndex(tx => tx.id === transactionId);
+  if (idx === -1) {
+    console.warn(`[Ledger] ledger_update_transaction_notes: transaction "${transactionId}" not found`);
+    return;
+  }
+
+  const updated = transactions.map((tx, i) => i === idx ? { ...tx, notes } : tx);
+  const now = new Date().toISOString();
+
+  await saveLedgerProfile(
+    { ...profile, transactions: updated, updatedAt: now },
+    { userId: userId ?? null, encryptionKey: encryptionKey ?? null },
+  );
+  markProfileDirty?.();
+
+  emitSpineEvent('TRANSACTION_UPDATED', {
+    moduleId: 'ledger',
+    transactionId,
+    description: transactions[idx].description,
+    transactionType: transactions[idx].type,
+    message: 'Transaction notes updated.',
+  });
+}
+
+// ============================================================================
 // Registration
 // ============================================================================
 
@@ -601,6 +694,8 @@ export function registerLedgerFieldActions(): void {
     set_field_value: handleSetFieldValue,
     update_financial_friction: handleUpdateFinancialFriction,
     compute_resonance_roi: handleComputeResonanceROI,
+    ledger_update_budget_category_name: handleUpdateBudgetCategoryName,
+    ledger_update_transaction_notes: handleUpdateTransactionNotes,
   });
 
 

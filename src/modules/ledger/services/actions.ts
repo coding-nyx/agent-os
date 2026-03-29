@@ -57,11 +57,26 @@ function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
   };
 }
 
-async function loadProfile(userId?: string | null, encryptionKey?: CryptoKey | null) {
+async function loadProfile(
+  userId?: string | null,
+  encryptionKey?: CryptoKey | null,
+  profileCache?: Map<string, unknown>,
+): Promise<LedgerIntakeProfile | null> {
+  if (!userId || !encryptionKey) return null;
+  if (profileCache?.has(userId)) {
+    return profileCache.get(userId) as LedgerIntakeProfile;
+  }
   return loadLedgerProfile({ userId, encryptionKey });
 }
 
-async function persistProfile(profile: LedgerIntakeProfile, userId?: string | null, encryptionKey?: CryptoKey | null) {
+async function persistProfile(
+  profile: LedgerIntakeProfile,
+  userId?: string | null,
+  encryptionKey?: CryptoKey | null,
+  profileCache?: Map<string, unknown>,
+): Promise<void> {
+  if (!userId || !encryptionKey) return;
+  if (profileCache) profileCache.set(userId, profile);
   await saveLedgerProfile(profile, { userId, encryptionKey });
 }
 
@@ -99,8 +114,8 @@ export function registerLedgerActions() {
       });
     },
 
-    create_financial_plan: async ({ userId, encryptionKey, payload, markProfileDirty, emitSpineEvent }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    create_financial_plan: async ({ userId, encryptionKey, profileCache, payload, markProfileDirty, emitSpineEvent }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
 
       const now = new Date().toISOString();
@@ -130,7 +145,7 @@ export function registerLedgerActions() {
         updatedAt: now
       };
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
       emitSpineEvent('FINANCIAL_PLAN_CREATED', {
         priority: 'alert',
         domain: 'R',
@@ -142,8 +157,52 @@ export function registerLedgerActions() {
       markProfileDirty?.();
     },
 
-    update_budget_snapshot: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    // Alias — LLM occasionally emits update_financial_plan instead of create_financial_plan
+    update_financial_plan: async (ctx) => {
+      const profile = await loadProfile(ctx.userId ?? null, ctx.encryptionKey ?? null, ctx.profileCache);
+      if (!profile) return;
+
+      const now = new Date().toISOString();
+      const alloc = ctx.payload?.allocation as Record<string, unknown> | undefined;
+      const plan: FinancialPlan = {
+        id: typeof ctx.payload?.id === 'string' ? ctx.payload.id : crypto.randomUUID(),
+        title: typeof ctx.payload?.title === 'string' ? ctx.payload.title : 'Financial Plan',
+        summary: typeof ctx.payload?.summary === 'string' ? ctx.payload.summary : '',
+        monthlyTarget: parseNumber(ctx.payload?.monthlyTarget),
+        allocation: {
+          essentials: parseNumber(alloc?.essentials, 60),
+          growth: parseNumber(alloc?.growth, 25),
+          buffer: parseNumber(alloc?.buffer, 15),
+        },
+        tasks: Array.isArray(ctx.payload?.tasks)
+          ? ctx.payload.tasks.filter((item: unknown) => typeof item === 'string')
+          : [],
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      };
+      const next: LedgerIntakeProfile = {
+        ...profile,
+        plans: [plan, ...profile.plans.filter((existing) => existing.id !== plan.id)],
+        activePlanId: plan.id,
+        plannerBotState: 'active',
+        lastPlanGeneratedAt: now,
+        updatedAt: now,
+      };
+      await persistProfile(next, ctx.userId ?? null, ctx.encryptionKey ?? null, ctx.profileCache);
+      ctx.emitSpineEvent('FINANCIAL_PLAN_CREATED', {
+        priority: 'alert',
+        domain: 'R',
+        source: 'ledger',
+        planId: plan.id,
+        planTitle: plan.title,
+        monthlyTarget: plan.monthlyTarget,
+      });
+      ctx.markProfileDirty?.();
+    },
+
+    update_budget_snapshot: async ({ userId, encryptionKey, profileCache, payload, emitSpineEvent, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
 
       const mergeItems = (existing: BudgetLineItem[], incoming: unknown[]): BudgetLineItem[] => {
@@ -174,7 +233,7 @@ export function registerLedgerActions() {
       };
 
       ensureActivePlan(next);
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
       const totalFixed = sumLineItems(next.fixedExpenses);
       const totalVariable = sumLineItems(next.variableExpenses);
       const totalExpenses = totalFixed + totalVariable;
@@ -191,8 +250,8 @@ export function registerLedgerActions() {
       markProfileDirty?.();
     },
 
-    log_transaction_summary: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    log_transaction_summary: async ({ userId, encryptionKey, profileCache, payload, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
       if (typeof payload?.summary !== 'string' || !payload.summary.trim()) return;
 
@@ -203,12 +262,12 @@ export function registerLedgerActions() {
       };
 
       ensureActivePlan(next);
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
       markProfileDirty?.();
     },
 
-    analyze_financial_document: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    analyze_financial_document: async ({ userId, encryptionKey, profileCache, payload, emitSpineEvent, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
 
       // Extract vision LLM results from payload
@@ -255,7 +314,7 @@ export function registerLedgerActions() {
       };
 
       ensureActivePlan(next);
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
       emitSpineEvent?.('DOCUMENT_ANALYZED', {
         domain: 'R',
         source: 'ledger',
@@ -269,8 +328,8 @@ export function registerLedgerActions() {
     parse_financial_statement: parseFinancialStatement,
 
     // ── Handler 1: add_transaction ────────────────────────────────────────────
-    add_transaction: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    add_transaction: async ({ userId, encryptionKey, profileCache, payload, emitSpineEvent, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
 
       const now = new Date().toISOString();
@@ -350,7 +409,7 @@ export function registerLedgerActions() {
         updatedAt: now,
       };
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
 
       emitSpineEvent('TRANSACTION_CREATED', {
         domain: 'R',
@@ -367,8 +426,8 @@ export function registerLedgerActions() {
     },
 
     // ── Handler 2: update_goal_progress ───────────────────────────────────────
-    update_goal_progress: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    update_goal_progress: async ({ userId, encryptionKey, profileCache, payload, emitSpineEvent, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
 
       const goalId = typeof payload?.goalId === 'string' ? payload.goalId : '';
@@ -409,7 +468,7 @@ export function registerLedgerActions() {
         updatedAt: new Date().toISOString(),
       };
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
 
       if (isComplete) {
         emitSpineEvent('GOAL_COMPLETED', {
@@ -441,8 +500,8 @@ export function registerLedgerActions() {
     },
 
     // ── Handler 3: set_financial_goal ─────────────────────────────────────────
-    set_financial_goal: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    set_financial_goal: async ({ userId, encryptionKey, profileCache, payload, emitSpineEvent, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
 
       const name =
@@ -491,7 +550,7 @@ export function registerLedgerActions() {
         updatedAt: now,
       };
 
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
 
       emitSpineEvent('GOAL_CREATED', {
         domain: 'R',
@@ -515,8 +574,8 @@ export function registerLedgerActions() {
      * Payload fields (all optional):
      *   - extraMonthlyPayment: number  — extra monthly budget beyond minimums
      */
-    run_debt_simulation: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    run_debt_simulation: async ({ userId, encryptionKey, profileCache, payload, pushAssistantMessage }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
 
       const { computeDebtPayoffSchedule } = await import('./aggregation');
@@ -579,8 +638,8 @@ export function registerLedgerActions() {
      * Payload fields (all optional):
      *   - goalId: string — limit projection to a single goal
      */
-    project_savings_timeline: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    project_savings_timeline: async ({ userId, encryptionKey, profileCache, payload, pushAssistantMessage }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
 
       const { computeSavingsProjection } = await import('./aggregation');
@@ -655,8 +714,8 @@ export function registerLedgerActions() {
     },
 
     // ── Handler: parse_financial_document (FIX-P8) ────────────────────────
-    parse_financial_document: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+    parse_financial_document: async ({ userId, encryptionKey, profileCache, payload, markProfileDirty }) => {
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
       const now = new Date().toISOString();
       const transactions = Array.isArray(payload?.transactions) ? payload.transactions : [];
@@ -678,38 +737,7 @@ export function registerLedgerActions() {
         transactions: [...(profile.transactions ?? []), ...newTxns],
         updatedAt: now,
       };
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
-      markProfileDirty?.();
-    },
-
-    // ── Handler: commit_transaction (FIX-P8) ────────────────────────────────
-    commit_transaction: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
-      if (!profile) return;
-      const now = new Date().toISOString();
-      const rawAmt = parseNumber(payload?.amount);
-      const absAmt = Math.abs(rawAmt);
-      if (absAmt === 0) return;
-      const txType: Transaction['type'] = payload?.type === 'income' ? 'income' : 'expense';
-      const tx: Transaction = {
-        id: crypto.randomUUID(),
-        date: typeof payload?.date === 'string' && payload.date ? payload.date : now.split('T')[0],
-        description: typeof payload?.description === 'string' ? payload.description : 'Committed Transaction',
-        amount: absAmt,
-        type: txType,
-        category: typeof payload?.category === 'string' ? payload.category : 'Other',
-      };
-      const next: LedgerIntakeProfile = {
-        ...profile,
-        transactions: [...(profile.transactions ?? []), tx],
-        updatedAt: now,
-      };
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
-      emitSpineEvent('TRANSACTION_CREATED', {
-        domain: 'R', source: 'ledger', priority: 'alert',
-        transactionId: tx.id, amount: absAmt, type: txType,
-        category: tx.category, date: tx.date,
-      });
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
       markProfileDirty?.();
     },
 
@@ -724,11 +752,11 @@ export function registerLedgerActions() {
     },
 
     // ── Handler: categorize_expense (FIX-P8) ──────────────────────────────
-    categorize_expense: async ({ userId, encryptionKey, payload, markProfileDirty }) => {
+    categorize_expense: async ({ userId, encryptionKey, profileCache, payload, markProfileDirty }) => {
       const transactionId = typeof payload?.transactionId === 'string' ? payload.transactionId : '';
       const category = typeof payload?.category === 'string' ? payload.category : '';
       if (!transactionId || !category) return;
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
+      const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
       const next: LedgerIntakeProfile = {
         ...profile,
@@ -737,48 +765,9 @@ export function registerLedgerActions() {
         ),
         updatedAt: new Date().toISOString(),
       };
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
+      await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
       markProfileDirty?.();
     },
 
-    // ── Handler: suggest_field (FIX-L4) ──────────────────────────────────
-    suggest_field: async ({ payload, emitSpineEvent }) => {
-      emitSpineEvent('LEDGER_FIELD_SUGGESTION', {
-        fieldId: typeof payload?.fieldId === 'string' ? payload.fieldId : undefined,
-        label: typeof payload?.label === 'string' ? payload.label : undefined,
-        type: typeof payload?.type === 'string' ? payload.type : 'number',
-        description: typeof payload?.description === 'string' ? payload.description : undefined,
-      });
-    },
-
-    // ── Handler: create_transaction (FIX-L11) ─────────────────────────────
-    create_transaction: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
-      if (!profile) return;
-      const now = new Date().toISOString();
-      const amount = parseNumber(payload?.amount);
-      if (amount === 0) return;
-      const type = (payload?.type === 'income' || amount > 0) ? 'income' : 'expense';
-      const tx: Transaction = {
-        id: crypto.randomUUID(),
-        date: typeof payload?.date === 'string' ? payload.date : now.split('T')[0],
-        description: typeof payload?.description === 'string' ? payload.description : 'AI Created Transaction',
-        amount: Math.abs(amount),
-        type,
-        category: typeof payload?.category === 'string' ? payload.category : 'Other',
-      };
-      const next: LedgerIntakeProfile = {
-        ...profile,
-        transactions: [...(profile.transactions ?? []), tx],
-        updatedAt: now,
-      };
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
-      emitSpineEvent('TRANSACTION_CREATED', {
-        domain: 'R', source: 'ledger', priority: 'alert',
-        transactionId: tx.id, amount: tx.amount, type: tx.type,
-        category: tx.category, date: tx.date,
-      });
-      markProfileDirty?.();
-    },
   });
 }

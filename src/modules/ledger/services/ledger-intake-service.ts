@@ -186,22 +186,6 @@ export interface CashFlowForecast {
   endBalance: number;
 }
 
-// ─── Plaid / Bank Sync ────────────────────────────────────────────────────────
-
-export interface PlaidConnection {
-  id: string;
-  institutionName: string;
-  institutionId: string;
-  /** Our internal Account IDs linked to this Plaid item. */
-  linkedAccountIds: string[];
-  lastSyncAt: string;
-  /** Plaid item ID. The actual access_token is stored server-side only. */
-  itemId: string;
-  status: 'active' | 'disconnected' | 'error';
-  /** Plaid sync cursor for incremental transaction sync. */
-  cursor?: string;
-}
-
 // ─── Subscriptions ───────────────────────────────────────────────────────────
 
 export type SubscriptionStatus = 'active' | 'cancelled' | 'paused' | 'trial';
@@ -568,8 +552,6 @@ export interface LedgerIntakeProfile {
   recurringRules?: RecurringRule[];
   // ─── Cash Flow Forecast ─────────────────────────────────────────────────────
   lastCashFlowForecast?: CashFlowForecast;
-  // ─── Bank Sync ──────────────────────────────────────────────────────────────
-  plaidConnections?: PlaidConnection[];
   // ─── Subscriptions ──────────────────────────────────────────────────────────
   subscriptions?: Subscription[];
   // ─── Investments / Portfolio ─────────────────────────────────────────────────
@@ -798,17 +780,6 @@ function normalizeLedgerProfile(raw: unknown): LedgerIntakeProfile {
       createdAt: typeof entry?.createdAt === 'string' ? entry.createdAt : now,
     })),
     lastCashFlowForecast: undefined, // recomputed on demand, not persisted
-    plaidConnections: parseArray(candidate.plaidConnections, (entry, index) => ({
-      id: typeof entry?.id === 'string' ? entry.id : `plaid_${index}`,
-      institutionName: typeof entry?.institutionName === 'string' ? entry.institutionName : 'Bank',
-      institutionId: typeof entry?.institutionId === 'string' ? entry.institutionId : '',
-      linkedAccountIds: Array.isArray(entry?.linkedAccountIds) ? entry.linkedAccountIds.filter((id: unknown) => typeof id === 'string') : [],
-      lastSyncAt: typeof entry?.lastSyncAt === 'string' ? entry.lastSyncAt : now,
-      itemId: typeof entry?.itemId === 'string' ? entry.itemId : '',
-      status: (['active','disconnected','error'] as const).includes(entry?.status as PlaidConnection['status'])
-        ? entry.status as PlaidConnection['status'] : 'active',
-      cursor: typeof entry?.cursor === 'string' ? entry.cursor : undefined,
-    })),
     subscriptions: parseArray(candidate.subscriptions, (entry, index) => ({
       id: typeof entry?.id === 'string' ? entry.id : `sub_${index}`,
       name: typeof entry?.name === 'string' ? entry.name : 'Subscription',
@@ -1002,7 +973,6 @@ export function createEmptyLedgerProfile(): LedgerIntakeProfile {
     transferHistory: [],
     netWorthHistory: [],
     recurringRules: [],
-    plaidConnections: [],
     subscriptions: [],
     investments: [],
     portfolioHistory: [],

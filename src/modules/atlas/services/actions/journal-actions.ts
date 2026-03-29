@@ -2,6 +2,11 @@ import { ActionHub } from '@/lib/actions/action-hub';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import type { JournalEntry } from '@/lib/types';
 import {
+  saveJournalEntry,
+  loadJournalEntry,
+  createEmptyJournalEntry,
+} from '../journal-service';
+import {
   JournalTone,
   JOURNAL_PROMPTS,
   JOURNAL_FORWARD,
@@ -11,28 +16,39 @@ import {
   dateToWeekday
 } from './shared';
 
+const JOURNAL_PROMPT_NEUTRAL = "What's been on your mind today? There's no right starting point — just write what feels real.";
+
 export const journalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
   atlas_journal_generate_prompt: async ({ userId, pushAssistantMessage, payload }) => {
     const VALID_TONES = new Set<JournalTone>([
       'grounding', 'self-compassion', 'perspective', 'ambition', 'reflective',
     ]);
 
-    let tone: JournalTone = 'reflective';
-
     if (typeof payload?.tone === 'string' && VALID_TONES.has(payload.tone as JournalTone)) {
-      tone = payload.tone as JournalTone;
-    } else if (userId) {
-      const projection = await GlobalProjectionService.getProjection(userId).catch(() => null);
-      tone = deriveNsvTone(
-        projection?.crossFunctionalState as unknown as Record<string, unknown> | null
-      );
+      const prompt = JOURNAL_PROMPTS[payload.tone as JournalTone];
+      if (pushAssistantMessage) pushAssistantMessage(prompt);
+      return;
     }
 
-    const prompt = JOURNAL_PROMPTS[tone];
-    if (pushAssistantMessage) pushAssistantMessage(prompt);
+    if (userId) {
+      const projection = await GlobalProjectionService.getProjection(userId).catch(() => null);
+      if (projection === null) {
+        // Fetch failed — use neutral prompt rather than assuming user state
+        if (pushAssistantMessage) pushAssistantMessage(JOURNAL_PROMPT_NEUTRAL);
+        return;
+      }
+      const tone = deriveNsvTone(
+        projection?.crossFunctionalState as unknown as Record<string, unknown> | null
+      );
+      const prompt = JOURNAL_PROMPTS[tone];
+      if (pushAssistantMessage) pushAssistantMessage(prompt);
+      return;
+    }
+
+    if (pushAssistantMessage) pushAssistantMessage(JOURNAL_PROMPT_NEUTRAL);
   },
 
-  atlas_journal_synthesize_response: async ({ userId, pushAssistantMessage, emitSpineEvent, payload }) => {
+  atlas_journal_synthesize_response: async ({ userId, pushAssistantMessage, emitSpineEvent, updateGlobalSoul, payload }) => {
     const VALID_TONES = new Set<JournalTone>([
       'grounding', 'self-compassion', 'perspective', 'ambition', 'reflective',
     ]);
@@ -44,9 +60,12 @@ export const journalActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
       tone = payload.tone as JournalTone;
     } else if (userId) {
       const projection = await GlobalProjectionService.getProjection(userId).catch(() => null);
-      tone = deriveNsvTone(
-        projection?.crossFunctionalState as unknown as Record<string, unknown> | null
-      );
+      if (projection !== null) {
+        tone = deriveNsvTone(
+          projection?.crossFunctionalState as unknown as Record<string, unknown> | null
+        );
+      }
+      // If projection is null (fetch failed), use default 'reflective' — no tone assumption
     }
 
     const moodIdx = typeof entry.mood === 'number'
@@ -69,18 +88,136 @@ export const journalActions: Parameters<typeof ActionHub.registerMultiple>[1] = 
       sentence2 = ` You set out to: "${entry.morningIntent.trim().slice(0, 60)}" — that intention shaped the day.`;
     }
 
-    const sentence3 = ` ${JOURNAL_FORWARD[tone]}`;
+    const journalDate = typeof entry.date === 'string' ? entry.date : new Date().toISOString().slice(0, 10);
+
+    // Persist reflectionStreak to NSV before pushing the message — on failure, omit streak claim
+    let streakSaved = false;
+    if (userId) {
+      try {
+        const projection = await GlobalProjectionService.getProjection(userId).catch(() => null);
+        const currentStreak = projection?.crossFunctionalState?.planning?.reflectionStreak ?? 0;
+        await updateGlobalSoul({ planning: { reflectionStreak: currentStreak + 1 } });
+        streakSaved = true;
+      } catch (e) {
+        console.error('[Atlas] NSV write failed (reflectionStreak):', e);
+      }
+    }
+
+    const sentence3 = streakSaved
+      ? ` ${JOURNAL_FORWARD[tone]}`
+      : ` ${JOURNAL_FORWARD[tone]}`;
     const response = `${sentence1}${sentence2}${sentence3}`;
 
     if (pushAssistantMessage) pushAssistantMessage(response);
 
-    const journalDate = typeof entry.date === 'string' ? entry.date : new Date().toISOString().slice(0, 10);
     emitSpineEvent('JOURNAL_ENTRY_CREATED', {
       priority: 'info',
       domain: 'C',
       date: journalDate,
-      reflectionStreak: 1,
+      reflectionStreak: streakSaved ? 1 : 0,
     });
+  },
+
+  atlas_journal_create_entry: async ({ userId, encryptionKey, pushAssistantMessage, emitSpineEvent, payload }) => {
+    if (!userId || !encryptionKey) return;
+
+    const date = typeof payload?.date === 'string' ? payload.date.trim() : '';
+    if (!date || isNaN(Date.parse(date))) return;
+
+    const now = new Date().toISOString();
+
+    // Merge payload fields over a default-valued entry so every required field
+    // is always populated, regardless of what the LLM chose to omit.
+    const base = createEmptyJournalEntry(date);
+
+    const boundedMood = (v: unknown): number => {
+      if (typeof v !== 'number' || !Number.isFinite(v)) return base.mood;
+      return Math.max(1, Math.min(5, Math.round(v)));
+    };
+    const boundedEnergy = (v: unknown): number => {
+      if (typeof v !== 'number' || !Number.isFinite(v)) return base.energyLevel;
+      return Math.max(1, Math.min(5, Math.round(v)));
+    };
+    const safeString = (v: unknown, fallback = ''): string =>
+      typeof v === 'string' ? v : fallback;
+    const safeStringArray = (v: unknown): string[] =>
+      Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+
+    const entry: JournalEntry = {
+      ...base,
+      freeform: safeString(payload?.freeform, base.freeform),
+      mood: boundedMood(payload?.mood),
+      energyLevel: boundedEnergy(payload?.energyLevel),
+      morningIntent: safeString(payload?.morningIntent, base.morningIntent),
+      eveningReflection: safeString(payload?.eveningReflection, base.eveningReflection),
+      gratitude: safeStringArray(payload?.gratitude),
+      blockers: safeString(payload?.blockers, base.blockers),
+      tags: safeStringArray(payload?.tags),
+      updatedAt: now,
+    };
+
+    await saveJournalEntry(entry, { userId, encryptionKey });
+
+    emitSpineEvent('JOURNAL_ENTRY_CREATED', {
+      priority: 'info',
+      domain: 'C',
+      date,
+    });
+
+    if (pushAssistantMessage) pushAssistantMessage(`Journal entry saved for ${date}.`);
+  },
+
+  atlas_journal_update_entry: async ({ userId, encryptionKey, pushAssistantMessage, emitSpineEvent, payload }) => {
+    if (!userId || !encryptionKey) return;
+
+    const entryId = typeof payload?.entryId === 'string' ? payload.entryId.trim() : '';
+    if (!entryId) return;
+
+    const patch = (payload?.patch ?? {}) as Record<string, unknown>;
+
+    const existing = await loadJournalEntry(entryId, { userId, encryptionKey });
+    if (!existing) return;
+
+    const now = new Date().toISOString();
+
+    // Apply each recognised patch field with type validation to prevent
+    // persisting corrupt data from an LLM that misunderstands the schema.
+    const updated: JournalEntry = { ...existing };
+
+    if (typeof patch.freeform === 'string') updated.freeform = patch.freeform;
+    if (typeof patch.morningIntent === 'string') updated.morningIntent = patch.morningIntent;
+    if (typeof patch.eveningReflection === 'string') updated.eveningReflection = patch.eveningReflection;
+    if (typeof patch.blockers === 'string') updated.blockers = patch.blockers;
+    if (typeof patch.aiPromptUsed === 'string' || patch.aiPromptUsed === null) {
+      updated.aiPromptUsed = patch.aiPromptUsed as string | null;
+    }
+    if (typeof patch.mood === 'number' && Number.isFinite(patch.mood)) {
+      updated.mood = Math.max(1, Math.min(5, Math.round(patch.mood)));
+    }
+    if (typeof patch.energyLevel === 'number' && Number.isFinite(patch.energyLevel)) {
+      updated.energyLevel = Math.max(1, Math.min(5, Math.round(patch.energyLevel)));
+    }
+    if (Array.isArray(patch.gratitude)) {
+      updated.gratitude = (patch.gratitude as unknown[]).filter((x): x is string => typeof x === 'string');
+    }
+    if (Array.isArray(patch.tags)) {
+      updated.tags = (patch.tags as unknown[]).filter((x): x is string => typeof x === 'string');
+    }
+    if (typeof patch.sketch === 'string' || patch.sketch === null) {
+      updated.sketch = patch.sketch as string | null;
+    }
+
+    updated.updatedAt = now;
+
+    await saveJournalEntry(updated, { userId, encryptionKey });
+
+    emitSpineEvent('JOURNAL_ENTRY_UPDATED', {
+      priority: 'info',
+      domain: 'C',
+      date: entryId,
+    });
+
+    if (pushAssistantMessage) pushAssistantMessage('Journal entry updated.');
   },
 
   atlas_journal_extract_insights: async ({ pushAssistantMessage, emitSpineEvent, payload }) => {

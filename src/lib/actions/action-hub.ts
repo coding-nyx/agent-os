@@ -27,11 +27,22 @@ export interface ActionContext {
   pushAssistantMessage?: (content: string) => void;
   emitThreadArtifact?: (artifact: SpecialistConsultationArtifact) => void;
   sendMessage?: (content: string, context: ConversationContext) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
-  emitSpineEvent: (type: SpineEventType, payload: Record<string, unknown>) => void;
+  emitSpineEvent: (
+    type: SpineEventType,
+    payload: Record<string, unknown>,
+    options?: { domain?: string; priority?: 'info' | 'alert' | 'critical'; target?: string }
+  ) => void;
   updateGlobalSoul: (patch: NeuralStateVectorPatch) => Promise<void>;
   delegateToModule: (target: string, reason: string, content: string) => void;
   /** Signal that this action modified the module profile document (not just NSV). */
   markProfileDirty?: () => void;
+  /**
+   * Per-turn in-memory profile cache shared across all actions in a single AI response.
+   * Keyed by userId. Ledger action handlers read from this cache first and write back
+   * after each mutation so that sequential actions within one turn share state instead
+   * of independently re-reading from Firestore (which risks stale reads between writes).
+   */
+  profileCache?: Map<string, unknown>;
 }
 
 export type ActionHandler = (context: ActionContext) => Promise<void> | void;
@@ -246,6 +257,9 @@ class ModuleActionHub {
   register(moduleId: string, actionType: string, handler: ActionHandler) {
     if (!this.registry.has(moduleId)) {
       this.registry.set(moduleId, new Map());
+    }
+    if (import.meta.env.DEV && this.registry.get(moduleId)!.has(actionType)) {
+      console.warn(`[ActionHub] Handler overwrite: ${moduleId}.${actionType} — check HANDLER_PRECEDENCE in core-handlers.ts`);
     }
     this.registry.get(moduleId)!.set(actionType, handler);
   }

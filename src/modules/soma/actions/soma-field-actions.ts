@@ -17,7 +17,7 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import type { FieldDefinition } from '@/lib/field-system/types';
 import { loadSomaProfile, saveSomaProfile, addVitalReading } from '../services/soma-profile-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import type { BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SomaProfile } from '@/lib/types';
+import type { BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SomaProfile, PhysicalAssessment } from '@/lib/types';
 
 // ============================================================================
 // Soma Spine Event Types
@@ -449,15 +449,9 @@ export function registerSomaFieldActions(): void {
   ActionHub.addDependency('titan', 'soma');
 
   ActionHub.registerMultiple('soma', {
-    create_medical_review: async ({ moduleId, payload }) => {
-      Spine.emit({
-        type: 'DRAFT_PROPOSED',
-        source: moduleId,
+    create_medical_review: async ({ moduleId, payload, emitSpineEvent }) => {
+      emitSpineEvent('DRAFT_PROPOSED', payload as Record<string, unknown>, {
         target: typeof payload?.target === 'string' ? payload.target : moduleId,
-        domain: 'system',
-        data: payload,
-        cascadeDepth: 0,
-        priority: 'info',
       });
     },
 
@@ -501,7 +495,7 @@ export function registerSomaFieldActions(): void {
     },
 
     // ── Update Extension Field ──────────────────────────────────────────
-    update_field: async ({ payload, pushAssistantMessage }) => {
+    update_field: async ({ payload, pushAssistantMessage, emitSpineEvent }) => {
       const fieldId =
         typeof payload?.fieldId === 'string' ? payload.fieldId : null;
       if (!fieldId) {
@@ -534,19 +528,7 @@ export function registerSomaFieldActions(): void {
       await SchemaRegistry.removeExtension('soma', fieldId);
       await SchemaRegistry.extendSchema('soma', [updated]);
 
-      Spine.emit({
-        type: 'SOMA_FIELD_UPDATED',
-        source: 'soma',
-        domain: 'B',
-        data: {
-          moduleId: 'soma',
-          fieldId,
-          fieldName: updated.name,
-          timestamp: Date.now(),
-        },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+      emitSpineEvent('SOMA_FIELD_UPDATED', { moduleId: 'soma', fieldId, fieldName: updated.name, timestamp: Date.now() }, { domain: 'B' });
 
       pushAssistantMessage?.(
         `✅ Updated field "${updated.name}" successfully.`
@@ -649,7 +631,7 @@ export function registerSomaFieldActions(): void {
     },
 
     // ── Commit Biomarker ────────────────────────────────────────────────
-    commit_biomarker: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+    commit_biomarker: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
       if (!userId || !encryptionKey) {
         pushAssistantMessage?.('Unable to save biomarker: vault is locked.');
         return;
@@ -676,21 +658,14 @@ export function registerSomaFieldActions(): void {
         { ...profile, biomarkers: [...profile.biomarkers, record], updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
-      Spine.emit({
-        type: 'SOMA_BIOMARKER_COMMITTED',
-        source: 'soma',
-        domain: 'B',
-        data: { moduleId: 'soma', fieldId: record.id, newValue: record.value, fieldName: record.name, timestamp: Date.now() },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+      emitSpineEvent('SOMA_BIOMARKER_COMMITTED', { moduleId: 'soma', fieldId: record.id, newValue: record.value, fieldName: record.name, timestamp: Date.now() }, { domain: 'B' });
       pushAssistantMessage?.(
         `Biomarker recorded: ${record.name} = ${record.value}${record.unit ? ` ${record.unit}` : ''}.`
       );
     },
 
     // ── Log Vital ───────────────────────────────────────────────────────
-    log_vital: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+    log_vital: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
       if (!userId || !encryptionKey) {
         pushAssistantMessage?.('Unable to log vital: vault is locked.');
         return;
@@ -707,14 +682,7 @@ export function registerSomaFieldActions(): void {
         return;
       }
       await addVitalReading(userId, fields, encryptionKey);
-      Spine.emit({
-        type: 'SOMA_VITAL_LOGGED',
-        source: 'soma',
-        domain: 'B',
-        data: { moduleId: 'soma', fields, timestamp: Date.now() },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+      emitSpineEvent('SOMA_VITAL_LOGGED', { moduleId: 'soma', fields, timestamp: Date.now() }, { domain: 'B' });
       const summary = Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join(', ');
       pushAssistantMessage?.(`Vital reading recorded: ${summary}.`);
     },
@@ -759,7 +727,7 @@ export function registerSomaFieldActions(): void {
     },
 
     // ── Parse Lab Report ────────────────────────────────────────────────
-    parse_lab_report: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+    parse_lab_report: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
       if (!userId || !encryptionKey) {
         pushAssistantMessage?.('Unable to save lab report: vault is locked.');
         return;
@@ -785,14 +753,7 @@ export function registerSomaFieldActions(): void {
         { ...profile, labSummaries: [record, ...profile.labSummaries].slice(0, 50), updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
-      Spine.emit({
-        type: 'SOMA_LAB_REPORT_PARSED',
-        source: 'soma',
-        domain: 'B',
-        data: { moduleId: 'soma', panel, findings: record.findings.length, timestamp: Date.now() },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+      emitSpineEvent('SOMA_LAB_REPORT_PARSED', { moduleId: 'soma', panel, findings: record.findings.length, timestamp: Date.now() }, { domain: 'B' });
       pushAssistantMessage?.(`Lab report parsed: ${panel} (${record.findings.length} findings).`);
     },
 
@@ -808,7 +769,7 @@ export function registerSomaFieldActions(): void {
     },
 
     // ── Update Conditions / Medications / Allergies ─────────────────────
-    update_conditions: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+    update_conditions: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
       if (!userId || !encryptionKey) {
         pushAssistantMessage?.('Unable to update conditions: vault is locked.');
         return;
@@ -831,14 +792,7 @@ export function registerSomaFieldActions(): void {
         { ...profile, ...updates, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
-      Spine.emit({
-        type: 'SOMA_PROFILE_UPDATED',
-        source: 'soma',
-        domain: 'B',
-        data: { moduleId: 'soma', updatedFields: Object.keys(updates), timestamp: Date.now() },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: Object.keys(updates), timestamp: Date.now() }, { domain: 'B' });
       const parts: string[] = [];
       if (updates.knownConditions) parts.push(`${updates.knownConditions.length} condition(s)`);
       if (updates.medications) parts.push(`${updates.medications.length} medication(s)`);
@@ -847,74 +801,46 @@ export function registerSomaFieldActions(): void {
     },
 
     // ── Approve a single health entry ──────────────────────────────────
-    approve_health_entry: async ({ payload, pushAssistantMessage }) => {
+    approve_health_entry: async ({ payload, pushAssistantMessage, emitSpineEvent }) => {
       const entryId = typeof payload?.entryId === 'string' ? payload.entryId : null;
       if (!entryId) {
         pushAssistantMessage?.('⚠️ approve_health_entry: missing entryId.');
         return;
       }
-      Spine.emit({
-        type: 'SOMA_PROFILE_UPDATED',
-        source: 'soma',
-        domain: 'B',
-        data: { action: 'approve_health_entry', entryId, agentNote: payload?.agentNote ?? '' },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { action: 'approve_health_entry', entryId, agentNote: payload?.agentNote ?? '' }, { domain: 'B' });
       pushAssistantMessage?.(`✅ Health entry "${entryId}" approved.`);
     },
 
     // ── Reject a single health entry ───────────────────────────────────
-    reject_health_entry: async ({ payload, pushAssistantMessage }) => {
+    reject_health_entry: async ({ payload, pushAssistantMessage, emitSpineEvent }) => {
       const entryId = typeof payload?.entryId === 'string' ? payload.entryId : null;
       if (!entryId) {
         pushAssistantMessage?.('⚠️ reject_health_entry: missing entryId.');
         return;
       }
-      Spine.emit({
-        type: 'SOMA_PROFILE_UPDATED',
-        source: 'soma',
-        domain: 'B',
-        data: { action: 'reject_health_entry', entryId, reason: payload?.reason ?? '' },
-        cascadeDepth: 0,
-        priority: 'alert',
-      });
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { action: 'reject_health_entry', entryId, reason: payload?.reason ?? '' }, { domain: 'B', priority: 'alert' });
       pushAssistantMessage?.(`⚠️ Health entry "${entryId}" flagged for review: ${payload?.reason ?? 'no reason given'}.`);
     },
 
     // ── Approve a diagnosis merge into health profile ──────────────────
-    approve_diagnosis_merge: async ({ payload, pushAssistantMessage }) => {
+    approve_diagnosis_merge: async ({ payload, pushAssistantMessage, emitSpineEvent }) => {
       const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : null;
       if (!sessionId) {
         pushAssistantMessage?.('⚠️ approve_diagnosis_merge: missing sessionId.');
         return;
       }
-      Spine.emit({
-        type: 'SOMA_DIAGNOSIS_MERGED',
-        source: 'soma',
-        domain: 'B',
-        data: { sessionId, approvedFields: payload?.approvedFields ?? [], agentNote: payload?.agentNote ?? '' },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+      emitSpineEvent('SOMA_DIAGNOSIS_MERGED', { sessionId, approvedFields: payload?.approvedFields ?? [], agentNote: payload?.agentNote ?? '' }, { domain: 'B' });
       pushAssistantMessage?.(`✅ Diagnosis session "${sessionId}" approved for merge.`);
     },
 
     // ── Reject a diagnosis merge ───────────────────────────────────────
-    reject_diagnosis_merge: async ({ payload, pushAssistantMessage }) => {
+    reject_diagnosis_merge: async ({ payload, pushAssistantMessage, emitSpineEvent }) => {
       const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : null;
       if (!sessionId) {
         pushAssistantMessage?.('⚠️ reject_diagnosis_merge: missing sessionId.');
         return;
       }
-      Spine.emit({
-        type: 'SOMA_DIAGNOSIS_DISCARDED',
-        source: 'soma',
-        domain: 'B',
-        data: { sessionId, reason: payload?.reason ?? '' },
-        cascadeDepth: 0,
-        priority: 'alert',
-      });
+      emitSpineEvent('SOMA_DIAGNOSIS_DISCARDED', { sessionId, reason: payload?.reason ?? '' }, { domain: 'B', priority: 'alert' });
       pushAssistantMessage?.(`⚠️ Diagnosis merge rejected for session "${sessionId}": ${payload?.reason ?? 'no reason given'}.`);
     },
 
@@ -982,6 +908,271 @@ export function registerSomaFieldActions(): void {
       ].join('\n');
 
       pushAssistantMessage?.(`Current Medical Profile:\n${summary}`);
+    },
+
+    // ── Update Medical Summary ──────────────────────────────────────────
+    soma_update_medical_summary: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to update medical summary: vault is locked.');
+        return;
+      }
+      const summary = typeof payload?.summary === 'string' ? payload.summary.trim().slice(0, 2000) : '';
+      if (!summary) {
+        pushAssistantMessage?.('Medical summary requires a non-empty string.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to update medical summary: profile not found.');
+        return;
+      }
+      await saveSomaProfile(
+        { ...profile, medicalSummary: summary, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: ['medicalSummary'], timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.('Medical summary updated.');
+    },
+
+    // ── Add Known Condition ─────────────────────────────────────────────
+    soma_add_known_condition: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to add condition: vault is locked.');
+        return;
+      }
+      const condition = typeof payload?.condition === 'string' ? payload.condition.trim() : '';
+      if (!condition) {
+        pushAssistantMessage?.('Condition name is required.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to add condition: profile not found.');
+        return;
+      }
+      const conditionLower = condition.toLowerCase();
+      const alreadyExists = profile.knownConditions.some((c) => c.toLowerCase() === conditionLower);
+      if (alreadyExists) {
+        pushAssistantMessage?.(`Condition already recorded: ${condition}.`);
+        return;
+      }
+      const updated = [...profile.knownConditions, condition].slice(0, 200);
+      await saveSomaProfile(
+        { ...profile, knownConditions: updated, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: ['knownConditions'], timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.(`Condition added: ${condition}.`);
+    },
+
+    // ── Remove Known Condition ──────────────────────────────────────────
+    soma_remove_known_condition: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to remove condition: vault is locked.');
+        return;
+      }
+      const condition = typeof payload?.condition === 'string' ? payload.condition.trim() : '';
+      if (!condition) {
+        pushAssistantMessage?.('Condition name is required.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to remove condition: profile not found.');
+        return;
+      }
+      const conditionLower = condition.toLowerCase();
+      const filtered = profile.knownConditions.filter((c) => c.toLowerCase() !== conditionLower);
+      if (filtered.length === profile.knownConditions.length) {
+        pushAssistantMessage?.(`Condition not found: ${condition}.`);
+        return;
+      }
+      await saveSomaProfile(
+        { ...profile, knownConditions: filtered, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: ['knownConditions'], timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.(`Condition removed: ${condition}.`);
+    },
+
+    // ── Add Medication ──────────────────────────────────────────────────
+    soma_add_medication: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to add medication: vault is locked.');
+        return;
+      }
+      const medication = typeof payload?.medication === 'string' ? payload.medication.trim() : '';
+      if (!medication) {
+        pushAssistantMessage?.('Medication name is required.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to add medication: profile not found.');
+        return;
+      }
+      const medicationLower = medication.toLowerCase();
+      const alreadyExists = profile.medications.some((m) => m.toLowerCase() === medicationLower);
+      if (alreadyExists) {
+        pushAssistantMessage?.(`Medication already recorded: ${medication}.`);
+        return;
+      }
+      const updated = [...profile.medications, medication].slice(0, 200);
+      await saveSomaProfile(
+        { ...profile, medications: updated, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: ['medications'], timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.(`Medication added: ${medication}.`);
+    },
+
+    // ── Remove Medication ───────────────────────────────────────────────
+    soma_remove_medication: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to remove medication: vault is locked.');
+        return;
+      }
+      const medication = typeof payload?.medication === 'string' ? payload.medication.trim() : '';
+      if (!medication) {
+        pushAssistantMessage?.('Medication name is required.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to remove medication: profile not found.');
+        return;
+      }
+      const medicationLower = medication.toLowerCase();
+      const filtered = profile.medications.filter((m) => m.toLowerCase() !== medicationLower);
+      if (filtered.length === profile.medications.length) {
+        pushAssistantMessage?.('Medication not found.');
+        return;
+      }
+      await saveSomaProfile(
+        { ...profile, medications: filtered, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: ['medications'], timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.('Medication removed.');
+    },
+
+    // ── Add Allergy ─────────────────────────────────────────────────────
+    soma_add_allergy: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to add allergy: vault is locked.');
+        return;
+      }
+      const allergy = typeof payload?.allergy === 'string' ? payload.allergy.trim() : '';
+      if (!allergy) {
+        pushAssistantMessage?.('Allergy name is required.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to add allergy: profile not found.');
+        return;
+      }
+      const allergyLower = allergy.toLowerCase();
+      const alreadyExists = profile.allergies.some((a) => a.toLowerCase() === allergyLower);
+      if (alreadyExists) {
+        pushAssistantMessage?.(`Allergy already recorded: ${allergy}.`);
+        return;
+      }
+      const updated = [...profile.allergies, allergy].slice(0, 200);
+      await saveSomaProfile(
+        { ...profile, allergies: updated, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: ['allergies'], timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.(`Allergy added: ${allergy}.`);
+    },
+
+    // ── Remove Allergy ──────────────────────────────────────────────────
+    soma_remove_allergy: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to remove allergy: vault is locked.');
+        return;
+      }
+      const allergy = typeof payload?.allergy === 'string' ? payload.allergy.trim() : '';
+      if (!allergy) {
+        pushAssistantMessage?.('Allergy name is required.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to remove allergy: profile not found.');
+        return;
+      }
+      const allergyLower = allergy.toLowerCase();
+      const filtered = profile.allergies.filter((a) => a.toLowerCase() !== allergyLower);
+      if (filtered.length === profile.allergies.length) {
+        pushAssistantMessage?.('Allergy not found.');
+        return;
+      }
+      await saveSomaProfile(
+        { ...profile, allergies: filtered, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: ['allergies'], timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.('Allergy removed.');
+    },
+
+    // ── Update Physical Assessment ──────────────────────────────────────
+    soma_update_physical_assessment: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to record assessment: vault is locked.');
+        return;
+      }
+      const fields = (payload?.fields ?? {}) as Partial<PhysicalAssessment>;
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to record assessment: profile not found.');
+        return;
+      }
+      const record: PhysicalAssessment = {
+        timestamp: Date.now(),
+        ...(typeof fields.height === 'number' ? { height: fields.height } : {}),
+        ...(typeof fields.weight === 'number' ? { weight: fields.weight } : {}),
+        ...(typeof fields.bmi === 'number' ? { bmi: fields.bmi } : {}),
+        ...(typeof fields.bodyFatPercentage === 'number' ? { bodyFatPercentage: fields.bodyFatPercentage } : {}),
+        ...(typeof fields.muscleMass === 'number' ? { muscleMass: fields.muscleMass } : {}),
+        ...(typeof fields.vo2Max === 'number' ? { vo2Max: fields.vo2Max } : {}),
+        ...(typeof fields.strength === 'number' ? { strength: fields.strength } : {}),
+        ...(typeof fields.flexibility === 'number' ? { flexibility: fields.flexibility } : {}),
+        ...(typeof fields.endurance === 'number' ? { endurance: fields.endurance } : {}),
+      };
+      const existing = profile.physicalAssessments ?? [];
+      const updated = [...existing, record].slice(-100);
+      await saveSomaProfile(
+        { ...profile, physicalAssessments: updated, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: ['physicalAssessments'], timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.('Physical assessment recorded.');
+    },
+
+    // ── Log Next Checkup ────────────────────────────────────────────────
+    soma_log_next_checkup: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
+      if (!userId || !encryptionKey) {
+        pushAssistantMessage?.('Unable to schedule checkup: vault is locked.');
+        return;
+      }
+      const date = typeof payload?.date === 'string' ? payload.date.trim() : '';
+      if (!date) {
+        pushAssistantMessage?.('A date string is required to schedule a checkup.');
+        return;
+      }
+      const profile = await loadSomaProfile({ userId, encryptionKey });
+      if (!profile) {
+        pushAssistantMessage?.('Unable to schedule checkup: profile not found.');
+        return;
+      }
+      await saveSomaProfile(
+        { ...profile, nextCheckup: date, updatedAt: new Date().toISOString() },
+        { userId, encryptionKey }
+      );
+      emitSpineEvent('SOMA_PROFILE_UPDATED', { moduleId: 'soma', updatedFields: ['nextCheckup'], timestamp: Date.now() }, { domain: 'B' });
+      pushAssistantMessage?.(`Next checkup scheduled for ${date}.`);
     },
   });
 }

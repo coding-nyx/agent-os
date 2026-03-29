@@ -25,6 +25,7 @@ export interface DashboardMetrics {
 export function computeDashboardMetrics(
   transactions: Transaction[],
   totalDebt: number = 0,
+  accounts: import('../ledger-intake-service').Account[] = [],
 ): DashboardMetrics {
   const cm = currentMonth();
   const { start, end } = getMonthBounds(cm);
@@ -43,11 +44,16 @@ export function computeDashboardMetrics(
 
   const currentMonthNet = round2(currentMonthIncome - currentMonthExpenses);
 
+  // Use Account.balance sum when accounts are present; fall back to transaction sum for profiles without accounts yet.
   let totalBalance = 0;
-  for (const tx of transactions) {
-    totalBalance = round2(
-      tx.type === 'income' ? totalBalance + tx.amount : totalBalance - tx.amount,
-    );
+  if (accounts.length > 0) {
+    totalBalance = round2(accounts.reduce((sum, a) => sum + a.balance, 0));
+  } else {
+    for (const tx of transactions) {
+      totalBalance = round2(
+        tx.type === 'income' ? totalBalance + tx.amount : totalBalance - tx.amount,
+      );
+    }
   }
 
   const last3Start = getMonthBounds(monthsAgo(2)).start;
@@ -99,7 +105,7 @@ export function computeRunwayProjection(
 
   const transactions = profile.transactions ?? [];
   const totalDebt = (profile.debtItems ?? []).reduce((sum, debt) => round2(sum + debt.balance), 0);
-  const metrics = computeDashboardMetrics(transactions, totalDebt);
+  const metrics = computeDashboardMetrics(transactions, totalDebt, profile.accounts ?? []);
 
   const plannedExpenseBaseline = round2(
     (profile.fixedExpenses ?? []).reduce((sum, item) => sum + item.amount, 0) +

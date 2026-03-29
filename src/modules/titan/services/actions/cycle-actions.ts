@@ -1,13 +1,12 @@
 import {
   loadProfile,
   persistProfile,
-  Spine,
 } from './shared';
 import type { ActionHandler, TitanProfile, CycleEntry, CyclePhase, CycleType } from './shared';
 
 export const cycleHandlers: Record<string, ActionHandler> = {
 
-  create_cycle: async ({ userId, encryptionKey, payload }) => {
+  create_cycle: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -69,17 +68,14 @@ export const cycleHandlers: Record<string, ActionHandler> = {
 
     await persistProfile(next, userId ?? null, encryptionKey ?? null);
 
-    Spine.emit({
-      type: 'CYCLE_STARTED',
-      source: 'titan',
-      domain: 'B',
-      data: { cycleId: cycle.id, name: cycle.name, type: cycle.type },
-      cascadeDepth: 0,
-      priority: 'info',
-    });
+    emitSpineEvent(
+      'CYCLE_STARTED',
+      { cycleId: cycle.id, name: cycle.name, type: cycle.type },
+      { domain: 'B', priority: 'info' },
+    );
   },
 
-  advance_cycle_phase: async ({ userId, encryptionKey, payload }) => {
+  advance_cycle_phase: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile || !profile.cycles) return;
 
@@ -112,14 +108,11 @@ export const cycleHandlers: Record<string, ActionHandler> = {
 
     const cycle = updatedCycles.find(c => c.id === cycleId);
     if (cycle?.status === 'completed') {
-      Spine.emit({
-        type: 'CYCLE_COMPLETED',
-        source: 'titan',
-        domain: 'B',
-        data: { cycleId: cycle.id, name: cycle.name, type: cycle.type },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
+      emitSpineEvent(
+        'CYCLE_COMPLETED',
+        { cycleId: cycle.id, name: cycle.name, type: cycle.type },
+        { domain: 'B', priority: 'info' },
+      );
     }
   },
 
@@ -145,7 +138,7 @@ export const cycleHandlers: Record<string, ActionHandler> = {
    * Should be called at session start or periodically by the scheduler.
    * Emits CYCLE_COMPLETED when all phases are done.
    */
-  check_cycle_phases: async ({ userId, encryptionKey, pushAssistantMessage }) => {
+  check_cycle_phases: async ({ userId, encryptionKey, pushAssistantMessage, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile?.cycles?.length) return;
 
@@ -205,14 +198,11 @@ export const cycleHandlers: Record<string, ActionHandler> = {
     // Emit events for completed cycles
     for (const cycle of updatedCycles) {
       if (cycle.status === 'completed' && completedCycles.includes(cycle.name)) {
-        Spine.emit({
-          type: 'CYCLE_COMPLETED',
-          source: 'titan',
-          domain: 'B',
-          data: { cycleId: cycle.id, name: cycle.name, type: cycle.type },
-          cascadeDepth: 0,
-          priority: 'info',
-        });
+        emitSpineEvent(
+          'CYCLE_COMPLETED',
+          { cycleId: cycle.id, name: cycle.name, type: cycle.type },
+          { domain: 'B', priority: 'info' },
+        );
       }
     }
 

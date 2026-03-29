@@ -383,7 +383,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
   const ai = useModuleAI({
     moduleId: 'scout',
-    systemPrompt: getScoutSystemPrompt(activeSession?.topic),
+    systemPrompt: getScoutSystemPrompt(activeSession?.topic, profile?.researchFocus),
     encryptionKey,
     sessionId: activeSessionId || 'default',
     persistencePolicy: 'scout-research',

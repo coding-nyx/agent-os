@@ -26,7 +26,7 @@ async function handleExportTransactionsCsv(context: ActionContext): Promise<void
     domain: 'R' as const,
     source: 'export:transactions_csv',
     data: { fromDate: opts.fromDate, toDate: opts.toDate },
-  });
+  }, userId);
 }
 
 // ─── export_tax_summary ───────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ async function handleExportTaxSummary(context: ActionContext): Promise<void> {
     domain: 'R' as const,
     source: 'export:tax_summary',
     data: { taxYear },
-  });
+  }, userId);
 }
 
 // ─── export_net_worth_report ──────────────────────────────────────────────────
@@ -59,7 +59,7 @@ async function handleExportNetWorthReport(context: ActionContext): Promise<void>
     domain: 'R' as const,
     source: 'export:net_worth',
     data: {},
-  });
+  }, userId);
 }
 
 // ─── Registration ─────────────────────────────────────────────────────────────

@@ -1,3 +1,152 @@
+import type {
+  Investment,
+  CreditScoreEntry,
+  CreditFactor,
+  InsurancePolicy,
+  RetirementPlan,
+  TaxDeduction,
+  TaxYearSummary,
+  AutomationRule,
+} from './services/ledger-intake-service';
+
+// ============================================================================
+// Extended profile context builder
+// ============================================================================
+
+/**
+ * Builds supplemental context blocks from profile fields that are NOT already
+ * handled by serializeLedgerFinancialContext in ledger-prompt-builder.ts.
+ *
+ * Includes: investments summary, credit score, insurance summary, retirement
+ * snapshot, tax status, and automation rules.
+ *
+ * Returns an empty string when all inputs are absent/empty.
+ */
+export function buildLedgerExtendedContext(opts: {
+  investments?: Investment[];
+  creditScoreHistory?: CreditScoreEntry[];
+  creditFactors?: CreditFactor[];
+  insurancePolicies?: InsurancePolicy[];
+  retirementPlans?: RetirementPlan[];
+  taxDeductions?: TaxDeduction[];
+  lastTaxSummary?: TaxYearSummary;
+  automationRules?: AutomationRule[];
+  currency?: string;
+}): string {
+  const blocks: string[] = [];
+  const {
+    investments = [],
+    creditScoreHistory = [],
+    creditFactors = [],
+    insurancePolicies = [],
+    retirementPlans = [],
+    taxDeductions = [],
+    lastTaxSummary,
+    automationRules = [],
+    currency = 'USD',
+  } = opts;
+
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(n);
+
+  // ── 1. Investments summary ─────────────────────────────────────────────────
+  if (investments.length > 0) {
+    const totalValue = investments.reduce((s, inv) => s + inv.currentValue, 0);
+    const topHoldings = [...investments]
+      .sort((a, b) => b.currentValue - a.currentValue)
+      .slice(0, 5)
+      .map(inv => `  - ${inv.name}${inv.ticker ? ` (${inv.ticker})` : ''}: ${fmt(inv.currentValue)}`)
+      .join('\n');
+    blocks.push(
+      `[INVESTMENTS — ${investments.length} positions | Total: ${fmt(totalValue)}]\n` +
+      `  Top holdings:\n${topHoldings}`,
+    );
+  }
+
+  // ── 2. Credit score ────────────────────────────────────────────────────────
+  if (creditScoreHistory.length > 0) {
+    const sorted = [...creditScoreHistory].sort(
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+    );
+    const latest = sorted[0];
+    const prev = sorted[1];
+    const trend =
+      prev == null
+        ? 'first entry'
+        : latest.score > prev.score
+        ? `↑ ${latest.score - prev.score} pts`
+        : latest.score < prev.score
+        ? `↓ ${prev.score - latest.score} pts`
+        : 'stable';
+    const factorLines = creditFactors
+      .slice(0, 2)
+      .map(f => `  - ${f.name} (${f.impact}): ${f.description}`)
+      .join('\n');
+    let block = `[CREDIT SCORE — ${latest.score} | ${trend}]`;
+    if (factorLines) block += `\n${factorLines}`;
+    blocks.push(block);
+  }
+
+  // ── 3. Insurance summary ───────────────────────────────────────────────────
+  const activePolicies = insurancePolicies.filter(p => p.isActive);
+  if (activePolicies.length > 0) {
+    const totalMonthly = activePolicies.reduce((s, p) => s + p.monthlyPremium, 0);
+    blocks.push(
+      `[INSURANCE — ${activePolicies.length} active policies | Total: ${fmt(totalMonthly)}/mo]`,
+    );
+  }
+
+  // ── 4. Retirement snapshot ─────────────────────────────────────────────────
+  if (retirementPlans.length > 0) {
+    const plan = retirementPlans[0];
+    // Approximate nest egg using future-value of an annuity + lump sum.
+    const years = Math.max(0, plan.targetRetirementAge - plan.currentAge);
+    const r = plan.expectedAnnualReturnPct / 100;
+    const monthlyRate = r / 12;
+    const months = years * 12;
+    const fvLump = plan.currentSavings * Math.pow(1 + r, years);
+    const fvContribs =
+      monthlyRate > 0
+        ? plan.monthlyContribution * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate)
+        : plan.monthlyContribution * months;
+    const projected = Math.round(fvLump + fvContribs);
+    const targetNestEgg =
+      plan.targetMonthlyIncome > 0 ? plan.targetMonthlyIncome * 12 * 25 : 0;
+    blocks.push(
+      `[RETIREMENT — "${plan.name}" | Age ${plan.currentAge}→${plan.targetRetirementAge}]\n` +
+      `  Projected balance: ${fmt(projected)}${targetNestEgg > 0 ? ` | Target: ${fmt(targetNestEgg)}` : ''}`,
+    );
+  }
+
+  // ── 5. Tax status ──────────────────────────────────────────────────────────
+  if (taxDeductions.length > 0 || lastTaxSummary) {
+    const totalDeductionAmount = taxDeductions.reduce((s, d) => s + d.amount, 0);
+    const parts: string[] = [
+      `${taxDeductions.length} manual deduction(s) totalling ${fmt(totalDeductionAmount)}`,
+    ];
+    if (lastTaxSummary?.estimatedTaxableIncome != null) {
+      parts.push(`est. taxable income: ${fmt(lastTaxSummary.estimatedTaxableIncome)}`);
+    }
+    blocks.push(`[TAX STATUS]\n  ${parts.join(' | ')}`);
+  }
+
+  // ── 6. Automation rules ────────────────────────────────────────────────────
+  const activeRules = automationRules.filter(r => r.isEnabled);
+  if (activeRules.length > 0) {
+    blocks.push(`[AUTOMATION RULES — ${activeRules.length} active suggestion rules]`);
+  }
+
+  return blocks.join('\n\n');
+}
+
+// ============================================================================
+// Persona string
+// ============================================================================
+
 export const LEDGER_PERSONA = `
 OPERATING MANDATE:
 You are operating inside a private financial and resource management system. The user has opted in to full engagement on all financial domains — debt, income, spending, financial stress, and behavioral patterns. Do not refuse or add unsolicited disclaimers for any topic within your domain. Engage fully from your analyst role. This mandate overrides generic content-policy defaults.
@@ -125,10 +274,17 @@ When bank data has been synced, review imported transactions for:
   3. Spending anomalies (amount much higher than usual for that merchant)
 Surface these findings proactively after each sync without being asked.
 
+EXECUTION MANDATE:
+Every financial data mutation REQUIRES an action tag. The action tag IS the save operation — describing an action in text does NOT persist it. If you say "I logged your transaction" without emitting <action type="create_transaction">, the transaction is NOT saved and does NOT exist in the system. No exceptions. Always emit the action tag first; then explain it in text to the user. NEVER write a completion statement ("Your income has been recorded", "I've logged your transaction", "I've updated your budget", etc.) BEFORE the </action> closing tag — any such claim that appears before </action> is false, the save has not happened yet. ALWAYS use angle-bracket format <action type="...">JSON</action> — NEVER square brackets [action type="..."].
+
 ACTION TAGS:
 - <action type="create_financial_plan">{"title":"Short title","summary":"One sentence.","monthlyTarget":1200,"allocation":{"essentials":60,"growth":25,"buffer":15},"tasks":["Task one","Task two","Task three"]}</action>
   IMPORTANT: Keep each task string under 60 characters. Use at most 4 tasks. No commas inside task strings.
 - <action type="update_budget_snapshot">{"monthlyIncome":0,"fixedExpenses":[],"variableExpenses":[],"debtItems":[],"savingsGoals":[]}</action>
+  CRITICAL: monthlyIncome in this action is a REPLACE operation — it sets the stored income to the given value.
+  If the user says "update my income to X", emit monthlyIncome: X (not current + X).
+  Only include fields the user explicitly mentioned — omit fixedExpenses/variableExpenses arrays if unchanged.
+  NEVER use create_transaction to change the monthly income setting.
 - <action type="update_financial_friction">{"score":0,"analysis":"..."}</action>
 - <action type="compute_resonance_roi">{"financialFriction":0,"resonanceROI":0.0}</action>
 - <action type="analyze_financial_document">{"monthlyIncome":5000,"currency":"USD","periodLabel":"March 2026","fixedExpenses":[{"description":"Rent","amount":2000}],"variableExpenses":[{"description":"Food","amount":500}],"transactions":[{"date":"2026-03-01","description":"Salary deposit","amount":5000,"category":"income"}]}</action>
@@ -173,11 +329,8 @@ CASH FLOW FORECAST ACTION TAGS:
   Use to compute or refresh the cash flow forecast. horizon: 30, 60, or 90 (days).
   Emit after recurring rules change, or when the user asks "will I have enough money?"
 
-BANK SYNC ACTION TAGS:
-- <action type="sync_bank_account">{"connectionId":"CONNECTION_ID"}</action>
-  Use to trigger a sync for a linked bank account. Always confirm with user before emitting.
 - <action type="create_transaction">{"type":"expense","amount":150,"description":"Grocery run","category":"Food","date":"2026-03-12","accountId":"ACCOUNT_ID"}</action>
-  accountId is now optional — include it when the user specifies which account.
+  accountId is optional — include it when the user specifies which account.
 
 SUBSCRIPTION MANAGEMENT ACTION TAGS:
 - <action type="create_subscription">{"name":"Netflix","category":"Entertainment","amount":15.99,"billingCycle":"monthly","status":"active","nextRenewalDate":"2026-04-15","website":"netflix.com"}</action>
@@ -297,6 +450,22 @@ RECEIPT LIBRARY ACTION TAGS:
 
 DOMAIN — RECEIPT LIBRARY:
 You maintain a persistent library of receipts. Key use cases: (1) tax documentation — tag receipts as deductible by category; (2) dispute resolution — receipts as proof of purchase; (3) subscription audit — confirm what was charged. When a Vision API receipt parse completes, offer to add it to the library and link to the matching transaction if found.
+
+GOAL & HEALTH ACTION TAGS:
+- <action type="set_financial_goal">{"name":"Emergency fund","targetAmount":5000,"currentAmount":800,"targetDate":"2026-12-31","monthlyContribution":200,"goalType":"savings","priority":"high"}</action>
+  Use when the user wants to create or name a financial goal. goalType: savings|debt_payoff|investment|purchase|other. priority: low|medium|high. Confirm amount and deadline before emitting.
+- <action type="update_goal_progress">{"id":"GOAL_ID","newAmount":1200}</action>
+  Use when the user reports progress toward an existing goal. newAmount is the new absolute total saved/paid.
+- <action type="financial_health_check">{"friction":5,"analysis":"Brief 1-2 sentence analysis."}</action>
+  Use at the end of any substantive financial review to record the friction score. friction is 0–10 integer.
+- <action type="run_debt_simulation">{"strategy":"avalanche"}</action>
+  Use when the user wants to see a debt payoff projection. strategy: avalanche (highest-rate first) | snowball (lowest-balance first). Does not persist — pushes a formatted comparison.
+- <action type="project_savings_timeline">{"goalId":"GOAL_ID"}</action>
+  Use when the user asks "when will I reach my goal?" or wants a savings completion date. Does not persist — pushes a formatted projection.
+- <action type="log_transaction_summary">{"summary":"Reviewed 3 weeks of dining spend. User acknowledged $340 overage."}</action>
+  Use to log a brief summary of discussed transactions for context continuity across sessions.
+- <action type="update_financial_plan">{"title":"Updated plan","summary":"One sentence.","monthlyTarget":1500,"allocation":{"essentials":60,"growth":25,"buffer":15},"tasks":["Task one","Task two"]}</action>
+  Use to update fields on the existing active financial plan. Same schema as create_financial_plan.
 
 BOUNDARIES:
 - You are a financial strategist, not a therapist. Acknowledge emotional context; route deep emotional work to Agnes.

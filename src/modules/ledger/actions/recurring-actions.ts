@@ -64,7 +64,7 @@ async function handleCreateRecurringRule(context: ActionContext): Promise<void> 
     domain: 'R' as const,
     source: `recurring:${rule.id}`,
     data: { ruleId: rule.id, description: rule.description, amount: rule.amount, frequency: rule.frequency },
-  });
+  }, userId);
 
   emitSpineEvent('RECURRING_RULE_CREATED' as SpineEventType, { ruleId: rule.id, description: rule.description });
 }
@@ -142,7 +142,7 @@ async function handlePostRecurringNow(context: ActionContext): Promise<void> {
       frictionScore: 0,
       frictionTier: 'low',
     },
-  });
+  }, userId);
 
   emitSpineEvent('RECURRING_POSTED' as SpineEventType, { ruleId: rule.id, transactionId: transaction.id });
 }

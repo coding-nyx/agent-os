@@ -11,6 +11,7 @@ import {
   Trash2,
   ArrowLeftRight,
   Check,
+  Star,
 } from 'lucide-react';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralInput } from '@/core/components/NeuralInput';
@@ -373,6 +374,17 @@ export function AccountManager({
 
                   {/* Action buttons — reveal on hover */}
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {/* Set as default */}
+                    {!account.isDefault && (
+                      <button
+                        onClick={() => onUpdateAccount(account.id, { isDefault: true })}
+                        disabled={disabled}
+                        title="Set as default account"
+                        className="p-1.5 rounded-lg text-white/40 hover:text-amber-400 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
+                      >
+                        <Star className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     {/* Transfer */}
                     <button
                       onClick={() => openTransfer(account.id)}

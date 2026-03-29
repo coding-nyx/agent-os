@@ -15,16 +15,16 @@ import type { ActionHandler, TitanProfile, Routine } from './shared';
 
 export const coreHandlers: Record<string, ActionHandler> = {
 
-  create_workout_plan: async ({ moduleId, payload }) => {
-    Spine.emit({
-      type: 'DRAFT_PROPOSED',
-      source: moduleId,
-      target: typeof payload?.target === 'string' ? payload.target : moduleId,
-      domain: 'system',
-      data: payload,
-      cascadeDepth: 0,
-      priority: 'info',
-    });
+  create_workout_plan: async ({ moduleId, payload, emitSpineEvent }) => {
+    emitSpineEvent(
+      'DRAFT_PROPOSED',
+      { ...(payload as Record<string, unknown>) },
+      {
+        domain: 'system',
+        priority: 'info',
+        target: typeof payload?.target === 'string' ? payload.target : moduleId,
+      },
+    );
   },
 
   update_titan_profile: async ({ userId, encryptionKey, payload }) => {
@@ -210,14 +210,11 @@ export const coreHandlers: Record<string, ActionHandler> = {
       const warning = `⚠️ Clearance check failed for "${activity}": ${reasons.join('; ')}. High-intensity training is blocked.`;
       pushAssistantMessage?.(warning);
 
-      Spine.emit({
-        type: 'BLOCK_HIGH_INTENSITY',
-        source: 'titan',
-        domain: 'B',
-        data: { activity, recoveryScore, cnsFatigue, reasons },
-        cascadeDepth: 0,
-        priority: 'alert',
-      });
+      emitSpineEvent(
+        'BLOCK_HIGH_INTENSITY',
+        { activity, recoveryScore, cnsFatigue, reasons },
+        { domain: 'B', priority: 'alert' },
+      );
       emitSpineEvent('CLEARANCE_DENIED', {
         activity,
         recoveryScore,

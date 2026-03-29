@@ -1,7 +1,6 @@
 import {
   loadProfile,
   persistProfile,
-  Spine,
 } from './shared';
 import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import type { ActionHandler, TitanProfile, BodyWeightEntry, CardioSession, CardioSessionType } from './shared';
@@ -13,7 +12,7 @@ export const bodyHandlers: Record<string, ActionHandler> = {
    * Validates weight range (20–300 kg). Accepts payload.unit = 'lbs' and
    * converts automatically. Caps log at 1 000 entries.
    */
-  log_body_weight: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+  log_body_weight: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -74,11 +73,9 @@ export const bodyHandlers: Record<string, ActionHandler> = {
       ? Math.round((entry.weight - weekAgo.weight) * 100) / 100
       : null;
 
-    Spine.emit({
-      type: 'TITAN_BODY_WEIGHT_LOGGED',
-      source: 'titan',
-      domain: 'B',
-      data: {
+    emitSpineEvent(
+      'TITAN_BODY_WEIGHT_LOGGED',
+      {
         weight: entry.weight,
         bodyFatPct: entry.bodyFatPct,
         date: entry.date,
@@ -87,9 +84,8 @@ export const bodyHandlers: Record<string, ActionHandler> = {
         aggressiveCut: weeklyDeltaKg != null && weeklyDeltaKg < -1.2,
         totalEntries: next.bodyWeightLog?.length ?? 1,
       },
-      cascadeDepth: 0,
-      priority: weeklyDeltaKg != null && weeklyDeltaKg < -1.2 ? 'alert' : 'info',
-    });
+      { domain: 'B', priority: weeklyDeltaKg != null && weeklyDeltaKg < -1.2 ? 'alert' : 'info' },
+    );
 
     const bfStr = entry.bodyFatPct != null ? ` Body fat: ${entry.bodyFatPct}%.` : '';
     pushAssistantMessage?.(
@@ -102,7 +98,7 @@ export const bodyHandlers: Record<string, ActionHandler> = {
    * Validates type and duration. Emits WORKOUT_COMPLETED Spine event.
    * Caps log at 500 entries.
    */
-  log_cardio_session: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+  log_cardio_session: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -150,11 +146,9 @@ export const bodyHandlers: Record<string, ActionHandler> = {
 
     await persistProfile(next, userId ?? null, encryptionKey ?? null);
 
-    Spine.emit({
-      type: 'WORKOUT_COMPLETED',
-      source: 'titan',
-      domain: 'B',
-      data: {
+    emitSpineEvent(
+      'WORKOUT_COMPLETED',
+      {
         sessionId: session.id,
         routineName: sessionType,
         date: session.date,
@@ -164,9 +158,8 @@ export const bodyHandlers: Record<string, ActionHandler> = {
         status: session.status,
         isCardio: true,
       },
-      cascadeDepth: 0,
-      priority: 'info',
-    });
+      { domain: 'B', priority: 'info' },
+    );
 
     // Update NSV aerobicLoad — derived from duration and RPE.
     // aerobicLoad is a 0–10 index; sessions ≥ 45 min at RPE 7+ score high.

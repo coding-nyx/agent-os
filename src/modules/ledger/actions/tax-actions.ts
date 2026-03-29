@@ -63,7 +63,7 @@ async function handleAddTaxDeduction(context: ActionContext): Promise<void> {
     domain: 'R' as const,
     source: `tax_deduction:${deduction.id}`,
     data: { deductionId: deduction.id, label: deduction.label, amount: deduction.amount },
-  });
+  }, userId);
 }
 
 // ─── delete_tax_deduction ─────────────────────────────────────────────────────
@@ -79,6 +79,84 @@ async function handleDeleteTaxDeduction(context: ActionContext): Promise<void> {
     { userId: userId ?? null, encryptionKey: encryptionKey ?? null }
   );
   markProfileDirty?.();
+}
+
+// ─── ledger_update_tax_info ───────────────────────────────────────────────────
+// Merges partial tax fields (estimatedLiability, paidQuarters, deductions) into
+// the stored profile without replacing the full lastTaxSummary computation.
+
+async function handleUpdateTaxInfo(context: ActionContext): Promise<void> {
+  const { payload, userId, encryptionKey, markProfileDirty, emitSpineEvent } = context;
+  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  if (!profile) return;
+
+  const taxYear =
+    typeof payload.taxYear === 'number' ? payload.taxYear : new Date().getFullYear();
+  const fields = payload.fields && typeof payload.fields === 'object'
+    ? payload.fields as Record<string, unknown>
+    : {};
+
+  const now = new Date().toISOString();
+
+  // ── paidQuarters ────────────────────────────────────────────────────────────
+  let paidQuarters = profile.paidQuarters ?? [];
+  if (Array.isArray(fields.paidQuarters)) {
+    const incoming = (fields.paidQuarters as unknown[]).filter(
+      (q): q is number => typeof q === 'number' && q >= 0 && q <= 3,
+    );
+    // Union — preserve previously paid quarters and add new ones.
+    paidQuarters = Array.from(new Set([...paidQuarters, ...incoming])).sort();
+  }
+
+  // ── deductions ──────────────────────────────────────────────────────────────
+  let taxDeductions = profile.taxDeductions ?? [];
+  if (Array.isArray(fields.deductions)) {
+    const incoming = (fields.deductions as unknown[]).filter(
+      (d): d is { category: string; amount: number; description?: string } =>
+        d !== null &&
+        typeof d === 'object' &&
+        typeof (d as Record<string, unknown>).category === 'string' &&
+        typeof (d as Record<string, unknown>).amount === 'number',
+    );
+    const newDeductions: typeof taxDeductions = incoming.map(d => ({
+      id: crypto.randomUUID(),
+      label: d.description ?? d.category,
+      amount: d.amount,
+      category: TAX_CATEGORIES.includes(d.category as TaxCategory)
+        ? (d.category as TaxCategory)
+        : 'deductible',
+      taxYear,
+      notes: d.description,
+      createdAt: now,
+    }));
+    taxDeductions = [...taxDeductions, ...newDeductions];
+  }
+
+  // ── estimatedLiability — patch lastTaxSummary if it exists ──────────────────
+  let lastTaxSummary = profile.lastTaxSummary;
+  if (
+    typeof fields.estimatedLiability === 'number' &&
+    Number.isFinite(fields.estimatedLiability) &&
+    lastTaxSummary
+  ) {
+    lastTaxSummary = {
+      ...lastTaxSummary,
+      estimatedTaxableIncome: fields.estimatedLiability as number,
+    };
+  }
+
+  await saveLedgerProfile(
+    { ...profile, paidQuarters, taxDeductions, lastTaxSummary, updatedAt: now },
+    { userId: userId ?? null, encryptionKey: encryptionKey ?? null },
+  );
+  markProfileDirty?.();
+
+  await spineEventService.logLedgerEvent({
+    type: 'TRANSACTION_UPDATED' as LedgerSpineEventType,
+    domain: 'R' as const,
+    source: `tax_info:${taxYear}`,
+    data: { taxYear, message: 'Tax information updated.' },
+  }, userId);
 }
 
 // ─── generate_tax_summary ─────────────────────────────────────────────────────
@@ -106,9 +184,10 @@ export function registerLedgerTaxActions(): void {
   if (registered) return;
   registered = true;
   ActionHub.registerMultiple('ledger', {
-    set_tax_category:      handleSetTaxCategory,
-    add_tax_deduction:     handleAddTaxDeduction,
-    delete_tax_deduction:  handleDeleteTaxDeduction,
-    generate_tax_summary:  handleGenerateTaxSummary,
+    set_tax_category:        handleSetTaxCategory,
+    add_tax_deduction:       handleAddTaxDeduction,
+    delete_tax_deduction:    handleDeleteTaxDeduction,
+    generate_tax_summary:    handleGenerateTaxSummary,
+    ledger_update_tax_info:  handleUpdateTaxInfo,
   });
 }

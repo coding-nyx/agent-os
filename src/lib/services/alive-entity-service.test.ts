@@ -60,8 +60,6 @@ const journal: JournalEntry = {
   energyLevel: 3,
   gratitude: ['health'],
   blockers: 'none',
-  habitsReflection: [],
-  goalsReflection: [],
   aiPromptUsed: null,
   tags: ['deep-work'],
   sketch: null,

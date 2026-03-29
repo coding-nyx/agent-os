@@ -107,10 +107,18 @@ EPISTEMIC STANDARDS:
 CRITICAL: Start every response with <thought>. If your response provides search results, ensure the links wrap correctly by using standard Markdown formatting.
 `.trim();
 
-export function getScoutSystemPrompt(activeTopic?: string | null): string {
-  if (!activeTopic) return SCOUT_PERSONA;
-  
-  return `${SCOUT_PERSONA}
+export function getScoutSystemPrompt(
+  activeTopic?: string | null,
+  researchFocus?: string[],
+): string {
+  const focusLines =
+    researchFocus && researchFocus.length > 0
+      ? `\n\n[RESEARCHER PROFILE]\nConfigured research domains: ${researchFocus.slice(0, 10).join(', ')}\nBias your knowledge retrieval and synthesis toward these domains unless the active topic overrides.`
+      : '';
+
+  if (!activeTopic) return `${SCOUT_PERSONA}${focusLines}`.trim();
+
+  return `${SCOUT_PERSONA}${focusLines}
 
 [ACTIVE RESEARCH TOPIC]
 You are currently locked into a dedicated research workbench for: "${activeTopic}"

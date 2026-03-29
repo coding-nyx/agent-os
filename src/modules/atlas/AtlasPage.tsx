@@ -41,10 +41,12 @@ import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import {
   loadJournalEntry,
+  loadJournalEntries,
   saveJournalEntry,
   createEmptyJournalEntry,
   mergeCheckInData,
 } from './services/journal-service';
+import type { AtlasJournalSummary, AtlasCheckInSummary } from './prompts/atlas-prompt-builder';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { AtlasReviewService } from './services/atlas-review-service';
 import { useUIStore } from '@/lib/stores/ui-store';
@@ -95,6 +97,22 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     () => (optimisticPatch && profile ? { ...profile, ...optimisticPatch } : profile),
     [profile, optimisticPatch],
   );
+
+  // Recent journal summaries for AI context — loaded async, non-blocking
+  const [recentJournalSummaries, setRecentJournalSummaries] = useState<AtlasJournalSummary[]>([]);
+  useEffect(() => {
+    if (!user?.uid || !encryptionKey) return;
+    loadJournalEntries({ userId: user.uid, encryptionKey, limit: 5 }).then((entries) => {
+      setRecentJournalSummaries(entries.map((e) => ({
+        date: e.date,
+        mood: e.mood,
+        energyLevel: e.energyLevel,
+        morningIntent: e.morningIntent || undefined,
+        blockers: e.blockers || undefined,
+        freeformSnippet: e.freeform ? e.freeform.slice(0, 120) : undefined,
+      })));
+    }).catch(() => { /* non-critical — context will be absent */ });
+  }, [user?.uid, encryptionKey]);
 
   // Clear optimistic patch when real Firestore profile arrives
   const lastProfileRef = useRef(profile);
@@ -269,16 +287,29 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
       ? `CUSTOM TRACKING FIELDS:\n${extensions.map(f => `- "${f.name}" (${f.type})`).join('\n')}`
       : undefined;
 
+    const today = new Date().toISOString().split('T')[0];
+
+    // Map today's DailyCheckInEntry records to AtlasCheckInSummary shape
+    const todayCheckIns: AtlasCheckInSummary[] = (profile.dailyCheckIns ?? [])
+      .filter((ci) => ci.date === today)
+      .map((ci) => ({
+        type: 'evening' as const,
+        completedAt: ci.loggedAt,
+        energyRating: ci.energyLevel,
+      }));
+
     const dataContext: AtlasDataContext = {
       tasks: profile.tasks?.slice(0, 30),
       goals: profile.goals?.slice(0, 25),
       habits: profile.habits?.filter(h => h.status === 'active').slice(0, 10),
       routine: profile.routine ?? null,
-      today: new Date().toISOString().split('T')[0],
+      today,
+      journalSummaries: recentJournalSummaries.length > 0 ? recentJournalSummaries : undefined,
+      checkIns: todayCheckIns.length > 0 ? todayCheckIns : undefined,
     };
 
     return buildAtlasPrompt({ kind: 'general' }, nsvBlock, extBlock, dataContext);
-  }, [profile, globalSoul?.crossFunctionalState, extensions]);
+  }, [profile, globalSoul?.crossFunctionalState, extensions, recentJournalSummaries]);
 
   // AI Logic for Atlas
   const ai = useModuleAI({

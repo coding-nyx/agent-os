@@ -1,7 +1,7 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import type { ActionContext } from '@/lib/actions/action-hub';
 import { loadLedgerProfile, saveLedgerProfile } from '@/modules/ledger/services/ledger-intake-service';
-import type { Account, AccountTransfer, PlaidConnection } from '@/modules/ledger/services/ledger-intake-service';
+import type { Account, AccountTransfer } from '@/modules/ledger/services/ledger-intake-service';
 import { spineEventService } from '@/modules/ledger/services/spine-event-service';
 import { buildNetWorthSnapshot } from '@/modules/ledger/services/aggregation/networth-aggregation';
 import { computeCashFlowForecast } from '@/modules/ledger/services/aggregation/forecast-aggregation';
@@ -66,7 +66,7 @@ async function handleCreateAccount(context: ActionContext): Promise<void> {
     domain: 'R' as const,
     source: `account:${account.id}`,
     data: { accountId: account.id, accountName: account.name, accountType: account.type, balance: account.balance },
-  });
+  }, userId);
 
   emitSpineEvent('ACCOUNT_CREATED' as SpineEventType, { accountId: account.id, name: account.name });
 }
@@ -80,18 +80,24 @@ async function handleUpdateAccount(context: ActionContext): Promise<void> {
   if (!profile) return;
 
   const now = new Date().toISOString();
+  const settingDefault = payload.isDefault === true;
   const accounts = (profile.accounts ?? []).map((a) => {
-    if (a.id !== payload.id) return a;
-    return {
-      ...a,
-      name: typeof payload.name === 'string' ? payload.name.trim() || a.name : a.name,
-      balance: typeof payload.balance === 'number' ? parseNum(payload.balance) : a.balance,
-      institutionName: typeof payload.institutionName === 'string' ? payload.institutionName : a.institutionName,
-      color: typeof payload.color === 'string' ? payload.color : a.color,
-      notes: typeof payload.notes === 'string' ? payload.notes : a.notes,
-      isDefault: typeof payload.isDefault === 'boolean' ? payload.isDefault : a.isDefault,
-      updatedAt: now,
-    };
+    if (a.id === payload.id) {
+      return {
+        ...a,
+        name: typeof payload.name === 'string' ? payload.name.trim() || a.name : a.name,
+        balance: typeof payload.balance === 'number' ? parseNum(payload.balance) : a.balance,
+        institutionName: typeof payload.institutionName === 'string' ? payload.institutionName : a.institutionName,
+        color: typeof payload.color === 'string' ? payload.color : a.color,
+        notes: typeof payload.notes === 'string' ? payload.notes : a.notes,
+        isDefault: typeof payload.isDefault === 'boolean' ? payload.isDefault : a.isDefault,
+        ...(typeof payload.creditLimit === 'number' ? { creditLimit: parseNum(payload.creditLimit) } : {}),
+        updatedAt: now,
+      };
+    }
+    // Clear isDefault from all others when a new default is being set.
+    if (settingDefault) return { ...a, isDefault: false, updatedAt: now };
+    return a;
   });
 
   await saveLedgerProfile({ ...profile, accounts, updatedAt: now }, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
@@ -131,6 +137,9 @@ async function handleTransferFunds(context: ActionContext): Promise<void> {
   const now = new Date().toISOString();
   const date = typeof payload.date === 'string' ? payload.date : new Date().toISOString().split('T')[0];
 
+  const fromAccountName = (profile.accounts ?? []).find(a => a.id === payload.fromAccountId)?.name ?? 'account';
+  const toAccountName = (profile.accounts ?? []).find(a => a.id === payload.toAccountId)?.name ?? 'account';
+
   const accounts = (profile.accounts ?? []).map((a) => {
     if (a.id === payload.fromAccountId) return { ...a, balance: a.balance - amount, updatedAt: now };
     if (a.id === payload.toAccountId) return { ...a, balance: a.balance + amount, updatedAt: now };
@@ -146,10 +155,32 @@ async function handleTransferFunds(context: ActionContext): Promise<void> {
     notes: typeof payload.notes === 'string' ? payload.notes : undefined,
   };
 
+  const fromTx = {
+    id: crypto.randomUUID(),
+    date,
+    description: `Transfer to ${toAccountName}`,
+    amount,
+    type: 'expense' as const,
+    category: 'Transfer',
+    accountId: payload.fromAccountId as string,
+    notes: transfer.notes,
+  };
+  const toTx = {
+    id: crypto.randomUUID(),
+    date,
+    description: `Transfer from ${fromAccountName}`,
+    amount,
+    type: 'income' as const,
+    category: 'Transfer',
+    accountId: payload.toAccountId as string,
+    notes: transfer.notes,
+  };
+
   const updatedProfile = {
     ...profile,
     accounts,
     transferHistory: [...(profile.transferHistory ?? []), transfer],
+    transactions: [...(profile.transactions ?? []), fromTx, toTx],
     updatedAt: now,
   };
 
@@ -224,27 +255,6 @@ async function handleGenerateCashFlowForecast(context: ActionContext): Promise<v
   markProfileDirty?.();
 }
 
-// ─── sync_bank_account ────────────────────────────────────────────────────────
-
-async function handleSyncBankAccount(context: ActionContext): Promise<void> {
-  const { payload, userId, encryptionKey, markProfileDirty, emitSpineEvent } = context;
-
-  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
-  if (!profile) return;
-
-  const connectionId = typeof payload.connectionId === 'string' ? payload.connectionId : null;
-  if (!connectionId) return;
-
-  const connections = (profile.plaidConnections ?? []).map((c) =>
-    c.id === connectionId ? { ...c, lastSyncAt: new Date().toISOString(), status: 'active' as PlaidConnection['status'] } : c,
-  );
-
-  await saveLedgerProfile({ ...profile, plaidConnections: connections, updatedAt: new Date().toISOString() },
-    { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
-  markProfileDirty?.();
-  emitSpineEvent('BANK_SYNC_TRIGGERED' as SpineEventType, { connectionId });
-}
-
 // ─── Registration ─────────────────────────────────────────────────────────────
 
 export function registerLedgerAccountActions(): void {
@@ -259,6 +269,5 @@ export function registerLedgerAccountActions(): void {
     reconcile_account: handleReconcileAccount,
     record_net_worth_snapshot: handleRecordNetWorthSnapshot,
     generate_cash_flow_forecast: handleGenerateCashFlowForecast,
-    sync_bank_account: handleSyncBankAccount,
   });
 }

@@ -487,6 +487,58 @@ export const taskActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     });
   },
 
+  atlas_update_task_description: async ({ userId, encryptionKey, payload, emitSpineEvent, pushAssistantMessage }) => {
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const taskId = typeof payload?.taskId === 'string' ? payload.taskId : null;
+    if (!taskId) return;
+
+    const task = profile.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    if (typeof payload?.description !== 'string') return;
+    task.description = payload.description.trim().slice(0, 2000);
+    task.updatedAt = new Date().toISOString();
+
+    await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+    emitSpineEvent('ATLAS_STATE_CHANGED', {
+      reason: 'task_description_updated',
+      taskId,
+      updatedFields: ['description'],
+    });
+
+    if (pushAssistantMessage) pushAssistantMessage('Task description updated.');
+  },
+
+  atlas_update_task_notes: async ({ userId, encryptionKey, payload, emitSpineEvent, pushAssistantMessage }) => {
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const taskId = typeof payload?.taskId === 'string' ? payload.taskId : null;
+    if (!taskId) return;
+
+    const task = profile.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    if (typeof payload?.notes !== 'string') return;
+    task.notes = payload.notes.trim().slice(0, 2000);
+    task.updatedAt = new Date().toISOString();
+
+    await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+
+    emitSpineEvent('ATLAS_STATE_CHANGED', {
+      reason: 'task_notes_updated',
+      taskId,
+      updatedFields: ['notes'],
+    });
+
+    if (pushAssistantMessage) pushAssistantMessage('Task notes updated.');
+  },
+
   delegate_to_module: async ({ emitSpineEvent, payload }) => {
     const targetModule = typeof payload?.targetModule === 'string' ? payload.targetModule : '';
     const task = typeof payload?.task === 'string' ? payload.task : '';

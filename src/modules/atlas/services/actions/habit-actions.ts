@@ -104,7 +104,9 @@ export const habitActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
       ? Math.round((habitsWithStreak / activeHabits.length) * 100) / 100
       : 0;
 
-    await updateGlobalSoul({ planning: { streakHealth, habitMomentum } });
+    await updateGlobalSoul({ planning: { streakHealth, habitMomentum } }).catch((e: unknown) => {
+      console.error('[Atlas] NSV write failed (update_habit_streak):', e);
+    });
 
     emitSpineEvent('PLANNING_STATE_UPDATED', {
       changedFields: ['planning.streakHealth', 'planning.habitMomentum'],
@@ -253,7 +255,9 @@ export const habitActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
       ? Math.round((habitsWithStreak / activeHabits.length) * 100) / 100
       : 0;
 
-    await updateGlobalSoul({ planning: { streakHealth, habitMomentum } });
+    await updateGlobalSoul({ planning: { streakHealth, habitMomentum } }).catch((e: unknown) => {
+      console.error('[Atlas] NSV write failed (complete_habit):', e);
+    });
 
     emitSpineEvent('ATLAS_HABIT_LOGGED' as import('@/lib/types').SpineEventType, {
       habitId: habit.id,

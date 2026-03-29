@@ -13,7 +13,6 @@
 import {
   loadProfile,
   persistProfile,
-  Spine,
 } from './shared';
 import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import type { ActionHandler, TitanProfile } from './shared';
@@ -96,7 +95,7 @@ export const recoveryHandlers: Record<string, ActionHandler> = {
    * Emits: TITAN_RECOVERY_NEEDED spine event
    * Updates: NSV biological.recoveryScore and cnsFatigue
    */
-  start_recovery_plan: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+  start_recovery_plan: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) {
       pushAssistantMessage?.('❌ Could not load profile to start recovery plan.');
@@ -152,11 +151,9 @@ export const recoveryHandlers: Record<string, ActionHandler> = {
     }
 
     // Emit spine event for cross-module awareness
-    Spine.emit({
-      type: 'TITAN_RECOVERY_NEEDED',
-      source: 'titan',
-      domain: 'B',
-      data: {
+    emitSpineEvent(
+      'TITAN_RECOVERY_NEEDED',
+      {
         type: plan.type,
         reasons: plan.reasons,
         durationDays: plan.suggestedDurationDays,
@@ -165,9 +162,8 @@ export const recoveryHandlers: Record<string, ActionHandler> = {
         startDate: plan.startDate,
         endDate: plan.endDate,
       },
-      cascadeDepth: 0,
-      priority: 'alert',
-    });
+      { domain: 'B', priority: 'alert' },
+    );
 
     const reasonsStr = reasons.join(', ');
     pushAssistantMessage?.(
@@ -190,7 +186,7 @@ export const recoveryHandlers: Record<string, ActionHandler> = {
    * Emits: RECOVERY_AVAILABLE spine event
    * Updates: NSV biological to baseline recovered values
    */
-  end_recovery_plan: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+  end_recovery_plan: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) {
       pushAssistantMessage?.('❌ Could not load profile to end recovery plan.');
@@ -228,20 +224,17 @@ export const recoveryHandlers: Record<string, ActionHandler> = {
     }
 
     // Emit spine event for cross-module awareness
-    Spine.emit({
-      type: 'RECOVERY_AVAILABLE',
-      source: 'titan',
-      domain: 'B',
-      data: {
+    emitSpineEvent(
+      'RECOVERY_AVAILABLE',
+      {
         previousType: previousPlan.type,
         endReason: reason,
         daysInRecovery: Math.ceil(
           (Date.now() - new Date(previousPlan.startDate).getTime()) / (1000 * 60 * 60 * 24)
         ),
       },
-      cascadeDepth: 0,
-      priority: 'info',
-    });
+      { domain: 'B', priority: 'info' },
+    );
 
     pushAssistantMessage?.(
       `✅ **Recovery plan ended**\n` +
@@ -264,7 +257,7 @@ export const recoveryHandlers: Record<string, ActionHandler> = {
    * Updates: NSV biological.recoveryScore and sleepQuality
    * Emits: RECOVERY_AVAILABLE if recovery score >= 8
    */
-  log_recovery_checkin: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+  log_recovery_checkin: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) {
       pushAssistantMessage?.('❌ Could not load profile to log recovery check-in.');
@@ -341,18 +334,15 @@ export const recoveryHandlers: Record<string, ActionHandler> = {
 
       // If recovery score is high, emit early recovery signal
       if (recoveryScore >= 8) {
-        Spine.emit({
-          type: 'RECOVERY_AVAILABLE',
-          source: 'titan',
-          domain: 'B',
-          data: {
+        emitSpineEvent(
+          'RECOVERY_AVAILABLE',
+          {
             recoveryScore,
             source: 'checkin',
             checkinDate: date,
           },
-          cascadeDepth: 0,
-          priority: 'info',
-        });
+          { domain: 'B', priority: 'info' },
+        );
       }
     }
 

@@ -32,16 +32,32 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
   const [hasSyncedGuest, setHasSyncedGuest] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const hasLoadedOnce = useRef(false);
+  // True while a real-time Firestore subscription is active for this module.
+  const hasActiveSubscriptionRef = useRef(false);
+  // Stable refs so the MODULE_PROFILE_UPDATED handler never captures stale values.
+  const encryptionKeyRef = useRef<CryptoKey | null>(null);
+  const userUidRef = useRef<string | undefined>(undefined);
+
   const resolveOnboardingGate = useCallback((nextProfile: TProfile | null) => {
     return shouldGateModuleOnboarding(moduleId, nextProfile);
   }, [moduleId]);
 
-  // Listen for external sync events (e.g. from useModuleAI actions)
+  // Listen for external sync events (e.g. from useModuleAI actions).
+  // When a live Firestore subscription is in place we do NOT increment refreshNonce
+  // (that would destroy and recreate the subscription, causing a stale-profile window).
+  // Instead we issue a direct re-read as a safety net — the snapshot listener is the
+  // primary update path, but this catches any transient decryption or delivery failure.
   useSpineEvent('MODULE_PROFILE_UPDATED', useCallback((event) => {
-    if (event.data?.moduleId === moduleId) {
-      console.log(`[useModuleProfile] Refreshing ${moduleId} due to external sync event`);
-      setRefreshNonce(n => n + 1);
+    if (event.data?.moduleId !== moduleId) return;
+    if (hasActiveSubscriptionRef.current) {
+      const uid = userUidRef.current ?? '';
+      if (!uid) return;
+      refreshProfileRef.current({ userId: uid, encryptionKey: encryptionKeyRef.current })
+        .then(p => setProfile(p))
+        .catch(() => {});
+      return;
     }
+    setRefreshNonce(n => n + 1);
   }, [moduleId]));
 
   // We use refs for these to avoid infinite loops if the caller provides unstable arrow functions
@@ -57,6 +73,8 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
     saveProfileRef.current = saveProfileFn;
     subscribeProfileRef.current = subscribeProfile;
     syncGuestProfileRef.current = syncGuestProfile;
+    encryptionKeyRef.current = encryptionKey;
+    userUidRef.current = user?.uid;
   });
 
   useEffect(() => {
@@ -82,6 +100,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       setEncryptionKey(key);
 
       if (user && !isGuest && key && subscribeProfileRef.current) {
+        hasActiveSubscriptionRef.current = true;
         const unsub = subscribeProfileRef.current({ userId: user.uid, encryptionKey: key }, (nextProfile) => {
           if (!mounted) return;
           setProfile(nextProfile);
@@ -91,6 +110,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
         });
 
         if (!mounted) {
+          hasActiveSubscriptionRef.current = false;
           unsub();
           return;
         }
@@ -111,6 +131,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
 
     return () => {
       mounted = false;
+      hasActiveSubscriptionRef.current = false;
       if (unsubscribe) unsubscribe();
     };
   }, [user?.uid, isGuest, isUnlocked, getMasterKey, moduleId, refreshNonce, resolveOnboardingGate]); // Added refreshNonce

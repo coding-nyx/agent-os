@@ -149,6 +149,20 @@ service cloud.firestore {
       match /events/{eventId} {
         allow read, write: if isOwner(userId);
       }
+
+      // Spec-adapted events (structured mirror of raw spine events for analytics)
+      match /spec_events/{eventId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Ledger Audit Event Log (per-user scoped financial event trail)
+    match /ledger_events/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /events/{eventId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // Belief Graphs (Agnes-specific visual data)

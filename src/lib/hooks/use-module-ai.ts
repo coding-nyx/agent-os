@@ -46,6 +46,10 @@ interface UseModuleAIOptions {
   contextPolicy?: ContextPolicy;
   persistencePolicy?: PersistencePolicy;
   onError?: (error: unknown) => void;
+  /** Per-module autopilot override. When provided, bypasses the global orchestration store
+   *  value for this module's action gate evaluation. Use 5 to auto-execute all mutations
+   *  (e.g. Ledger, where the user explicitly directs every financial write). */
+  autopilotLevelOverride?: 0 | 1 | 2 | 3 | 4 | 5;
 }
 
 const MEMORY_SECTION_CHAR_LIMIT = 1800;
@@ -162,12 +166,15 @@ export function useModuleAI({
   sessionId,
   contextPolicy,
   persistencePolicy = 'auto',
-  onError
+  onError,
+  autopilotLevelOverride,
 }: UseModuleAIOptions) {
   const { streamMessage, sendMessage, generateJSON } = useAI();
   const threadIdRef = useRef<string | undefined>(undefined);
   const { enhanceContext, enhanceContextForModule, globalSoul } = useGlobalSoul();  const { user, isGuest, profile } = useAuth();
-  const autopilotLevel = useOrchestrationStore((state) => state.autopilotLevel);
+  const globalAutopilotLevel = useOrchestrationStore((state) => state.autopilotLevel);
+  const moduleAutopilotOverrides = useOrchestrationStore((state) => state.moduleAutopilotOverrides);
+  const autopilotLevel = moduleAutopilotOverrides[moduleId as keyof typeof moduleAutopilotOverrides] ?? globalAutopilotLevel;
   const orchestrationHistoryMode = useOrchestrationStore((state) => state.historyMode);
   const activeThreadId = useOrchestrationStore((state) => state.activeThreadId);
   const setLastTurnRuntime = useOrchestrationStore((state) => state.setLastTurnRuntime);
@@ -200,6 +207,8 @@ export function useModuleAI({
     isActing: false,
     currentActionType: null
   });
+  const [disposition, setDisposition] = useState<'reply' | 'consulting' | 'delegating' | 'acting' | null>(null);
+  const [consultationTarget, setConsultationTarget] = useState<string | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
   const [streamingText, setStreamingText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -787,7 +796,7 @@ export function useModuleAI({
           contentText: semanticContentText,
           parsedCommand,
           allowedActions: ActionHub.getAllowedActions(moduleId),
-          autopilotLevel,
+          autopilotLevel: (autopilotLevelOverride ?? autopilotLevel) as 0 | 1 | 2 | 3 | 4 | 5,
           orchestrationHistoryMode,
           activeThreadId,
           persistencePolicy,
@@ -799,6 +808,12 @@ export function useModuleAI({
           sendMessage,
           flushActiveSession,
           onActionParsed,
+          onConsultationStarted: (targetModuleId) => {
+            setConsultationTarget(targetModuleId);
+          },
+          onDispositionChange: (newDisposition) => {
+            setDisposition(newDisposition);
+          },
           adjustRelativeReminderPayload: (payload) => {
             const adjustedPayload = { ...payload };
               const override = buildRelativeReminderOverride(semanticContentText);
@@ -1136,6 +1151,8 @@ export function useModuleAI({
         if (mountedRef.current) {
           setIsProcessing(false);
           setAIState({ isThinking: false, isActing: false, currentActionType: null });
+          setDisposition(null);
+          setConsultationTarget(null);
         }
         isProcessingRef.current = false;
       }
@@ -1275,6 +1292,8 @@ export function useModuleAI({
     setMessages,
     isProcessing,
     aiState,
+    disposition,
+    consultationTarget,
     isHydrating,
     streamingText,
     error,
@@ -1289,8 +1308,9 @@ export function useModuleAI({
     pendingRequest,
     clearPendingRequest,
   }), [
-    messages, setMessages, isProcessing, aiState, isHydrating, streamingText,
-    error, quota, lastParsedCommand, routingSuggestion, setRoutingSuggestion, handleSendMessage,
-    prewarmMemory, clearSession, summarizeSession, pendingRequest, clearPendingRequest,
+    messages, setMessages, isProcessing, aiState, disposition, consultationTarget,
+    isHydrating, streamingText, error, quota, lastParsedCommand, routingSuggestion,
+    setRoutingSuggestion, handleSendMessage, prewarmMemory, clearSession, summarizeSession,
+    pendingRequest, clearPendingRequest,
   ]);
 }

@@ -156,6 +156,7 @@ function formatSleepLog(entries: SleepEntry[]): string {
       e.deepSleepPct != null ? `deep ${e.deepSleepPct}%` : null,
       e.remSleepPct != null ? `REM ${e.remSleepPct}%` : null,
       e.awakenings != null ? `${e.awakenings} awakenings` : null,
+      (e as any).hrv != null ? `HRV ${(e as any).hrv}ms` : null,
     ].filter(Boolean).join(', ');
     return `${e.date}: quality ${e.quality}/10, ${extra}${tags}${e.notes ? ` — "${e.notes}"` : ''}`;
   });
@@ -279,7 +280,41 @@ ACTIVE CYCLES:
 ${formatCycles(profile.cycles ?? [])}
 
 RECENT WORKOUT SESSIONS (last 7):
-${formatRecentSessions(profile.workoutSessions ?? [])}`;
+${formatRecentSessions(profile.workoutSessions ?? [])}
+
+PERSONAL RECORDS (top 10 by e1RM):
+${(() => {
+  const prs = profile.personalRecords ? Object.values(profile.personalRecords) : [];
+  if (!prs.length) return 'No PRs recorded yet.';
+  return prs
+    .sort((a, b) => b.e1RM - a.e1RM)
+    .slice(0, 10)
+    .map(pr => `• ${pr.exerciseName}: ${pr.maxWeight}kg×${pr.repsAtMax} (e1RM ${pr.e1RM.toFixed(1)}kg, ${pr.achievedDate})`)
+    .join('\n');
+})()}
+
+CARDIO (last 5 sessions):
+${(() => {
+  const sessions = profile.cardioLog ?? [];
+  if (!sessions.length) return 'No cardio sessions logged.';
+  return sessions.slice(0, 5).map(s => {
+    const dist = s.distanceKm != null ? `, ${s.distanceKm.toFixed(1)}km` : '';
+    const hr = s.avgHeartRate != null ? `, avg HR ${s.avgHeartRate}bpm` : '';
+    const rpe = s.rpe != null ? `, RPE ${s.rpe}/10` : '';
+    return `${s.date}: ${s.type} ${s.durationMinutes}min${dist}${hr}${rpe}`;
+  }).join('\n');
+})()}
+
+BODY COMPOSITION (latest):
+${(() => {
+  const log = profile.bodyWeightLog ?? [];
+  if (!log.length) return 'No body composition data.';
+  const latest = log[0];
+  const bfp = latest.bodyFatPct != null ? `, body fat ${latest.bodyFatPct.toFixed(1)}%` : '';
+  const m = latest.measurements;
+  const mStr = m ? Object.entries(m).filter(([, v]) => v != null).map(([k, v]) => `${k}: ${v}cm`).join(', ') : '';
+  return `${latest.date}: ${latest.weight}kg${bfp}${mStr ? `\nMeasurements: ${mStr}` : ''}`;
+})()}`;
 
   const hasMedicalData = profile.knownConditions?.length || profile.medications?.length || profile.allergies?.length;
   if (hasMedicalData) {
@@ -305,7 +340,7 @@ Window: ${plan.startDate} → ${plan.endDate} (${plan.suggestedDurationDays}d su
 Notes: ${plan.notes || 'None'}
 Specialist Summary (Soma): ${plan.somaSummary || 'None'}
 Specialist Summary (Agnes): ${plan.agnesSummary || 'None'}
-Last Check-in: ${lastCheckin ? `${lastCheckin.date} pain ${lastCheckin.pain}/10, fatigue ${lastCheckin.fatigue}/10, sleep ${lastCheckin.sleepQuality}/5, mood ${lastCheckin.mood}/5` : 'No check-ins yet'}`;
+Last Check-in: ${lastCheckin ? `${lastCheckin.date} pain ${lastCheckin.pain}/10, fatigue ${lastCheckin.fatigue}/10, sleep ${lastCheckin.sleepQuality}/5, mood ${lastCheckin.mood}/5${lastCheckin.notes ? ` — "${lastCheckin.notes}"` : ''}` : 'No check-ins yet'}`;
   }
 
 
@@ -693,6 +728,8 @@ export function buildTitanModePrompt(
     extensionFieldsBlock?: string;
     recoveryScore?: number | null;
     hormonalContext?: string | null;
+    /** Pre-formatted NSV block for full cross-domain context in scoped conversations */
+    nsvBlock?: string;
   }
 ): { systemPrompt: string; allowedActions: readonly string[] } {
   const alias = options?.agentAlias || 'Titan';
@@ -733,6 +770,7 @@ function buildGeneralModePrompt(
     extensionFieldsBlock?: string;
     recoveryScore?: number | null;
     hormonalContext?: string | null;
+    nsvBlock?: string;
   }
 ): string {
   const recoveryBlock =
@@ -753,6 +791,10 @@ function buildGeneralModePrompt(
     ? `\n\n${options.extensionFieldsBlock}`
     : '';
 
+  const nsvBlock = options?.nsvBlock
+    ? `\n\n${options.nsvBlock}`
+    : '';
+
   return `[IDENTITY]
 You are ${alias}, an elite AI Physical Performance Strategist within the AGNES system.
 Your tone is direct, clinical, and data-driven.
@@ -763,7 +805,7 @@ You maintain a persistent neural link — you do NOT lose memory between session
 Full coaching mode. You have access to the user's complete training profile,
 nutrition data, biometrics, extension fields, and cross-functional state.
 
-${options?.profileSummary ? `[PROFILE SUMMARY]\n${options.profileSummary}\n` : ''}${recoveryBlock}${hormonalBlock}${extensionBlock}
+${options?.profileSummary ? `[PROFILE SUMMARY]\n${options.profileSummary}\n` : ''}${recoveryBlock}${hormonalBlock}${extensionBlock}${nsvBlock}
 
 [AVAILABLE ACTIONS]
 - Update profile: <action type="update_titan_profile">{...partialProfile}</action>

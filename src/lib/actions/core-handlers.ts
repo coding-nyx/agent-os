@@ -19,6 +19,27 @@ import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
 import { OrchestrationInteractionGateService } from '@/lib/services/orchestration-interaction-gate-service';
 import { SpecialistConsultationService } from '@/lib/services/specialist-consultation-service';
 
+/**
+ * HANDLER_PRECEDENCE — documents the bootstrap registration order enforced in main.tsx.
+ *
+ * 1. registerOrchestratorActions()  — navigate_to_module, create_module_handoff (unique to Nexus)
+ * 2. registerCoreActions()          — overwrites any same-key registrations from step 1
+ * 3. registerAnalysisActions()      — additive (no overlapping keys with step 2)
+ * 4. registerGlobalValidationActions(), registerFieldSuggestionActions() — additive
+ * 5. Module registrations           — each module's own namespace (isolated by moduleId)
+ *
+ * Do NOT add shared-key handlers in registerOrchestratorActions() — they will be overwritten
+ * here and the duplicate registration produces ActionHub collision warnings in DEV.
+ */
+export const HANDLER_PRECEDENCE = [
+  'registerOrchestratorActions',
+  'registerCoreActions',
+  'registerAnalysisActions',
+  'registerGlobalValidationActions',
+  'registerFieldSuggestionActions',
+  'module registrations (isolated by moduleId)',
+] as const;
+
 const ROUTINE_PROPOSALS = new Map<string, RoutineProposal>();
 
 function stableHash(input: string): string {
@@ -453,7 +474,21 @@ export function registerCoreActions() {
       } catch (err) {
         console.error(`[query_module_data] Failed to consult ${targetModule}:`, err);
       }
-    }
+    },
+
+    mutate_module_data: async ({ payload, ...context }) => {
+      const moduleId = typeof payload?.moduleId === 'string' ? payload.moduleId : null;
+      const actionType = typeof payload?.actionType === 'string' ? payload.actionType : null;
+      if (!moduleId || !actionType) {
+        context.pushAssistantMessage?.('mutate_module_data: moduleId and actionType are required.');
+        return;
+      }
+      await ActionHub.execute(moduleId, actionType, {
+        ...context,
+        moduleId,
+        payload: (payload as any)?.actionPayload ?? {},
+      });
+    },
   });
 
   ActionHub.registerMultiple('nexus', {
@@ -842,40 +877,15 @@ export function registerCoreActions() {
       await updateGlobalSoul({
         emotionalResilience: score,
         emotional: { emotionalResilience: score }
+      }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_soul_resilience):', e);
       });
     }
   });
 
-  ActionHub.register('agnes', 'update_emotional_resilience', async ({ payload, updateGlobalSoul }) => {
-    const score = safeNumber(payload.score ?? payload.emotionalResilience);
-    if (typeof score === 'number') {
-      await updateGlobalSoul({
-        emotionalResilience: score,
-        emotional: { emotionalResilience: score }
-      });
-    }
-  });
-
-  ActionHub.register('agnes', 'update_stress_load', async ({ payload, updateGlobalSoul }) => {
-    const score = safeNumber(payload.score ?? payload.stressLoad);
-    if (typeof score === 'number') {
-      await updateGlobalSoul({ emotional: { stressLoad: score } });
-    }
-  });
-
-  ActionHub.register('agnes', 'update_mood_trend', async ({ payload, updateGlobalSoul }) => {
-    const trend = safeString(payload.trend ?? payload.moodTrend);
-    if (trend !== undefined) {
-      await updateGlobalSoul({ emotional: { moodTrend: trend } });
-    }
-  });
-
-  ActionHub.register('agnes', 'update_trauma_markers', async ({ payload, updateGlobalSoul }) => {
-    const markers = safeStringArray(payload.markers ?? payload.traumaMarkers);
-    if (markers !== undefined) {
-      await updateGlobalSoul({ emotional: { traumaMarkers: markers }, traumaMarkers: markers });
-    }
-  });
+  // NOTE: update_emotional_resilience, update_stress_load, update_mood_trend, update_trauma_markers
+  // are registered exclusively by agnes/services/actions.ts (module is authoritative).
+  // Core baselines removed to eliminate DEV collision warnings.
 
   ActionHub.register('titan', 'update_cns_fatigue', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score);
@@ -883,6 +893,8 @@ export function registerCoreActions() {
       await updateGlobalSoul({
         cnsFatigue: score,
         biological: { cnsFatigue: score }
+      }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_cns_fatigue):', e);
       });
     }
   });
@@ -893,6 +905,8 @@ export function registerCoreActions() {
       await updateGlobalSoul({
         sleepQuality: score,
         biological: { sleepQuality: score }
+      }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_sleep_quality):', e);
       });
     }
   });
@@ -904,86 +918,43 @@ export function registerCoreActions() {
     console.log(`[Titan] Clearance request: activity=${activity}, reason=${reason}`);
   });
 
-  // Atlas batch update — only fields Atlas owns (excludes researchLoad which Scout owns)
-  ActionHub.register('atlas', 'update_energy_wave', async ({ payload, updateGlobalSoul }) => {
-    if (payload && typeof payload === 'object') {
-      await updateGlobalSoul({
-        cognitive: {
-          energyBudget: safeNumber(payload.energyBudget),
-          focusScore: safeNumber(payload.focusScore),
-          activeLoad: safeNumber(payload.activeLoad)
-        }
-      });
-    }
-  });
-
-  ActionHub.register('atlas', 'flatten_schedule', async ({ moduleId, payload, updateGlobalSoul }) => {
-    const nextLoad = safeNumber(payload?.activeLoad);
-    if (typeof nextLoad === 'number') {
-      await updateGlobalSoul({ cognitive: { activeLoad: nextLoad } });
-    }
-    Spine.emit({
-      type: 'FLATTEN_ENERGY_WAVE',
-      source: moduleId,
-      domain: 'C',
-      data: payload || {},
-      cascadeDepth: 0,
-      priority: 'alert'
-    });
-  });
-
-  ActionHub.register('atlas', 'update_task_graph', async ({ payload, updateGlobalSoul }) => {
-    const nextLoad = safeNumber(payload?.activeLoad);
-    if (typeof nextLoad === 'number') {
-      await updateGlobalSoul({ cognitive: { activeLoad: nextLoad } });
-    }
-  });
-
-  ActionHub.register('agnes', 'update_emotional_state', async ({ payload, updateGlobalSoul }) => {
-    if (!payload || typeof payload !== 'object') return;
-    const patch: NeuralStateVectorPatch = { emotional: {} };
-    const resilience = safeNumber(payload.emotionalResilience);
-    if (resilience !== undefined) {
-      patch.emotional!.emotionalResilience = resilience;
-      patch.emotionalResilience = resilience;
-    }
-    const stressLoad = safeNumber(payload.stressLoad);
-    if (stressLoad !== undefined) patch.emotional!.stressLoad = stressLoad;
-    const moodTrend = safeString(payload.moodTrend);
-    if (moodTrend !== undefined) patch.emotional!.moodTrend = moodTrend;
-    const traumaMarkers = safeStringArray(payload.traumaMarkers);
-    if (traumaMarkers !== undefined) {
-      patch.emotional!.traumaMarkers = traumaMarkers;
-      patch.traumaMarkers = traumaMarkers;
-    }
-    await updateGlobalSoul(patch);
-  });
+  // NOTE: update_energy_wave, flatten_schedule, update_task_graph are registered exclusively
+  // by atlas/services/actions/ (module is authoritative). Core baselines removed.
+  // flatten_schedule emits FLATTEN_ENERGY_WAVE via the atlas module handler (routine-actions.ts).
 
   ActionHub.register('atlas', 'update_energy_budget', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.energyBudget);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ cognitive: { energyBudget: score } });
+      await updateGlobalSoul({ cognitive: { energyBudget: score } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_energy_budget):', e);
+      });
     }
   });
 
   ActionHub.register('atlas', 'update_focus_score', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.focusScore);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ cognitive: { focusScore: score } });
+      await updateGlobalSoul({ cognitive: { focusScore: score } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_focus_score):', e);
+      });
     }
   });
 
   ActionHub.register('atlas', 'update_active_load', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.activeLoad);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ cognitive: { activeLoad: score } });
+      await updateGlobalSoul({ cognitive: { activeLoad: score } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_active_load):', e);
+      });
     }
   });
 
   ActionHub.register('atlas', 'update_planning_load', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.planningLoad);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ cognitive: { planningLoad: score } });
+      await updateGlobalSoul({ cognitive: { planningLoad: score } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_planning_load):', e);
+      });
     }
   });
 
@@ -992,7 +963,9 @@ export function registerCoreActions() {
     if (typeof rate === 'number') {
       // Clamp to 0.0–1.0 range for this metric
       const clamped = Math.max(0, Math.min(1, rate));
-      await updateGlobalSoul({ cognitive: { taskCompletionRate: clamped } });
+      await updateGlobalSoul({ cognitive: { taskCompletionRate: clamped } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_task_completion_rate):', e);
+      });
     }
   });
 
@@ -1002,7 +975,9 @@ export function registerCoreActions() {
     if (typeof score === 'number') {
       // Guardrails: Scout/Forge are NSV read-only; ActionHub handles allowlists.
       const updateFn = (ctx as any)['update' + 'GlobalSoul'] as (patch: NeuralStateVectorPatch) => Promise<void>;
-      await updateFn({ cognitive: { researchLoad: score } });
+      await updateFn({ cognitive: { researchLoad: score } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_research_load):', e);
+      });
       emitSpineEvent('VITAL_UPDATED', {
         source: 'scout',
         action: 'update_research_load',
@@ -1046,7 +1021,9 @@ export function registerCoreActions() {
     if (typeof score === 'number') {
       // Guardrails: see update_research_load handler above.
       const updateFn = (ctx as any)['update' + 'GlobalSoul'] as (patch: NeuralStateVectorPatch) => Promise<void>;
-      await updateFn({ cognitive: { interestDiversity: score } });
+      await updateFn({ cognitive: { interestDiversity: score } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_interest_diversity):', e);
+      });
       emitSpineEvent('VITAL_UPDATED', {
         source: 'scout',
         action: 'update_interest_diversity',
@@ -1059,21 +1036,27 @@ export function registerCoreActions() {
   ActionHub.register('atlas', 'update_streak_health', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.streakHealth);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ planning: { streakHealth: score } });
+      await updateGlobalSoul({ planning: { streakHealth: score } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_streak_health):', e);
+      });
     }
   });
 
   ActionHub.register('atlas', 'update_deadline_pressure', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.deadlinePressure);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ planning: { deadlinePressure: score } });
+      await updateGlobalSoul({ planning: { deadlinePressure: score } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_deadline_pressure):', e);
+      });
     }
   });
 
   ActionHub.register('ledger', 'update_resonance_roi', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score ?? payload.resonanceROI);
     if (typeof score === 'number') {
-      await updateGlobalSoul({ resource: { resonanceROI: score } });
+      await updateGlobalSoul({ resource: { resonanceROI: score } }).catch((e: unknown) => {
+        console.error('[CoreHandlers] NSV write failed (update_resonance_roi):', e);
+      });
     }
   });
 
@@ -1165,22 +1148,22 @@ export function registerCoreActions() {
       return;
     }
 
-    await updateGlobalSoul(compactedPatch);
+    await updateGlobalSoul(compactedPatch).catch((e: unknown) => {
+      console.error('[CoreHandlers] NSV write failed (sync_vitals):', e);
+    });
   });
   ActionHub.register('ledger', 'compute_resonance_roi', async ({ payload, updateGlobalSoul }) => {
     const friction = safeNumber(payload?.financialFriction);
     const roi = safeNumber(payload?.resonanceROI);
     await updateGlobalSoul({
       resource: { financialFriction: friction, resonanceROI: roi }
+    }).catch((e: unknown) => {
+      console.error('[CoreHandlers] NSV write failed (compute_resonance_roi):', e);
     });
   });
 
-  ActionHub.register('ledger', 'update_financial_friction', async ({ payload, updateGlobalSoul }) => {
-    const score = safeNumber(payload?.score);
-    if (typeof score === 'number') {
-      await updateGlobalSoul({ resource: { financialFriction: score } });
-    }
-  });
+  // NOTE: update_financial_friction is registered exclusively by
+  // ledger/actions/ledger-field-actions.ts (module is authoritative).
 
   // -------------------------------------------------------------------------
   // Contextual Inference Engine — S10-008

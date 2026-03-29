@@ -70,7 +70,7 @@ async function handleCreateSubscription(context: ActionContext): Promise<void> {
     domain: 'R' as const,
     source: `subscription:${sub.id}`,
     data: { subscriptionId: sub.id, name: sub.name },
-  });
+  }, userId);
 }
 
 // ─── update_subscription ─────────────────────────────────────────────────────

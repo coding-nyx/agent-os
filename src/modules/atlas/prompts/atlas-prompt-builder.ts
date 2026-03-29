@@ -20,6 +20,7 @@ import type {
   AtlasTask,
   AtlasHabit,
   AtlasGoal,
+  AtlasProject,
 } from '../services/atlas-profile-service';
 import type { AtlasRoutine, NeuralStateVector } from '@/lib/types';
 import { ATLAS_PERSONA } from '../personas';
@@ -51,6 +52,8 @@ export interface AtlasJournalSummary {
   blockers?: string;
   /** first 120 chars of freeform, already decrypted at call site */
   freeformSnippet?: string;
+  /** first 60 chars of eveningReflection, already decrypted at call site */
+  eveningReflectionSnippet?: string;
 }
 
 /** Morning or evening check-in snapshot. */
@@ -74,6 +77,7 @@ export interface AtlasDataContext {
   tasks?: AtlasTask[];
   goals?: AtlasGoal[];
   habits?: AtlasHabit[];
+  projects?: AtlasProject[];
   routine?: AtlasRoutine | null;
   /** Last 3-5 entries, already decrypted to summary fields only. */
   journalSummaries?: AtlasJournalSummary[];
@@ -101,6 +105,9 @@ export const ATLAS_NSV_READ_FIELDS = [
   'cognitive.taskCompletionRate',
   'planning.streakHealth',
   'planning.deadlinePressure',
+  'planning.reflectionStreak',
+  'planning.goalAlignment',
+  'planning.habitMomentum',
   'resource.financialFriction',
 ] as const;
 
@@ -358,6 +365,22 @@ function buildAtlasDataContextBlock(data: AtlasDataContext): string {
   const today = data.today ?? new Date().toISOString().slice(0, 10);
   const parts: string[] = ['[ATLAS LIVE DATA — DO NOT FABRICATE ANY VALUES BELOW]'];
 
+  // ── Projects ───────────────────────────────────────────────────────────
+  if (data.projects && data.projects.length > 0) {
+    const activeProjects = data.projects
+      .filter(p => p.status === 'active' || p.status === 'paused')
+      .slice(0, 10);
+
+    if (activeProjects.length > 0) {
+      const projectLines = activeProjects.map(p => {
+        const deadlineStr = p.deadline ? ` | due: ${p.deadline}` : '';
+        const taskCountStr = ` | tasks: ${p.taskIds.length}`;
+        return `  - [${p.status.toUpperCase()}] "${p.title}"${deadlineStr}${taskCountStr}`;
+      });
+      parts.push(`ACTIVE PROJECTS (${activeProjects.length}):\n${projectLines.join('\n')}`);
+    }
+  }
+
   // ── Goals ──────────────────────────────────────────────────────────────
   if (data.goals && data.goals.length > 0) {
     const activeGoals = data.goals.filter(g => g.status !== 'abandoned').slice(0, 25);
@@ -370,7 +393,16 @@ function buildAtlasDataContextBlock(data: AtlasDataContext): string {
     const goalLines = activeGoals.map(g => {
       const deadlineStr = g.deadline ? ` | deadline: ${g.deadline}` : '';
       const urgentMarker = g.deadline && g.deadline <= now7.toISOString().slice(0, 10) ? ' ⚠️' : '';
-      return `  - [${g.status.toUpperCase()}] "${g.title}" — ${g.progressPercent}% complete${deadlineStr}${urgentMarker}`;
+      const criteriaStr = g.successCriteria
+        ? ` | criteria: "${g.successCriteria.slice(0, 80)}${g.successCriteria.length > 80 ? '...' : ''}"`
+        : '';
+      const totalMs = g.milestones.length;
+      const doneMs = g.milestones.filter(m => m.completed).length;
+      const nextMs = g.milestones.find(m => !m.completed);
+      const msStr = totalMs > 0
+        ? ` | milestones: ${doneMs}/${totalMs}${nextMs ? ` (next: "${nextMs.title.slice(0, 40)}${nextMs.title.length > 40 ? '...' : ''}")` : ' (all done)'}`
+        : '';
+      return `  - [${g.status.toUpperCase()}] "${g.title}" — ${g.progressPercent}% complete${deadlineStr}${urgentMarker}${criteriaStr}${msStr}`;
     });
     parts.push(`GOALS (${activeGoals.length} active):\n${goalLines.join('\n')}`);
 
@@ -400,7 +432,13 @@ function buildAtlasDataContextBlock(data: AtlasDataContext): string {
     const taskLines = topTasks.map(t => {
       const overdue = t.deadline && t.deadline.slice(0, 10) < today ? ' 🔴OVERDUE' : '';
       const dueStr = t.deadline ? ` | due: ${t.deadline.slice(0, 10)}` : '';
-      return `  - [P${t.priority}|E${t.energyCost}] "${t.title}" (${t.status})${dueStr}${overdue}`;
+      const descStr = t.description
+        ? ` | desc: "${t.description.slice(0, 80)}${t.description.length > 80 ? '...' : ''}"`
+        : '';
+      const notesStr = t.notes
+        ? ` | notes: "${t.notes.slice(0, 60)}${t.notes.length > 60 ? '...' : ''}"`
+        : '';
+      return `  - [P${t.priority}|E${t.energyCost}] "${t.title}" (${t.status})${dueStr}${overdue}${descStr}${notesStr}`;
     });
 
     const todayTasks = sorted.filter(t =>
@@ -424,7 +462,10 @@ function buildAtlasDataContextBlock(data: AtlasDataContext): string {
       const streakRisk = h.currentStreak > 0 && h.lastCompleted
         ? (Date.now() - new Date(h.lastCompleted).getTime() > 20 * 60 * 60 * 1000 ? ' ⚠️ streak at risk' : '')
         : '';
-      return `  - "${h.title}" | streak: ${h.currentStreak}/${h.targetStreak} (best: ${h.bestStreak}) | ${h.frequency}${streakRisk}`;
+      const mvvStr = h.minimumViableVersion
+        ? ` | mvv: "${h.minimumViableVersion.slice(0, 60)}${h.minimumViableVersion.length > 60 ? '...' : ''}"`
+        : '';
+      return `  - "${h.title}" | streak: ${h.currentStreak}/${h.targetStreak} (best: ${h.bestStreak}) | ${h.frequency}${streakRisk}${mvvStr}`;
     });
     parts.push(`ACTIVE HABITS (${activeHabits.length}):\n${habitLines.join('\n')}`);
   }
@@ -450,7 +491,10 @@ function buildAtlasDataContextBlock(data: AtlasDataContext): string {
       const intentStr = j.morningIntent ? ` | intent: "${j.morningIntent.slice(0, 60)}"` : '';
       const blockerStr = j.blockers ? ` | blockers: "${j.blockers.slice(0, 60)}"` : '';
       const snippetStr = j.freeformSnippet ? ` | wrote: "${j.freeformSnippet.slice(0, 80)}..."` : '';
-      return `  - ${j.date}: mood ${j.mood}/5, energy ${j.energyLevel}/5${intentStr}${blockerStr}${snippetStr}`;
+      const eveningStr = j.eveningReflectionSnippet
+        ? ` | evening: "${j.eveningReflectionSnippet.slice(0, 60)}${j.eveningReflectionSnippet.length > 60 ? '...' : ''}"`
+        : '';
+      return `  - ${j.date}: mood ${j.mood}/5, energy ${j.energyLevel}/5${intentStr}${blockerStr}${snippetStr}${eveningStr}`;
     });
     parts.push(`RECENT JOURNAL ENTRIES (last ${recent.length}, summarised — raw content never exposed):\n${journalLines.join('\n')}`);
   }

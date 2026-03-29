@@ -34,7 +34,7 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
     }
   },
 
-  parse_lab_report: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+  parse_lab_report: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -138,20 +138,17 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
       }
 
       // Emit summary event for lab parsing
-      Spine.emit({
-        type: 'SOMA_LAB_REPORT_PARSED',
-        source: 'titan',
-        domain: 'B',
-        data: {
+      emitSpineEvent(
+        'SOMA_LAB_REPORT_PARSED',
+        {
           panel: summary.panel,
           findingsCount: summary.findings.length,
           flagsCount: summary.flags.length,
           biomarkersExtracted: committedCount.success,
           biomarkersFailed: committedCount.failed,
         },
-        cascadeDepth: 0,
-        priority: summary.flags.length > 0 ? 'alert' : 'info',
-      });
+        { domain: 'B', priority: summary.flags.length > 0 ? 'alert' : 'info' },
+      );
 
       if (pushAssistantMessage) {
         const flagsNote = summary.flags.length > 0 
@@ -178,7 +175,7 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
     if (!clearance) return;
   },
 
-  analyze_medical_image: async ({ userId, encryptionKey, payload }) => {
+  analyze_medical_image: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -265,12 +262,9 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
         console.error('[Titan] Biomarker delegation to Soma failed:', delegationError);
         // Emit failure event so downstream systems know delegation is incomplete
         // Using MODULE_DELEGATED with status: 'failed' to match existing event types
-        Spine.emit({
-          type: 'MODULE_DELEGATED',
-          source: 'titan',
-          target: 'soma',
-          domain: 'B',
-          data: {
+        emitSpineEvent(
+          'MODULE_DELEGATED',
+          {
             moduleId: 'titan',
             delegatedTo: 'soma',
             operation: 'commit_biomarkers',
@@ -278,9 +272,8 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
             count: newBiomarkers.length,
             error: (delegationError as Error).message,
           },
-          cascadeDepth: 0,
-          priority: 'alert',
-        });
+          { domain: 'B', priority: 'alert', target: 'soma' },
+        );
         // Note: TitanProfile is already saved; we don't rollback to avoid data loss
         // The MODULE_DELEGATED status: 'failed' event allows manual reconciliation
       }
@@ -289,18 +282,15 @@ export const biomarkerHandlers: Record<string, ActionHandler> = {
     // Emit MEDICAL_ALERT if severe flags found
     const severeFlags = analysis.clinicalFlags.filter(f => f.severity === 'severe');
     if (severeFlags.length > 0) {
-      Spine.emit({
-        type: 'MEDICAL_ALERT',
-        source: 'titan',
-        domain: 'B',
-        data: {
+      emitSpineEvent(
+        'MEDICAL_ALERT',
+        {
           alertCount: severeFlags.length,
           flags: severeFlags.map(f => f.flag),
-          reportType: analysis.reportType
+          reportType: analysis.reportType,
         },
-        cascadeDepth: 0,
-        priority: 'alert'
-      });
+        { domain: 'B', priority: 'alert' },
+      );
     }
   },
 

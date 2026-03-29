@@ -72,7 +72,7 @@ export function NeuralSelectMenu<T extends string | number = string>({
       <Select.Portal>
         <Select.Content
           className={cn(
-            'overflow-hidden z-50',
+            'overflow-hidden z-[90]',
             'bg-black/90 backdrop-blur-xl border border-white/[0.12] rounded-2xl',
             'shadow-2xl shadow-black/50',
             contentClassName

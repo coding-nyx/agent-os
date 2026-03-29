@@ -118,8 +118,6 @@ export const LEDGER_SCOPE_ACTIONS: Record<
     'skip_next_occurrence',
     // Forecast
     'generate_cash_flow_forecast',
-    // Bank sync
-    'sync_bank_account',
     // Subscriptions
     'create_subscription',
     'update_subscription',
@@ -275,8 +273,9 @@ AVAILABLE ACTIONS:
 - <action type="suggest_field">{"description":"...","purpose":"...","suggestedType":"number"}</action>
   Use when the user mentions tracking a financial metric not covered by existing fields.
 
-- <action type="create_transaction">{"type":"expense","amount":150,"description":"Grocery run","category":"Food","date":"2026-03-12"}</action>
+- <action type="create_transaction">{"type":"expense","amount":150,"description":"Grocery run","category":"Food","date":"2026-03-12","accountId":"ACCOUNT_ID_FROM_CONTEXT"}</action>
   Use when the user confirms a transaction to log. Amount must be positive.
+  accountId is optional — omit to use default account. Use the [id:...] from the ACCOUNTS block above.
 
 - <action type="set_financial_goal">{"name":"Emergency Fund","type":"savings","targetAmount":10000,"currentAmount":0,"targetDate":"2027-01-01","monthlyContribution":500,"priority":"high"}</action>
   Use when the user wants to set or track a specific financial goal.
@@ -631,16 +630,62 @@ export function serializeLedgerFinancialContext(opts: {
   creditScoreHistory?: import('../services/ledger-intake-service').CreditScoreEntry[];
   insurancePolicies?: import('../services/ledger-intake-service').InsurancePolicy[];
   lastRetirementProjection?: import('../services/ledger-intake-service').RetirementProjection;
+  // Cashflow snapshot
+  monthlyIncome?: number;
+  fixedExpenses?: import('../services/ledger-intake-service').BudgetLineItem[];
+  variableExpenses?: import('../services/ledger-intake-service').BudgetLineItem[];
+  // Computed from actual transactions — reflects what the UI shows
+  actualTotalIncome?: number;
+  actualTotalExpenses?: number;
 }): string {
-  const { accounts = [], debtItems = [], netWorthHistory = [], recurringRules = [], lastCashFlowForecast, currency = 'USD', subscriptions = [], investments = [], alertRules = [] } = opts;
+  const { accounts = [], debtItems = [], netWorthHistory = [], recurringRules = [], lastCashFlowForecast, currency = 'USD', subscriptions = [], investments = [], alertRules = [], monthlyIncome, fixedExpenses = [], variableExpenses = [], actualTotalIncome, actualTotalExpenses } = opts;
   const blocks: string[] = [];
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
   const fmtCompact = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
 
+  // Cashflow snapshot — always injected first so the model knows the baseline numbers
+  // before any other context. Monthly income here is the SAVED salary/income setting,
+  // NOT a transaction. To change it the model must emit update_budget_snapshot, not create_transaction.
+  if (typeof monthlyIncome === 'number' || typeof actualTotalIncome === 'number') {
+    const totalFixed = fixedExpenses.reduce((s, e) => s + e.amount, 0);
+    const totalVariable = variableExpenses.reduce((s, e) => s + e.amount, 0);
+    const budgetExpenses = totalFixed + totalVariable;
+    const cashflowLines = [`[CASHFLOW SNAPSHOT]`];
+
+    if (typeof monthlyIncome === 'number') {
+      const surplus = monthlyIncome - budgetExpenses;
+      const fixedLines = fixedExpenses.slice(0, 8).map(e => `    - ${e.label}: ${fmt(e.amount)}`);
+      const variableLines = variableExpenses.slice(0, 8).map(e => `    - ${e.label}: ${fmt(e.amount)}`);
+      cashflowLines.push(
+        `  Regular monthly salary: ${fmt(monthlyIncome)}`,
+        `  Planned fixed expenses: ${fmt(totalFixed)}${fixedLines.length > 0 ? '\n' + fixedLines.join('\n') : ''}`,
+        `  Planned variable expenses: ${fmt(totalVariable)}${variableLines.length > 0 ? '\n' + variableLines.join('\n') : ''}`,
+        `  Planned monthly surplus: ${fmt(surplus)}`,
+      );
+    }
+
+    // Additional income recorded as transactions this month (bonuses, freelance, dividends, etc.)
+    // Only shown when non-zero — these are on top of the regular salary above, same as expense transactions
+    if (typeof actualTotalIncome === 'number' && actualTotalIncome > 0) {
+      const extra = actualTotalIncome - (monthlyIncome ?? 0);
+      cashflowLines.push(
+        `  Recorded income this month: ${fmt(actualTotalIncome)}${extra > 0 ? ` (+${fmt(extra)} beyond salary — bonus/freelance/other)` : ''}`,
+        `  Recorded expenses this month: ${fmt(actualTotalExpenses ?? 0)}`,
+        `  Actual net this month: ${fmt(actualTotalIncome - (actualTotalExpenses ?? 0))}`,
+      );
+    }
+
+    cashflowLines.push(
+      `  NOTE: "Regular monthly salary" is the recurring baseline for budget planning — update via update_budget_snapshot.`,
+      `  Bonuses, freelance, and other one-off payments are income transactions, same as expenses are expense transactions.`,
+    );
+    blocks.push(cashflowLines.join('\n'));
+  }
+
   if (accounts.length > 0) {
     const accountLines = accounts.map((a) =>
-      `  - ${a.name} (${a.type}${a.institutionName ? ` @ ${a.institutionName}` : ''}${a.lastFour ? ` ···${a.lastFour}` : ''}): ${fmt(a.balance)}${a.isDefault ? ' [default]' : ''}`
+      `  - [id:${a.id}] ${a.name} (${a.type}${a.institutionName ? ` @ ${a.institutionName}` : ''}${a.lastFour ? ` ···${a.lastFour}` : ''}): ${fmt(a.balance)}${a.isDefault ? ' [default]' : ''}`
     );
     const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
     blocks.push(`[ACCOUNTS — ${accounts.length} linked]\n${accountLines.join('\n')}\n  Total net balance: ${fmt(totalBalance)}`);

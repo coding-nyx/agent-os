@@ -49,9 +49,7 @@ function journalEntryHasSignificantContent(entry: JournalEntry): boolean {
     entry.morningIntent.trim().length > 0 ||
     entry.eveningReflection.trim().length > 0 ||
     entry.blockers.trim().length > 0 ||
-    (entry.gratitude?.length ?? 0) > 0 ||
-    (entry.habitsReflection?.length ?? 0) > 0 ||
-    (entry.goalsReflection?.length ?? 0) > 0;
+    (entry.gratitude?.length ?? 0) > 0;
 
   const hasRatings = entry.mood !== 3 || entry.energyLevel !== 3;
 
@@ -284,8 +282,6 @@ export function createEmptyJournalEntry(date: string): JournalEntry {
     energyLevel: 3,
     gratitude: [],
     blockers: '',
-    habitsReflection: [],
-    goalsReflection: [],
     aiPromptUsed: null,
     tags: [],
     sketch: null,

@@ -20,6 +20,9 @@ export type NSVMetricPath =
   | 'cognitive.interestDiversity'
   | 'planning.streakHealth'
   | 'planning.deadlinePressure'
+  | 'planning.reflectionStreak'
+  | 'planning.goalAlignment'
+  | 'planning.habitMomentum'
   | 'resource.financialFriction'
   | 'resource.resonanceROI';
 
@@ -29,7 +32,7 @@ export const NSV_OWNERSHIP: Record<ModuleId, NSVMetricPath[]> = {
   titan: ['biological.cnsFatigue', 'biological.sleepQuality', 'biological.recoveryScore', 'biological.hormonalContext'],
   soma: ['biological.recoveryScore'],
   ledger: ['resource.financialFriction', 'resource.resonanceROI'],
-  atlas: ['cognitive.energyBudget', 'cognitive.focusScore', 'cognitive.activeLoad', 'cognitive.planningLoad', 'cognitive.taskCompletionRate', 'planning.streakHealth', 'planning.deadlinePressure'],
+  atlas: ['cognitive.energyBudget', 'cognitive.focusScore', 'cognitive.activeLoad', 'cognitive.planningLoad', 'cognitive.taskCompletionRate', 'planning.streakHealth', 'planning.deadlinePressure', 'planning.reflectionStreak', 'planning.goalAlignment', 'planning.habitMomentum'],
   scout: ['cognitive.researchLoad', 'cognitive.interestDiversity'],
   forge: [],
   bridge: []
@@ -121,6 +124,9 @@ export const NSV_READ_PERMISSIONS: Record<ModuleId, NSVMetricPath[]> = {
     'cognitive.taskCompletionRate',   // habit/completion tracking
     'planning.streakHealth',          // primary domain — habit streak management
     'planning.deadlinePressure',      // primary domain — deadline urgency
+    'planning.reflectionStreak',      // primary domain — consecutive journaling days
+    'planning.goalAlignment',         // primary domain — goals with linked tasks ratio
+    'planning.habitMomentum',         // primary domain — active habits with live streaks ratio
     'resource.financialFriction'      // financial friction adds hidden cognitive load (~2pts)
   ],
   scout: [
@@ -232,6 +238,9 @@ export const NSV_CALIBRATION_PROMPTS: Record<NSVMetricPath, string> = {
   'cognitive.interestDiversity': 'How broad are your active research interests right now (0-10, low = hyperfocused on one thing)?',
   'planning.streakHealth': 'How well are you maintaining your daily habits and streaks (0-10)?',
   'planning.deadlinePressure': 'How much deadline pressure do you feel right now (0-10)?',
+  'planning.reflectionStreak': 'How many consecutive days have you journaled recently?',
+  'planning.goalAlignment': 'What fraction of your active goals have linked tasks (0-1)?',
+  'planning.habitMomentum': 'What fraction of your active habits have live streaks (0-1)?',
   'resource.financialFriction': 'How much financial friction do you feel right now (0-10)?',
   'resource.resonanceROI': 'What is your current resonance ROI (0-1 or percentage)?'
 };

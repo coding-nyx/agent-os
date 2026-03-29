@@ -180,7 +180,6 @@ export function adaptAtlasHabitToAliveEntity(habit: AtlasHabit, sourceModule: Mo
       bestStreak: habit.bestStreak,
       energyCost: habit.energyCost,
       minimumViableVersion: habit.minimumViableVersion,
-      type: habit.type ?? 'boolean',
       metricValue: habit.metricValue ?? null,
     },
     soul_impact_preset: impact,

@@ -42,6 +42,7 @@ export interface ThreadSnapshotDraft {
 
 export interface OrchestrationShellState {
   autopilotLevel: AutopilotLevel;
+  moduleAutopilotOverrides: Partial<Record<ModuleId, AutopilotLevel>>;
   historyMode: HistoryMode;
   activeThreadId: string | null;
   lastTurnRuntime: OrchestrationTurnRuntimeSummary | null;
@@ -51,6 +52,7 @@ export interface OrchestrationShellState {
   threadRoutingSuggestionByThreadId: Record<string, ThreadRoutingSuggestionDraft | null>;
   threadPlanningSuggestionByThreadId: Record<string, ThreadPlanningSuggestionDraft | null>;
   setAutopilotLevel: (level: AutopilotLevel) => void;
+  setModuleAutopilotOverride: (moduleId: ModuleId, level: AutopilotLevel | null) => void;
   setHistoryMode: (mode: HistoryMode) => void;
   setActiveThreadId: (threadId: string | null) => void;
   setLastTurnRuntime: (summary: OrchestrationTurnRuntimeSummary | null) => void;
@@ -195,6 +197,7 @@ function arePlanningSuggestionsEqual(
 
 export const useOrchestrationStore = create<OrchestrationShellState>((set) => ({
   autopilotLevel: DEFAULT_AUTOPILOT_LEVEL,
+  moduleAutopilotOverrides: {},
   historyMode: DEFAULT_HISTORY_MODE,
   activeThreadId: null,
   lastTurnRuntime: null,
@@ -208,6 +211,16 @@ export const useOrchestrationStore = create<OrchestrationShellState>((set) => ({
       autopilotLevel: level,
       historyMode: deriveHistoryMode(level),
     })),
+  setModuleAutopilotOverride: (moduleId, level) =>
+    set((state) => {
+      const overrides = { ...state.moduleAutopilotOverrides };
+      if (level === null) {
+        delete overrides[moduleId];
+      } else {
+        overrides[moduleId] = level;
+      }
+      return { moduleAutopilotOverrides: overrides };
+    }),
   setHistoryMode: (mode) => set(() => ({ historyMode: mode })),
   setActiveThreadId: (threadId) => set(() => ({ activeThreadId: threadId })),
   setLastTurnRuntime: (summary) => set(() => ({ lastTurnRuntime: summary })),

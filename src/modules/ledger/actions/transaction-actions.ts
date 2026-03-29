@@ -6,9 +6,56 @@ import { computeFinancialFriction } from '../services/resonance-roi-service';
 import { getFrictionTier } from '@/modules/ledger/field-templates';
 import type { FrictionTier } from '@/modules/ledger/field-templates';
 import { loadLedgerProfile, saveLedgerProfile } from '@/modules/ledger/services/ledger-intake-service';
-import type { LedgerIntakeProfile, Transaction as ProfileTransaction, BudgetCategory as ProfileBudgetCategory, FinancialGoal as ProfileFinancialGoal } from '@/modules/ledger/services/ledger-intake-service';
+import type { LedgerIntakeProfile, Transaction as ProfileTransaction, BudgetCategory as ProfileBudgetCategory, FinancialGoal as ProfileFinancialGoal, Account } from '@/modules/ledger/services/ledger-intake-service';
+import { getDefaultAccount } from '@/modules/ledger/services/aggregation/account-aggregation';
 import { spineEventService } from '@/modules/ledger/services/spine-event-service';
 import { SpineEventType } from '@/lib/types';
+
+// ── Account balance cascade ───────────────────────────────────────────────────
+// Signs: expense = debit (balance decreases for assets, increases for credit card owed),
+//        income  = credit (balance increases for assets).
+// Credit cards store balance as positive = amount owed, so expense increases it.
+
+function applyTransactionToAccounts(
+  accounts: Account[],
+  accountId: string,
+  amount: number,
+  type: ProfileTransaction['type'],
+  direction: 'apply' | 'reverse',
+): Account[] {
+  const sign = direction === 'reverse' ? -1 : 1;
+  return accounts.map((a) => {
+    if (a.id !== accountId) return a;
+    let delta = 0;
+    if (a.type === 'credit_card') {
+      // Negative balance = owed (liability). Expense makes more negative, income reduces debt.
+      delta = type === 'expense' ? sign * -amount : sign * amount;
+    } else {
+      // Asset accounts: income adds, expense subtracts.
+      delta = type === 'income' ? sign * amount : sign * -amount;
+    }
+    return { ...a, balance: a.balance + delta, updatedAt: new Date().toISOString() };
+  });
+}
+
+// ── Per-turn profile cache helpers ──────────────────────────────────────────
+// Reads from and writes to the per-turn profileCache in ActionContext so that
+// multiple sequential ledger actions in a single AI response share in-memory
+// state rather than each independently re-fetching from Firestore.
+
+async function loadProfileCached(context: ActionContext): Promise<LedgerIntakeProfile | null> {
+  const { userId, encryptionKey, profileCache } = context;
+  if (!userId || !encryptionKey) return null;
+  if (profileCache?.has(userId)) return profileCache.get(userId) as LedgerIntakeProfile;
+  return loadLedgerProfile({ userId, encryptionKey });
+}
+
+async function persistProfileCached(profile: LedgerIntakeProfile, context: ActionContext): Promise<void> {
+  const { userId, encryptionKey, profileCache } = context;
+  if (!userId || !encryptionKey) return;
+  if (profileCache) profileCache.set(userId, profile);
+  await saveLedgerProfile(profile, { userId, encryptionKey });
+}
 
 export interface Transaction {
   id: string;
@@ -57,7 +104,7 @@ async function handleCreateTransaction(context: ActionContext): Promise<void> {
     return;
   }
 
-  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  const profile = await loadProfileCached(context);
   if (!profile) return;
 
   const rawType = payload.type;
@@ -80,6 +127,12 @@ async function handleCreateTransaction(context: ActionContext): Promise<void> {
   ) ?? null;
   const budgetCategoryId = matchedCategory?.id;
 
+  // Resolve accountId: use explicit payload value, else fall back to default account.
+  const resolvedAccountId: string | undefined =
+    typeof payload.accountId === 'string' && payload.accountId.trim()
+      ? payload.accountId.trim()
+      : getDefaultAccount(profile.accounts ?? [])?.id;
+
   const transaction: ProfileTransaction = {
     id: crypto.randomUUID(),
     date,
@@ -88,6 +141,7 @@ async function handleCreateTransaction(context: ActionContext): Promise<void> {
     type: txType,
     category: categoryName || matchedCategory?.name || 'Other',
     budgetCategoryId,
+    ...(resolvedAccountId ? { accountId: resolvedAccountId } : {}),
   };
 
   const updatedCategories: ProfileBudgetCategory[] = existingCategories.map(c => {
@@ -97,14 +151,19 @@ async function handleCreateTransaction(context: ActionContext): Promise<void> {
     return c;
   });
 
+  const updatedAccounts = resolvedAccountId
+    ? applyTransactionToAccounts(profile.accounts ?? [], resolvedAccountId, absAmount, txType, 'apply')
+    : profile.accounts ?? [];
+
   const next: LedgerIntakeProfile = {
     ...profile,
     transactions: [...(profile.transactions ?? []), transaction],
     budgetCategories: updatedCategories,
+    accounts: updatedAccounts,
     updatedAt: new Date().toISOString(),
   };
 
-  await saveLedgerProfile(next, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  await persistProfileCached(next, context);
 
   emitSpineEvent('TRANSACTION_CREATED' as SpineEventType, {
     priority: 'alert',
@@ -134,7 +193,7 @@ async function handleCreateTransaction(context: ActionContext): Promise<void> {
       frictionScore: 0,
       frictionTier: 'low',
     },
-  });
+  }, userId);
 
   markProfileDirty?.();
 }
@@ -151,7 +210,7 @@ async function handleUpdateTransaction(context: ActionContext): Promise<void> {
     return;
   }
 
-  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  const profile = await loadProfileCached(context);
   if (!profile) return;
 
   const parseNum = (v: unknown, fb = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : fb);
@@ -171,15 +230,50 @@ async function handleUpdateTransaction(context: ActionContext): Promise<void> {
     ...(typeof payload.date === 'string' && { date: payload.date }),
     ...((payload.type === 'income' || payload.type === 'expense') && { type: payload.type as ProfileTransaction['type'] }),
     ...(typeof payload.notes === 'string' && { notes: payload.notes }),
+    ...(typeof payload.accountId === 'string' && payload.accountId.trim() && { accountId: payload.accountId.trim() }),
   };
+
+  // Reverse old account effect, then apply new effect (handles account reassignment + amount changes).
+  let updatedAccounts = profile.accounts ?? [];
+  if (existing.accountId) {
+    updatedAccounts = applyTransactionToAccounts(updatedAccounts, existing.accountId, existing.amount, existing.type, 'reverse');
+  }
+  if (updated.accountId) {
+    updatedAccounts = applyTransactionToAccounts(updatedAccounts, updated.accountId, updated.amount, updated.type, 'apply');
+  }
+
+  // Reverse old budget category spent, apply new
+  let updatedBudgetCategories = profile.budgetCategories ?? [];
+  if (existing.type === 'expense' && existing.budgetCategoryId) {
+    updatedBudgetCategories = updatedBudgetCategories.map(c =>
+      c.id === existing.budgetCategoryId
+        ? { ...c, spent: Math.max(0, c.spent - existing.amount) }
+        : c
+    );
+  }
+  if (updated.type === 'expense') {
+    // Resolve new budget category id
+    const newCategoryId = updated.budgetCategoryId ??
+      (typeof payload.category === 'string'
+        ? updatedBudgetCategories.find(c => c.name.toLowerCase() === payload.category.toLowerCase())?.id
+        : undefined);
+    if (newCategoryId) {
+      updated.budgetCategoryId = newCategoryId;
+      updatedBudgetCategories = updatedBudgetCategories.map(c =>
+        c.id === newCategoryId ? { ...c, spent: c.spent + updated.amount } : c
+      );
+    }
+  }
 
   const next: LedgerIntakeProfile = {
     ...profile,
     transactions: [...transactions.slice(0, idx), updated, ...transactions.slice(idx + 1)],
+    accounts: updatedAccounts,
+    budgetCategories: updatedBudgetCategories,
     updatedAt: new Date().toISOString(),
   };
 
-  await saveLedgerProfile(next, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  await persistProfileCached(next, context);
 
   emitSpineEvent('TRANSACTION_UPDATED' as SpineEventType, {
     moduleId: 'ledger' as const,
@@ -206,7 +300,7 @@ async function handleUpdateTransaction(context: ActionContext): Promise<void> {
       frictionScore: 0,
       frictionTier: 'low',
     },
-  });
+  }, userId);
 
   markProfileDirty?.();
 }
@@ -223,7 +317,7 @@ async function handleDeleteTransaction(context: ActionContext): Promise<void> {
     return;
   }
 
-  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  const profile = await loadProfileCached(context);
   if (!profile) return;
 
   const transactions = profile.transactions ?? [];
@@ -241,14 +335,19 @@ async function handleDeleteTransaction(context: ActionContext): Promise<void> {
     return c;
   });
 
+  const updatedAccounts = txToDelete.accountId
+    ? applyTransactionToAccounts(profile.accounts ?? [], txToDelete.accountId, txToDelete.amount, txToDelete.type, 'reverse')
+    : profile.accounts ?? [];
+
   const next: LedgerIntakeProfile = {
     ...profile,
     transactions: transactions.filter(t => t.id !== transactionId),
     budgetCategories: updatedCategories,
+    accounts: updatedAccounts,
     updatedAt: new Date().toISOString(),
   };
 
-  await saveLedgerProfile(next, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  await persistProfileCached(next, context);
 
   emitSpineEvent('TRANSACTION_DELETED' as SpineEventType, {
     moduleId: 'ledger' as const,
@@ -271,7 +370,7 @@ async function handleDeleteTransaction(context: ActionContext): Promise<void> {
       frictionScore: 0,
       frictionTier: 'low',
     },
-  });
+  }, userId);
 
   markProfileDirty?.();
 }
@@ -284,7 +383,7 @@ async function handleCreateBudget(context: ActionContext): Promise<void> {
 
   const parseNum = (v: unknown, fb = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : fb);
 
-  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  const profile = await loadProfileCached(context);
   if (!profile) return;
 
   const budgetCategory: ProfileBudgetCategory = {
@@ -301,7 +400,7 @@ async function handleCreateBudget(context: ActionContext): Promise<void> {
     updatedAt: new Date().toISOString(),
   };
 
-  await saveLedgerProfile(next, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  await persistProfileCached(next, context);
 
   emitSpineEvent('BUDGET_CREATED' as SpineEventType, {
     priority: 'alert',
@@ -325,7 +424,7 @@ async function handleCreateBudget(context: ActionContext): Promise<void> {
       budgetName: budgetCategory.name,
       amountChange: budgetCategory.allocated,
     },
-  });
+  }, userId);
 
   markProfileDirty?.();
 }
@@ -343,7 +442,7 @@ async function handleModifyBudget(context: ActionContext): Promise<void> {
     return;
   }
 
-  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  const profile = await loadProfileCached(context);
   if (!profile) return;
 
   const categories: ProfileBudgetCategory[] = profile.budgetCategories ?? [];
@@ -366,7 +465,7 @@ async function handleModifyBudget(context: ActionContext): Promise<void> {
     updatedAt: new Date().toISOString(),
   };
 
-  await saveLedgerProfile(next, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  await persistProfileCached(next, context);
 
   const changeSummary = String(payload.changeSummary || 'Budget modified');
 
@@ -393,7 +492,7 @@ async function handleModifyBudget(context: ActionContext): Promise<void> {
       budgetName: updated.name,
       amountChange: updated.allocated,
     },
-  });
+  }, userId);
 
   markProfileDirty?.();
 }
@@ -406,7 +505,7 @@ async function handleCreateGoal(context: ActionContext): Promise<void> {
 
   const parseNum = (v: unknown, fb = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : fb);
 
-  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  const profile = await loadProfileCached(context);
   if (!profile) return;
 
   const now = new Date().toISOString();
@@ -437,7 +536,7 @@ async function handleCreateGoal(context: ActionContext): Promise<void> {
     updatedAt: now,
   };
 
-  await saveLedgerProfile(next, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  await persistProfileCached(next, context);
 
   emitSpineEvent('GOAL_CREATED' as SpineEventType, {
     priority: 'alert',
@@ -462,7 +561,7 @@ async function handleCreateGoal(context: ActionContext): Promise<void> {
       progressChange: 0,
       targetAmount: goal.targetAmount,
     },
-  });
+  }, userId);
 
   markProfileDirty?.();
 }
@@ -479,7 +578,7 @@ async function handleCompleteGoal(context: ActionContext): Promise<void> {
     return;
   }
 
-  const profile = await loadLedgerProfile({ userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  const profile = await loadProfileCached(context);
   if (!profile) return;
 
   const goals: ProfileFinancialGoal[] = profile.financialGoals ?? [];
@@ -498,7 +597,7 @@ async function handleCompleteGoal(context: ActionContext): Promise<void> {
     updatedAt: new Date().toISOString(),
   };
 
-  await saveLedgerProfile(next, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+  await persistProfileCached(next, context);
 
   emitSpineEvent('GOAL_COMPLETED' as SpineEventType, {
     priority: 'alert',
@@ -523,7 +622,7 @@ async function handleCompleteGoal(context: ActionContext): Promise<void> {
       progressChange: 100,
       targetAmount: goal.targetAmount,
     },
-  });
+  }, userId);
 
   markProfileDirty?.();
 }
@@ -532,7 +631,7 @@ async function handleCompleteGoal(context: ActionContext): Promise<void> {
  * Handle financial_health_check action.
  */
 async function handleFinancialHealthCheck(context: ActionContext): Promise<void> {
-  const { payload, emitSpineEvent, updateGlobalSoul } = context;
+  const { payload, userId, emitSpineEvent, updateGlobalSoul } = context;
 
   const healthScore = Number(payload.healthScore);
   const healthStatus = String(payload.healthStatus || 'Unknown');
@@ -564,14 +663,14 @@ async function handleFinancialHealthCheck(context: ActionContext): Promise<void>
   }
 
   await spineEventService.logLedgerEvent({
-  type: 'FINANCIAL_HEALTH_CHECK' as LedgerSpineEventType,
-  domain: 'R' as const,
-  source: 'health-check',
-  data: {
-    healthScore,
-    healthStatus
-  }
-});
+    type: 'FINANCIAL_HEALTH_CHECK' as LedgerSpineEventType,
+    domain: 'R' as const,
+    source: 'health-check',
+    data: {
+      healthScore,
+      healthStatus
+    }
+  }, userId);
 
 
 }
@@ -580,7 +679,7 @@ async function handleFinancialHealthCheck(context: ActionContext): Promise<void>
  * Handle detect_risk action.
  */
 async function handleDetectRisk(context: ActionContext): Promise<void> {
-  const { payload, emitSpineEvent } = context;
+  const { payload, userId, emitSpineEvent } = context;
 
   const riskType = String(payload.riskType || 'Unknown risk');
   const riskDescription = String(payload.riskDescription || '');
@@ -593,14 +692,14 @@ async function handleDetectRisk(context: ActionContext): Promise<void> {
   });
 
   await spineEventService.logLedgerEvent({
-  type: 'RISK_DETECTED' as LedgerSpineEventType,
-  domain: 'R' as const,
-  source: 'risk-detected',
-  data: {
-    riskType,
-    riskDescription
-  }
-});
+    type: 'RISK_DETECTED' as LedgerSpineEventType,
+    domain: 'R' as const,
+    source: 'risk-detected',
+    data: {
+      riskType,
+      riskDescription
+    }
+  }, userId);
 
 
 }

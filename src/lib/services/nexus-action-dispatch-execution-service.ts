@@ -13,7 +13,7 @@ export interface NexusDispatchExecutionContext {
   encryptionKey?: CryptoKey | null;
   persistencePolicy?: PersistencePolicy;
   updateGlobalSoul?: (patch: Record<string, unknown>) => Promise<void>;
-  emitSpineEvent?: (type: string, payload: Record<string, unknown>) => void;
+  emitSpineEvent?: (type: string, payload: Record<string, unknown>, options?: { domain?: string; priority?: 'info' | 'alert' | 'critical'; target?: string }) => void;
   delegateToModule?: (target: string, reason: string, content: string) => void;
 }
 
@@ -297,7 +297,7 @@ export class NexusActionDispatchExecutionService {
         parsedCommand,
         persistencePolicy: context.persistencePolicy ?? 'auto',
         encryptionKey: context.encryptionKey,
-        emitSpineEvent: (type, payload) => context.emitSpineEvent?.(type, payload),
+        emitSpineEvent: (type, payload, options) => context.emitSpineEvent?.(type, payload, options),
         updateGlobalSoul: async (patch) => {
           await context.updateGlobalSoul?.(patch as Record<string, unknown>);
         },

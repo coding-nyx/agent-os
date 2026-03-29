@@ -1300,9 +1300,17 @@ export interface BaseContext {
   intakeTranscript?: Message[];
 }
 
+export interface SessionNote {
+  id: string;
+  note: string;
+  timestamp: string;
+  sessionId?: string;
+}
+
 export interface TherapyIntakeProfile {
   onboardingComplete: boolean;
   baseContext: Partial<BaseContext>;
+  sessionNotes?: SessionNote[];
   createdAt: string;
   updatedAt: string;
 }
@@ -1432,7 +1440,6 @@ export interface AtlasGoal {
 export interface AtlasHabit {
   id: string;
   title: string;
-  type?: 'boolean' | 'counter' | 'timer' | 'sober' | 'learning';
   frequency: 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'monthly' | 'custom';
   customDays?: number[];
   targetStreak: number;
@@ -1607,17 +1614,6 @@ export interface DailyCheckInEntry {
 
 // Atlas Journal
 
-export interface JournalHabitReflection {
-  habitId: string;
-  note: string;
-  felt: 'great' | 'okay' | 'struggled';
-}
-
-export interface JournalGoalReflection {
-  goalId: string;
-  note: string;
-}
-
 export interface JournalEntry {
   id: string;               // YYYY-MM-DD (one per day, acts as doc ID)
   date: string;             // YYYY-MM-DD
@@ -1630,8 +1626,6 @@ export interface JournalEntry {
   energyLevel: number;      // 1–5, synced from evening check-in
   gratitude: string[];      // Up to 3 items
   blockers: string;         // Synced from evening check-in
-  habitsReflection: JournalHabitReflection[];
-  goalsReflection: JournalGoalReflection[];
   aiPromptUsed: string | null; // The AI prompt that was shown, if any
   tags: string[];
   sketch: string | null;       // Base64 PNG from the drawing canvas, if any

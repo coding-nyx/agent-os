@@ -194,13 +194,18 @@ export class Orchestrator {
     const lower = text.toLowerCase();
     const patterns = [
       // Creation / addition claims
-      /i'?(?:ve|ll)\s+(create|add|build|generate|set up|design|make)\b/,
-      /has been (created|added|saved|logged|recorded|updated|generated|built)/,
-      /added to your (dashboard|profile|plan|program|routine|schedule)/,
-      /your (routine|plan|program|split|schedule|profile|log|entry) has been/,
-      // Log / update claims
-      /i'?(?:ve|ll)\s+(log|record|update|track|save|commit|store)\b/,
-      /(routine|session|biomarker|sleep|cycle|clearance) (has been|was|is now) (logged|recorded|saved|created|updated|committed)/,
+      /i'?(?:ve|ll)\s+(?:create|add|build|generate|set up|design|make)\w*/,
+      /has been (?:created|added|saved|logged|recorded|updated|generated|built)/,
+      /added to your (?:dashboard|profile|plan|program|routine|schedule)/,
+      /your (?:routine|plan|program|split|schedule|profile|log|entry) has been/,
+      // Log / update claims (use \w* to match inflected forms: logged, recorded, etc.)
+      /i'?(?:ve|ll)\s+(?:log|record|update|track|save|commit|store)\w*/,
+      /(?:routine|session|biomarker|sleep|cycle|clearance) (?:has been|was|is now) (?:logged|recorded|saved|created|updated|committed)/,
+      // Financial / Ledger-specific claims
+      /i'?(?:ve|ll)\s+(?:log|record|add|track)\w*\s+(?:your\s+)?(?:transaction|expense|payment|transfer|income|deposit)/,
+      /(?:transaction|expense|payment|transfer|income|deposit|bill) (?:has been|was|is now) (?:logged|recorded|saved|added|created|updated)/,
+      /(?:budget|plan|goal|account|debt) (?:has been|was|is now) (?:created|added|saved|updated|set up)/,
+      /i'?(?:ve|ll)\s+(?:create|add|set up|update)\w*\s+(?:a\s+|your\s+)?(?:budget|plan|goal|account|debt|category)/,
       // Reminder / schedule claims
       /i'?(?:ve|ll)\s+(?:schedule[d]?|set|creat(?:e[d]?)|add(?:ed)?)\s+(?:a\s+|your\s+)?reminder\b/,
       /reminder\s+(?:has been|is|was)\s+(?:scheduled|set|created|added)/,

@@ -58,7 +58,7 @@ async function handleAddInvestment(context: ActionContext): Promise<void> {
     domain: 'R' as const,
     source: `investment:${inv.id}`,
     data: { investmentId: inv.id, name: inv.name },
-  });
+  }, userId);
 }
 
 // ─── update_investment ────────────────────────────────────────────────────────

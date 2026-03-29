@@ -630,8 +630,9 @@ export function registerFieldSuggestionActions(): void {
     delete_field: deleteFieldAction,
   });
 
-  // Register for all individual modules
-  const modules = ['therapy', 'trainer', 'ledger', 'soma', 'atlas', 'scout', 'forge', 'titan'];
+  // Register generic baseline for modules that don't have their own field-action implementation.
+  // atlas, titan, and ledger are excluded — they register module-specific handlers that take precedence.
+  const modules = ['therapy', 'trainer', 'soma', 'scout', 'forge'];
   
   modules.forEach(moduleId => {
     ActionHub.registerMultiple(moduleId, {

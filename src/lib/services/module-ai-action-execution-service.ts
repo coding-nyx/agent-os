@@ -13,7 +13,7 @@ import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { OrchestrationActionGateService } from '@/lib/services/orchestration-action-gate-service';
 import { OrchestrationRuntimeService } from '@/lib/services/orchestration-runtime-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import type { Message, NeuralStateVectorPatch, SpineEventPriority, SpineEventType } from '@/lib/types';
+import type { Message, NeuralStateVectorPatch, SpineDomain, SpineEventPriority, SpineEventType } from '@/lib/types';
 
 type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual' | 'ephemeral';
 
@@ -40,6 +40,8 @@ interface ExecuteModuleAIActionsInput {
   sendMessage: (content: string, context: ConversationContext) => Promise<{ response: StructuredResponse; updatedHistory: Message[] }>;
   flushActiveSession?: (immediate?: boolean) => void;
   onActionParsed?: (type: string, payload: Record<string, unknown>) => void;
+  onConsultationStarted?: (targetModuleId: string) => void;
+  onDispositionChange?: (disposition: 'reply' | 'consulting' | 'delegating' | 'acting' | null) => void;
   adjustRelativeReminderPayload: (payload: Record<string, unknown>) => Record<string, unknown>;
   recordAssistantContent: (content: string, metadata: ActionOrchestrationMetadata) => void;
 }
@@ -93,6 +95,8 @@ export class ModuleAIActionExecutionService {
       sendMessage,
       flushActiveSession,
       onActionParsed,
+      onConsultationStarted,
+      onDispositionChange,
       adjustRelativeReminderPayload,
       recordAssistantContent,
     } = input;
@@ -109,6 +113,11 @@ export class ModuleAIActionExecutionService {
     const executionArtifacts: ThreadExecutionArtifact[] = [];
     const soulUpdates: NeuralStateVectorPatch = {};
     let profileDirty = false;
+
+    // Per-turn profile cache: shared across all action handlers within this AI response.
+    // Allows sequential ledger actions to read each other's in-memory mutations instead
+    // of independently re-fetching from Firestore between writes.
+    const profileCache = new Map<string, unknown>();
 
     const updateGlobalSoul = async (patch: NeuralStateVectorPatch) => {
       mergeSoulPatch(soulUpdates, patch);
@@ -209,6 +218,15 @@ export class ModuleAIActionExecutionService {
         continue;
       }
 
+      const isConsultationAction = type === 'query_module' || type === 'query_module_data';
+      if (isConsultationAction) {
+        const targetModuleId = typeof adjustedPayload?.moduleId === 'string' ? adjustedPayload.moduleId : 'unknown';
+        onConsultationStarted?.(targetModuleId);
+        onDispositionChange?.('consulting');
+      } else {
+        onDispositionChange?.('acting');
+      }
+
       const executed = await ActionHub.execute(moduleId, type, {
         userId,
         isGuest,
@@ -231,21 +249,24 @@ export class ModuleAIActionExecutionService {
           threadArtifacts.push(artifact);
         },
         sendMessage,
-        emitSpineEvent: (eventType: SpineEventType, data: Record<string, unknown>) => Spine.emit({
+        emitSpineEvent: (eventType: SpineEventType, data: Record<string, unknown>, options?: { domain?: string; priority?: 'info' | 'alert' | 'critical'; target?: string }) => Spine.emit({
           type: eventType,
           source: moduleId,
-          domain: 'system',
+          domain: (options?.domain ?? 'system') as SpineDomain,
+          target: options?.target,
           data,
           cascadeDepth: 0,
-          priority: (['info', 'alert', 'critical'] as const).includes(data.priority as SpineEventPriority)
-            ? (data.priority as SpineEventPriority)
-            : 'info',
+          priority: options?.priority
+            ?? ((['info', 'alert', 'critical'] as const).includes(data.priority as SpineEventPriority)
+              ? (data.priority as SpineEventPriority)
+              : 'info'),
         }),
         updateGlobalSoul,
         delegateToModule,
         markProfileDirty: () => {
           profileDirty = true;
         },
+        profileCache,
       });
 
       if (!executed) {

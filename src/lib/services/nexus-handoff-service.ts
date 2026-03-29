@@ -1,3 +1,5 @@
+import { getNexusDataLayer } from '@/lib/data-layer/provider';
+
 export type NexusHandoffType = 'delegate' | 'query' | 'query_result';
 
 export interface NexusHandoff {
@@ -9,10 +11,13 @@ export interface NexusHandoff {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'nexus_nexus_handoff';
+const SESSION_CACHE_KEY = 'nexus_nexus_handoff';
+const HANDOFFS_COLLECTION = 'handoffs';
 
-function readStore(): Record<string, NexusHandoff> {
-  const raw = sessionStorage.getItem(STORAGE_KEY);
+let _userId: string | null = null;
+
+function readCache(): Record<string, NexusHandoff> {
+  const raw = sessionStorage.getItem(SESSION_CACHE_KEY);
   if (!raw) return {};
   try {
     return JSON.parse(raw) as Record<string, NexusHandoff>;
@@ -21,46 +26,93 @@ function readStore(): Record<string, NexusHandoff> {
   }
 }
 
-function writeStore(next: Record<string, NexusHandoff>) {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+function writeCache(next: Record<string, NexusHandoff>) {
+  sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(next));
+}
+
+function pendingCollection(): string {
+  return `${HANDOFFS_COLLECTION}/${_userId}/pending`;
 }
 
 export const NexusHandoffService = {
-  store(handoff: NexusHandoff) {
-    const store = readStore();
-    // Enforce content size limit
-    const safeHandoff = { ...handoff, content: handoff.content.slice(0, 4000) };
-    // Prune stale entries (> 10 min old)
-    const tenMinAgo = Date.now() - 10 * 60 * 1000;
-    for (const key of Object.keys(store)) {
-      if (new Date(store[key].createdAt).getTime() < tenMinAgo) delete store[key];
-    }
-    store[safeHandoff.moduleId] = safeHandoff;
-    writeStore(store);
+  /**
+   * Call once when auth resolves. Required for cross-tab / tab-refresh persistence.
+   * Drains any pre-existing sessionStorage entries into Firestore on first call.
+   */
+  init(userId: string) {
+    _userId = userId;
+    void this._migrate();
   },
 
-  consume(moduleId: string): NexusHandoff | null {
-    const store = readStore();
-    const handoff = store[moduleId];
-    if (!handoff) return null;
-    // Always prune the entry regardless of freshness
-    delete store[moduleId];
-    writeStore(store);
-    // Reject stale handoffs — only hasPending() was previously checking TTL
-    const tenMinAgo = Date.now() - 10 * 60 * 1000;
-    if (new Date(handoff.createdAt).getTime() < tenMinAgo) {
-      console.warn(`[NexusHandoffService] Discarding stale handoff for "${moduleId}" (age > 10 min)`);
+  async _migrate() {
+    if (!_userId) return;
+    const cache = readCache();
+    if (Object.keys(cache).length === 0) return;
+    const dl = getNexusDataLayer();
+    for (const [moduleId, handoff] of Object.entries(cache)) {
+      await dl
+        .setDocument<NexusHandoff>(pendingCollection(), moduleId, handoff)
+        .catch(() => {});
+    }
+    // sessionStorage now serves only as a same-tab write-through cache
+  },
+
+  store(handoff: NexusHandoff) {
+    const safe = { ...handoff, content: handoff.content.slice(0, 4000) };
+
+    // Populate the same-tab cache immediately (sync, zero-latency fast path)
+    const cache = readCache();
+    cache[safe.moduleId] = safe;
+    writeCache(cache);
+
+    // Persist to Firestore so the handoff survives tab refresh and cross-tab navigation
+    if (_userId) {
+      getNexusDataLayer()
+        .setDocument<NexusHandoff>(pendingCollection(), safe.moduleId, safe)
+        .catch((e) =>
+          console.warn('[NexusHandoffService] Firestore write failed:', e)
+        );
+    }
+  },
+
+  /**
+   * Destructively reads and removes the pending handoff for `moduleId`.
+   * Checks the same-tab sessionStorage cache first (fast path), then falls back
+   * to Firestore for cross-tab or post-refresh scenarios.
+   */
+  async consume(moduleId: string): Promise<NexusHandoff | null> {
+    // Fast path: same-tab cache hit
+    const cache = readCache();
+    if (cache[moduleId]) {
+      const handoff = cache[moduleId];
+      delete cache[moduleId];
+      writeCache(cache);
+      if (_userId) {
+        getNexusDataLayer()
+          .deleteDocument(pendingCollection(), moduleId)
+          .catch(() => {});
+      }
+      return handoff;
+    }
+
+    // Fallback: cross-tab / refresh — fetch from Firestore
+    if (!_userId) return null;
+    const dl = getNexusDataLayer();
+    try {
+      const doc = await dl.getDocument<NexusHandoff>(pendingCollection(), moduleId);
+      if (!doc) return null;
+      await dl.deleteDocument(pendingCollection(), moduleId).catch(() => {});
+      return doc;
+    } catch {
       return null;
     }
-    return handoff;
   },
 
-  /** Non-destructive check: returns true if a fresh (< 10 min old) handoff exists for this module. */
+  /**
+   * Non-destructive check: returns true if a handoff exists in the same-tab cache.
+   * Used for UI health indicators — does not query Firestore.
+   */
   hasPending(moduleId: string): boolean {
-    const store = readStore();
-    const handoff = store[moduleId];
-    if (!handoff) return false;
-    const tenMinAgo = Date.now() - 10 * 60 * 1000;
-    return new Date(handoff.createdAt).getTime() >= tenMinAgo;
+    return !!readCache()[moduleId];
   },
 };

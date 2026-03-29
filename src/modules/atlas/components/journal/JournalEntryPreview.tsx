@@ -25,14 +25,10 @@ import {
   Moon,
   Heart,
   AlertCircle,
-  Dumbbell,
-  Target,
 } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import type {
   JournalEntry,
-  JournalHabitReflection,
-  JournalGoalReflection,
 } from '@/lib/types';
 
 // ── Props ──────────────────────────────────────────────────────────────────────
@@ -52,12 +48,6 @@ const MOOD_MAP: Record<number, { emoji: string; label: string }> = {
   3: { emoji: '😐', label: 'Okay' },
   4: { emoji: '🙂', label: 'Good' },
   5: { emoji: '😊', label: 'Great' },
-};
-
-const FELT_MAP: Record<JournalHabitReflection['felt'], string> = {
-  great: '✅',
-  okay: '🔄',
-  struggled: '⚠️',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -298,62 +288,7 @@ export function JournalEntryPreview({
         </PreviewSection>
       )}
 
-      {/* ── 9. Habits reflection ─────────────────────────────────────────── */}
-      {entry.habitsReflection.length > 0 && (
-        <PreviewSection
-          icon={<Dumbbell className="w-3.5 h-3.5" />}
-          label="Habits"
-        >
-          <ul aria-label="Habit reflections" className="space-y-1.5">
-            {entry.habitsReflection.map((h: JournalHabitReflection, idx) => (
-              <li
-                key={idx}
-                className="flex items-start gap-2 text-sm text-white/80 leading-relaxed"
-              >
-                {/* Felt emoji conveys emotional valence at a glance */}
-                <span aria-label={`Felt: ${h.felt}`} className="shrink-0">
-                  {FELT_MAP[h.felt] ?? '•'}
-                </span>
-                <span>
-                  <span className="font-medium text-white/60">{h.habitId}</span>
-                  {h.note.trim() !== '' && (
-                    <span className="text-white/50"> — {h.note}</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </PreviewSection>
-      )}
-
-      {/* ── 10. Goals reflection ─────────────────────────────────────────── */}
-      {entry.goalsReflection.length > 0 && (
-        <PreviewSection
-          icon={<Target className="w-3.5 h-3.5" />}
-          label="Goals"
-        >
-          <ul aria-label="Goal reflections" className="space-y-1.5">
-            {entry.goalsReflection.map((g: JournalGoalReflection, idx) => (
-              <li
-                key={idx}
-                className="flex items-start gap-2 text-sm text-white/80 leading-relaxed"
-              >
-                <span className="text-violet-400/50 mt-px select-none" aria-hidden="true">
-                  •
-                </span>
-                <span>
-                  <span className="font-medium text-white/60">{g.goalId}</span>
-                  {g.note.trim() !== '' && (
-                    <span className="text-white/50"> — {g.note}</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </PreviewSection>
-      )}
-
-      {/* ── 11. Tags ─────────────────────────────────────────────────────── */}
+      {/* ── 9. Tags ─────────────────────────────────────────────────────── */}
       {entry.tags.length > 0 && (
         <div
           className="flex flex-wrap gap-1.5 pt-1"

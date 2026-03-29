@@ -25,6 +25,8 @@ import {
 import { useSomaHealth } from './hooks/use-soma-health';
 import { SomaProfile } from './types';
 import { buildSomaAgentSystemPrompt, SOMA_MEDICAL_DISCLAIMER } from './prompts/soma-prompt-builder';
+import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
+import { useExtensionFieldValues } from '@/lib/hooks/use-extension-field-values';
 import { SomaOnboarding } from './onboarding/SomaOnboarding';
 
 import { registerDiagnosisSpec } from '@/core/diagnosis/diagnosis-registry';
@@ -46,22 +48,44 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
   const { globalSoul } = useGlobalSoul();
   const [queuedUpload, setQueuedUpload] = React.useState<File | null>(null);
 
+  // Extension fields — custom user-defined biomarker fields
+  const { extensions } = useSchemaRegistry('soma');
+  const { fieldValues } = useExtensionFieldValues('soma');
+
   const latestVital = profile?.vitalReadings?.slice(-1)[0];
   const systemPrompt = buildSomaAgentSystemPrompt({
     coreFields: {
       restingHeartRate: latestVital?.heartRate ?? profile?.restingHeartRate,
       bloodPressure: latestVital?.bloodPressure ?? profile?.bloodPressure,
       weight: latestVital?.weight ?? profile?.weight,
+      temperature: latestVital?.temperature,
+      spo2: latestVital?.spo2,
       readinessScore: profile?.readinessScore,
       clearanceStatus: profile?.clearanceStatus,
       lastCheckup: profile?.lastCheckup,
     },
-    extensionFields: [],
+    extensionFields: extensions.map((f) => ({
+      id: f.id,
+      name: f.name,
+      value: fieldValues[f.id]?.value ?? null,
+      type: f.type,
+      unit: (f.metadata as Record<string, unknown> | undefined)?.unit as string | undefined,
+      range: (f.validation?.minimum != null && f.validation?.maximum != null)
+        ? `${f.validation.minimum}–${f.validation.maximum}`
+        : undefined,
+    })),
     nsvBiological: (globalSoul?.crossFunctionalState?.biological as Record<string, unknown>) ?? undefined,
     clearanceStatus: profile?.clearanceStatus ?? undefined,
     lastCheckup: profile?.lastCheckup,
+    nextCheckup: profile?.nextCheckup,
     knownConditions: profile?.knownConditions,
     medications: profile?.medications,
+    biomarkers: profile?.biomarkers,
+    labSummaries: profile?.labSummaries,
+    clearanceDetails: profile?.clearances,
+    allergies: profile?.allergies,
+    medicalSummary: profile?.medicalSummary,
+    physicalAssessments: profile?.physicalAssessments,
   });
 
   const ai = useModuleAI({

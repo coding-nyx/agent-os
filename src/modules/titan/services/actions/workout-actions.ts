@@ -2,14 +2,13 @@ import {
   loadProfile,
   persistProfile,
   GlobalProjectionService,
-  Spine,
 } from './shared';
 import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import type { ActionHandler, TitanProfile, WorkoutSession, ExerciseLog, ExerciseSet, PersonalRecord, TitanWorkoutSet, TitanWorkoutLog } from './shared';
 
 export const workoutHandlers: Record<string, ActionHandler> = {
 
-  log_workout_session: async ({ userId, encryptionKey, payload, getLatestNSV }) => {
+  log_workout_session: async ({ userId, encryptionKey, payload, getLatestNSV, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -114,11 +113,9 @@ export const workoutHandlers: Record<string, ActionHandler> = {
 
     await persistProfile(next, userId ?? null, encryptionKey ?? null);
 
-    Spine.emit({
-      type: 'WORKOUT_COMPLETED',
-      source: 'titan',
-      domain: 'B',
-      data: {
+    emitSpineEvent(
+      'WORKOUT_COMPLETED',
+      {
         sessionId: session.id,
         routineName: session.routineName,
         date: session.date,
@@ -127,9 +124,8 @@ export const workoutHandlers: Record<string, ActionHandler> = {
         exerciseCount: exercises.length,
         status: session.status,
       },
-      cascadeDepth: 0,
-      priority: 'info',
-    });
+      { domain: 'B', priority: 'info' },
+    );
 
     // Emit TITAN_RECOVERY_NEEDED when this session pushes cnsFatigue over threshold
     if (session.rpe != null && session.rpe >= 8) {
@@ -138,20 +134,17 @@ export const workoutHandlers: Record<string, ActionHandler> = {
       const currentFatigue = typeof bioForRec.cnsFatigue === 'number' ? bioForRec.cnsFatigue : 0;
       const projectedFatigue = Math.min(10, currentFatigue + session.rpe * 0.5);
       if (projectedFatigue >= 7.5) {
-        Spine.emit({
-          type: 'TITAN_RECOVERY_NEEDED',
-          source: 'titan',
-          domain: 'B',
-          data: {
+        emitSpineEvent(
+          'TITAN_RECOVERY_NEEDED',
+          {
             projectedCnsFatigue: Math.round(projectedFatigue * 10) / 10,
             sessionRpe: session.rpe,
             totalVolume: session.totalVolume,
             date: session.date,
             reason: 'high_rpe_accumulated_fatigue',
           },
-          cascadeDepth: 0,
-          priority: projectedFatigue >= 9 ? 'critical' : 'alert',
-        });
+          { domain: 'B', priority: projectedFatigue >= 9 ? 'critical' : 'alert' },
+        );
       }
     }
 
@@ -170,14 +163,11 @@ export const workoutHandlers: Record<string, ActionHandler> = {
         else break;
       }
       if ([7, 14, 21, 30].includes(streak)) {
-        Spine.emit({
-          type: 'TITAN_TRAINING_STREAK',
-          source: 'titan',
-          domain: 'B',
-          data: { streakDays: streak, date: session.date },
-          cascadeDepth: 0,
-          priority: 'info',
-        });
+        emitSpineEvent(
+          'TITAN_TRAINING_STREAK',
+          { streakDays: streak, date: session.date },
+          { domain: 'B', priority: 'info' },
+        );
       }
     }
 

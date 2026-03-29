@@ -7,7 +7,7 @@ import {
 } from './shared';
 
 export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
-  create_goal: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
+  create_goal: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
     const profile = raw;
@@ -47,6 +47,7 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
 
     profile.goals.push(newGoal);
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    markProfileDirty?.();
 
     emitSpineEvent('ATLAS_GOAL_UPDATED', {
       goalId: newGoal.id,
@@ -57,7 +58,7 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     });
   },
 
-  update_goal_progress: async ({ userId, encryptionKey, payload, emitSpineEvent, updateGlobalSoul }) => {
+  update_goal_progress: async ({ userId, encryptionKey, payload, emitSpineEvent, updateGlobalSoul, markProfileDirty }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
     const profile = raw;
@@ -96,6 +97,7 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
 
     goal.updatedAt = now;
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    markProfileDirty?.();
 
     emitSpineEvent('ATLAS_GOAL_UPDATED', {
       goalId: goal.id,
@@ -127,10 +129,12 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     const goalAlignment = activeGoals.length > 0
       ? Math.min(1, linkedTaskCount / Math.max(1, activeGoals.length * 2))
       : 0;
-    await updateGlobalSoul({ planning: { goalAlignment: Math.round(goalAlignment * 100) / 100 } });
+    await updateGlobalSoul({ planning: { goalAlignment: Math.round(goalAlignment * 100) / 100 } }).catch((e: unknown) => {
+      console.error('[Atlas] NSV write failed (goalAlignment):', e);
+    });
   },
 
-  update_goal: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
+  update_goal: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
     const profile = raw;
@@ -175,6 +179,7 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     goal.updatedAt = now;
 
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    markProfileDirty?.();
 
     emitSpineEvent('ATLAS_GOAL_UPDATED', {
       goalId: goal.id,
@@ -185,7 +190,7 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     });
   },
 
-  delete_goal: async ({ userId, encryptionKey, payload, emitSpineEvent }) => {
+  delete_goal: async ({ userId, encryptionKey, payload, emitSpineEvent, markProfileDirty }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
     const profile = raw;
@@ -211,6 +216,7 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     }
 
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    markProfileDirty?.();
 
     emitSpineEvent('ATLAS_GOAL_UPDATED', {
       goalId,
@@ -219,7 +225,128 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     });
   },
 
-  complete_goal: async ({ userId, encryptionKey, payload, emitSpineEvent, updateGlobalSoul }) => {
+  atlas_add_goal_milestone: async ({ userId, encryptionKey, payload, emitSpineEvent, pushAssistantMessage, markProfileDirty }) => {
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const goalId = typeof payload?.goalId === 'string' ? payload.goalId : null;
+    if (!goalId) return;
+
+    const goal = profile.goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    const milestoneInput = payload?.milestone as Record<string, unknown> | undefined;
+    if (!milestoneInput) return;
+
+    const title = typeof milestoneInput.title === 'string' ? milestoneInput.title.trim() : '';
+    if (!title) return;
+
+    const dueDate = typeof milestoneInput.dueDate === 'string' ? milestoneInput.dueDate : undefined;
+    if (dueDate !== undefined && isNaN(Date.parse(dueDate))) return;
+
+    const newMilestone: AtlasMilestone = {
+      id: `milestone_${crypto.randomUUID()}`,
+      title,
+      dueDate,
+      completed: false,
+      completedAt: undefined,
+    };
+
+    goal.milestones.push(newMilestone);
+    goal.updatedAt = new Date().toISOString();
+
+    await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    markProfileDirty?.();
+
+    emitSpineEvent('ATLAS_GOAL_UPDATED', {
+      goalId,
+      action: 'milestone_added',
+    });
+
+    if (pushAssistantMessage) pushAssistantMessage('Milestone added to goal.');
+  },
+
+  atlas_update_goal_milestone: async ({ userId, encryptionKey, payload, emitSpineEvent, pushAssistantMessage, markProfileDirty }) => {
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const goalId = typeof payload?.goalId === 'string' ? payload.goalId : null;
+    const milestoneId = typeof payload?.milestoneId === 'string' ? payload.milestoneId : null;
+    if (!goalId || !milestoneId) return;
+
+    const goal = profile.goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    const milestone = goal.milestones.find(m => m.id === milestoneId);
+    if (!milestone) return;
+
+    const patch = (payload?.patch ?? {}) as Record<string, unknown>;
+    const now = new Date().toISOString();
+
+    if (typeof patch.title === 'string' && patch.title.trim()) {
+      milestone.title = patch.title.trim();
+    }
+    if (typeof patch.dueDate === 'string') {
+      if (!isNaN(Date.parse(patch.dueDate))) {
+        milestone.dueDate = patch.dueDate;
+      }
+    }
+    if (typeof patch.completed === 'boolean') {
+      milestone.completed = patch.completed;
+      if (patch.completed && !milestone.completedAt) {
+        milestone.completedAt = now;
+      } else if (!patch.completed) {
+        milestone.completedAt = undefined;
+      }
+    }
+
+    goal.updatedAt = now;
+    await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    markProfileDirty?.();
+
+    emitSpineEvent('ATLAS_GOAL_UPDATED', {
+      goalId,
+      milestoneId,
+      action: 'milestone_updated',
+    });
+
+    if (pushAssistantMessage) pushAssistantMessage('Milestone updated.');
+  },
+
+  atlas_delete_goal_milestone: async ({ userId, encryptionKey, payload, emitSpineEvent, pushAssistantMessage, markProfileDirty }) => {
+    const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
+    if (!raw) return;
+    const profile = raw;
+
+    const goalId = typeof payload?.goalId === 'string' ? payload.goalId : null;
+    const milestoneId = typeof payload?.milestoneId === 'string' ? payload.milestoneId : null;
+    if (!goalId || !milestoneId) return;
+
+    const goal = profile.goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    const originalCount = goal.milestones.length;
+    goal.milestones = goal.milestones.filter(m => m.id !== milestoneId);
+
+    // No-op if milestone wasn't found — avoids a spurious persist
+    if (goal.milestones.length === originalCount) return;
+
+    goal.updatedAt = new Date().toISOString();
+    await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    markProfileDirty?.();
+
+    emitSpineEvent('ATLAS_GOAL_UPDATED', {
+      goalId,
+      milestoneId,
+      action: 'milestone_deleted',
+    });
+
+    if (pushAssistantMessage) pushAssistantMessage('Milestone removed.');
+  },
+
+  complete_goal: async ({ userId, encryptionKey, payload, emitSpineEvent, updateGlobalSoul, markProfileDirty }) => {
     const raw = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!raw) return;
     const profile = raw;
@@ -250,6 +377,7 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     goal.updatedAt = now;
 
     await persistProfile(profile, userId ?? null, encryptionKey ?? null);
+    markProfileDirty?.();
 
     emitSpineEvent('ATLAS_GOAL_UPDATED', {
       goalId: goal.id,
@@ -272,6 +400,8 @@ export const goalActions: Parameters<typeof ActionHub.registerMultiple>[1] = {
     const goalAlignment = activeGoals.length > 0
       ? Math.min(1, linkedTaskCount / Math.max(1, activeGoals.length * 2))
       : 0;
-    await updateGlobalSoul({ planning: { goalAlignment: Math.round(goalAlignment * 100) / 100 } });
+    await updateGlobalSoul({ planning: { goalAlignment: Math.round(goalAlignment * 100) / 100 } }).catch((e: unknown) => {
+      console.error('[Atlas] NSV write failed (goalAlignment):', e);
+    });
   },
 };

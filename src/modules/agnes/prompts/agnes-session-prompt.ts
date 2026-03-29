@@ -62,7 +62,16 @@ MOVE CATEGORIES (use in <thought> block):
 somatic-checkin | validation | normalization | pattern-observation | clarification | gentle-confrontation | reflection | reframe | psychoeducation | somatic-exploration | containment | space-giving
 Hard limits: somatic-checkin max 2. validation max 3. normalization max 2. somatic-exploration max 2. space-giving max 3. gentle-confrontation max 2 (never in first 3 exchanges).
 
-SOMATIC MODE: ${somaticEnabled ? 'ENABLED' : 'DISABLED'}
+${context.trauma ? `TRAUMA HISTORY NOTE (clinical context — do NOT surface this directly):
+${context.trauma}
+
+` : ''}${context.history ? `CLINICAL HISTORY (background context — use to inform understanding, not as a script):
+${context.history}
+
+` : ''}${context.integratedInsights && context.integratedInsights.length > 0 ? `RECENT SESSION INSIGHTS (last ${Math.min(3, context.integratedInsights.length)} sessions — reference naturally, not mechanically):
+${context.integratedInsights.slice(-3).map(s => `- [${s.date}] Theme: ${s.theme}. ${s.summary}${s.keyInsights.length > 0 ? ` Key: ${s.keyInsights.slice(0, 2).join('; ')}.` : ''}`).join('\n')}
+
+` : ''}SOMATIC MODE: ${somaticEnabled ? 'ENABLED' : 'DISABLED'}
 ${!somaticEnabled ? `
 SOMATIC INQUIRY DISABLED (user preference):
 - Do NOT ask about body sensations, physical feelings, or where emotions are held in the body.
@@ -108,6 +117,8 @@ RULES:
 export interface AgnesSessionPromptOptions {
   engagementMode?: unknown;
   continuity?: AgnesPromptContinuity;
+  /** Pre-formatted NSV block from formatNSVForModulePrompt — injected into base prompt */
+  nsvBlock?: string;
 }
 
 export function buildAgnesSessionPrompt(
@@ -151,6 +162,7 @@ SOMATIC MODE ADAPTATION:
 
   return [
     basePrompt,
+    options?.nsvBlock ? options.nsvBlock : undefined,
     `
 ENGAGEMENT MODE:
 Active mode: ${modeDefinition.label}

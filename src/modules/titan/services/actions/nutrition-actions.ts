@@ -5,7 +5,7 @@
  *   log_meal — persists a MealEntry to profile.mealLog (cap 2 000 entries).
  */
 
-import { loadProfile, persistProfile, Spine } from './shared';
+import { loadProfile, persistProfile } from './shared';
 import type { ActionHandler } from './shared';
 import type { MealEntry, MealType } from '@/lib/types';
 
@@ -44,7 +44,7 @@ export const nutritionHandlers: Record<string, ActionHandler> = {
    *   notes?: string
    * }
    */
-  log_meal: async ({ userId, encryptionKey, payload, pushAssistantMessage }) => {
+  log_meal: async ({ userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent }) => {
     const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
     if (!profile) return;
 
@@ -117,11 +117,9 @@ export const nutritionHandlers: Record<string, ActionHandler> = {
     await persistProfile(updatedProfile, userId ?? null, encryptionKey ?? null);
 
     // ── Spine event ──────────────────────────────────────────────────────────
-    Spine.emit({
-      type: 'TITAN_MEAL_LOGGED',
-      source: 'titan',
-      domain: 'B',
-      data: {
+    emitSpineEvent(
+      'TITAN_MEAL_LOGGED',
+      {
         mealId: entry.id,
         mealType: entry.mealType,
         date: entry.date,
@@ -131,9 +129,8 @@ export const nutritionHandlers: Record<string, ActionHandler> = {
         fat: entry.fat,
         totalEntries: updatedProfile.mealLog?.length ?? 1,
       },
-      cascadeDepth: 0,
-      priority: 'info',
-    });
+      { domain: 'B', priority: 'info' },
+    );
 
     // ── Confirmation message ─────────────────────────────────────────────────
     const mealTypeLabel =

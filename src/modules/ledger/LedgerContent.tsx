@@ -25,8 +25,10 @@ import {
   saveLedgerProfile,
 } from './services/ledger-intake-service';
 import { computeBudgetActuals, matchCategoryToTransaction } from './services/aggregation';
-import { LEDGER_PERSONA } from './personas';
-import { serializeLedgerFinancialContext } from './prompts/ledger-prompt-builder';
+import { LEDGER_PERSONA, buildLedgerExtendedContext } from './personas';
+import { serializeLedgerFinancialContext, serializeLedgerExtensionFields } from './prompts/ledger-prompt-builder';
+import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
+import { useExtensionFieldValues } from '@/lib/hooks/use-extension-field-values';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { computeResonanceROI } from './services/resonance-roi-service';
 import { prepareDocumentChatPrompt } from '@/lib/services/document-chat-handoff-service';
@@ -74,7 +76,7 @@ import { projectRetirement } from './services/aggregation/retirement-calculator'
 import { runExport } from './services/export-service';
 import { evaluateAutomationRules, getDefaultAutomationRules } from './services/automation-engine';
 import { upsertCurrencyRate } from './services/currency-service';
-import type { Account, AccountTransfer, RecurringRule, PlaidConnection, Subscription, Investment, AlertRule, TaxDeduction, TaxCategory, InsurancePolicy, InsuranceBillingCycle, InsurancePolicyType, RetirementPlan, AutomationRule, AutomationTriggerType, AutomationSuggestionType, Receipt, CreditScoreEntry, CreditBureau } from './services/ledger-intake-service';
+import type { Account, AccountTransfer, RecurringRule, Subscription, Investment, AlertRule, TaxDeduction, TaxCategory, InsurancePolicy, InsuranceBillingCycle, InsurancePolicyType, RetirementPlan, AutomationRule, AutomationTriggerType, AutomationSuggestionType, Receipt, CreditScoreEntry, CreditBureau } from './services/ledger-intake-service';
 
 /** Deterministic color palette for budget categories — no Math.random(). */
 const BUDGET_CATEGORY_COLORS: readonly string[] = [
@@ -158,9 +160,21 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
   const [recentEvents, setRecentEvents] = useState<SpineEvent[]>([]);
   const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
 
+  // Extension fields — custom user-defined financial tracking fields
+  const { extensions } = useSchemaRegistry('ledger');
+  const { fieldValues } = useExtensionFieldValues('ledger');
+
   // ─── Dynamic system prompt enriched with live financial context ────────────
   const enrichedSystemPrompt = useMemo(() => {
     if (!profile) return LEDGER_PERSONA;
+    const nowMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+    let txIncome = 0;
+    let txExpenses = 0;
+    for (const t of profile.transactions ?? []) {
+      if (!t.date?.startsWith(nowMonth)) continue;
+      if (t.type === 'income') txIncome += t.amount;
+      else if (t.type === 'expense') txExpenses += t.amount;
+    }
     const context = serializeLedgerFinancialContext({
       accounts: profile.accounts,
       debtItems: profile.debtItems,
@@ -174,15 +188,38 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
       creditScoreHistory: profile.creditScoreHistory,
       insurancePolicies: profile.insurancePolicies,
       lastRetirementProjection: profile.lastRetirementProjection,
+      monthlyIncome: profile.monthlyIncome,
+      fixedExpenses: profile.fixedExpenses,
+      variableExpenses: profile.variableExpenses,
+      actualTotalIncome: txIncome,
+      actualTotalExpenses: txExpenses,
     });
-    return context ? `${LEDGER_PERSONA}\n\n${context}` : LEDGER_PERSONA;
-  }, [profile?.accounts, profile?.debtItems, profile?.netWorthHistory, profile?.recurringRules, profile?.lastCashFlowForecast, profile?.currency, profile?.subscriptions, profile?.investments, profile?.alertRules, profile?.creditScoreHistory, profile?.insurancePolicies, profile?.lastRetirementProjection]);
+    const extensionBlock = serializeLedgerExtensionFields(
+      extensions,
+      Object.fromEntries(Object.entries(fieldValues).map(([k, v]) => [k, v.value])),
+      profile.currency,
+    );
+    const extendedContext = buildLedgerExtendedContext({
+      investments: profile.investments,
+      creditScoreHistory: profile.creditScoreHistory,
+      creditFactors: profile.creditFactors,
+      insurancePolicies: profile.insurancePolicies,
+      retirementPlans: profile.retirementPlans,
+      taxDeductions: profile.taxDeductions,
+      lastTaxSummary: profile.lastTaxSummary,
+      automationRules: profile.automationRules,
+      currency: profile.currency,
+    });
+    const parts = [LEDGER_PERSONA, context, extendedContext, extensionBlock].filter(Boolean);
+    return parts.join('\n\n');
+  }, [profile?.accounts, profile?.debtItems, profile?.netWorthHistory, profile?.recurringRules, profile?.lastCashFlowForecast, profile?.currency, profile?.subscriptions, profile?.investments, profile?.alertRules, profile?.creditScoreHistory, profile?.creditFactors, profile?.insurancePolicies, profile?.lastRetirementProjection, profile?.retirementPlans, profile?.taxDeductions, profile?.lastTaxSummary, profile?.automationRules, profile?.monthlyIncome, profile?.fixedExpenses, profile?.variableExpenses, profile?.transactions, extensions, fieldValues]);
 
   const ai = useModuleAI({
     moduleId: 'ledger',
     systemPrompt: enrichedSystemPrompt,
     encryptionKey,
-    persistencePolicy: 'ledger-financial'
+    persistencePolicy: 'ledger-financial',
+    autopilotLevelOverride: 5, // financial mutations the user explicitly requests execute immediately
   });
 
   // Vision analysis state for financial documents
@@ -375,6 +412,17 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
   // ─── Derived data ────────────────────────────────────────────────────────
 
   const transactions = useMemo(() => profile?.transactions ?? [], [profile?.transactions]);
+
+  const transactionTotals = useMemo(() => {
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    for (const t of transactions) {
+      if (t.type === 'income') totalIncome += t.amount;
+      else if (t.type === 'expense') totalExpenses += t.amount;
+    }
+    return { totalIncome, totalExpenses };
+  }, [transactions]);
+
   const budgetCategories = useMemo(() => profile?.budgetCategories ?? [], [profile?.budgetCategories]);
   const financialGoals = useMemo(() => profile?.financialGoals ?? [], [profile?.financialGoals]);
 
@@ -583,9 +631,12 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
   const handleUpdateAccount = useCallback((id: string, updates: Partial<Account>) => {
     if (!profile) return;
     const now = new Date().toISOString();
-    const accounts = (profile.accounts ?? []).map(a =>
-      a.id === id ? { ...a, ...updates, updatedAt: now } : a
-    );
+    const accounts = (profile.accounts ?? []).map(a => {
+      if (a.id === id) return { ...a, ...updates, updatedAt: now };
+      // Clear isDefault from all others when a new default is being set.
+      if (updates.isDefault === true) return { ...a, isDefault: false, updatedAt: now };
+      return a;
+    });
     persistUpdate({ ...profile, accounts, updatedAt: now });
   }, [profile, persistUpdate]);
 
@@ -668,46 +719,6 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
     const startingBalance = computeNetLiquidAssets(profile.accounts ?? []);
     const forecast = computeCashFlowForecast(profile.recurringRules ?? [], startingBalance, horizon);
     persistUpdate({ ...profile, lastCashFlowForecast: forecast, updatedAt: new Date().toISOString() });
-  }, [profile, persistUpdate]);
-
-  // ─── Plaid connection handlers ───────────────────────────────────────────
-
-  const handleConnectionAdded = useCallback((connection: PlaidConnection, newAccounts: Account[]) => {
-    if (!profile) return;
-    const now = new Date().toISOString();
-    persistUpdate({
-      ...profile,
-      accounts: [...(profile.accounts ?? []), ...newAccounts],
-      plaidConnections: [...(profile.plaidConnections ?? []), connection],
-      updatedAt: now,
-    });
-  }, [profile, persistUpdate]);
-
-  const handleConnectionRemoved = useCallback((connectionId: string) => {
-    if (!profile) return;
-    const connection = (profile.plaidConnections ?? []).find(c => c.id === connectionId);
-    const linkedIds = connection?.linkedAccountIds ?? [];
-    persistUpdate({
-      ...profile,
-      plaidConnections: (profile.plaidConnections ?? []).filter(c => c.id !== connectionId),
-      accounts: (profile.accounts ?? []).filter(a => !linkedIds.includes(a.id)),
-      updatedAt: new Date().toISOString(),
-    });
-  }, [profile, persistUpdate]);
-
-  const handleTransactionsSynced = useCallback((newTransactions: Transaction[]) => {
-    if (!profile) return;
-    const existing = new Set((profile.transactions ?? []).map(t => t.id));
-    const deduped = newTransactions.filter(t => !existing.has(t.id));
-    persistUpdate({ ...profile, transactions: [...(profile.transactions ?? []), ...deduped], updatedAt: new Date().toISOString() });
-  }, [profile, persistUpdate]);
-
-  const handleSyncStatusUpdate = useCallback((connectionId: string, status: PlaidConnection['status'], cursor?: string) => {
-    if (!profile) return;
-    const connections = (profile.plaidConnections ?? []).map(c =>
-      c.id === connectionId ? { ...c, status, ...(cursor ? { cursor } : {}), lastSyncAt: new Date().toISOString() } : c
-    );
-    persistUpdate({ ...profile, plaidConnections: connections, updatedAt: new Date().toISOString() });
   }, [profile, persistUpdate]);
 
   // ─── Subscription handlers ────────────────────────────────────────────────
@@ -1585,17 +1596,12 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                   <AccountsTab
                     accounts={profile.accounts ?? []}
                     transferHistory={profile.transferHistory ?? []}
-                    plaidConnections={profile.plaidConnections ?? []}
                     currency={profile.currency}
                     disabled={isLocked}
                     onAddAccount={handleAddAccount}
                     onUpdateAccount={handleUpdateAccount}
                     onDeleteAccount={handleDeleteAccount}
                     onTransfer={handleTransfer}
-                    onConnectionAdded={handleConnectionAdded}
-                    onConnectionRemoved={handleConnectionRemoved}
-                    onTransactionsSynced={handleTransactionsSynced}
-                    onSyncStatusUpdate={handleSyncStatusUpdate}
                   />
                 )}
 

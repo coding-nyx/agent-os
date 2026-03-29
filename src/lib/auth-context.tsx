@@ -7,6 +7,7 @@ import { CoreProfileService } from './services/core-profile-service';
 import { GlobalProjectionService } from './services/global-projection-service';
 import { CoreUserProfile } from './types';
 import { useDataLayer } from './data-layer/provider';
+import { NexusHandoffService } from './services/nexus-handoff-service';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentUser) {
         setIsGuest(false);
         setLoading(true);
+        NexusHandoffService.init(currentUser.uid);
       } else {
         setProfile(null);
         setLoading(false);

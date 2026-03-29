@@ -102,7 +102,8 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
   let publicText = normalized
     .replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/g, ' ')
     .replace(/<action[\s\S]*?<\/action>/g, ' ')
-    .replace(/\[action\s+type=["']?[a-z_]+["']?\]\s*\{[\s\S]*?\}/gi, ' ')
+    .replace(/<\/action>/g, ' ')                                           // strip stray closing tags left by bracket-format actions
+    .replace(/\[action\s+type=["']?[a-z_]+["']?\]\s*\{[\s\S]*\}/gi, ' ') // greedy: captures full nested JSON (was non-greedy *?)
     .replace(/<tool_calls_begin>[\s\S]*?<tool_calls_end>/g, ' ')
     .replace(/<tool_call_begin>[\s\S]*?<tool_call_end>/g, ' ')
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, ' ');

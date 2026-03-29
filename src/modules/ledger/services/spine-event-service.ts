@@ -44,7 +44,7 @@ export class SpineEventService {
     this.dataLayer = getNexusDataLayer();
   }
 
-  async logLedgerEvent(event: LedgerEventInput): Promise<void> {
+  async logLedgerEvent(event: LedgerEventInput, userId?: string | null): Promise<void> {
     if (!this.dataLayer) {
       console.warn('[SpineEventService] Data layer not available');
       return;
@@ -57,7 +57,10 @@ export class SpineEventService {
         timestamp: event.timestamp || Date.now()
       };
 
-      await this.dataLayer.setDocument('ledger_events', eventWithId.id, eventWithId);
+      const collection = userId
+        ? `ledger_events/${userId}/events`
+        : 'ledger_events_guest';
+      await this.dataLayer.setDocument(collection, eventWithId.id, eventWithId);
     } catch (error) {
       console.error('[SpineEventService] Failed to log event:', error);
     }

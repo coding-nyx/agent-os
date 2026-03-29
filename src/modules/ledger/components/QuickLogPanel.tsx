@@ -10,13 +10,15 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Plus, Minus, RotateCcw, Zap, ChevronDown, Check, Pencil } from 'lucide-react';
+import { Plus, Minus, RotateCcw, Zap, ChevronDown, Check, Pencil, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Transaction } from '../services/ledger-intake-service';
+import type { Transaction, Account } from '../services/ledger-intake-service';
+import { getDefaultAccount } from '../services/aggregation/account-aggregation';
 
 interface QuickLogPanelProps {
   categories: string[];
   currency: string;
+  accounts?: Account[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
 }
 
@@ -49,7 +51,21 @@ export function parseNaturalInput(text: string): { description: string; amount: 
   return { description: description.charAt(0).toUpperCase() + description.slice(1), amount, type, category };
 }
 
-export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickLogPanelProps) {
+export function QuickLogPanel({ categories, currency, accounts = [], onAddTransaction }: QuickLogPanelProps) {
+  const defaultAccount = getDefaultAccount(accounts);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(defaultAccount?.id);
+  const [showAccountPicker, setShowAccountPicker] = useState(false);
+
+  // Keep selectedAccountId in sync when accounts or default changes (e.g. user sets a new default).
+  useEffect(() => {
+    setSelectedAccountId(prev => {
+      if (prev && accounts.some(a => a.id === prev)) return prev;
+      return getDefaultAccount(accounts)?.id;
+    });
+  }, [accounts]);
+
+  const selectedAccount = accounts.find(a => a.id === selectedAccountId) ?? defaultAccount;
+
   const [naturalInput, setNaturalInput] = useState('');
   const [parsed, setParsed] = useState<ReturnType<typeof parseNaturalInput>>(null);
   const [manualMode, setManualMode] = useState(false);
@@ -122,6 +138,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
       type: result.type,
       category: result.category,
       isRecurring,
+      ...(selectedAccount ? { accountId: selectedAccount.id } : {}),
     });
 
     setNaturalInput('');
@@ -144,6 +161,7 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
       type: manualType,
       category: manualCategory,
       isRecurring,
+      ...(selectedAccount ? { accountId: selectedAccount.id } : {}),
     });
 
     setManualAmount('');
@@ -440,8 +458,8 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
         )}
       </div>
 
-      {/* ── Footer — recurring toggle ───────────────────────────────────────── */}
-      <div className="px-4 py-2.5 border-t border-white/[0.09]">
+      {/* ── Footer — account selector + recurring toggle ───────────────────── */}
+      <div className="px-4 py-2.5 border-t border-white/[0.09] flex items-center justify-between gap-3">
         <button
           onClick={() => setIsRecurring(r => !r)}
           aria-pressed={isRecurring}
@@ -454,6 +472,45 @@ export function QuickLogPanel({ categories, currency, onAddTransaction }: QuickL
           <RotateCcw className="w-3 h-3 shrink-0" />
           {isRecurring ? 'Recurring (monthly)' : 'Mark as recurring'}
         </button>
+
+        {/* Account selector — only shown when accounts exist */}
+        {accounts.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowAccountPicker(v => !v)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.045] border border-white/[0.09] text-[11px] font-semibold text-white/50 hover:text-white hover:bg-white/[0.07] transition-colors"
+              title="Select account for this transaction"
+            >
+              <Wallet className="w-3 h-3 shrink-0" />
+              <span className="truncate max-w-[100px]">
+                {selectedAccount ? selectedAccount.name : 'No account'}
+              </span>
+              {selectedAccount?.isDefault && (
+                <span className="text-cyan-400/70 text-[10px] font-black uppercase">·default</span>
+              )}
+              <ChevronDown className={cn('w-3 h-3 text-white/30 transition-transform', showAccountPicker && 'rotate-180')} />
+            </button>
+            {showAccountPicker && (
+              <div className="absolute bottom-full right-0 mb-1 bg-zinc-900 border border-white/[0.12] rounded-xl shadow-2xl z-20 p-1.5 min-w-[160px]">
+                {accounts.map(a => (
+                  <button
+                    key={a.id}
+                    onClick={() => { setSelectedAccountId(a.id); setShowAccountPicker(false); }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-semibold text-left transition-colors',
+                      selectedAccountId === a.id
+                        ? 'bg-[var(--module-accent-muted)] text-[var(--module-color-400)]'
+                        : 'text-white/55 hover:bg-white/10 hover:text-white'
+                    )}
+                  >
+                    <span className="flex-1 truncate">{a.name}</span>
+                    {a.isDefault && <span className="text-cyan-400/70 text-[10px] font-black uppercase shrink-0">default</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

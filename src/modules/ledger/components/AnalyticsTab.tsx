@@ -53,7 +53,7 @@ function computeFinancialHealthScore(profile: LedgerIntakeProfile): {
   factors: { label: string; score: number; max: number; status: 'good' | 'ok' | 'bad' }[];
 } {
   const txs = profile.transactions ?? [];
-  const metrics = computeDashboardMetrics(txs, (profile.debtItems ?? []).reduce((s, d) => s + d.balance, 0));
+  const metrics = computeDashboardMetrics(txs, (profile.debtItems ?? []).reduce((s, d) => s + d.balance, 0), profile.accounts ?? []);
 
   // 1. Savings rate (0–30 pts)
   const savingsRate = metrics.savingsRate ?? 0;

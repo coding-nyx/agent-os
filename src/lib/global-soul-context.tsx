@@ -14,15 +14,20 @@ import { useDataLayer } from './data-layer/provider';
 interface GlobalSoulStore {
   globalSoul: GlobalProjection | null;
   isLoading: boolean;
+  /** True when the last refresh attempt failed — soul data may be stale */
+  soulStale: boolean;
   setGlobalSoul: (soul: GlobalProjection | null) => void;
   setIsLoading: (loading: boolean) => void;
+  setSoulStale: (stale: boolean) => void;
 }
 
 export const useGlobalSoulStore = create<GlobalSoulStore>((set) => ({
   globalSoul: null,
   isLoading: true,
-  setGlobalSoul: (soul) => set({ globalSoul: soul }),
-  setIsLoading: (loading) => set({ isLoading: loading })
+  soulStale: false,
+  setGlobalSoul: (soul) => set({ globalSoul: soul, soulStale: false }),
+  setIsLoading: (loading) => set({ isLoading: loading }),
+  setSoulStale: (stale) => set({ soulStale: stale }),
 }));
 
 export interface GlobalSoulContextType {
@@ -48,7 +53,9 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
   const dataLayer = useDataLayer();
   const setGlobalSoul = useGlobalSoulStore(s => s.setGlobalSoul);
   const setIsLoading = useGlobalSoulStore(s => s.setIsLoading);
+  const setSoulStale = useGlobalSoulStore(s => s.setSoulStale);
   const globalSoul = useGlobalSoulStore(s => s.globalSoul);
+  const soulStale = useGlobalSoulStore(s => s.soulStale);
   const derivedWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDerivedSignatureRef = useRef<string>('');
 
@@ -65,6 +72,7 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
       setGlobalSoul(projection);
     } catch (e) {
       console.error("Failed to refresh Global Projection:", e);
+      setSoulStale(true);
       Spine.emit({
         type: 'HEALTH_CONTEXT_STALE',
         source: 'nexus',
@@ -76,7 +84,7 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, setGlobalSoul, setIsLoading, dataLayer]);
+  }, [user, setGlobalSoul, setIsLoading, setSoulStale, dataLayer]);
 
   const updateCrossFunctionalState = useCallback(async (updates: NeuralStateVectorPatch) => {
     if (!user) return;
@@ -223,9 +231,13 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
     const safePronouns = (profile?.pronouns || 'They/Them').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 30);
     const safeInsights = (globalSoul?.compactedInsights || []).map(i => i.slice(0, 200));
 
-    const nsvBlock = moduleId === 'atlas'
+    const rawNsvBlock = moduleId === 'atlas'
       ? formatNSVForAtlasPlanner(state)
       : formatNSVForModulePrompt(state, NSV_READ_PERMISSIONS[moduleId] ?? []);
+
+    const nsvBlock = soulStale && rawNsvBlock
+      ? `⚠ NSV data may be stale — last refresh failed. Use with caution.\n${rawNsvBlock}`
+      : rawNsvBlock;
 
     if (!nsvBlock && !extensionFieldsBlock) return context;
 
@@ -244,7 +256,7 @@ ${safeInsights.length ? safeInsights.map(i => `- ${i}`).join('\n') : 'None'}
       ...context,
       systemPrompt: `${context.systemPrompt}\n\n${moduleContext}`
     };
-  }, [globalSoul, profile]);
+  }, [globalSoul, soulStale, profile]);
 
   const getFilteredSoulForModule = useCallback((moduleId: ModuleId) => {
     return filterGlobalSoulForModule(globalSoul, moduleId);

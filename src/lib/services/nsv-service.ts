@@ -317,6 +317,9 @@ export function formatNSVForAtlasPlanner(nsv: NeuralStateVector): string {
   const planning = nsv.cognitive.planningLoad ?? null;
   const streak = nsv.planning.streakHealth ?? null;
   const deadline = nsv.planning.deadlinePressure ?? null;
+  const reflectionStreak = nsv.planning.reflectionStreak ?? null;
+  const goalAlignment = nsv.planning.goalAlignment ?? null;
+  const habitMomentum = nsv.planning.habitMomentum ?? null;
   const friction = nsv.resource.financialFriction ?? null;
 
   // Derive active planning overrides
@@ -368,6 +371,14 @@ export function formatNSVForAtlasPlanner(nsv: NeuralStateVector): string {
     overrides.push('⚠ STREAK RISK: streakHealth ≤ 3 — Active habits are at risk. Surface easiest habit first to rebuild momentum.');
   }
 
+  if (goalAlignment !== null && goalAlignment < 0.3) {
+    overrides.push('⚠ GOAL DRIFT: goalAlignment < 0.3 — Less than 30% of active goals have linked tasks. Prompt user to connect tasks to goals or review goal relevance.');
+  }
+
+  if (habitMomentum !== null && habitMomentum < 0.25) {
+    overrides.push('⚠ HABIT STALL: habitMomentum < 0.25 — Most active habits have no live streak. Suggest simplifying to 1-2 keystone habits.');
+  }
+
   // Derive max sustainable active load
   let maxLoad = 8;
   if (cnsFatigue !== null && cnsFatigue >= 9) maxLoad = Math.min(maxLoad, 2);
@@ -401,6 +412,7 @@ export function formatNSVForAtlasPlanner(nsv: NeuralStateVector): string {
     `Emotional: Resilience ${d(resilience)}/10, Stress ${d(stress)}/10, Mood: ${d(mood)}`,
     `Cognitive: Energy ${d(energy)}/10, Focus ${d(focus)}/10, Active Load ${d(active)}/10, Research Load ${d(research)}/10`,
     `Planning: Planning Load ${d(planning)}/10, Task Completion Rate ${d(nsv.cognitive.taskCompletionRate)}, Streak Health ${d(streak)}/10, Deadline Pressure ${d(deadline)}/10`,
+    `Planning (engagement): Reflection Streak ${d(reflectionStreak)} days, Goal Alignment ${d(goalAlignment)}, Habit Momentum ${d(habitMomentum)}`,
     `Resource: Financial Friction ${d(friction)}/10`,
     '',
     `DERIVED MAX SUSTAINABLE LOAD: ${maxLoad}/10`,

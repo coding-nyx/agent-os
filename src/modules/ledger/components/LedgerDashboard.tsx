@@ -57,7 +57,7 @@ export function LedgerDashboard({
   const healthScore = useMemo(() => {
     if (!profile) return null;
     const txs = profile.transactions ?? [];
-    const metrics = computeDashboardMetrics(txs, (profile.debtItems ?? []).reduce((s, d) => s + d.balance, 0));
+    const metrics = computeDashboardMetrics(txs, (profile.debtItems ?? []).reduce((s, d) => s + d.balance, 0), profile.accounts ?? []);
     const savingsRate = metrics.savingsRate ?? 0;
     const savingsScore = Math.min(30, Math.round(savingsRate * 30));
     const actuals = computeBudgetActuals(txs, profile.budgetCategories ?? []);
@@ -88,9 +88,9 @@ export function LedgerDashboard({
 
   // All dashboard stat-card numbers derived from actual transactions.
   const metrics = useMemo(
-    () => computeDashboardMetrics(profile?.transactions ?? [], totalDebt),
-     
-    [profile?.transactions, totalDebt],
+    () => computeDashboardMetrics(profile?.transactions ?? [], totalDebt, profile?.accounts ?? []),
+
+    [profile?.transactions, totalDebt, profile?.accounts],
   );
 
   // Keep nullable wrappers so downstream conditional renders and prop types

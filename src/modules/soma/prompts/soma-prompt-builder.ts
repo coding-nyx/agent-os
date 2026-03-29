@@ -6,6 +6,7 @@
  */
 
 import type { FieldDefinition } from '@/lib/field-system/types';
+import type { BiomarkerRecord, LabSummaryRecord, ClearanceRecord, PhysicalAssessment } from '@/lib/types';
 
 // ============================================================================
 // Types
@@ -27,6 +28,20 @@ export interface SomaPromptContext {
   lastCheckup?: string;
   knownConditions?: string[];
   medications?: string[];
+  /** Structured biomarker records — capped to most recent 20 for prompt safety */
+  biomarkers?: BiomarkerRecord[];
+  /** Lab panel summaries — capped to most recent 5 */
+  labSummaries?: LabSummaryRecord[];
+  /** Per-activity clearance records */
+  clearanceDetails?: ClearanceRecord[];
+  /** User allergies */
+  allergies?: string[];
+  /** Free-text medical notes accumulated by the user */
+  medicalSummary?: string;
+  /** Timestamped physical assessment history — most recent entry used for prompt */
+  physicalAssessments?: PhysicalAssessment[];
+  /** ISO date string for the user's next scheduled checkup */
+  nextCheckup?: string;
 }
 
 export interface DiagnosisSummaryPromptInput {
@@ -80,8 +95,25 @@ You are a clinically analytical, tightly bounded medical intelligence agent resp
 [MEDICAL CONTEXT]
 Clearance Status: {{CLEARANCE_STATUS}}
 Last Checkup: {{LAST_CHECKUP}}
+Next Checkup: {{NEXT_CHECKUP}}
 Known Conditions: {{KNOWN_CONDITIONS}}
 Current Medications: {{MEDICATIONS}}
+Allergies: {{ALLERGIES}}
+
+[BIOMARKERS — RECENT 20]
+{{BIOMARKERS}}
+
+[LAB SUMMARIES — RECENT 5]
+{{LAB_SUMMARIES}}
+
+[CLEARANCE DETAILS]
+{{CLEARANCE_DETAILS}}
+
+[LATEST PHYSICAL ASSESSMENT]
+{{PHYSICAL_ASSESSMENT}}
+
+[MEDICAL NOTES]
+{{MEDICAL_SUMMARY}}
 
 [BEHAVIORAL GUIDELINES]
 - Speak with the precision of a senior clinician, but stay explicitly bounded to the provided data.
@@ -117,8 +149,15 @@ export function buildSomaAgentSystemPrompt(context: {
   nsvBiological?: Record<string, unknown>;
   clearanceStatus?: string;
   lastCheckup?: string;
+  nextCheckup?: string;
   knownConditions?: string[];
   medications?: string[];
+  biomarkers?: BiomarkerRecord[];
+  labSummaries?: LabSummaryRecord[];
+  clearanceDetails?: ClearanceRecord[];
+  allergies?: string[];
+  medicalSummary?: string;
+  physicalAssessments?: PhysicalAssessment[];
 }): string {
   const healthLines = Object.entries(context.coreFields)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
@@ -142,13 +181,58 @@ export function buildSomaAgentSystemPrompt(context: {
         .join('\n') || '  No NSV biological data available.'
     : '  Not available.';
 
+  // Biomarkers — cap to most recent 20 to avoid token overflow
+  const biomarkersLines = context.biomarkers && context.biomarkers.length > 0
+    ? context.biomarkers.slice(-20).map((b) => {
+        const unit = b.unit ? ` ${b.unit}` : '';
+        const flag = b.agentReview ? ` [flagged: ${b.agentReview.status}]` : '';
+        return `  ${b.name}: ${b.value}${unit} (${b.recordedAt.slice(0, 10)})${flag}`;
+      }).join('\n')
+    : '  No biomarker records.';
+
+  // Lab summaries — cap to most recent 5
+  const labLines = context.labSummaries && context.labSummaries.length > 0
+    ? context.labSummaries.slice(-5).map((l) => {
+        const flags = l.flags.length > 0 ? ` | Flags: ${l.flags.join(', ')}` : '';
+        return `  ${l.panel} (${l.recordedAt.slice(0, 10)}): ${l.findings.join('; ')}${flags}`;
+      }).join('\n')
+    : '  No lab summaries.';
+
+  // Clearance details
+  const clearanceLines = context.clearanceDetails && context.clearanceDetails.length > 0
+    ? context.clearanceDetails.map((c) => {
+        return `  ${c.activity}: ${c.status} — ${c.reason} (${c.issuedAt.slice(0, 10)})`;
+      }).join('\n')
+    : '  No clearance records.';
+
+  // Latest physical assessment — most recent entry only to keep token usage bounded
+  const latestAssessment = context.physicalAssessments && context.physicalAssessments.length > 0
+    ? context.physicalAssessments[context.physicalAssessments.length - 1]
+    : null;
+  const physicalAssessmentLines = latestAssessment
+    ? [
+        latestAssessment.bodyFatPercentage != null ? `  Body Fat: ${latestAssessment.bodyFatPercentage}%` : null,
+        latestAssessment.vo2Max != null ? `  VO2 Max: ${latestAssessment.vo2Max} mL/kg/min` : null,
+        latestAssessment.strength != null ? `  Strength: ${latestAssessment.strength}` : null,
+        latestAssessment.flexibility != null ? `  Flexibility: ${latestAssessment.flexibility}` : null,
+        latestAssessment.endurance != null ? `  Endurance: ${latestAssessment.endurance}` : null,
+      ].filter(Boolean).join('\n') || '  No composite fitness metrics recorded.'
+    : '  No physical assessment on record.';
+
   return SOMA_AGENT_SYSTEM_PROMPT
     .replace('{{HEALTH_CONTEXT}}', `Core fields:\n${healthLines}\n\nCustom biomarkers:\n${extensionLines}`)
     .replace('{{NSV_BIOLOGICAL}}', nsvLines)
     .replace('{{CLEARANCE_STATUS}}', context.clearanceStatus ?? 'unknown')
     .replace('{{LAST_CHECKUP}}', context.lastCheckup ?? 'Unknown')
+    .replace('{{NEXT_CHECKUP}}', context.nextCheckup ?? 'Not scheduled')
     .replace('{{KNOWN_CONDITIONS}}', context.knownConditions?.join(', ') || 'None reported')
-    .replace('{{MEDICATIONS}}', context.medications?.join(', ') || 'None reported');
+    .replace('{{MEDICATIONS}}', context.medications?.join(', ') || 'None reported')
+    .replace('{{ALLERGIES}}', context.allergies?.join(', ') || 'None reported')
+    .replace('{{BIOMARKERS}}', biomarkersLines)
+    .replace('{{LAB_SUMMARIES}}', labLines)
+    .replace('{{CLEARANCE_DETAILS}}', clearanceLines)
+    .replace('{{PHYSICAL_ASSESSMENT}}', physicalAssessmentLines)
+    .replace('{{MEDICAL_SUMMARY}}', context.medicalSummary || 'No notes.');
 }
 
 /**
