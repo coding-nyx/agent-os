@@ -20,6 +20,8 @@ import { NexusChat } from '@/core/components/NexusChat';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { buildAgnesSessionPrompt } from './prompts/agnes-session-prompt';
+import { computeSessionProgress, buildSessionProgressBlock, type AgnesSessionPhase } from './session-arc';
+import { AgnesClosingBar } from './components/AgnesClosingBar';
 import { formatNSVForModulePrompt } from '@/lib/services/nsv-service';
 import { NSV_READ_PERMISSIONS } from '@/lib/services/nsv-ownership';
 import type { NeuralStateVector } from '@/lib/types';
@@ -134,6 +136,8 @@ function AgnesContent({
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
   const [pendingImpromptuWelcome, setPendingImpromptuWelcome] = useState<string | null>(null);
   const [pendingBeliefOpen, setPendingBeliefOpen] = useState(false);
+  const [detectedPhase, setDetectedPhase] = useState<AgnesSessionPhase | null>(null);
+  const closingHeldTurnsRef = useRef(0);
   const [activeBeliefContext, setActiveBeliefContext] = useState<{ triggeringBeliefs: string[]; rationale: string[] } | null>(null);
   const [beliefGraph, setBeliefGraph] = useState<AgnesBeliefGraph | null>(null);
   const [beliefWorkflow, setBeliefWorkflow] = useState<BeliefGraphWorkflow | null>(null);
@@ -297,6 +301,18 @@ function AgnesContent({
     [isImpromptu, profile?.baseContext, coreProfile?.agentPersonalityProvision?.agentGenders?.agnes, engagementMode, modeContinuity, agnesNsvFingerprint, activeBeliefContext] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // Mirror of messages, updated every render without being a dep of systemPrompt useMemo.
+  // Used by getSessionProgressBlock to read exchange count at send time.
+  const agnesMessagesRef = useRef<import('@/lib/types').Message[]>([]);
+
+  const getSessionProgressBlock = useCallback((): string | null => {
+    if (isImpromptu) return null;
+    const userExchanges = agnesMessagesRef.current.filter((m) => m.role === 'user').length;
+    if (userExchanges === 0) return null;
+    const progress = computeSessionProgress(userExchanges, sessionStartedAt, engagementMode);
+    return buildSessionProgressBlock(progress, engagementMode);
+  }, [isImpromptu, sessionStartedAt, engagementMode]);
+
   const {
     messages,
     setMessages,
@@ -320,8 +336,12 @@ function AgnesContent({
     encryptionKey,
     contextPolicy: isImpromptu ? 'doc-only' : 'prompted',
     persistencePolicy: isImpromptu ? 'ephemeral' : 'auto',
-    sessionId: isImpromptu ? 'impromptu' : undefined
+    sessionId: isImpromptu ? 'impromptu' : undefined,
+    getSessionProgressBlock,
   });
+
+  // Keep agnesMessagesRef live so getSessionProgressBlock always reads current exchange count.
+  agnesMessagesRef.current = messages;
 
   // Guard: never accumulate routing suggestions while a session is active.
   // Dismissals (null) are always allowed through so stale state can be cleared.
@@ -363,6 +383,8 @@ function AgnesContent({
       setModeContinuity(undefined);
       setActiveBeliefContext(null);
       setPendingBeliefOpen(false);
+      setDetectedPhase(null);
+      closingHeldTurnsRef.current = 0;
       setSessionSummary(null);
     }
     prevUserRef.current = user;
@@ -391,6 +413,26 @@ function AgnesContent({
       );
     }
   }, [pendingBeliefOpen, isHydrating, isImpromptu, isProcessing, handleSendMessage]);
+
+  // Parse Agnes's declared Phase from the last assistant message after each completed turn.
+  // The <thought> block is stored in full message content (not stripped) — see use-module-ai.ts.
+  useEffect(() => {
+    if (messages.length === 0 || isProcessing || isImpromptu) return;
+    const last = [...messages].reverse().find((m) => m.role === 'assistant');
+    if (!last) return;
+    const content = typeof last.content === 'string' ? last.content : '';
+    const match = content.match(/<thought>[\s\S]*?Phase:\s*(OPENING|DEEPENING|INTEGRATION|CLOSING)[\s\S]*?<\/thought>/);
+    if (!match) return;
+    const phase = match[1] as AgnesSessionPhase;
+    setDetectedPhase(phase);
+    closingHeldTurnsRef.current = phase === 'CLOSING' ? closingHeldTurnsRef.current + 1 : 0;
+  }, [messages, isProcessing, isImpromptu]);
+
+  // Reset arc state whenever a new session starts.
+  useEffect(() => {
+    setDetectedPhase(null);
+    closingHeldTurnsRef.current = 0;
+  }, [sessionStartedAt]);
 
   const handleRouteConfirm = useCallback(() => {
     if (!routingSuggestion) return;
@@ -699,6 +741,23 @@ function AgnesContent({
     }
   };
 
+  const handleSendMessageWithArcCheck = useCallback<typeof handleSendMessage>(
+    async (content, onActionParsed?, options?) => {
+      if (
+        !isImpromptu &&
+        !isProcessing &&
+        !isSummarizing &&
+        !isClosingSession &&
+        closingHeldTurnsRef.current >= 2
+      ) {
+        void endSession();
+        return;
+      }
+      return handleSendMessage(content, onActionParsed, options);
+    },
+    [handleSendMessage, isImpromptu, isProcessing, isSummarizing, isClosingSession, endSession],
+  );
+
   const finalizeClose = async () => {
     if (isImpromptu) {
       // Ephemeral session: only wipe sessionStorage, never touch Firestore
@@ -714,6 +773,8 @@ function AgnesContent({
     setSessionSummary(null);
     setActiveBeliefContext(null);
     setPendingBeliefOpen(false);
+    setDetectedPhase(null);
+    closingHeldTurnsRef.current = 0;
 
     // Flush any belief workflow that arrived during the session
     if (pendingPostSessionBeliefWorkflowRef.current !== null) {
@@ -1050,11 +1111,16 @@ function AgnesContent({
                       </div>
 
                       <NexusChat
-                        ai={{ messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage, pendingApprovals, approveAction, dismissAction }}
+                        ai={{ messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage: handleSendMessageWithArcCheck, pendingApprovals, approveAction, dismissAction }}
                         agentName={agentAlias}
                         themeColor="indigo"
                         placeholder="Communicate..."
                         authMode="agnes"
+                      />
+                      <AgnesClosingBar
+                        visible={detectedPhase === 'CLOSING' && !isSummarizing && !isClosingSession && !isImpromptu}
+                        onClose={endSession}
+                        isBusy={isSummarizing}
                       />
                     </motion.div>
                   )}

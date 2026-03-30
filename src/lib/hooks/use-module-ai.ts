@@ -51,6 +51,12 @@ interface UseModuleAIOptions {
    *  value for this module's action gate evaluation. Use 5 to auto-execute all mutations
    *  (e.g. Ledger, where the user explicitly directs every financial write). */
   autopilotLevelOverride?: 0 | 1 | 2 | 3 | 4 | 5;
+  /**
+   * Called at send time to append a dynamic block (e.g. session progress) to the base
+   * system prompt. Runs inside handleSendMessage so it always reflects current state
+   * without requiring messages as a systemPrompt useMemo dependency.
+   */
+  getSessionProgressBlock?: () => string | null;
 }
 
 const MEMORY_SECTION_CHAR_LIMIT = 1800;
@@ -267,6 +273,10 @@ export function useModuleAI({
   // Keep resolvedEnhanceContext in a ref so handleSendMessage deps stay stable.
   const resolvedEnhanceContextRef = useRef(resolvedEnhanceContext);
   resolvedEnhanceContextRef.current = resolvedEnhanceContext;
+
+  // Keep getSessionProgressBlock in a ref so handleSendMessage doesn't need it as a dep.
+  const getSessionProgressBlockRef = useRef(options?.getSessionProgressBlock);
+  getSessionProgressBlockRef.current = options?.getSessionProgressBlock;
   // Stable wrapper that always delegates to the current ref. Passed to sub-hooks
   // (e.g. useConsolidation) so their callbacks don't recreate when globalSoul changes.
   const stableEnhanceContext = useCallback(
@@ -870,9 +880,14 @@ export function useModuleAI({
         }
         const { recalledSessionsSummary, recalledFactsSummary, status: memoryStatus } = memoryResult;
 
+        const progressBlock = getSessionProgressBlockRef.current?.();
+        const baseWithProgress = progressBlock
+          ? `${baseRoleRef.current}\n\n${progressBlock}`
+          : baseRoleRef.current;
+
         const finalSystemPrompt = PersonaFactory.generateSystemPrompt({
           moduleId,
-          baseRole: baseRoleRef.current,
+          baseRole: baseWithProgress,
           userProfile: profileRef.current,
           globalSoul: globalSoulRef.current
         });
