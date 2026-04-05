@@ -366,7 +366,7 @@ export function ModuleLayout({
                 <button
                   type="button"
                   onClick={() => window.dispatchEvent(new Event('open-nexus'))}
-                  aria-label="Open Nexus AI"
+                   aria-label="Open Nyx AI"
                   className="relative w-10 h-10 sm:w-11 sm:h-11 min-h-[44px] min-w-[44px] rounded-xl bg-white/[0.06] border border-white/[0.09] flex items-center justify-center hover:bg-white/[0.10] hover:border-white/[0.14] active:scale-95 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-white/25 shrink-0"
                 >
                   <Sparkles className="w-4 h-4 text-white/55 group-hover:text-white/90" />

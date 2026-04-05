@@ -1,145 +1,23 @@
-import type { CalendarEvent, LedgerIntakeProfile } from '../ledger-intake-service';
-import { computeUpcomingBills } from '../recurring-engine';
+// Bridge: delegates to KMP CalendarAggregationJs.
+// groupEventsByDate is not in KMP — it remains as a local TS helper.
 
-function dateToYearMonth(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
+import { CalendarAggregationJs } from '@cortex-logic';
+import type { CalendarEvent, LedgerIntakeProfile } from '../ledger-intake-service';
+
+const _calendarAgg = new CalendarAggregationJs();
 
 /**
  * Builds CalendarEvent[] for the given month (year/month 1-based) by
  * aggregating recurring bills, subscriptions, and financial goal deadlines.
  */
-export function buildCalendarEvents(profile: LedgerIntakeProfile, year: number, month: number): CalendarEvent[] {
-  const events: CalendarEvent[] = [];
-  const target = dateToYearMonth(new Date(year, month - 1));
-
-  // Recurring rules (bills + income)
-  const allBills = computeUpcomingBills(profile.recurringRules ?? [], 90);
-  for (const bill of allBills) {
-    const billDate = new Date(bill.nextDueDate);
-    if (dateToYearMonth(billDate) === target) {
-      events.push({
-        id: `rec_${bill.id}_${target}`,
-        type: bill.type === 'income' ? 'income' : 'bill',
-        title: bill.description,
-        date: bill.nextDueDate,
-        amount: bill.amount,
-        isIncome: bill.type === 'income',
-        color: bill.type === 'income' ? '#10b981' : '#f43f5e',
-        entityId: bill.id,
-      });
-    }
-  }
-
-  // Subscriptions
-  for (const sub of profile.subscriptions ?? []) {
-    if (sub.status === 'cancelled') continue;
-    const renewDate = new Date(sub.nextRenewalDate);
-    if (dateToYearMonth(renewDate) === target) {
-      events.push({
-        id: `sub_${sub.id}_${target}`,
-        type: 'subscription',
-        title: `${sub.name} renewal`,
-        date: sub.nextRenewalDate,
-        amount: sub.amount,
-        isIncome: false,
-        color: sub.color ?? '#6366f1',
-        entityId: sub.id,
-      });
-    }
-    // Trial end
-    if (sub.status === 'trial' && sub.trialEndsAt) {
-      const trialDate = new Date(sub.trialEndsAt);
-      if (dateToYearMonth(trialDate) === target) {
-        events.push({
-          id: `trial_${sub.id}_${target}`,
-          type: 'subscription',
-          title: `${sub.name} trial ends`,
-          date: sub.trialEndsAt,
-          amount: sub.amount,
-          isIncome: false,
-          color: '#f59e0b',
-          entityId: sub.id,
-          notes: 'Trial period ending',
-        });
-      }
-    }
-  }
-
-  // Financial goal deadlines
-  for (const goal of profile.financialGoals ?? []) {
-    if (!goal.targetDate) continue;
-    const goalDate = new Date(goal.targetDate);
-    if (dateToYearMonth(goalDate) === target) {
-      events.push({
-        id: `goal_${goal.id}`,
-        type: 'goal_deadline',
-        title: `Goal deadline: ${goal.name}`,
-        date: goal.targetDate,
-        amount: goal.targetAmount,
-        color: '#a78bfa',
-        entityId: goal.id,
-      });
-    }
-  }
-
-  // Debt payment due dates (from DebtItem.dueDay)
-  for (const debt of profile.debtItems ?? []) {
-    if (!debt.dueDay) continue;
-    const day = Math.min(debt.dueDay, new Date(year, month, 0).getDate()); // clamp to month length
-    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const minLabel = debt.minPayment > 0 ? ` — Min $${debt.minPayment.toFixed(0)}` : '';
-    events.push({
-      id: `debt_due_${debt.id}_${target}`,
-      type: 'bill',
-      title: `${debt.name}${minLabel}`,
-      date: dateStr,
-      amount: debt.minPayment > 0 ? debt.minPayment : undefined,
-      isIncome: false,
-      color: '#f43f5e',
-      entityId: debt.id,
-      notes: 'Debt payment due',
-    });
-  }
-
-  // Credit card payment due dates (from Account.paymentDueDay)
-  for (const acct of profile.accounts ?? []) {
-    if (acct.type !== 'credit_card' || !acct.paymentDueDay) continue;
-    const day = Math.min(acct.paymentDueDay, new Date(year, month, 0).getDate());
-    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const cardLabel = acct.lastFour ? ` ···· ${acct.lastFour}` : '';
-    const balanceLabel = acct.balance !== 0 ? ` — $${Math.abs(acct.balance).toFixed(0)} owed` : '';
-    events.push({
-      id: `card_due_${acct.id}_${target}`,
-      type: 'bill',
-      title: `${acct.name}${cardLabel} payment${balanceLabel}`,
-      date: dateStr,
-      amount: Math.abs(acct.balance) > 0 ? Math.abs(acct.balance) : undefined,
-      isIncome: false,
-      color: '#f43f5e',
-      entityId: acct.id,
-      notes: 'Credit card payment due',
-    });
-  }
-
-  // Paid quarters (tax events)
-  const quarters: Record<number, string> = { 0: '04-15', 1: '06-15', 2: '09-15', 3: '01-15' };
-  for (const [qIdx, mmdd] of Object.entries(quarters)) {
-    const taxYear = Number(qIdx) === 3 ? year + 1 : year;
-    const dateStr = `${taxYear}-${mmdd}`;
-    const taxDate = new Date(dateStr);
-    if (dateToYearMonth(taxDate) === target) {
-      events.push({
-        id: `tax_q${qIdx}_${year}`,
-        type: 'tax',
-        title: `Q${Number(qIdx) + 1} Estimated Tax Due`,
-        date: dateStr,
-        color: '#f97316',
-      });
-    }
-  }
-
-  return events.sort((a, b) => a.date.localeCompare(b.date));
+export function buildCalendarEvents(
+  profile: LedgerIntakeProfile,
+  year: number,
+  month: number,
+): CalendarEvent[] {
+  return JSON.parse(
+    _calendarAgg.buildCalendarEvents(JSON.stringify(profile), year, month, Date.now()),
+  ) as CalendarEvent[];
 }
 
 /** Groups CalendarEvents by ISO date string within a month. */

@@ -1,6 +1,7 @@
-import type { LedgerIntakeProfile, TaxCategory, TaxYearSummary } from '../ledger-intake-service';
+// Bridge: delegates to KMP TaxAggregationJs.
 
-const DEDUCTIBLE_CATEGORIES: TaxCategory[] = ['deductible', 'partial'];
+import { TaxAggregationJs } from '@cortex-logic';
+import type { LedgerIntakeProfile, TaxCategory, TaxYearSummary } from '../ledger-intake-service';
 
 export interface TaxCategoryBreakdown {
   category: TaxCategory;
@@ -8,57 +9,22 @@ export interface TaxCategoryBreakdown {
   transactionCount: number;
 }
 
-export function computeTaxBreakdown(profile: LedgerIntakeProfile, taxYear: number): TaxCategoryBreakdown[] {
-  const transactions = (profile.transactions ?? []).filter(tx => {
-    const txYear = new Date(tx.date).getFullYear();
-    return txYear === taxYear && tx.type === 'expense';
-  });
+const _taxAgg = new TaxAggregationJs();
 
-  const map: Partial<Record<TaxCategory, { total: number; count: number }>> = {};
-  for (const tx of transactions) {
-    const cat = tx.taxCategory ?? 'unknown';
-    if (!map[cat]) map[cat] = { total: 0, count: 0 };
-    map[cat]!.total += tx.amount;
-    map[cat]!.count += 1;
-  }
-
-  return Object.entries(map).map(([cat, data]) => ({
-    category: cat as TaxCategory,
-    total: data!.total,
-    transactionCount: data!.count,
-  }));
+export function computeTaxBreakdown(
+  profile: LedgerIntakeProfile,
+  taxYear: number,
+): TaxCategoryBreakdown[] {
+  return JSON.parse(
+    _taxAgg.computeTaxBreakdown(JSON.stringify(profile), taxYear),
+  ) as TaxCategoryBreakdown[];
 }
 
-export function buildTaxYearSummary(profile: LedgerIntakeProfile, taxYear: number): TaxYearSummary {
-  const yearTxs = (profile.transactions ?? []).filter(tx => new Date(tx.date).getFullYear() === taxYear);
-
-  const totalIncome = yearTxs.filter(tx => tx.type === 'income').reduce((s, tx) => s + tx.amount, 0);
-  const totalExpenses = yearTxs.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
-
-  const deductibleTxs = yearTxs.filter(tx =>
-    tx.type === 'expense' && tx.taxCategory && DEDUCTIBLE_CATEGORIES.includes(tx.taxCategory)
-  );
-  const deductibleExpenses = deductibleTxs.reduce((s, tx) => s + tx.amount, 0);
-
-  const yearDeductions = (profile.taxDeductions ?? [])
-    .filter(d => d.taxYear === taxYear);
-  const totalDeductions = yearDeductions.reduce((s, d) => s + d.amount, 0) + deductibleExpenses;
-
-  const breakdown = computeTaxBreakdown(profile, taxYear);
-  const categoryBreakdown: Record<string, number> = {};
-  for (const item of breakdown) {
-    categoryBreakdown[item.category] = item.total;
-  }
-
-  return {
-    taxYear,
-    generatedAt: new Date().toISOString(),
-    totalIncome,
-    totalExpenses,
-    deductibleExpenses,
-    totalDeductions,
-    estimatedTaxableIncome: Math.max(0, totalIncome - totalDeductions),
-    categoryBreakdown,
-    deductibleTransactionIds: deductibleTxs.map(tx => tx.id),
-  };
+export function buildTaxYearSummary(
+  profile: LedgerIntakeProfile,
+  taxYear: number,
+): TaxYearSummary {
+  return JSON.parse(
+    _taxAgg.buildTaxYearSummary(JSON.stringify(profile), taxYear, Date.now()),
+  ) as TaxYearSummary;
 }

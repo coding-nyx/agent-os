@@ -10,6 +10,7 @@ import { ActionCapabilityResolver } from '@/lib/agents/action-capability-resolve
 import { AgentRegistryService } from '@/lib/agents/agent-registry';
 import { NSV_OWNERSHIP, type NSVMetricPath } from '@/lib/services/nsv-ownership';
 import { OrchestrationExecutionService } from '@/lib/services/orchestration-execution-service';
+import { OrchestrationActionGateServiceJs } from '@cortex-logic';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual' | 'ephemeral';
 
@@ -54,29 +55,9 @@ type ProviderRegistrationOptions = {
   latencyTier?: 'fast' | 'balanced' | 'heavy';
 };
 
-const NSV_READ_ONLY_MODULES = new Set(['forge', 'scout']);
-const NON_MUTATING_ACTION_PREFIXES = ['analyze_', 'compare_', 'detect_', 'explain_', 'generate_', 'identify_', 'navigate_', 'query_', 'suggest_', 'validate_'];
-const NON_MUTATING_ACTIONS = new Set([
-  'analyze_medical_image',
-  'create_module_handoff',
-  'detect_data_hint',
-  'generate_summary',
-  'navigate_to_module',
-  'delegate_to_module',
-  'query_memory',
-  'query_module_data',
-  'query_profile',
-  'query_reminders',
-  'suggest_field',
-  'suggest_interventions',
-  'create_emotional_support_session',
-  'create_workout_plan',
-  'create_medical_review',
-  'create_financial_plan_request',
-  'create_research_request',
-  'create_technical_task',
-  'create_general_request',
-]);
+// Policy constants are now sourced from KMP OrchestrationActionGateService.
+// The singleton is cheap to instantiate (stateless).
+const _actionGate = new OrchestrationActionGateServiceJs();
 
 function getMetricValueFromPatch(patch: NeuralStateVectorPatch, metric: NSVMetricPath): unknown {
   // NeuralStateVectorPatch supports both domain-based updates (e.g. `cognitive.researchLoad`)
@@ -134,38 +115,27 @@ function inferMutatesState(actionType: string, context: ActionContext): boolean 
   if (typeof context.orchestration?.mutatesState === 'boolean') {
     return context.orchestration.mutatesState;
   }
-
-  const normalized = actionType.trim().toLowerCase();
-  if (!normalized) return false;
-  if (NON_MUTATING_ACTIONS.has(normalized)) return false;
-  if (NON_MUTATING_ACTION_PREFIXES.some((prefix) => normalized.startsWith(prefix))) return false;
-  return true;
+  return _actionGate.inferMutatesState(actionType.trim().toLowerCase());
 }
-
-/**
- * Action types that constitute a direct NSV/soul write.
- * Any module in NSV_READ_ONLY_MODULES that dispatches one of these
- * action types will receive a hard throw — even before the handler runs.
- * Extend this set as explicit soul-write action types are introduced.
- */
-const NSV_WRITE_ACTION_TYPES = new Set([
-  'update_soul',
-  'write_soul',
-  'patch_nsv',
-  'update_nsv',
-  'commit_nsv',
-  'soul_write',
-  'nsv_write',
-  'UPDATE_SOUL',
-  'WRITE_SOUL',
-  'PATCH_NSV',
-  'UPDATE_NSV',
-  'COMMIT_NSV',
-]);
 
 class ModuleActionHub {
   private registry = new Map<string, Map<string, ActionHandler>>();
   private dependencies = new Map<string, Set<string>>();
+
+  /**
+   * Modules whose action handlers are fully (or partially) implemented in KMP.
+   * For these modules, `execute()` tries the KMP `ActionHubJs` bridge first.
+   * Actions not registered in KMP (`onComplete(false)`) fall through to the TS registry.
+   *
+   * Set to `new Set()` to disable KMP delegation and revert to TS-only handlers.
+   */
+  // 'soma' excluded: KMP's appendProfileList reads the raw encrypted blob and writes plaintext
+  //   fields alongside it (no vault encrypt/decrypt). TS handlers correctly read/write the
+  //   encrypted format via vault callbacks.
+  // 'agnes' excluded: update_belief_graph in KMP does a direct save, bypassing the TS
+  //   proposal/conflict-detection workflow (proposeBeliefGraphCandidate + ConflictResolutionOverlay).
+  //   All TS agnes handlers are complete and handle encryption correctly via the vault service.
+  private static readonly kmpModules = new Set(['titan', 'atlas', 'ledger']);
 
   private rewriteExecutionOwner(
     resolvedModuleId: string,
@@ -331,7 +301,7 @@ class ModuleActionHub {
 
   async execute(moduleId: string, actionType: string, context: ActionContext): Promise<boolean> {
     // Hard guard: read-only modules must never dispatch explicit NSV-write actions.
-    if (NSV_READ_ONLY_MODULES.has(moduleId) && NSV_WRITE_ACTION_TYPES.has(actionType)) {
+    if (_actionGate.isNsvReadOnlyModule(moduleId) && _actionGate.isNsvWriteActionType(actionType)) {
       NexusLogger.warn(
         'ActionHub',
         `[ActionHub] Module "${moduleId}" is NSV read-only — action "${actionType}" ignored`,
@@ -365,13 +335,52 @@ class ModuleActionHub {
     const scopedContext: ActionContext = {
       ...context,
       updateGlobalSoul: async (patch) => {
-        if (!NSV_READ_ONLY_MODULES.has(moduleId)) return context.updateGlobalSoul(patch);
+        if (!_actionGate.isNsvReadOnlyModule(moduleId)) return context.updateGlobalSoul(patch);
 
         const filtered = filterReadOnlyModuleNSVUpdate(moduleId, patch);
         if (!filtered) return;
         return context.updateGlobalSoul(filtered);
       },
     };
+
+    // KMP-first delegation: try the cortex-logic ActionHub before the TS registry.
+    // onComplete(true) = handled; onComplete(false) = no handler, fall through to TS.
+    if (ModuleActionHub.kmpModules.has(moduleId)) {
+      try {
+        const { getActionHubJs, setExecutingModule } = await import('@/cortex-bridge/action-hub-bridge');
+        const hub = getActionHubJs(context.encryptionKey);
+        if (hub) {
+          setExecutingModule(moduleId);
+          try {
+            const handled = await new Promise<boolean>((resolve) => {
+              const task = hub.execute(
+                moduleId,
+                actionType,
+                JSON.stringify(context.payload),
+                context.userId ?? null,
+                (wasHandled: boolean) => resolve(wasHandled),
+                (err: string) => {
+                  NexusLogger.warn('ActionHub', `[KMP] ${moduleId}.${actionType} failed: ${err}`);
+                  resolve(false);
+                },
+              );
+              // task is a CancellableTask — no cancellation wired here since
+              // ActionContext has no AbortSignal, but capturing the return
+              // avoids floating promises from the KMP coroutine runtime.
+              void task;
+            });
+            if (handled) {
+              NexusLogger.action(moduleId, actionType, context.payload);
+              return true;
+            }
+          } finally {
+            setExecutingModule(null);
+          }
+        }
+      } catch (e) {
+        NexusLogger.warn('ActionHub', `[KMP] Bridge unavailable for ${moduleId}.${actionType}: ${e}`);
+      }
+    }
 
     // 1. Check module's own handlers
     const moduleHandlers = this.registry.get(moduleId);

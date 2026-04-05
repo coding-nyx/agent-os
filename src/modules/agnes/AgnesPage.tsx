@@ -57,7 +57,7 @@ import { IntakeBaseContextService } from '@/lib/services/intake-base-context-ser
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
 import { useUIStore } from '@/lib/stores/ui-store';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { AgnesNotificationSettingsPanel } from './components/AgnesNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 

@@ -38,14 +38,14 @@ const ORCHESTRATOR_STEPS: GuidedIntakeStep[] = [
   {
     key: 'review',
     label: 'Protocol Commit',
-    helperText: 'Review and commit Nexus onboarding to unlock orchestrator chat.',
+    helperText: 'Review and commit Nyx onboarding to unlock orchestrator chat.',
     inferredKeywords: ['review', 'confirm', 'finaliz', 'commit', 'complete'],
     focusActions: ['focus_review']
   }
 ];
 
 const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
-  orchestratorAlias: 'Nexus',
+  orchestratorAlias: 'Nyx',
   moduleAliases: {
     agnes: 'Agnes', titan: 'Titan', soma: 'Soma', ledger: 'Ledger',
     atlas: 'Atlas', scout: 'Scout', forge: 'Forge'
@@ -71,7 +71,7 @@ function buildProvision(existingProvision: AgentPersonalityProvision): AgentPers
     agentGenders: { ...DEFAULT_PERSONALITY.agentGenders, ...(existingProvision.agentGenders || {}) },
     personaOverlays: existingProvision.personaOverlays || {}
   };
-  provision.orchestratorAlias = existingProvision.orchestratorAlias || 'Nexus';
+  provision.orchestratorAlias = existingProvision.orchestratorAlias || 'Nyx';
   return provision;
 }
 

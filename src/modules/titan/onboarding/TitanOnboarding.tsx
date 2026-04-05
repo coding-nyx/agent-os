@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { TitanProfile, TitanPrivacyLevel, EquipmentType, BodyWeightEntry } from '@/lib/types';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { useAuth } from '@/lib/auth-context';
-import { buildTitanOnboardingPrompt } from '../prompts/titan-onboarding-prompt';
+import { TitanPromptBuilderJs } from '@cortex-logic';
 import { mergeTitanProfile, normalizeRoutines } from '../utils';
 import { saveGuestTitanProfile } from '../services/titan-profile-service';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
@@ -32,6 +32,8 @@ import { UnifiedOnboardingShell } from '@/core/intake/UnifiedOnboardingShell';
 import { TITAN_BASE_SPEC } from '@/core/intake/onboarding-configs';
 
 // ---- Chip data -----------------------------------------------------------
+
+const _titanPromptBuilder = new TitanPromptBuilderJs();
 
 const GOAL_CHIPS = [
   { value: 'strength', label: 'Build Strength' },
@@ -243,7 +245,13 @@ export function TitanOnboarding({ onComplete, onGlobalBaseContextFinalize, initi
       buildContext: (state, history) => {
         const missing = getMissingSectionsFromAccumulator(state.accumulator);
         return {
-          systemPrompt: `${buildTitanOnboardingPrompt(state.privacyLevel || 'basic', state.baseContext)}
+          systemPrompt: `${_titanPromptBuilder.buildOnboardingPrompt(
+            state.privacyLevel || 'basic',
+            state.baseContext?.name ?? null,
+            state.baseContext?.pronouns ?? null,
+            state.baseContext?.occupation ?? null,
+            typeof state.baseContext?.typicalSleepHours === 'number' ? state.baseContext.typicalSleepHours : null,
+          )}
 
 [CURRENT_CAPTURED_TRAINER_DATA]
 - Nutrition: ${sectionSnapshot(state.accumulator.nutrition)}

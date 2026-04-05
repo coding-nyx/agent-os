@@ -11,7 +11,7 @@ interface SilentAuditDetailModalProps {
 }
 
 function getModuleLabel(source: SilentHistoryEntry['source']): string {
-  return MODULE_MANIFEST[source]?.alias ?? 'Nexus';
+  return MODULE_MANIFEST[source]?.alias ?? 'Nyx';
 }
 
 function formatTimestamp(value: string): string {

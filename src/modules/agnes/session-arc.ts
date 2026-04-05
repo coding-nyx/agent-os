@@ -1,4 +1,9 @@
+import { SessionArcJs } from '@cortex-logic';
 import type { AgnesEngagementMode } from './engagement-modes';
+
+const _service = new SessionArcJs();
+
+// ─── Public types ─────────────────────────────────────────────────────────────
 
 export type AgnesSessionPhase = 'OPENING' | 'DEEPENING' | 'INTEGRATION' | 'CLOSING';
 
@@ -12,6 +17,9 @@ export interface SessionProgressState {
   isOverTarget: boolean;
 }
 
+// Kept as a static constant so callers that reference it directly continue to
+// compile without a network/KMP call. The KMP implementation must agree with
+// these values — they are part of the public API contract.
 export const SESSION_EXCHANGE_TARGETS: Record<AgnesEngagementMode, number> = {
   impromptu: 7,
   casual: 14,
@@ -19,53 +27,26 @@ export const SESSION_EXCHANGE_TARGETS: Record<AgnesEngagementMode, number> = {
   deep: 24,
 };
 
+// ─── Bridge functions ─────────────────────────────────────────────────────────
+
 export function computeSessionProgress(
   exchangeCount: number,
   sessionStartedAt: number,
   mode: AgnesEngagementMode,
 ): SessionProgressState {
-  const target = SESSION_EXCHANGE_TARGETS[mode];
-  const progressFraction = Math.min(1, exchangeCount / target);
-  const isInFinalThird = progressFraction >= 2 / 3;
-  const isOverTarget = exchangeCount >= target;
-
-  let suggestedPhase: AgnesSessionPhase;
-  if (progressFraction < 0.25) suggestedPhase = 'OPENING';
-  else if (progressFraction < 0.65) suggestedPhase = 'DEEPENING';
-  else if (progressFraction < 0.85) suggestedPhase = 'INTEGRATION';
-  else suggestedPhase = 'CLOSING';
-
-  return {
-    exchangeCount,
-    elapsedMs: Date.now() - sessionStartedAt,
-    targetExchanges: target,
-    progressFraction,
-    suggestedPhase,
-    isInFinalThird,
-    isOverTarget,
-  };
+  return JSON.parse(
+    _service.computeSessionProgressJson(exchangeCount, sessionStartedAt, mode),
+  ) as SessionProgressState;
 }
 
 export function buildSessionProgressBlock(
   progress: SessionProgressState,
   mode: AgnesEngagementMode,
 ): string | null {
-  if (progress.exchangeCount === 0) return null;
+  const result = _service.buildSessionProgressBlock(JSON.stringify(progress), mode);
+  return result === '' || result === 'null' ? null : result;
+}
 
-  const { exchangeCount, targetExchanges, suggestedPhase, isInFinalThird, isOverTarget } = progress;
-  const remaining = Math.max(0, targetExchanges - exchangeCount);
-
-  const urgencyLine = isOverTarget
-    ? `The session has run past its natural length. Move decisively toward CLOSING if not already there. Do not open new threads.`
-    : isInFinalThird
-    ? `The session is in its final third (~${remaining} exchanges remain before the natural close). Begin moving toward INTEGRATION or CLOSING — do not open new threads. Resource activation and synthesis are now the priority.`
-    : null;
-
-  return [
-    `SESSION PROGRESS:`,
-    `Mode: ${mode} | Exchanges: ${exchangeCount} of ~${targetExchanges} | Phase guidance: ${suggestedPhase}`,
-    urgencyLine,
-    `Clinical arc reminder: OPENING (ground, orient) → DEEPENING (follow thread, titrate) → INTEGRATION (meaning-making, summary) → CLOSING (resource activation, continuity planning, safe exit).`,
-    `Your Phase field in <thought> should reflect where you actually are. Clinical judgment takes precedence — but be aware of where the session is heading.`,
-  ].filter(Boolean).join('\n');
+export function getSessionExchangeTarget(mode: AgnesEngagementMode): number {
+  return _service.getSessionExchangeTarget(mode) as number;
 }

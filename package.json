@@ -8,7 +8,7 @@
     "deploy": "npm run build && firebase deploy",
     "preview": "vite preview",
     "lint": "eslint",
-    "test": "vitest run",
+    "test": "NODE_PATH=./node_modules vitest run",
     "validate:flows": "node scripts/validate-flow-registry.mjs",
     "migrate": "tsx scripts/migrate-data.ts",
     "install-doc-hooks": "bash scripts/install-doc-hooks.sh"
@@ -17,6 +17,8 @@
     "@emailjs/browser": "^4.4.1",
     "@google/generative-ai": "^0.24.1",
     "@hello-pangea/dnd": "^18.0.1",
+    "@js-joda/core": "^6.0.0",
+    "@js-joda/timezone": "^2.25.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
@@ -39,9 +41,11 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "colord": "^2.9.3",
+    "cortex-logic": "file:../cortex-logic",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^12.7.0",
+    "format-util": "^1.0.5",
     "framer-motion": "^12.23.26",
     "gpt-tokenizer": "^3.4.0",
     "lucide-react": "^0.562.0",
@@ -62,6 +66,7 @@
     "tesseract.js": "^6.0.0",
     "three": "^0.183.2",
     "three-stdlib": "^2.36.1",
+    "ws": "^8.20.0",
     "zustand": "^5.0.9"
   },
   "devDependencies": {

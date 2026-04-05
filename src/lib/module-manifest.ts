@@ -74,8 +74,8 @@ export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
   nexus: {
     id: 'nexus',
     route: '/nexus',
-    title: 'Nexus',
-    alias: 'Nexus',
+    title: 'Nyx',
+    alias: 'Nyx',
     description: 'System Orchestrator',
     colorHex: '#8B5CF6',
     themeColor: 'cyan',

@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
@@ -11,7 +11,7 @@ import type { DocumentUploadRequest } from '@/lib/services/document-upload-messa
 import { SomaDashboard } from './components/SomaDashboard';
 import type { VitalReading as UIVitalReading, PhysicalAssessment as UIPhysicalAssessment } from './components/SomaDashboard';
 import type { PhysicalAssessment as StoredPhysicalAssessment } from '@/lib/types';
-import type { MessageContent } from '@/llm-engine/types';
+import type { MessageContent } from '@/cortex-bridge/types';
 import { ActionHub } from '@/lib/actions/action-hub';
 import type { SpineEventType } from '@/lib/types';
 import {
@@ -91,7 +91,14 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
   const ai = useModuleAI({
     moduleId: 'soma',
     systemPrompt,
-    encryptionKey
+    encryptionKey,
+    moduleContext: {
+      medical_profile: {
+        knownConditions: profile?.knownConditions,
+        readinessScore: profile?.readinessScore,
+        biomarkers: profile?.biomarkers,
+      },
+    },
   });
 
   const handleAnalyzeDocument = useCallback(async (content: MessageContent): Promise<string> => {

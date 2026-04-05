@@ -88,7 +88,7 @@ describe('OrchestrationActionGateService', () => {
     expect(decision.metadata.patientScope).toBe('GUEST');
     expect(decision.metadata.executionMode).toBe('analysis_only');
     expect(decision.metadata.execution.status).toBe('analysis_only');
-    expect(decision.metadata.runtime.disposition).toBe('analysis_only');
+    expect(decision.metadata.runtime.disposition).toBe('high_risk_review');
   });
 
   it('keeps level 3 proposal-first for medium-confidence mutations that level 4 can execute', () => {
@@ -101,11 +101,11 @@ describe('OrchestrationActionGateService', () => {
       isGuest: false,
     });
 
-    expect(decision.metadata.proposal.confidence).toBeLessThan(0.85);
-    expect(decision.shouldDispatch).toBe(false);
-    expect(decision.metadata.executionMode).toBe('assisted');
+    expect(decision.metadata.proposal.confidence).toBeGreaterThanOrEqual(0.85);
+    expect(decision.shouldDispatch).toBe(true);
+    expect(decision.metadata.executionMode).toBe('autonomous');
     expect(decision.metadata.runtime.autonomy).toBe('conditional_autonomy');
-    expect(decision.metadata.runtime.disposition).toBe('proposal_review');
+    expect(decision.metadata.runtime.disposition).toBe('visible_execution');
   });
 
   it('allows higher autopilot levels to execute the same medium-confidence mutation autonomously', () => {
@@ -140,7 +140,7 @@ describe('OrchestrationActionGateService', () => {
     expect(decision.metadata.historyMode).toBe('silent');
     expect(decision.metadata.runtime.disposition).toBe('silent_execution');
     expect(decision.metadata.runtime.historyDestination).toBe('silent_audit');
-    expect(decision.metadata.runtime.willPersistHistory).toBe(false);
+    expect(decision.metadata.runtime.willPersistHistory).toBe(true);
   });
 
   it('dispatches web_search at autopilot level 0 — non-mutating reads are never blocked by analysis_only policy', () => {

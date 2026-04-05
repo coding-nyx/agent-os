@@ -57,7 +57,7 @@ function getStateIndicator(props: Pick<
   if (props.planningSuggestion?.state === 'draft') {
     const targetLabel = props.planningSuggestion.targetModuleId
       ? MODULE_MANIFEST[props.planningSuggestion.targetModuleId]?.alias ?? props.planningSuggestion.targetModuleId
-      : 'Nexus';
+      : 'Nyx';
     const stepLabel = props.planningSuggestion.nodeCount && props.planningSuggestion.nodeCount > 1
       ? `${props.planningSuggestion.nodeCount} steps`
       : 'prompt ready';

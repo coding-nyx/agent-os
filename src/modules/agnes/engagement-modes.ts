@@ -1,4 +1,4 @@
-import type { Message, MessageContent } from '@/llm-engine/types';
+import type { Message, MessageContent } from '@/cortex-bridge/types';
 
 export type AgnesEngagementMode = 'casual' | 'deep' | 'impromptu' | 'somatic';
 export type AgnesPersistentEngagementMode = Exclude<AgnesEngagementMode, 'impromptu'>;

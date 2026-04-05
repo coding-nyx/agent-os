@@ -16,6 +16,7 @@ import { ScoutQueryService } from './scout-query-service';
 import { generateJSONWithAgent } from '@/lib/ai-adapters/json-generation-agent';
 import { SourceEntry } from '../types';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
 
 let registered = false;
 
@@ -398,8 +399,7 @@ export function registerScoutActions() {
           .map((r, i) => `Source ${i + 1} [${new URL(r.url).hostname}]: ${r.content?.slice(0, 200) ?? r.title}`)
           .join('\n');
 
-        const openrouterKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('VITE_OPENROUTER_API_KEY') : null)
-          || (import.meta.env.VITE_OPENROUTER_API_KEY as string);
+        const openrouterKey = resolveOpenRouterKey();
 
         const verdict = await generateJSONWithAgent<{ verdict: 'verified' | 'contested' | 'pending'; confidence: number; reason: string }>({
           prompt: `Claim to verify: "${targetClaim}"\n\nWeb evidence:\n${evidence || 'No evidence found.'}\n\nDoes the web evidence support, contradict, or is it insufficient to verify the claim?\nRespond with: {"verdict":"verified"|"contested"|"pending","confidence":0.0-1.0,"reason":"..."}`,
@@ -946,8 +946,7 @@ export function registerScoutActions() {
 
       const nodes = await queryKnowledgeNodes(topic, { userId: userId ?? null, encryptionKey }, { limit: 10, threshold: 0.45 });
 
-      const openrouterKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('VITE_OPENROUTER_API_KEY') : null)
-        || (import.meta.env.VITE_OPENROUTER_API_KEY as string);
+      const openrouterKey = resolveOpenRouterKey();
 
       const analysis = await generateJSONWithAgent({
         prompt: `Research topic: "${topic}"

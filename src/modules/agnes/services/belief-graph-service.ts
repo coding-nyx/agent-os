@@ -25,6 +25,14 @@ export interface BeliefNode {
   label: string;
   valence: 'positive' | 'neutral' | 'negative';
   intensity: number;
+  /** KMP-parity: belief classification. */
+  type?: 'WOUND' | 'STRENGTH' | 'ANCHOR' | 'TRIGGER' | 'GROWTH';
+  /** KMP-parity: importance weight (0.0–1.0). Higher = more salient. */
+  gravity?: number;
+  /** KMP-parity: Unix ms timestamp of last activation. */
+  lastTriggeredAt?: number | null;
+  /** KMP-parity: half-life decay window in days (default 30). */
+  halfLifeDays?: number;
 }
 
 export interface BeliefEdge {
@@ -33,9 +41,21 @@ export interface BeliefEdge {
   relation: string;
 }
 
+/** KMP-parity: weighted directed link between two belief nodes. */
+export interface NeuralLink {
+  sourceId: string;
+  targetId: string;
+  /** Positive = healing/reinforcing; negative = triggering. */
+  weight: number;
+  /** The "why" behind this connection. */
+  context: string;
+}
+
 export interface BeliefGraph {
   nodes: BeliefNode[];
   edges: BeliefEdge[];
+  /** KMP-parity: weighted directed healing/triggering links between nodes. */
+  neuralLinks?: NeuralLink[];
   summary: string;
   createdAt: string;
   updatedAt: string;

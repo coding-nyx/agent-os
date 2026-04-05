@@ -1,15 +1,12 @@
 import { ActionHub } from './shared';
 import { coreHandlers } from './core-actions';
 import { biomarkerHandlers } from './biomarker-actions';
-import { sleepHandlers } from './sleep-actions';
 import { cycleHandlers } from './cycle-actions';
 import { workoutHandlers } from './workout-actions';
-import { bodyHandlers } from './body-actions';
 import { fieldHandlers } from './field-actions';
 import { recoveryHandlers } from './recovery-actions';
 import { proposalHandlers } from './proposal-actions';
 import { injuryHandlers } from './injury-actions';
-import { nutritionHandlers } from './nutrition-actions';
 import { scheduleHandlers } from './schedule-actions';
 import { goalHandlers } from './goal-actions';
 
@@ -30,15 +27,12 @@ export function registerTitanActions() {
   ActionHub.registerMultiple('titan', {
     ...coreHandlers,
     ...biomarkerHandlers,
-    ...sleepHandlers,
     ...cycleHandlers,
     ...workoutHandlers,
-    ...bodyHandlers,
     ...fieldHandlers,
     ...recoveryHandlers,
     ...proposalHandlers,
     ...injuryHandlers,
-    ...nutritionHandlers,
     ...goalHandlers,
     ...scheduleHandlers,
   });

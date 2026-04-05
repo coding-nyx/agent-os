@@ -7,7 +7,7 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 const COLLECTION = 'users';
 
 const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
-  orchestratorAlias: 'Nexus',
+  orchestratorAlias: 'Nyx',
   moduleAliases: {
     agnes: 'Agnes',
     titan: 'Titan',
@@ -78,6 +78,43 @@ const normalizeOrchestrationPreferences = (
   };
 };
 
+/**
+ * One-time migration: rename orchestratorAlias from "Nexus" to "Nyx".
+ * Runs on read and persists the change asynchronously so subsequent reads
+ * skip the migration. Idempotent — only fires when the stored value is
+ * exactly "Nexus".
+ */
+const _aliasMigrationFired = new Set<string>();
+function migrateOrchestratorAlias(
+  uid: string,
+  profile: CoreUserProfile,
+  dataLayer: NexusDataLayer,
+): CoreUserProfile {
+  const currentAlias = profile.agentPersonalityProvision?.orchestratorAlias;
+  if (currentAlias !== 'Nexus') return profile;
+  if (_aliasMigrationFired.has(uid)) return profile;
+  _aliasMigrationFired.add(uid);
+
+  // Fire-and-forget write to persist the rename.
+  dataLayer
+    .updateDocument(COLLECTION, uid, {
+      'agentPersonalityProvision.orchestratorAlias': 'Nyx',
+      updatedAt: new Date().toISOString(),
+    } as any)
+    .catch((err) => {
+      console.warn('[CoreProfileService] orchestratorAlias migration failed, will retry on next load:', err);
+      _aliasMigrationFired.delete(uid);
+    });
+
+  return {
+    ...profile,
+    agentPersonalityProvision: {
+      ...profile.agentPersonalityProvision,
+      orchestratorAlias: 'Nyx',
+    },
+  };
+}
+
 export const CoreProfileService = {
   async getProfile(uid: string, dataLayer: NexusDataLayer = getNexusDataLayer()): Promise<CoreUserProfile | null> {
     if (!uid) return null;
@@ -85,10 +122,11 @@ export const CoreProfileService = {
     if (!record) return null;
     const { id: _discard, ...rest } = record;
     const normalized = rest as CoreUserProfile;
+    const migrated = migrateOrchestratorAlias(uid, normalized, dataLayer);
     return {
-      ...normalized,
-      securityPreferences: normalizeSecurityPreferences(normalized.securityPreferences),
-      orchestrationPreferences: normalizeOrchestrationPreferences(normalized.orchestrationPreferences),
+      ...migrated,
+      securityPreferences: normalizeSecurityPreferences(migrated.securityPreferences),
+      orchestrationPreferences: normalizeOrchestrationPreferences(migrated.orchestrationPreferences),
     };
   },
 
@@ -105,10 +143,11 @@ export const CoreProfileService = {
       }
       const { id: _discard, ...rest } = record;
       const normalized = rest as CoreUserProfile;
+      const migrated = migrateOrchestratorAlias(uid, normalized, dataLayer);
       onUpdate({
-        ...normalized,
-        securityPreferences: normalizeSecurityPreferences(normalized.securityPreferences),
-        orchestrationPreferences: normalizeOrchestrationPreferences(normalized.orchestrationPreferences),
+        ...migrated,
+        securityPreferences: normalizeSecurityPreferences(migrated.securityPreferences),
+        orchestrationPreferences: normalizeOrchestrationPreferences(migrated.orchestrationPreferences),
       });
     });
   },

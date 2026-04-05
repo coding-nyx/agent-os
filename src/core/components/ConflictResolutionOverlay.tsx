@@ -36,11 +36,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalSoulStore } from '@/lib/global-soul-context';
-import {
-  NexusSynthesisService,
-  type ConflictResult,
-  type ConflictSeverity,
-} from '@/lib/services/nexus-synthesis-service';
+import { NexusSynthesisService } from '@/cortex-bridge/nexus-synthesis-bridge';
+import type { ConflictResult, ConflictSeverity } from '@/cortex-bridge/nexus-synthesis-bridge';
 import type { ModuleId } from '@/lib/module-manifest';
 
 // ---------------------------------------------------------------------------

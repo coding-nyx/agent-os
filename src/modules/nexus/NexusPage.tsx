@@ -94,7 +94,7 @@ export default function NexusPage() {
 
   if (isGuest) {
     return (
-      <ModuleLayout title="Nexus" themeColor="cyan" moduleId="nexus" hideBack>
+      <ModuleLayout title="Nyx" themeColor="cyan" moduleId="nexus" hideBack>
         <GuestModePanel
           moduleId="nexus"
           description="Guest links cannot initialize your core profile. Authenticate to unlock full orchestration."
@@ -132,10 +132,10 @@ export default function NexusPage() {
 
   if (pageState === 'DASHBOARD') {
     return (
-      <ModuleLayout title="Nexus" themeColor="cyan" moduleId="nexus" hideBack>
+      <ModuleLayout title="Nyx" themeColor="cyan" moduleId="nexus" hideBack>
         <NexusDashboard
-          ai={{ messages, isProcessing, streamingText, error, quota, handleSendMessage, clearSession }}
-          agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nexus'}
+          ai={{ messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage, clearSession }}
+          agentName={profile?.agentPersonalityProvision?.orchestratorAlias || 'Nyx'}
           surfaceMode={surfaceMode}
         />
         <AnimatePresence>
@@ -148,7 +148,7 @@ export default function NexusPage() {
   }
 
   return (
-    <ModuleLayout title="Nexus" themeColor="cyan" moduleId="nexus" hideBack>
+    <ModuleLayout title="Nyx" themeColor="cyan" moduleId="nexus" hideBack>
       <NexusOnboarding profile={profile} isSubmitting={isSubmitting} onComplete={handleComplete} />
       {onboardingError && (
         <div

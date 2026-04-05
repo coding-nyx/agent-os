@@ -1,254 +1,139 @@
+import { AgentRegistryJs } from '@cortex-logic';
 import type { AgentCapability, AgentProviderDescriptor, ActionPayloadAdapter } from './agent-capability';
-import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
+import type { ModuleId } from '@/lib/module-manifest';
 
-const atlasScheduleItemAdapter: ActionPayloadAdapter = (payload) => {
-  const date = typeof payload.date === 'string' ? payload.date : undefined;
-  const time = typeof payload.time === 'string' ? payload.time : undefined;
-  const scheduledAt =
-    date && time
-      ? `${date}T${time}:00`
-      : date
-        ? `${date}T09:00:00`
-        : time
-          ? new Date(`1970-01-01T${time}:00`).toISOString()
-          : new Date().toISOString();
+// Re-export ActionPayloadAdapter so callers that import it from this module
+// continue to compile without change.
+export type { ActionPayloadAdapter };
 
-  return {
-    title: payload.title,
-    scheduledAt,
-    duration: typeof payload.duration === 'number' ? payload.duration : 60,
-    category: typeof payload.category === 'string' ? payload.category : 'other',
-    sourceSegment: payload.sourceSegment,
-  };
-};
+const _service = new AgentRegistryJs();
+const _providerAdapterRegistry = new Map<string, AgentProviderDescriptor['actionPayloadAdapters']>();
 
-const atlasRecoveryDayAdapter: ActionPayloadAdapter = (payload) => {
-  const date = typeof payload.date === 'string' ? payload.date : null;
-  const time = typeof payload.time === 'string' ? payload.time : null;
-  const flattenedUntil =
-    date && time
-      ? `${date}T${time}:00`
-      : date
-        ? `${date}T23:59:59`
-        : new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
-
-  return {
-    flattenedUntil,
-    activeLoad: 2,
-    sourceSegment: payload.sourceSegment,
-  };
-};
-
-const DEFAULT_AGENT_PROVIDERS: AgentProviderDescriptor[] = [
-  {
-    id: 'nexus-orchestrator',
-    moduleId: 'nexus',
-    title: MODULE_MANIFEST.nexus.title,
-    capabilities: ['general-orchestration', 'reminder-management'],
-    precedence: 0,
-    latencyTier: 'fast',
-  },
-  {
-    id: 'atlas-planner',
-    moduleId: 'atlas',
-    title: MODULE_MANIFEST.atlas.title,
-    capabilities: ['daily-planning', 'schedule-mutation', 'recovery-planning', 'reminder-management'],
-    actionAliases: {
-      schedule_item: 'schedule_block',
-      recovery_day: 'flatten_schedule',
-    },
-    actionPayloadAdapters: {
-      schedule_item: atlasScheduleItemAdapter,
-      recovery_day: atlasRecoveryDayAdapter,
-    },
-    precedence: 10,
-    latencyTier: 'balanced',
-  },
-  {
-    id: 'agnes-guide',
-    moduleId: 'agnes',
-    title: MODULE_MANIFEST.agnes.title,
-    capabilities: ['emotional-support', 'recovery-planning'],
-    precedence: 20,
-    latencyTier: 'balanced',
-  },
-  {
-    id: 'titan-coach',
-    moduleId: 'titan',
-    title: MODULE_MANIFEST.titan.title,
-    capabilities: ['fitness-planning', 'medical-review'],
-    precedence: 30,
-    latencyTier: 'balanced',
-  },
-  {
-    id: 'soma-review',
-    moduleId: 'soma',
-    title: MODULE_MANIFEST.soma.title,
-    capabilities: ['recovery-planning'],
-    precedence: 40,
-    latencyTier: 'balanced',
-  },
-  {
-    id: 'ledger-planner',
-    moduleId: 'ledger',
-    title: MODULE_MANIFEST.ledger.title,
-    capabilities: ['financial-planning'],
-    precedence: 50,
-    latencyTier: 'balanced',
-  },
-  {
-    id: 'scout-research',
-    moduleId: 'scout',
-    title: MODULE_MANIFEST.scout.title,
-    capabilities: ['research', 'research-enrichment'],
-    precedence: 60,
-    latencyTier: 'heavy',
-  },
-  {
-    id: 'forge-builder',
-    moduleId: 'forge',
-    title: MODULE_MANIFEST.forge.title,
-    capabilities: ['technical-work'],
-    precedence: 70,
-    latencyTier: 'heavy',
-  },
-];
-
-function uniqueCapabilities(capabilities: AgentCapability[]): AgentCapability[] {
-  return Array.from(new Set(capabilities));
-}
-
-function uniqueModuleIds(moduleIds: Array<ModuleId | 'nexus'>): Array<ModuleId | 'nexus'> {
-  return Array.from(new Set(moduleIds));
-}
-
-function sortProviders(
-  providers: AgentProviderDescriptor[],
-  preferredModuleIds?: Array<ModuleId | 'nexus'>,
-): AgentProviderDescriptor[] {
-  const preferenceIndex = new Map(
-    (preferredModuleIds ?? []).map((moduleId, index) => [moduleId, index]),
-  );
-
-  return [...providers].sort((left, right) => {
-    const leftPreferred = preferenceIndex.get(left.moduleId);
-    const rightPreferred = preferenceIndex.get(right.moduleId);
-    if (leftPreferred !== undefined || rightPreferred !== undefined) {
-      if (leftPreferred === undefined) return 1;
-      if (rightPreferred === undefined) return -1;
-      if (leftPreferred !== rightPreferred) return leftPreferred - rightPreferred;
-    }
-    return left.precedence - right.precedence;
-  });
-}
-
-class AgentRegistry {
-  private providers = new Map<string, AgentProviderDescriptor>();
-  private bootstrapped = false;
-
-  private ensureDefaults(): void {
-    if (this.bootstrapped) return;
-    this.bootstrapped = true;
-    for (const provider of DEFAULT_AGENT_PROVIDERS) {
-      this.providers.set(provider.id, provider);
-    }
-  }
-
+export const AgentRegistryService = {
   listProviders(): AgentProviderDescriptor[] {
-    this.ensureDefaults();
-    return Array.from(this.providers.values()).sort((left, right) => left.precedence - right.precedence);
-  }
+    return JSON.parse(_service.listProviders()) as AgentProviderDescriptor[];
+  },
 
   getProviderByModule(moduleId: ModuleId | 'nexus'): AgentProviderDescriptor | null {
-    this.ensureDefaults();
-    return this.listProviders().find((provider) => provider.moduleId === moduleId) ?? null;
-  }
+    const result = _service.getProviderByModule(moduleId);
+    return result === '' || result === 'null' ? null : (JSON.parse(result) as AgentProviderDescriptor);
+  },
 
   registerProvider(provider: AgentProviderDescriptor): void {
-    this.ensureDefaults();
-    const existing = this.providers.get(provider.id);
-    this.providers.set(provider.id, existing
-        ? {
-            ...existing,
-            ...provider,
-            capabilities: uniqueCapabilities([...existing.capabilities, ...provider.capabilities]),
-            actionAliases: {
-              ...existing.actionAliases,
-              ...provider.actionAliases,
-            },
-            actionPayloadAdapters: {
-              ...existing.actionPayloadAdapters,
-              ...provider.actionPayloadAdapters,
-            },
-          }
-        : {
-            ...provider,
-            capabilities: uniqueCapabilities(provider.capabilities),
-        });
-  }
+    // actionPayloadAdapters are functions and cannot be serialised across the
+    // KMP boundary. Strip them before delegating; the KMP layer manages its own
+    // adapter registry for the fields it controls.
+    const { actionPayloadAdapters: _dropped, ...serialisable } = provider;
+    _service.registerProvider(JSON.stringify(serialisable));
+    _providerAdapterRegistry.set(provider.moduleId, provider.actionPayloadAdapters);
+  },
 
   getCapabilitiesForModule(moduleId: ModuleId | 'nexus'): AgentCapability[] {
-    this.ensureDefaults();
-    return uniqueCapabilities(
-      this.listProviders()
-        .filter((provider) => provider.moduleId === moduleId)
-        .flatMap((provider) => provider.capabilities),
-    );
-  }
+    return Array.from(_service.getCapabilitiesForModule(moduleId)) as AgentCapability[];
+  },
 
   getProvidersForCapability(
     capability: AgentCapability,
     options?: { preferredModuleIds?: Array<ModuleId | 'nexus'> },
   ): AgentProviderDescriptor[] {
-    this.ensureDefaults();
-    const matches = this.listProviders().filter((provider) => provider.capabilities.includes(capability));
-    return sortProviders(matches, options?.preferredModuleIds);
-  }
+    const preferredJson = options?.preferredModuleIds
+      ? JSON.stringify(options.preferredModuleIds)
+      : null;
+    return JSON.parse(
+      _service.getProvidersForCapability(capability, preferredJson),
+    ) as AgentProviderDescriptor[];
+  },
 
   resolveProvidersForCapabilities(
     capabilities: AgentCapability[],
     options?: { preferredModuleIds?: Array<ModuleId | 'nexus'> },
   ): AgentProviderDescriptor[] {
-    this.ensureDefaults();
-    const moduleIds = uniqueModuleIds(
-      capabilities.flatMap((capability) =>
-        this.getProvidersForCapability(capability, options).map((provider) => provider.moduleId),
-      ),
-    );
-    return moduleIds
-      .map((moduleId) => this.getProviderByModule(moduleId))
-      .filter((provider): provider is AgentProviderDescriptor => provider !== null)
-      .sort((left, right) => {
-        const sorted = sortProviders([left, right], options?.preferredModuleIds);
-        return sorted[0]?.id === left.id ? -1 : 1;
-      });
-  }
+    const preferredJson = options?.preferredModuleIds
+      ? JSON.stringify(options.preferredModuleIds)
+      : null;
+    return JSON.parse(
+      _service.resolveProvidersForCapabilities(JSON.stringify(capabilities), preferredJson),
+    ) as AgentProviderDescriptor[];
+  },
 
   resolvePrimaryProvider(
     capabilities: AgentCapability[],
     options?: { preferredModuleIds?: Array<ModuleId | 'nexus'> },
   ): AgentProviderDescriptor | null {
-    return this.resolveProvidersForCapabilities(capabilities, options)[0] ?? null;
-  }
+    const preferredJson = options?.preferredModuleIds
+      ? JSON.stringify(options.preferredModuleIds)
+      : null;
+    const result = _service.resolvePrimaryProvider(JSON.stringify(capabilities), preferredJson);
+    return result === '' || result === 'null' ? null : (JSON.parse(result) as AgentProviderDescriptor);
+  },
 
+  resolveActionAlias(moduleId: ModuleId | 'nexus', actionType: string): string {
+    return _service.resolveActionAlias(moduleId, actionType) as string;
+  },
+
+  /**
+   * Resolves the aliased action type AND runs the payload through any registered
+   * adapter for the provider.
+   *
+   * actionPayloadAdapters are TS functions and cannot cross the KMP boundary.
+   * This method applies them on the TS side, after obtaining the alias from KMP.
+   */
   resolveActionForProvider(
     moduleId: ModuleId | 'nexus',
     actionType: string,
     payload: Record<string, unknown>,
   ): { actionType: string; payload: Record<string, unknown> } {
+    const alias = this.resolveActionAlias(moduleId, actionType);
     const provider = this.getProviderByModule(moduleId);
-    const alias = provider?.actionAliases?.[actionType] ?? actionType;
-    const adapter = provider?.actionPayloadAdapters?.[actionType];
+    const adapters = provider?.actionPayloadAdapters ?? _providerAdapterRegistry.get(moduleId);
+    const adapter = adapters?.[actionType];
+    if (!adapter && moduleId === 'atlas' && actionType === 'schedule_item') {
+      const title = typeof payload.title === 'string' ? payload.title : '';
+      const date = typeof payload.date === 'string' ? payload.date : '';
+      const time = typeof payload.time === 'string' ? payload.time : '09:00';
+      const scheduledAt = date ? `${date}T${time}:00` : undefined;
+      return {
+        actionType: alias,
+        payload: {
+          title,
+          ...(scheduledAt ? { scheduledAt } : {}),
+          duration: typeof payload.duration === 'number' ? payload.duration : 60,
+          category: typeof payload.category === 'string' ? payload.category : 'other',
+          sourceSegment: payload.sourceSegment,
+        },
+      };
+    }
+    if (!adapter && moduleId === 'atlas' && actionType === 'recovery_day') {
+      const date = typeof payload.date === 'string' ? payload.date : null;
+      const time = typeof payload.time === 'string' ? payload.time : null;
+      const flattenedUntil =
+        date && time
+          ? `${date}T${time}:00`
+          : date
+            ? `${date}T23:59:59`
+            : new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+      return {
+        actionType: alias,
+        payload: {
+          flattenedUntil,
+          activeLoad: 2,
+          sourceSegment: payload.sourceSegment,
+        },
+      };
+    }
     return {
       actionType: alias,
       payload: adapter ? adapter(payload) : payload,
     };
-  }
+  },
 
   resetForTests(): void {
-    this.providers.clear();
-    this.bootstrapped = false;
-  }
-}
-
-export const AgentRegistryService = new AgentRegistry();
+    _providerAdapterRegistry.clear();
+    // Exposed for test harnesses. KMP service must support this method;
+    // if it does not yet, this is a no-op placeholder that keeps the contract.
+    const maybeService = _service as unknown as { resetForTests?: () => void };
+    if (typeof maybeService.resetForTests === 'function') {
+      maybeService.resetForTests();
+    }
+  },
+};

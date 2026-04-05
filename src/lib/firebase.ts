@@ -25,18 +25,23 @@ export function getFirebase() {
         console.warn("Firebase API Key is missing. Firebase features will be disabled.");
         return { app: null, db: null, auth: null, storage: null };
       }
+      console.log("[Firebase] Initializing with projectId:", firebaseConfig.projectId);
       const isFirstInit = !getApps().length;
       app = isFirstInit ? initializeApp(firebaseConfig) : getApp();
+      console.log("[Firebase] App initialized:", app?.name);
       // experimentalAutoDetectLongPolling prevents 400 errors on the Write/channel
       // by automatically falling back from WebSockets to HTTP long-polling when needed.
       db = isFirstInit
-        ? initializeFirestore(app, { 
+        ? initializeFirestore(app, {
             experimentalAutoDetectLongPolling: true,
             ignoreUndefinedProperties: true
           })
         : getFirestore(app);
+      console.log("[Firebase] Firestore initialized:", !!db);
       auth = getAuth(app);
+      console.log("[Firebase] Auth initialized:", !!auth);
       storage = getStorage(app);
+      console.log("[Firebase] Storage initialized:", !!storage);
     } catch (e) {
       console.error("Firebase Initialization Error:", e);
       // Don't throw, just return nulls to allow app to run in mock mode

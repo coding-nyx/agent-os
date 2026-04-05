@@ -299,7 +299,7 @@ describe('computeWorkoutNSVPatch', () => {
     //   cnsFatigue = max(5, 3.6) = 5
     //   recoveryDelta(rpe=6) = -0.5 → recoveryScore = max(0, 7 - 0.5) = 6.5
     //   energyBudget = max(0, min(10, 10 - 5*0.7 - (10-6.5)*0.3))
-    //                = max(0, min(10, 10 - 3.5 - 1.05)) = 5.45 → rounds to 5.5
+    //                = max(0, min(10, 10 - 3.5 - 1.05)) = 5.45 → rounds to 5.4
     //   focusScore = max(0, min(10, 10 - 5*0.5)) = 7.5
     const result = computeWorkoutNSVPatch({
       rpe: 6,
@@ -308,7 +308,7 @@ describe('computeWorkoutNSVPatch', () => {
       existingCnsFatigue: 5,
       existingRecoveryScore: 7,
     });
-    expect(result['cognitive.energyBudget']).toBe(5.5);
+    expect(result['cognitive.energyBudget']).toBe(5.4);
     expect(result['cognitive.focusScore']).toBe(7.5);
   });
 

@@ -9,26 +9,18 @@
  *   and gracefully degrades to '' if the import fails (e.g., worker unavailable).
  * - LLM integration is injected as a plain callback so this service has zero dependency
  *   on any AI provider or React context.
- * - Regex-based field extraction runs when no sendMessage callback is provided.
+ * - Regex-based field extraction delegates to KMP's DocumentFieldExtractorJs.
  * - Image files return empty rawText with confidence 0.3; full OCR is out of scope.
  * - No `any` — all pdfjs item types are narrowed via Record<string, unknown> guards.
  */
 
-/**
- * Minimal JSON "sanitizer" for LLM outputs.
- *
- * Guardrails disallow direct imports from `@/llm-engine/sanitize`, so we keep
- * this service dependency-free and do best-effort cleanup locally.
- */
+import { DocumentFieldExtractorJs, LlmSanitizerJs } from '@cortex-logic';
+
+const _fieldExtractor = new DocumentFieldExtractorJs();
+const _sanitizer = new LlmSanitizerJs();
+
 function sanitizeJsonPayload(input: string): string {
-  return input
-    .trim()
-    // Strip common markdown code fences.
-    .replace(/```(?:json)?/g, '')
-    .replace(/```/g, '')
-    // Remove ASCII control chars that can break JSON parsing.
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x1F\x7F]/g, '');
+  return _sanitizer.sanitizeJsonPayload(input);
 }
 
 // ---------------------------------------------------------------------------
@@ -88,103 +80,19 @@ interface DocumentField {
 const LLM_TIMEOUT_MS = 8_000;
 const PAGE_SEPARATOR = '\n---\n';
 
-/** Domain-specific field hints injected into the LLM extraction prompt. */
-const DOMAIN_FIELD_HINTS: Record<DocumentDomain, string[]> = {
-  receipt: ['total', 'date', 'merchant', 'items[]', 'tax', 'currency'],
-  invoice: ['invoice_number', 'due_date', 'vendor', 'line_items[]', 'subtotal', 'tax', 'total'],
-  lab_report: ['test_name', 'result_value', 'reference_range', 'units', 'date', 'lab_name'],
-  general: ['title', 'date', 'author', 'key_points[]'],
-};
-
 // ---------------------------------------------------------------------------
-// Regex field extractors (primary path — no LLM required)
+// Regex field extractors — delegated to KMP's DocumentFieldExtractorJs
 // ---------------------------------------------------------------------------
-
-/** Shared ISO/US/EU date pattern. */
-const DATE_RE =
-  /(?:date|dated?|on)[:\s]*([0-9]{1,2}[/\-.][0-9]{1,2}[/\-.][0-9]{2,4})|([0-9]{4}-[0-9]{2}-[0-9]{2})/i;
-
-/** Monetary amount with optional symbol or code. */
-const MONEY_RE = /\$?([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.[0-9]{2})?)/;
-
-function first(re: RegExp, text: string, group = 1): string {
-  const m = re.exec(text);
-  if (!m) return '';
-  // Return first non-undefined capture group starting at `group`.
-  for (let i = group; i < m.length; i++) {
-    if (m[i] !== undefined && m[i].trim()) return m[i].trim();
-  }
-  return '';
-}
-
-function extractReceiptFields(text: string): Record<string, string> {
-  const totalRe = /(?:total|amount due|grand total|balance due|total amount)[:\s]*\$?\s*([0-9,]+\.[0-9]{2})/i;
-  const merchantRe = /^([A-Z][A-Za-z0-9 &'.,-]{2,59})$/m;
-  const itemsRe = /^([A-Za-z][A-Za-z0-9 &'. -]{1,39})\s{2,}\$?\s*([0-9]+\.[0-9]{2})$/gm;
-
-  const items: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = itemsRe.exec(text)) !== null) {
-    items.push(`${m[1].trim()}:${m[2].trim()}`);
-    if (items.length >= 10) break; // cap at 10 items
-  }
-
-  return {
-    total: first(totalRe, text),
-    date: first(DATE_RE, text),
-    merchant: first(merchantRe, text),
-    ...(items.length > 0 ? { items: items.join(', ') } : {}),
-  };
-}
-
-function extractInvoiceFields(text: string): Record<string, string> {
-  const invoiceNumRe = /invoice\s*(?:no\.?|number|#)[:\s]*([A-Za-z0-9-]+)/i;
-  const dueDateRe = /(?:due\s*date|payment\s*due)[:\s]*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i;
-  const vendorRe = /(?:from|vendor|billed\s*by|seller)[:\s]*([A-Za-z][A-Za-z0-9 .,-]{2,59})/i;
-  const amountRe = /(?:amount\s*due|total\s*due|balance\s*due|total)[:\s]*\$?\s*([0-9,]+\.[0-9]{2})/i;
-
-  return {
-    invoice_number: first(invoiceNumRe, text),
-    due_date: first(dueDateRe, text),
-    vendor: first(vendorRe, text),
-    amount: first(amountRe, text) || first(MONEY_RE, text),
-  };
-}
-
-function extractLabReportFields(text: string): Record<string, string> {
-  const testRe = /(?:test|examination|assay)[:\s]*([A-Za-z][A-Za-z0-9 -()]{2,59})/i;
-  const valueRe = /(?:result|value|level)[:\s]*([0-9]+(?:\.[0-9]+)?)\s*([A-Za-z/%µ]+)?/i;
-  const rangeRe = /(?:reference\s*range|normal\s*range|ref\.?\s*range)[:\s]*([0-9.,\s-–—]+(?:[A-Za-z/%µ]*))/i;
-
-  const valueMatch = valueRe.exec(text);
-
-  return {
-    test_name: first(testRe, text),
-    value: valueMatch ? (valueMatch[1] ?? '') : '',
-    unit: valueMatch ? (valueMatch[2] ?? '') : '',
-    reference_range: first(rangeRe, text),
-    date: first(DATE_RE, text),
-  };
-}
-
-function extractGeneralFields(text: string): Record<string, string> {
-  // Best-effort: first non-empty line as title, then date.
-  const firstLine = (text.split('\n').find((l) => l.trim().length > 3) ?? '').trim();
-  return {
-    title: firstLine.length > 100 ? firstLine.slice(0, 100) + '…' : firstLine,
-    date: first(DATE_RE, text),
-  };
-}
 
 function extractFieldsByRegex(
   text: string,
   domain: DocumentDomain,
 ): Record<string, string> {
   switch (domain) {
-    case 'receipt':    return extractReceiptFields(text);
-    case 'invoice':    return extractInvoiceFields(text);
-    case 'lab_report': return extractLabReportFields(text);
-    default:           return extractGeneralFields(text);
+    case 'receipt':    return JSON.parse(_fieldExtractor.extractReceiptFields(text)) as Record<string, string>;
+    case 'invoice':    return JSON.parse(_fieldExtractor.extractInvoiceFields(text)) as Record<string, string>;
+    case 'lab_report': return JSON.parse(_fieldExtractor.extractLabReportFields(text)) as Record<string, string>;
+    default:           return JSON.parse(_fieldExtractor.extractGeneralFields(text)) as Record<string, string>;
   }
 }
 
@@ -273,21 +181,7 @@ export async function extractTextFromImage(_file: File): Promise<string> {
 // ---------------------------------------------------------------------------
 
 function buildExtractionPrompt(rawText: string, hints: DocumentParseHints): string {
-  const fields = DOMAIN_FIELD_HINTS[hints.domain].join(', ');
-  const extras: string[] = [];
-  if (hints.currency) extras.push(`Currency: ${hints.currency}`);
-  if (hints.locale) extras.push(`Locale: ${hints.locale}`);
-  const extraLine = extras.length > 0 ? ` ${extras.join('. ')}.` : '';
-
-  return (
-    `You are a document field extractor. Extract structured data from the document below.\n` +
-    `Domain: ${hints.domain}.${extraLine}\n` +
-    `Focus on these fields: ${fields}.\n\n` +
-    `Respond with ONLY a valid JSON array — no prose, no markdown fences:\n` +
-    `[{"key":"field_name","value":"extracted_value","confidence":0.95}]\n\n` +
-    `Confidence is a number 0–1 reflecting how certain you are of the extracted value.\n\n` +
-    `---BEGIN DOCUMENT---\n${rawText}\n---END DOCUMENT---`
-  );
+  return _fieldExtractor.buildExtractionPrompt(hints.domain, rawText, hints.currency ?? null, hints.locale ?? null);
 }
 
 /**

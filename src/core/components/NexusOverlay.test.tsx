@@ -2,7 +2,8 @@ import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NexusOverlay } from './NexusOverlay';
-import { CommandIntelligenceService } from '@/lib/services/command-intelligence-service';
+import { CommandIntelligenceServiceJs } from '@cortex-logic';
+const _kmpParser = new CommandIntelligenceServiceJs();
 import { MasterThreadService } from '@/lib/services/master-thread-service';
 
 const mockNavigate = vi.fn();
@@ -62,7 +63,7 @@ vi.mock('@/lib/hooks/use-module-ai', () => ({
   useModuleAI: () => moduleAiMock,
 }));
 
-vi.mock('@/llm-engine/ai-context', () => ({
+vi.mock('@/cortex-bridge/ai-context', () => ({
   useAI: () => ({
     sendMessage: vi.fn(),
     analyzeImage: vi.fn(),
@@ -201,9 +202,8 @@ describe('NexusOverlay', () => {
   });
 
   it('reflects mention-derived participants in the overlay presence stack without forcing navigation', async () => {
-    moduleAiMock.lastParsedCommand = CommandIntelligenceService.parse(
-      'Agnes, I feel anxious about my relationship',
-      { sourceModuleId: 'nexus', now: new Date('2026-03-24T08:00:00.000Z'), timezone: 'UTC' },
+    moduleAiMock.lastParsedCommand = JSON.parse(
+      _kmpParser.parse('Agnes, I feel anxious about my relationship', 'nexus', '2026-03-24', 'UTC')
     );
 
     render(<NexusOverlay />);

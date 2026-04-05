@@ -1,7 +1,9 @@
 import { GuestQuota } from '../types';
+import { GuestQuotaServiceJs } from '@cortex-logic';
+
+const _quota = new GuestQuotaServiceJs();
 
 const STORAGE_KEY = 'nexus_guest_quota';
-const MAX_TURNS = 10;
 
 // Vitest/JSDOM test environment may provide a partial or proxy-mocked `localStorage`.
 // We polyfill by replacing the global `localStorage` object (not mutating it),
@@ -49,29 +51,18 @@ const MAX_TURNS = 10;
 export const GuestQuotaService = {
   getQuota(): GuestQuota {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
-    }
-    return {
-      totalTurnsUsed: 0,
-      maxTurnsAllowed: MAX_TURNS,
-      isHardLocked: false
-    };
+    if (saved) return JSON.parse(saved) as GuestQuota;
+    return JSON.parse(_quota.getDefault()) as GuestQuota;
   },
 
   incrementTurn(): GuestQuota {
-    const current = this.getQuota();
-    const next: GuestQuota = {
-      ...current,
-      totalTurnsUsed: current.totalTurnsUsed + 1,
-      isHardLocked: (current.totalTurnsUsed + 1) >= current.maxTurnsAllowed
-    };
-    
+    const current = localStorage.getItem(STORAGE_KEY) ?? _quota.getDefault();
+    const next = JSON.parse(_quota.computeNext(current)) as GuestQuota;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     return next;
   },
 
   reset(): void {
     localStorage.removeItem(STORAGE_KEY);
-  }
+  },
 };

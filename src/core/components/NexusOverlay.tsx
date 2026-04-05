@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useGlobalSoulActions } from '@/lib/global-soul-context';
 import { useVault } from '@/lib/vault-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { ORCHESTRATOR_PERSONA } from '@/modules/nexus/personas';
 import { CommandPalette } from '@/modules/nexus/components/CommandPalette';
 import { NexusChat } from '@/core/components/NexusChat';
@@ -417,10 +417,10 @@ function NexusOverlayContent() {
                     }),
                     isProcessing: ai.isProcessing || isNexusBusy,
                   }}
-                  agentName="Nexus"
-                  moduleId="nexus"
-                  themeColor="indigo"
-                  placeholder="Ask Nexus anything…"
+                   agentName="Nyx"
+                   moduleId="nexus"
+                   themeColor="indigo"
+                   placeholder="Ask Nyx anything…"
                   showInternalSignals={false}
                   processingLabel={isNexusBusy ? busyLabel : undefined}
                   onUploadDocuments={handleUploadDocuments}

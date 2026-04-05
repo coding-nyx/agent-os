@@ -3,6 +3,20 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
 
+function stripCortexSourceMaps(): Plugin {
+  const cortexDistMarker = `${path.sep}cortex-logic${path.sep}build${path.sep}dist${path.sep}js${path.sep}productionLibrary${path.sep}`
+  const sourceMapFooter = /\/\/# sourceMappingURL=.*$/gm
+
+  return {
+    name: 'strip-cortex-sourcemap-footers',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.includes(cortexDistMarker) || !id.endsWith('.js')) return null
+      return { code: code.replace(sourceMapFooter, ''), map: null }
+    },
+  }
+}
+
 /**
  * Injects VITE_FIREBASE_* env vars into the FCM service worker after build,
  * replacing __FIREBASE_*__ tokens. The service worker cannot use ES modules
@@ -43,11 +57,13 @@ function firebaseSwInject(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), firebaseSwInject()],
+  plugins: [react(), stripCortexSourceMaps(), firebaseSwInject()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
       'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react/dist/esm/lucide-react.js'),
+      '@cortex-logic': path.resolve(__dirname, './src/cortex-bridge/cortex-logic-runtime.ts'),
+      'ws': path.resolve(__dirname, './src/cortex-bridge/ws-browser-shim.ts'),
     },
   },
   optimizeDeps: {

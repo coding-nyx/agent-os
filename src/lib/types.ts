@@ -55,6 +55,10 @@ export interface CoreUserProfile {
   agentPersonalityProvision: AgentPersonalityProvision;
   securityPreferences: UserSecurityPreferences;
   orchestrationPreferences?: OrchestrationPreferences;
+  aiPreferences?: {
+    preferredModel?: string;
+    preferredProvider?: 'openrouter' | 'google' | 'grok';
+  };
   schemaVersion: number;
   createdAt: string;
   updatedAt: string;
@@ -96,6 +100,10 @@ export interface NeuralStateVector {
      * Updated by Titan log_cardio_session. High values signal cardiovascular stress.
      */
     aerobicLoad?: number | null;
+    /** Resting heart rate in bpm — written by Soma/Titan tracking. */
+    heartRate?: number | null;
+    /** Heart Rate Variability in ms — written by Soma/Titan HRV tracking. */
+    hrv?: number | null;
     /** Composite physical readiness score (0–100). Written by Soma compute_readiness action. */
     readinessScore?: number | null;
     /** Unix epoch timestamp of the last Soma/Titan session (ms). */

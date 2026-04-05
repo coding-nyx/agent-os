@@ -1,6 +1,6 @@
-# Nexus: Holistic AI Wellness Ecosystem
+# Nyx: Holistic AI Ecosystem
 
-**Nexus** (Artificial General Neural Ecosystem for Stability - AGNES) is a unified, multi-agent wellness platform featuring specialized AI agents (Agnes, Titan, Ledger, Atlas, Scout, Forge) with a futuristic, Wall-E and Eve-inspired aesthetic. It combines emotional support, physical optimization, cognitive planning, and financial stability into a single, cohesive "Global Soul," secured by client-side End-to-End Encryption (E2EE).
+**Nyx** (Artificial General Neural Ecosystem for Stability - AGNES) is a unified, multi-agent wellness platform featuring specialized AI agents (Agnes, Titan, Ledger, Atlas, Scout, Forge) with a futuristic, Wall-E and Eve-inspired aesthetic. It combines emotional support, physical optimization, cognitive planning, and financial stability into a single, cohesive "Global Soul," secured by client-side End-to-End Encryption (E2EE).
 
 For a detailed breakdown of the system architecture, product definition, and module functionalities, please see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

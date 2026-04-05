@@ -1,29 +1,6 @@
 
 import { Message } from '../types';
 
-export enum ModelTier {
-  S_REASONING = 'S_REASONING',
-  A_STANDARD = 'A_STANDARD',
-  B_ECONOMY = 'B_ECONOMY',
-  C_EMERGENCY = 'C_EMERGENCY'
-}
-
-export interface ModelMetadata {
-  id: string;
-  name: string;
-  provider: string;
-  context_length: number;
-  pricing: {
-    prompt: string;
-    completion: string;
-  };
-  tier: ModelTier;
-  isFree: boolean;
-  isReasoning: boolean;
-  supportsVision?: boolean;
-  supportsToolCalling?: boolean;
-}
-
 export interface CognitiveContext {
   systemPrompt: string;
   facts: string[];
@@ -38,22 +15,23 @@ export interface CognitiveContext {
   };
 }
 
-export interface OrchestratorState {
-  activeModelId: string;
-  provider: 'openrouter' | 'grok' | 'google' | 'mock';
-}
-
 export interface EngineConfig {
+  /** @deprecated Use credentialStore instead. Kept for backwards compatibility. */
   openrouterKey?: string;
+  /** @deprecated Use credentialStore instead. */
   grokKey?: string;
+  /** @deprecated Use credentialStore instead. */
   googleKey?: string;
   preferredModelId?: string;
   preferredProvider?: 'openrouter' | 'grok' | 'google';
   isMockMode?: boolean;
   freeModelsOnly?: boolean;
+  /** When provided, keys are resolved from the credential store instead of config fields. */
+  credentialStore?: import('@cortex-logic').CredentialStoreJs;
 }
 
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
+import type { ExtractedMutation } from '../sanitize';
 
 export interface ParsedAction {
   type: string;
@@ -69,6 +47,7 @@ export interface StructuredResponse {
   publicText: string;
   internalThoughts: string | null;
   actions: ParsedAction[];
+  mutations: ExtractedMutation[];
   isInterrupted: boolean;
 }
 

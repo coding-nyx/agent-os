@@ -26,6 +26,7 @@ function createMockStructuredResponse(content: string): StructuredResponse {
     publicText: content,
     internalThoughts: null,
     actions: [],
+    mutations: [],
     isInterrupted: false,
   };
 }

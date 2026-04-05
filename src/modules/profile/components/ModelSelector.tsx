@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Cpu, ChevronDown, Search, RefreshCw, Check, Loader2 } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
+import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
+import { useAuth } from '@/lib/auth-context';
+import { CoreProfileService } from '@/lib/services/core-profile-service';
 
 // ---------------------------------------------------------------------------
 // Types & constants
@@ -67,6 +70,7 @@ function formatCtx(n: number): string {
 // ---------------------------------------------------------------------------
 
 export function ModelSelector() {
+  const { user } = useAuth();
   const [provider, setProviderState] = useState<ProviderId>(readProvider);
   const [selectedModel, setSelectedModelState] = useState<string>(readModel);
   const [models, setModels] = useState<ORModel[]>([]);
@@ -75,9 +79,7 @@ export function ModelSelector() {
   const [isOpen, setIsOpen] = useState(false);
 
   const fetchOpenRouterModels = useCallback(async () => {
-    const apiKey =
-      localStorage.getItem('VITE_OPENROUTER_API_KEY') ||
-      (import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined);
+    const apiKey = resolveOpenRouterKey();
     if (!apiKey) return;
     const res = await fetch('https://openrouter.ai/api/v1/models', {
       headers: {
@@ -176,13 +178,18 @@ export function ModelSelector() {
     setProviderState(p);
     try { localStorage.setItem(PROVIDER_KEY, p); } catch { /* noop */ }
     window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { provider: p } }));
+    const nextModel = p !== 'openrouter' ? (DEFAULT_PROVIDER_MODELS[p] ?? '') : selectedModel;
     if (p !== 'openrouter') {
-      const m = DEFAULT_PROVIDER_MODELS[p] ?? '';
-      setSelectedModelState(m);
-      try { localStorage.setItem(MODEL_KEY, m); } catch { /* noop */ }
-      window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { provider: p, model: m } }));
+      setSelectedModelState(nextModel);
+      try { localStorage.setItem(MODEL_KEY, nextModel); } catch { /* noop */ }
+      window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { provider: p, model: nextModel } }));
     }
-  }, []);
+    if (user?.uid) {
+      CoreProfileService.updateProfile(user.uid, {
+        aiPreferences: { preferredProvider: p, preferredModel: p !== 'openrouter' ? nextModel : selectedModel },
+      }).catch(() => {});
+    }
+  }, [user?.uid, selectedModel]);
 
   // ── Model change ──
   const selectModel = useCallback((id: string) => {
@@ -191,7 +198,12 @@ export function ModelSelector() {
     window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { model: id } }));
     setIsOpen(false);
     setSearch('');
-  }, []);
+    if (user?.uid) {
+      CoreProfileService.updateProfile(user.uid, {
+        aiPreferences: { preferredModel: id, preferredProvider: provider },
+      }).catch(() => {});
+    }
+  }, [user?.uid, provider]);
 
   // ── Filtered list (cap at 80 for perf) ──
   const filtered = useMemo(() => {

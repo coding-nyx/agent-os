@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CommandIntelligenceService } from './command-intelligence-service';
+import { parseCommand } from './__test-helpers__/parse-command';
+const CommandIntelligenceService = { parse: parseCommand };
 import { NexusActionPlannerService } from './nexus-action-planner-service';
 import { AgentRegistryService } from '@/lib/agents/agent-registry';
 import { OrchestrationCacheService } from './orchestration-cache-service';

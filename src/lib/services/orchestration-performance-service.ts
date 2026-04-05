@@ -1,50 +1,49 @@
-type CacheDomain = 'command-parse' | 'routing-decision' | 'planning-suggestion' | 'memory-search';
+import { OrchestrationPerformanceServiceJs } from '@cortex-logic';
+import { safeParseKmp } from '@/cortex-bridge/kmp-parse';
 
-interface DomainMetrics {
+const _service = new OrchestrationPerformanceServiceJs();
+
+export type CacheDomain = 'command-parse' | 'routing-decision' | 'planning-suggestion' | 'memory-search';
+
+export interface DomainMetrics {
   cacheHits: number;
   cacheMisses: number;
   totalComputations: number;
   totalDurationMs: number;
 }
 
-function ensureMetrics(
-  store: Map<CacheDomain, DomainMetrics>,
-  domain: CacheDomain,
-): DomainMetrics {
-  const existing = store.get(domain);
-  if (existing) return existing;
-  const created: DomainMetrics = {
-    cacheHits: 0,
-    cacheMisses: 0,
-    totalComputations: 0,
-    totalDurationMs: 0,
-  };
-  store.set(domain, created);
-  return created;
-}
-
 export class OrchestrationPerformanceService {
-  private static metrics = new Map<CacheDomain, DomainMetrics>();
-
   static recordCacheHit(domain: CacheDomain): void {
-    ensureMetrics(this.metrics, domain).cacheHits += 1;
+    _service.recordCacheHit(domain);
   }
 
   static recordCacheMiss(domain: CacheDomain): void {
-    ensureMetrics(this.metrics, domain).cacheMisses += 1;
+    _service.recordCacheMiss(domain);
   }
 
   static recordComputation(domain: CacheDomain, durationMs: number): void {
-    const metrics = ensureMetrics(this.metrics, domain);
-    metrics.totalComputations += 1;
-    metrics.totalDurationMs += durationMs;
+    _service.recordComputation(domain, durationMs);
   }
 
   static getMetrics(domain: CacheDomain): DomainMetrics {
-    return { ...ensureMetrics(this.metrics, domain) };
+    const ZEROED: DomainMetrics = { cacheHits: 0, cacheMisses: 0, totalComputations: 0, totalDurationMs: 0 };
+    return safeParseKmp(_service.getMetrics(domain), ZEROED, 'Performance.getMetrics');
   }
 
+  static getAllMetrics(): Record<CacheDomain, DomainMetrics> {
+    const EMPTY: Record<string, DomainMetrics> = {};
+    return safeParseKmp(_service.getAllMetrics(), EMPTY, 'Performance.getAllMetrics') as Record<CacheDomain, DomainMetrics>;
+  }
+
+  static reset(): void {
+    const service = _service as unknown as { reset?: () => void };
+    if (typeof service.reset === 'function') {
+      service.reset();
+    }
+  }
+
+  /** @deprecated Use reset() */
   static resetForTests(): void {
-    this.metrics.clear();
+    this.reset();
   }
 }

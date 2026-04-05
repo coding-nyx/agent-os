@@ -115,7 +115,7 @@ function titleCaseStatus(value: string): string {
 }
 
 function getModuleLabel(moduleId: keyof typeof MODULE_MANIFEST | 'nexus'): string {
-  return MODULE_MANIFEST[moduleId]?.alias ?? 'Nexus';
+  return MODULE_MANIFEST[moduleId]?.alias ?? 'Nyx';
 }
 
 function getAuthorLabel(

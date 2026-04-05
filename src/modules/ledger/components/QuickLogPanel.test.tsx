@@ -17,9 +17,9 @@ describe('QuickLogPanel', () => {
       />,
     );
 
-    await user.type(screen.getByPlaceholderText(/type naturally/i), 'coffee $4.50');
+    await user.type(screen.getByPlaceholderText(/coffee shop/i), 'coffee $4.50');
 
-    const preview = screen.getByRole('group', { name: /quick log preview/i });
+    const preview = screen.getByRole('group', { name: /parsed transaction/i });
     fireEvent.pointerDown(preview, { clientX: 100 });
     fireEvent.pointerMove(preview, { clientX: 230 });
     fireEvent.pointerUp(preview, { clientX: 230 });
@@ -48,14 +48,14 @@ describe('QuickLogPanel', () => {
       />,
     );
 
-    await user.type(screen.getByPlaceholderText(/type naturally/i), 'salary $3200 income');
+    await user.type(screen.getByPlaceholderText(/coffee shop/i), 'salary $3200 income');
 
-    const preview = screen.getByRole('group', { name: /quick log preview/i });
+    const preview = screen.getByRole('group', { name: /parsed transaction/i });
     fireEvent.pointerDown(preview, { clientX: 220 });
     fireEvent.pointerMove(preview, { clientX: 80 });
     fireEvent.pointerUp(preview, { clientX: 80 });
 
-    expect(screen.getByRole('button', { name: /natural input/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^natural$/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/description/i)).toHaveValue('Salary');
     expect(screen.getByPlaceholderText(/0.00/i)).toHaveValue(3200);
     expect(screen.getAllByRole('button', { name: /income/i })[0]).toHaveAttribute('aria-pressed', 'true');
@@ -73,7 +73,7 @@ describe('QuickLogPanel', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /manual form/i }));
+    await user.click(screen.getByRole('button', { name: /^manual$/i }));
     await user.type(screen.getByPlaceholderText(/description/i), 'Bus pass');
     await user.type(screen.getByPlaceholderText(/0.00/i), '42');
     await user.click(screen.getByRole('button', { name: /log transaction/i }));

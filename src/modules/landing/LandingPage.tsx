@@ -79,7 +79,7 @@ export default function LandingPage() {
 
       <header className="relative z-[var(--z-content)] mx-auto max-w-7xl px-5 sm:px-6 py-5 sm:py-6 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-white/95 tracking-[0.06em]">NEXUS</h1>
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-white/95 tracking-[0.06em]">NYX</h1>
           <p className="text-[11px] sm:text-[12px] text-violet-300/75 uppercase tracking-[0.10em] font-medium mt-0.5">Neural Interface v3.0</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -106,7 +106,7 @@ export default function LandingPage() {
               <span className="text-violet-300/90">For Human Wellness</span>
             </h2>
             <p className="text-[15px] sm:text-lg md:text-xl text-white/60 mt-6 sm:mt-8 mb-9 sm:mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
-              Nexus is an AI wellness platform — a constellation of specialized agents working in concert to optimize your
+              Nyx is an AI platform — a constellation of specialized agents working in concert to optimize your
               biological, emotional, cognitive, and resource health.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0">
@@ -157,7 +157,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="relative z-[var(--z-content)] border-t border-white/[0.09] py-6 sm:py-8 text-center text-[12px] tracking-[0.08em] uppercase text-white/30 font-medium">
-        © 2026 Nexus Neural Interface
+        © 2026 Nyx Neural Interface
       </footer>
 
       <UnifiedAuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} mode="global" />

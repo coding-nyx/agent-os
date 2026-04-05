@@ -71,13 +71,15 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
   const [showDashboard, setShowDashboard] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
 
-  const activeOverlay = FORGE_MODES.find((m) => m.id === selectedMode)?.overlay ?? FORGE_CODE_OVERLAY;
-  const systemPrompt = `${FORGE_PERSONA}\n\n${activeOverlay}`;
+  // KMP handles overlay injection via forge_mode in moduleContext.
+  // Only pass the base persona here to avoid double-overlay.
+  const systemPrompt = FORGE_PERSONA;
 
   const ai = useModuleAI({
     moduleId: 'forge',
     systemPrompt,
-    encryptionKey
+    encryptionKey,
+    moduleContext: { forge_mode: selectedMode },
   });
   // Destructure locally for use in this component — does NOT affect NexusChat's ai prop stability.
   const { messages, setMessages, isProcessing, streamingText, handleSendMessage } = ai;

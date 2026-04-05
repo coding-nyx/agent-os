@@ -1,8 +1,19 @@
 import type { ModuleId } from '@/lib/module-manifest';
 import type { NeuralStateVectorPatch, SpineEvent, SpineEventPriority } from '@/lib/types';
 import type { ActorIdentityRef } from '@/lib/agent-identity';
+import { OrchestrationContractsJs } from '@cortex-logic';
+
+const _contracts = new OrchestrationContractsJs();
+
+// ---------------------------------------------------------------------------
+// Constant arrays (imported directly by TS callers — must remain in this module)
+// ---------------------------------------------------------------------------
 
 export const PRIMARY_AGENT_PRECEDENCE = ['agnes', 'atlas', 'soma', 'titan', 'ledger'] as const;
+
+// ---------------------------------------------------------------------------
+// Scalar types
+// ---------------------------------------------------------------------------
 
 export type PrimaryAgentId = (typeof PRIMARY_AGENT_PRECEDENCE)[number];
 export type AutopilotLevel = 0 | 1 | 2 | 3 | 4 | 5;
@@ -31,6 +42,10 @@ export type AliveEntityType = 'ACTION' | 'HABIT' | 'LOG' | 'METRIC';
 export type SpecVectorKey = 'resilience' | 'bandwidth' | 'vitality' | 'output' | 'friction';
 
 export type SoulImpactPreset = Partial<Record<SpecVectorKey, number>>;
+
+// ---------------------------------------------------------------------------
+// Core orchestration interfaces
+// ---------------------------------------------------------------------------
 
 export interface MutationProposal {
   id: string;
@@ -133,6 +148,10 @@ export interface RuntimeSemantics {
   shouldNotifyUser: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Interaction types
+// ---------------------------------------------------------------------------
+
 export type InteractionKind = 'routing' | 'planning' | 'routine';
 export type InteractionDecisionMode =
   | 'visible_proposal'
@@ -174,6 +193,10 @@ export interface InteractionDecision {
   shouldNotifyUser: boolean;
   shouldRenderHudSignal: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Runtime summary and action entry types
+// ---------------------------------------------------------------------------
 
 export interface OrchestrationActionRuntimeEntry {
   actionType: string;
@@ -224,6 +247,10 @@ export interface SilentHistoryEntry {
   patientScope: PatientScope;
   metadata?: Record<string, unknown>;
 }
+
+// ---------------------------------------------------------------------------
+// Master thread types
+// ---------------------------------------------------------------------------
 
 export type ThreadParticipantRole = 'primary' | 'secondary' | 'observer';
 export type ThreadParticipantInclusionReason = 'mentioned' | 'consulted' | 'delegated' | 'runtime';
@@ -343,6 +370,10 @@ export interface ThreadResolutionState {
   winningProposalId?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Alive entity types
+// ---------------------------------------------------------------------------
+
 export interface AliveEntity {
   id: string;
   type: AliveEntityType;
@@ -377,6 +408,10 @@ export interface AliveEntityRuntimeContext {
   lastUpdatedAt: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Spec / spine event types
+// ---------------------------------------------------------------------------
+
 export interface SpecSpineEvent {
   header: {
     id: string;
@@ -404,128 +439,65 @@ export interface PersistedSpecSpineEvent {
   logic_gates: SpecSpineEvent['logic_gates'];
 }
 
-const SPEC_SOURCE_MAP: Partial<Record<string, SpecSpineEvent['header']['source']>> = {
-  nexus: 'NEXUS',
-  agnes: 'AGNES',
-  atlas: 'ATLAS',
-  titan: 'TITAN',
-  ledger: 'LEDGER',
-  soma: 'SOMA',
-  'cascade:nexus': 'NEXUS',
-  'cascade:agnes': 'AGNES',
-  'cascade:atlas': 'ATLAS',
-  'cascade:titan': 'TITAN',
-  'cascade:ledger': 'LEDGER',
-  'cascade:soma': 'SOMA',
-  'spine-cascade:core': 'NEXUS',
-  'spine-cascade:ledger': 'LEDGER',
-  'spine-cascade:soma': 'SOMA',
-  'spine-cascade:agnes': 'AGNES',
-  'spine-cascade': 'NEXUS',
-};
-
-const MASTER_THREAD_AUTHOR_PRECEDENCE: readonly string[] = ['user', 'system', 'nexus', ...PRIMARY_AGENT_PRECEDENCE];
+// ---------------------------------------------------------------------------
+// Exported functions — delegated to KMP
+// ---------------------------------------------------------------------------
 
 export function isAutopilotLevel(value: unknown): value is AutopilotLevel {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 5;
+  if (typeof value !== 'number' || !Number.isInteger(value)) return false;
+  return _contracts.isAutopilotLevel(value);
 }
 
 export function isPrimaryAgentId(value: string): value is PrimaryAgentId {
-  return (PRIMARY_AGENT_PRECEDENCE as readonly string[]).includes(value);
+  return _contracts.isPrimaryAgentId(value);
 }
 
 export function getAgentPrecedenceRank(source: ModuleId | PrimaryAgentId | 'nexus' | string): number {
-  const normalized = source.toLowerCase();
-  const index = PRIMARY_AGENT_PRECEDENCE.indexOf(normalized as PrimaryAgentId);
-  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  return _contracts.getAgentPrecedenceRank(source);
 }
 
 export function compareAgentPrecedence(
   left: ModuleId | PrimaryAgentId | 'nexus' | string,
   right: ModuleId | PrimaryAgentId | 'nexus' | string,
 ): number {
-  return getAgentPrecedenceRank(left) - getAgentPrecedenceRank(right);
+  return _contracts.compareAgentPrecedence(left, right);
 }
 
+export function compareMasterThreadTurns(left: MasterThreadTurn, right: MasterThreadTurn): number {
+  return _contracts.compareMasterThreadTurns(JSON.stringify(left), JSON.stringify(right));
+}
+
+/**
+ * Compares two MasterThreadMessage objects for sort order.
+ * Previously named compareMasterThreadAuthors in the KMP contract; the TS name is preserved.
+ */
+export function compareMasterThreadMessages(left: MasterThreadMessage, right: MasterThreadMessage): number {
+  return _contracts.compareMasterThreadMessages(JSON.stringify(left), JSON.stringify(right));
+}
+
+// Author precedence includes 'user' and 'system' which are not in PRIMARY_AGENT_PRECEDENCE.
+// This ordering is TS-local; no KMP method covers the combined list.
+const MASTER_THREAD_AUTHOR_PRECEDENCE: readonly string[] = ['user', 'system', 'nexus', ...PRIMARY_AGENT_PRECEDENCE];
+
+/**
+ * Returns the precedence rank of a thread author string.
+ * 'user' and 'system' rank before agent IDs; unknown authors rank last.
+ */
 export function getMasterThreadAuthorRank(author: MasterThreadAuthor | string): number {
-  const normalized = author.toLowerCase();
-  const index = MASTER_THREAD_AUTHOR_PRECEDENCE.indexOf(normalized);
+  const index = MASTER_THREAD_AUTHOR_PRECEDENCE.indexOf(author.toLowerCase());
   return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
+/**
+ * Compares two thread author strings by precedence rank.
+ * Preserved for backwards compatibility with callers that import this name directly.
+ */
 export function compareMasterThreadAuthors(left: MasterThreadAuthor | string, right: MasterThreadAuthor | string): number {
   return getMasterThreadAuthorRank(left) - getMasterThreadAuthorRank(right);
 }
 
-function compareParentMessageOrder(left: MasterThreadMessage, right: MasterThreadMessage): number {
-  if (left.replyToMessageId && left.replyToMessageId === right.id) return 1;
-  if (right.replyToMessageId && right.replyToMessageId === left.id) return -1;
-  return 0;
-}
-
-export function compareMasterThreadTurns(left: MasterThreadTurn, right: MasterThreadTurn): number {
-  const sequenceDelta = left.sequence - right.sequence;
-  if (sequenceDelta !== 0) return sequenceDelta;
-
-  const createdAtDelta = left.createdAt.localeCompare(right.createdAt);
-  if (createdAtDelta !== 0) return createdAtDelta;
-
-  const authorDelta = compareMasterThreadAuthors(left.startedBy, right.startedBy);
-  if (authorDelta !== 0) return authorDelta;
-
-  return left.id.localeCompare(right.id);
-}
-
-export function compareMasterThreadMessages(left: MasterThreadMessage, right: MasterThreadMessage): number {
-  const leftTurnSequence = left.turnSequence ?? Number.MAX_SAFE_INTEGER;
-  const rightTurnSequence = right.turnSequence ?? Number.MAX_SAFE_INTEGER;
-  const turnSequenceDelta = leftTurnSequence - rightTurnSequence;
-  if (turnSequenceDelta !== 0) return turnSequenceDelta;
-
-  const createdAtDelta = left.createdAt.localeCompare(right.createdAt);
-  if (createdAtDelta !== 0) return createdAtDelta;
-
-  const parentMessageDelta = compareParentMessageOrder(left, right);
-  if (parentMessageDelta !== 0) return parentMessageDelta;
-
-  const authorDelta = compareMasterThreadAuthors(left.author, right.author);
-  if (authorDelta !== 0) return authorDelta;
-
-  const kindDelta = (left.kind ?? 'conversation').localeCompare(right.kind ?? 'conversation');
-  if (kindDelta !== 0) return kindDelta;
-
-  const turnIdDelta = (left.turnId ?? '').localeCompare(right.turnId ?? '');
-  if (turnIdDelta !== 0) return turnIdDelta;
-
-  return left.id.localeCompare(right.id);
-}
-
 export function toSpecPriority(priority: SpineEventPriority): SpecSpineEvent['header']['priority'] {
-  if (priority === 'critical') return 3;
-  if (priority === 'alert') return 2;
-  return 1;
-}
-
-function normalizeSpecSource(source: string): SpecSpineEvent['header']['source'] {
-  const direct = SPEC_SOURCE_MAP[source.toLowerCase()];
-  if (direct) return direct;
-  const segments = source.toLowerCase().split(':');
-  for (let index = segments.length - 1; index >= 0; index -= 1) {
-    const candidate = SPEC_SOURCE_MAP[segments[index]];
-    if (candidate) return candidate;
-  }
-  return 'NEXUS';
-}
-
-function normalizeMutations(
-  input: Record<string, unknown> | Map<string, number> | undefined,
-): Map<string, number> {
-  if (!input) return new Map<string, number>();
-  if (input instanceof Map) return new Map(input);
-
-  return new Map(
-    Object.entries(input).filter((entry): entry is [string, number] => typeof entry[1] === 'number'),
-  );
+  return _contracts.toSpecPriority(priority) as SpecSpineEvent['header']['priority'];
 }
 
 export function adaptSpineEventToSpec(
@@ -538,46 +510,39 @@ export function adaptSpineEventToSpec(
     patientScope?: PatientScope;
   },
 ): SpecSpineEvent {
-  const eventData = event.data as Record<string, unknown>;
-  const intent =
-    options?.intent ??
-    (typeof eventData.intent === 'string' && eventData.intent.trim() !== '' ? eventData.intent : event.type.toLowerCase());
+  // Map<string,number> is not JSON-serialisable; convert to a plain object first.
+  const serialisableMutations =
+    options?.mutations instanceof Map
+      ? Object.fromEntries(options.mutations)
+      : options?.mutations;
 
-  const confidenceInput = options?.confidence ?? eventData.confidence;
-  const requiresApprovalInput = options?.requiresApproval ?? eventData.requiresApproval;
-  const patientScopeInput = options?.patientScope ?? eventData.patient_scope;
+  const result = JSON.parse(
+    _contracts.adaptSpineEventToSpec(
+      JSON.stringify(event),
+      JSON.stringify({ ...options, mutations: serialisableMutations }),
+    ),
+  ) as Omit<SpecSpineEvent, 'payload'> & { payload: { intent: string; mutations: Record<string, number>; attributes: Record<string, unknown> } };
 
+  // Re-hydrate the mutations Record back to a Map to satisfy the SpecSpineEvent interface.
   return {
-    header: {
-      id: event.id,
-      source: normalizeSpecSource(event.source),
-      timestamp: event.timestamp,
-      priority: toSpecPriority(event.priority),
-    },
+    ...result,
     payload: {
-      intent,
-      mutations: normalizeMutations(options?.mutations ?? (eventData.mutations as Record<string, unknown> | undefined)),
-      attributes: { ...eventData },
-    },
-    logic_gates: {
-      confidence:
-        typeof confidenceInput === 'number' && Number.isFinite(confidenceInput)
-          ? Math.max(0, Math.min(1, confidenceInput))
-          : 0.5,
-      requires_approval: requiresApprovalInput === true,
-      patient_scope: patientScopeInput === 'GUEST' ? 'GUEST' : 'USER',
+      ...result.payload,
+      mutations: new Map(Object.entries(result.payload.mutations)),
     },
   };
 }
 
 export function serializeSpecSpineEvent(event: SpecSpineEvent): PersistedSpecSpineEvent {
-  return {
-    header: { ...event.header },
+  // serializeSpecSpineEvent is pure object reshaping; delegate to KMP.
+  const serialisable = {
+    ...event,
     payload: {
       ...event.payload,
       mutations: Object.fromEntries(event.payload.mutations),
-      attributes: { ...event.payload.attributes },
     },
-    logic_gates: { ...event.logic_gates },
   };
+  return JSON.parse(
+    _contracts.serializeSpecSpineEvent(JSON.stringify(serialisable)),
+  ) as PersistedSpecSpineEvent;
 }

@@ -1,8 +1,11 @@
 import { useCallback } from 'react';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import { sanitizeJsonPayload } from '@/lib/ai-adapters/sanitize';
 import { ModuleId, MODULE_MANIFEST } from '@/lib/module-manifest';
+import { OnboardingValidationJs } from '@cortex-logic';
+
+const _onboardingValidation = new OnboardingValidationJs();
 
 type FastTrackPayload = Record<string, unknown>;
 
@@ -20,38 +23,13 @@ export type FastTrackValidationResult = {
   fallbackToGuided: boolean;
 };
 
-function resolvePath(obj: Record<string, unknown>, path: string): unknown {
-  const segments = path.split('.');
-  let current: unknown = obj;
-  for (const segment of segments) {
-    if (!current || typeof current !== 'object') return undefined;
-    current = (current as Record<string, unknown>)[segment];
-  }
-  return current;
-}
-
-function isMissingValue(value: unknown): boolean {
-  if (value === null || value === undefined) return true;
-  if (typeof value === 'string') return value.trim().length === 0;
-  if (Array.isArray(value)) return value.length === 0;
-  return false;
+function isMissingValue(valueJson: string | null | undefined): boolean {
+  return _onboardingValidation.isMissingValue(valueJson ?? null);
 }
 
 function parseValidationResponse(raw: string): Partial<FastTrackValidationResult> | null {
-  try {
-    const parsed = JSON.parse(sanitizeJsonPayload(raw)) as Record<string, unknown>;
-    return {
-      accepted: parsed.accepted === true,
-      confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0,
-      reason: typeof parsed.reason === 'string' ? parsed.reason : 'validation_failed',
-      missingFields: Array.isArray(parsed.missingFields)
-        ? parsed.missingFields.filter((v): v is string => typeof v === 'string')
-        : [],
-      issues: Array.isArray(parsed.issues) ? parsed.issues.filter((v): v is string => typeof v === 'string') : []
-    };
-  } catch {
-    return null;
-  }
+  const result = _onboardingValidation.parseValidationResponse(sanitizeJsonPayload(raw));
+  return result ? JSON.parse(result) as Partial<FastTrackValidationResult> : null;
 }
 
 function createValidationPrompt(
@@ -60,19 +38,7 @@ function createValidationPrompt(
   requiredFields: string[],
   payload: FastTrackPayload
 ): string {
-  return [
-    'You validate onboarding fast-track payloads.',
-    'Return ONLY strict JSON in this shape:',
-    '{"accepted":true|false,"confidence":0.0-1.0,"reason":"short_reason","missingFields":["field.path"],"issues":["issue"]}',
-    `Module: ${moduleId}`,
-    `Objective: ${objective}`,
-    `Required fields: ${requiredFields.join(', ')}`,
-    `Payload: ${JSON.stringify(payload)}`,
-    'Rules:',
-    '- accepted=true only if payload is coherent and sufficient to skip guided intake.',
-    '- confidence must reflect data completeness and plausibility.',
-    '- if uncertain, set accepted=false with a short reason.'
-  ].join('\n');
+  return _onboardingValidation.createValidationPrompt(moduleId, objective, requiredFields, JSON.stringify(payload));
 }
 
 export function useFastTrackValidation(moduleId: ModuleId) {
@@ -82,7 +48,9 @@ export function useFastTrackValidation(moduleId: ModuleId) {
     async (payload: FastTrackPayload, options: FastTrackValidationOptions): Promise<FastTrackValidationResult> => {
       const modulePolicy = MODULE_MANIFEST[moduleId].onboarding.fastTrack;
 
-      const missingFields = options.requiredFields.filter((field) => isMissingValue(resolvePath(payload, field)));
+      const missingFields = options.requiredFields.filter((field) =>
+        isMissingValue(_onboardingValidation.resolvePath(JSON.stringify(payload), field))
+      );
       if (missingFields.length > 0) {
         return {
           accepted: false,

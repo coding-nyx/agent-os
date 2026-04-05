@@ -4,6 +4,9 @@ import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { getNexusDataLayer } from '../data-layer/provider';
 import { NexusDataLayer } from '../data-layer';
 import { Spine } from '../spine/spine-event-bus';
+import { GlobalProjectionServiceJs } from '@cortex-logic';
+
+const _gps = new GlobalProjectionServiceJs();
 
 const COLLECTION = 'global_souls';
 const SOUL_WRITE_COLLECTION = 'pending_soul_writes';
@@ -15,30 +18,8 @@ const SOUL_WRITE_COLLECTION = 'pending_soul_writes';
 // ---------------------------------------------------------------------------
 const _projectionWriteQueues = new Map<string, Promise<void>>();
 
-/**
- * Computes a weighted 0-100 wellness score based on NSV domain metrics.
- */
 function computeOverallWellness(nsv: NeuralStateVector): number {
-  const bio = nsv.biological;
-  const emo = nsv.emotional;
-  const cog = nsv.cognitive;
-  const res = nsv.resource;
-
-  // Domain scores (all 0-10, where 10 is better)
-  const bioScore = 10 - (bio?.cnsFatigue ?? 5);
-  const emoScore = emo?.emotionalResilience ?? 5;
-  const cogScore = cog?.focusScore ?? 5;
-  const resScore = 10 - (res?.financialFriction ?? 5);
-
-  // Weights
-  const weights = { bio: 0.3, emo: 0.3, cog: 0.2, res: 0.2 };
-  
-  const raw = (bioScore * weights.bio) + 
-              (emoScore * weights.emo) + 
-              (cogScore * weights.cog) + 
-              (resScore * weights.res);
-
-  return Math.round(raw * 10); // Scale to 0-100
+  return _gps.computeOverallWellness(JSON.stringify(nsv));
 }
 
 function enqueueProjectionWrite(uid: string, fn: () => Promise<void>): Promise<void> {
@@ -53,115 +34,7 @@ function enqueueProjectionWrite(uid: string, fn: () => Promise<void>): Promise<v
 }
 
 function buildNSVUpdatePayload(updates: NeuralStateVectorPatch, timestamp: string): Record<string, unknown> {
-  const payload: Record<string, unknown> = {};
-
-  const stamp = (key: string, value: unknown) => {
-    if (value === undefined) return;
-    payload[`crossFunctionalState.${key}`] = value;
-    payload[`crossFunctionalState.lastUpdated.${key}`] = timestamp;
-  };
-  const alias = (key: string, value: unknown) => {
-    if (value === undefined) return;
-    payload[`crossFunctionalState.${key}`] = value;
-  };
-
-  if (updates.biological?.cnsFatigue !== undefined) {
-    stamp('biological.cnsFatigue', updates.biological.cnsFatigue);
-    alias('cnsFatigue', updates.biological.cnsFatigue);
-  }
-  if (updates.cnsFatigue !== undefined) {
-    stamp('biological.cnsFatigue', updates.cnsFatigue);
-    alias('cnsFatigue', updates.cnsFatigue);
-    alias('biological.cnsFatigue', updates.cnsFatigue);
-  }
-
-  if (updates.biological?.sleepQuality !== undefined) {
-    stamp('biological.sleepQuality', updates.biological.sleepQuality);
-    alias('sleepQuality', updates.biological.sleepQuality);
-  }
-  if (updates.sleepQuality !== undefined) {
-    stamp('biological.sleepQuality', updates.sleepQuality);
-    alias('sleepQuality', updates.sleepQuality);
-    alias('biological.sleepQuality', updates.sleepQuality);
-  }
-
-  if (updates.biological?.recoveryScore !== undefined) {
-    stamp('biological.recoveryScore', updates.biological.recoveryScore);
-  }
-
-  if (updates.biological?.hormonalContext !== undefined) {
-    stamp('biological.hormonalContext', updates.biological.hormonalContext);
-    alias('hormonalContext', updates.biological.hormonalContext);
-  }
-  if (updates.hormonalContext !== undefined) {
-    stamp('biological.hormonalContext', updates.hormonalContext);
-    alias('hormonalContext', updates.hormonalContext);
-    alias('biological.hormonalContext', updates.hormonalContext);
-  }
-
-  if (updates.emotional?.emotionalResilience !== undefined) {
-    stamp('emotional.emotionalResilience', updates.emotional.emotionalResilience);
-    alias('emotionalResilience', updates.emotional.emotionalResilience);
-  }
-  if (updates.emotionalResilience !== undefined) {
-    stamp('emotional.emotionalResilience', updates.emotionalResilience);
-    alias('emotionalResilience', updates.emotionalResilience);
-    alias('emotional.emotionalResilience', updates.emotionalResilience);
-  }
-
-  if (updates.emotional?.stressLoad !== undefined) {
-    stamp('emotional.stressLoad', updates.emotional.stressLoad);
-  }
-  if (updates.emotional?.moodTrend !== undefined) {
-    stamp('emotional.moodTrend', updates.emotional.moodTrend);
-  }
-  if (updates.emotional?.traumaMarkers !== undefined) {
-    stamp('emotional.traumaMarkers', updates.emotional.traumaMarkers);
-    alias('traumaMarkers', updates.emotional.traumaMarkers);
-  }
-  if (updates.traumaMarkers !== undefined) {
-    stamp('emotional.traumaMarkers', updates.traumaMarkers);
-    alias('traumaMarkers', updates.traumaMarkers);
-    alias('emotional.traumaMarkers', updates.traumaMarkers);
-  }
-
-  if (updates.cognitive?.energyBudget !== undefined) {
-    stamp('cognitive.energyBudget', updates.cognitive.energyBudget);
-  }
-  if (updates.cognitive?.focusScore !== undefined) {
-    stamp('cognitive.focusScore', updates.cognitive.focusScore);
-  }
-  if (updates.cognitive?.activeLoad !== undefined) {
-    stamp('cognitive.activeLoad', updates.cognitive.activeLoad);
-  }
-  if (updates.cognitive?.researchLoad !== undefined) {
-    stamp('cognitive.researchLoad', updates.cognitive.researchLoad);
-  }
-  if (updates.cognitive?.planningLoad !== undefined) {
-    stamp('cognitive.planningLoad', updates.cognitive.planningLoad);
-  }
-  if (updates.cognitive?.taskCompletionRate !== undefined) {
-    stamp('cognitive.taskCompletionRate', updates.cognitive.taskCompletionRate);
-  }
-  if (updates.cognitive?.interestDiversity !== undefined) {
-    stamp('cognitive.interestDiversity', updates.cognitive.interestDiversity);
-  }
-
-  if (updates.planning?.streakHealth !== undefined) {
-    stamp('planning.streakHealth', updates.planning.streakHealth);
-  }
-  if (updates.planning?.deadlinePressure !== undefined) {
-    stamp('planning.deadlinePressure', updates.planning.deadlinePressure);
-  }
-
-  if (updates.resource?.financialFriction !== undefined) {
-    stamp('resource.financialFriction', updates.resource.financialFriction);
-  }
-  if (updates.resource?.resonanceROI !== undefined) {
-    stamp('resource.resonanceROI', updates.resource.resonanceROI);
-  }
-
-  return payload;
+  return JSON.parse(_gps.buildNSVUpdatePayload(JSON.stringify(updates), timestamp)) as Record<string, unknown>;
 }
 
 export const GlobalProjectionService = {
@@ -190,7 +63,7 @@ export const GlobalProjectionService = {
 
     // Robustness: Handle partially initialized profiles
     const provision = profile.agentPersonalityProvision || {
-      orchestratorAlias: 'Nexus',
+      orchestratorAlias: 'Nyx',
       moduleAliases: {
         agnes: 'Agnes',
         titan: 'Titan',

@@ -2,9 +2,11 @@ import { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { getModulePersona } from '@/lib/persona-registry';
+import { PersonaPromptCatalogJs } from '@cortex-logic';
 import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
 import { NexusChat } from './NexusChat';
+
+const _catalog = PersonaPromptCatalogJs ? new (PersonaPromptCatalogJs as any)() : null;
 
 interface NexusSubModulePanelProps {
   moduleId: string;
@@ -15,7 +17,7 @@ interface NexusSubModulePanelProps {
 
 export function NexusSubModulePanel({ moduleId, initialContent, onBack, onNavigate }: NexusSubModulePanelProps) {
   const manifest = MODULE_MANIFEST[moduleId as ModuleId];
-  const persona = getModulePersona(moduleId);
+  const persona: string | null = _catalog?.promptFor(moduleId) ?? null;
   const moduleName = manifest?.alias || moduleId;
   const Icon = manifest?.icon;
   const chatTheme = manifest?.chatTheme || 'indigo';

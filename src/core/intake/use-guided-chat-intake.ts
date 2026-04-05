@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { stripInternalTags, isProviderControlOnly } from '@/lib/ai-adapters/sanitize';
 import { Message, MessageContent } from '@/lib/ai-adapters/engine-types';
 import { GuidedChatSpec } from './types';

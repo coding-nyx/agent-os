@@ -15,49 +15,37 @@ import {
   OrchestrationPersistenceService,
   type PersistedExecutionFailureRecord,
 } from './orchestration-persistence-service';
+import { OrchestrationExecutionUtilsJs } from '@cortex-logic';
 
-const RETRY_BACKOFF_MS = [1000, 4000, 16000] as const;
-const MAX_RETRIES = RETRY_BACKOFF_MS.length;
+const _utils = new OrchestrationExecutionUtilsJs();
 
-function addMs(isoTimestamp: string, deltaMs: number): string {
-  return new Date(new Date(isoTimestamp).getTime() + deltaMs).toISOString();
-}
+// ---------------------------------------------------------------------------
+// Pure computation — delegated to KMP
+// ---------------------------------------------------------------------------
 
 function classifyFailureCode(error: unknown): ExecutionFailureCode {
-  const message = error instanceof Error ? `${error.name} ${error.message}`.toLowerCase() : String(error).toLowerCase();
-  if (message.includes('no handler for')) {
-    return 'MISSING_HANDLER';
-  }
-  if (
-    message.includes('permission') ||
-    message.includes('unauthorized') ||
-    message.includes('forbidden') ||
-    message.includes('insufficient')
-  ) {
-    return 'PERMISSION';
-  }
-  if (
-    message.includes('network') ||
-    message.includes('timeout') ||
-    message.includes('temporar') ||
-    message.includes('unavailable') ||
-    message.includes('deadline exceeded')
-  ) {
-    return 'TRANSIENT';
-  }
-  if (error instanceof Error) {
-    return 'PERMANENT';
-  }
-  return 'UNKNOWN';
+  const serialized = error instanceof Error
+    ? JSON.stringify({ name: error.name, message: error.message })
+    : JSON.stringify({ message: String(error) });
+  return _utils.classifyFailureCode(serialized) as ExecutionFailureCode;
 }
 
 function nextFailureStatus(
   errorCode: ExecutionFailureCode,
   retryCount: number,
 ): ExecutionFailureStatus {
-  if (errorCode === 'MISSING_HANDLER' || errorCode === 'PERMISSION' || errorCode === 'PERMANENT') return 'escalated';
-  if (errorCode !== 'TRANSIENT') return 'failed';
-  return retryCount < MAX_RETRIES ? 'retry_scheduled' : 'escalated';
+  return _utils.nextFailureStatus(errorCode, retryCount) as ExecutionFailureStatus;
+}
+
+// ---------------------------------------------------------------------------
+// Local helpers that remain in TS (I/O-adjacent or use TS-only constructs)
+// ---------------------------------------------------------------------------
+
+const RETRY_BACKOFF_MS = [1000, 4000, 16000] as const;
+const MAX_RETRIES = RETRY_BACKOFF_MS.length;
+
+function addMs(isoTimestamp: string, deltaMs: number): string {
+  return new Date(new Date(isoTimestamp).getTime() + deltaMs).toISOString();
 }
 
 function toIncidentRuntime(runtime: RuntimeSemantics): RuntimeSemantics {
@@ -87,13 +75,17 @@ function buildResumableSnapshot(context: Pick<
   };
 }
 
+// ---------------------------------------------------------------------------
+// Service class
+// ---------------------------------------------------------------------------
+
 export class OrchestrationExecutionService {
   static readonly MAX_RETRIES = MAX_RETRIES;
 
   static classifyFailureCode = classifyFailureCode;
 
   static getRetryBackoffMs(retryCount: number): number {
-    return RETRY_BACKOFF_MS[Math.min(Math.max(retryCount, 0), RETRY_BACKOFF_MS.length - 1)];
+    return _utils.getRetryBackoffMs(retryCount);
   }
 
   static async recordFailure(

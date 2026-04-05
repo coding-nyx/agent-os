@@ -13,6 +13,7 @@ import { loadKnowledgeNodes, queryKnowledgeNodes } from './scout-knowledge-servi
 import { loadSources } from './scout-sources-service';
 import { ScoutWebSearchService } from './scout-web-search-service';
 import { generateJSONWithAgent } from '@/lib/ai-adapters/json-generation-agent';
+import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
 import { isSearchAvailable } from './scout-news-service';
 import type { ScoutKnowledgeNode, SourceEntry } from '../types';
 
@@ -109,7 +110,7 @@ Instructions:
 4. Respond with a JSON object: {"answer": "...", "confidence": 0.0-1.0}`;
 
     try {
-      const openrouterKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('VITE_OPENROUTER_API_KEY') : null) || (import.meta.env.VITE_OPENROUTER_API_KEY as string);
+      const openrouterKey = resolveOpenRouterKey();
       const response = await generateJSONWithAgent<any>({
         prompt,
         openrouterKey,
@@ -130,4 +131,3 @@ Instructions:
     }
   }
 };
-

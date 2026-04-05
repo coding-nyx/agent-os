@@ -276,6 +276,12 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
+    // Nexus Handoffs (cross-tab module delegation persistence)
+    match /handoffs/{userId}/pending/{moduleId} {
+      allow read, write: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
     // Default deny all other documents
     match /{document=**} {
       allow read, write: if false;

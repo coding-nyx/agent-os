@@ -1,4 +1,4 @@
-import { CognitiveAgent } from '@/llm-engine/engine/CognitiveAgent';
+import { CognitiveAgent } from '@/cortex-bridge/engine/CognitiveAgent';
 
 type VisionFormat = 'json_object' | 'text';
 

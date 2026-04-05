@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import type { MessageContent } from '@/lib/types';
 import { contentToString } from '@/core/components/chat/ChatBubble';
-import { getMasterChatPrompt, getSessionChatPrompt } from './personas';
+import { SCOUT_PERSONA } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
 import { UniversalUploadZone } from '@/core/components/forms/UniversalUploadZone';
 import {
@@ -624,12 +624,15 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
   const ai = useModuleAI({
     moduleId: 'scout',
-    systemPrompt: activeSession
-      ? getSessionChatPrompt(activeSession.topic, sessionContext, profile?.researchFocus)
-      : getMasterChatPrompt(profile?.researchFocus),
+    systemPrompt: SCOUT_PERSONA,
     encryptionKey,
     sessionId: activeSessionId || 'default',
     persistencePolicy: 'scout-research',
+    moduleContext: {
+      scout_active_topic: activeSession?.topic ?? null,
+      scout_session_context: sessionContext ?? null,
+      scout_research_focus: profile?.researchFocus ?? null,
+    },
   });
 
   const handleUploadSubmit = useCallback(async (result: DocumentParseResult) => {

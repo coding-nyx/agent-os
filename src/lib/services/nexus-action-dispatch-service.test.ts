@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CommandIntelligenceService } from './command-intelligence-service';
+import { parseCommand } from './__test-helpers__/parse-command';
+const CommandIntelligenceService = { parse: parseCommand };
 import { NexusActionPlannerService } from './nexus-action-planner-service';
 import { NexusActionDispatchService } from './nexus-action-dispatch-service';
 

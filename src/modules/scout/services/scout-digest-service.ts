@@ -11,6 +11,7 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import { ScoutDigest, ScoutKnowledgeNode } from '../types';
 import { SourceEntryDecrypted } from './scout-sources-service';
 import { generateJSONWithAgent } from '@/lib/ai-adapters/json-generation-agent';
+import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -182,7 +183,7 @@ export async function generateDigest(
     const prompt = buildDigestPrompt(interests, nodes, sources);
 
     // Initialize engine agent via adapter for one-off service call
-    const openrouterKey = localStorage.getItem('VITE_OPENROUTER_API_KEY') || (import.meta.env.VITE_OPENROUTER_API_KEY as string);
+    const openrouterKey = resolveOpenRouterKey();
     const response = await generateJSONWithAgent<any>({
       prompt,
       openrouterKey,

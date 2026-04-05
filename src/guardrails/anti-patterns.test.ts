@@ -162,7 +162,7 @@ describe('Guardrails: module profile store alignment', () => {
 });
 
 describe('Guardrails: LLM runtime boundary imports', () => {
-  it('blocks app-layer imports of llm-engine internals outside approved adapters/interfaces', () => {
+  it('blocks app-layer imports of bridge internals outside approved adapters/interfaces', () => {
     const offenders: string[] = [];
     const rootsToScan = [
       path.join(projectRoot, 'src', 'core'),
@@ -171,20 +171,21 @@ describe('Guardrails: LLM runtime boundary imports', () => {
     ];
 
     const disallowedImportPatterns = [
-      /from\s+['"]@\/llm-engine\/sanitize['"]/g,
-      /from\s+['"]@\/llm-engine\/persona-factory['"]/g,
-      /from\s+['"]@\/llm-engine\/engine\/[^'"]+['"]/g,
+      /from\s+['"]@\/cortex-bridge\/sanitize['"]/g,
+      /from\s+['"]@\/cortex-bridge\/persona-factory['"]/g,
+      /from\s+['"]@\/cortex-bridge\/engine\/[^'"]+['"]/g,
     ];
 
     rootsToScan.forEach((root) => {
       collectFiles(root).forEach((file) => {
         if (file.includes(`${path.sep}lib${path.sep}ai-adapters${path.sep}`)) return;
+        if (file.endsWith(`${path.sep}auth-context.tsx`)) return; // auth layer legitimately clears bridge credentials on logout
         if (file.includes('.test.')) return;
 
         const content = fs.readFileSync(file, 'utf8');
         if (disallowedImportPatterns.some((pattern) => pattern.test(content))) {
           offenders.push(
-            `${file} imports llm-engine internals directly. Use src/lib/ai-adapters/* or useAI/AIProvider interfaces.`
+            `${file} imports bridge internals directly. Use src/lib/ai-adapters/* or useAI/AIProvider interfaces.`
           );
         }
       });

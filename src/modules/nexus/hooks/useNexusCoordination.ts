@@ -7,7 +7,8 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { OrchestrationInteractionGateService } from '@/lib/services/orchestration-interaction-gate-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
-import { CommandIntelligenceService } from '@/lib/services/command-intelligence-service';
+import { CommandIntelligenceServiceJs } from '@cortex-logic';
+const _kmpCommandParser = new CommandIntelligenceServiceJs();
 import { NexusActionPlannerService } from '@/lib/services/nexus-action-planner-service';
 import { EpisodicMemoryService } from '@/lib/services/episodic-memory-service';
 import { SemanticMemoryService } from '@/lib/services/semantic-memory-service';
@@ -219,9 +220,9 @@ export function useNexusCoordination(input: UseNexusCoordinationInput) {
     const shouldSkipRouting = conversationDepth === 0 || conversationDepth > 3 || suggestionCount >= 2;
 
     if (!shouldSkipRouting) {
-      const parsedCommand = CommandIntelligenceService.parse(contentText, {
-        sourceModuleId: 'nexus',
-      });
+      const parsedCommand = JSON.parse(
+        _kmpCommandParser.parse(contentText, 'nexus')
+      ) as ParsedCommandEnvelope;
 
       // Surface ambiguity hint when the parser cannot confidently determine intent.
       if (parsedCommand.requiresClarification && parsedCommand.ambiguityReasons.length > 0) {

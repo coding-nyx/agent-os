@@ -1115,15 +1115,21 @@ function NotificationAIPanel({
   quietHoursEnabled: boolean;
 }) {
   const notificationSummary = useMemo(() => buildNotificationSummary(items), [items]);
-  const enrichedSystemPrompt = useMemo(() => {
-    const ctx = serializeNotificationContext(notificationSummary, quietHoursEnabled);
-    return `${NOTIFICATIONS_PERSONA}\n\n${ctx}`;
-  }, [notificationSummary, quietHoursEnabled]);
+  const serializedNotifContext = useMemo(
+    () => serializeNotificationContext(notificationSummary, quietHoursEnabled),
+    [notificationSummary, quietHoursEnabled]
+  );
+  // KMP handles notification context injection via notification_context in moduleContext.
+  // Only pass the base persona here to avoid double-context.
+  const enrichedSystemPrompt = NOTIFICATIONS_PERSONA;
 
   const ai = useModuleAI({
     moduleId: 'notifications' as ModuleId,
     systemPrompt: enrichedSystemPrompt,
     persistencePolicy: 'session-only' as any,
+    moduleContext: {
+      notification_context: serializedNotifContext,
+    },
   });
 
   return (

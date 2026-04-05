@@ -1,6 +1,7 @@
+// Bridge: delegates to KMP NetWorthAggregationJs.
+
+import { NetWorthAggregationJs } from '@cortex-logic';
 import type { Account, DebtItem, NetWorthSnapshot } from '../ledger-intake-service';
-import { round2 } from './utils';
-import { computeAccountSummary } from './account-aggregation';
 
 export interface NetWorthResult {
   assets: number;
@@ -17,47 +18,18 @@ export interface NetWorthTrend {
   lastSnapshot: NetWorthSnapshot | null;
 }
 
-/**
- * Compute the live net worth from current account balances and debt items.
- * Assets = sum of positive account balances (checking/savings/investment/cash).
- * Liabilities = credit card debt + debt items.
- */
+const _netWorthAgg = new NetWorthAggregationJs();
+
 export function computeCurrentNetWorth(accounts: Account[], debtItems: DebtItem[]): NetWorthResult {
-  const summary = computeAccountSummary(accounts);
-  const debtBalance = round2(debtItems.reduce((sum, d) => sum + d.balance, 0));
-  const liabilities = round2(summary.totalLiabilities + debtBalance);
-  const netWorth = round2(summary.totalAssets - liabilities);
-  return { assets: summary.totalAssets, liabilities, netWorth };
+  return JSON.parse(
+    _netWorthAgg.computeCurrentNetWorth(JSON.stringify(accounts), JSON.stringify(debtItems)),
+  ) as NetWorthResult;
 }
 
-/**
- * Compute trend from historical snapshots (newest first order expected).
- */
 export function computeNetWorthTrend(history: NetWorthSnapshot[]): NetWorthTrend {
-  if (history.length === 0) {
-    return { direction: 'flat', absoluteChange: 0, percentChange: null, lastSnapshot: null };
-  }
-
-  const sorted = [...history].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
-  const latest = sorted[0];
-  const previous = sorted[1];
-
-  if (!previous) {
-    return { direction: 'flat', absoluteChange: 0, percentChange: null, lastSnapshot: latest };
-  }
-
-  const absoluteChange = round2(latest.netWorth - previous.netWorth);
-  const percentChange =
-    previous.netWorth !== 0
-      ? round2((absoluteChange / Math.abs(previous.netWorth)) * 100)
-      : null;
-
-  const direction: 'up' | 'down' | 'flat' =
-    absoluteChange > 0 ? 'up' : absoluteChange < 0 ? 'down' : 'flat';
-
-  return { direction, absoluteChange, percentChange, lastSnapshot: latest };
+  return JSON.parse(
+    _netWorthAgg.computeNetWorthTrend(JSON.stringify(history)),
+  ) as NetWorthTrend;
 }
 
 /** Build a new NetWorthSnapshot from current computed values. */
@@ -66,13 +38,12 @@ export function buildNetWorthSnapshot(
   debtItems: DebtItem[],
   note?: string,
 ): NetWorthSnapshot {
-  const { assets, liabilities, netWorth } = computeCurrentNetWorth(accounts, debtItems);
-  return {
-    id: crypto.randomUUID(),
-    date: new Date().toISOString(),
-    assets,
-    liabilities,
-    netWorth,
-    note,
-  };
+  return JSON.parse(
+    _netWorthAgg.buildNetWorthSnapshot(
+      JSON.stringify(accounts),
+      JSON.stringify(debtItems),
+      Date.now(),
+      note ?? null,
+    ),
+  ) as NetWorthSnapshot;
 }

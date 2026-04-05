@@ -20,7 +20,7 @@ const DEFAULT_ACTOR_IDENTITIES: Record<ActorSource, ConversationalActorIdentity>
   nexus: {
     id: 'nexus-core',
     moduleId: 'nexus',
-    label: 'Nexus',
+    label: 'Nyx',
     shortLabel: 'NX',
     toneClassName: 'border-cyan-400/25 bg-cyan-400/15 text-cyan-100',
   },

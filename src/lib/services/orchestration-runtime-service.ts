@@ -10,39 +10,22 @@ import type {
 } from '@/lib/contracts/orchestration';
 import { buildAliveEntityRuntimeContext } from '@/lib/services/alive-entity-service';
 import { OrchestrationRolloutService } from './orchestration-rollout-service';
+import { RuntimeSemanticsBuilderJs } from '@cortex-logic';
+import { safeParseKmp } from '@/cortex-bridge/kmp-parse';
 
-function deriveRuntimeAutonomy(autopilotLevel: AutopilotLevel): RuntimeAutonomy {
-  switch (autopilotLevel) {
-    case 0:
-      return 'manual_lock';
-    case 1:
-      return 'proposal_first';
-    case 2:
-      return 'guided_assist';
-    case 3:
-      return 'conditional_autonomy';
-    case 4:
-      return 'supervised_autonomy';
-    default:
-      return 'ghost';
-  }
-}
+const _runtimeBuilder = new RuntimeSemanticsBuilderJs();
 
 function deriveExecutionStatus(
   dispatchStatus: ActionOrchestrationMetadata['dispatchStatus'],
 ): ActionOrchestrationMetadata['execution']['status'] {
-  if (dispatchStatus === 'approved') return 'executed';
-  if (dispatchStatus === 'awaiting_approval') return 'deferred';
-  if (dispatchStatus === 'analysis_only' || dispatchStatus === 'ephemeral') return 'analysis_only';
-  return 'blocked';
+  return _runtimeBuilder.deriveExecutionStatus(dispatchStatus) as ActionOrchestrationMetadata['execution']['status'];
 }
 
 function defaultApprovalRequirement(
   dispatchStatus: ActionOrchestrationMetadata['dispatchStatus'],
 ): ApprovalRequirement {
-  return dispatchStatus === 'awaiting_approval'
-    ? { required: true, reason: 'manual_level' }
-    : { required: false, reason: 'none' };
+  const SAFE_DEFAULT: ApprovalRequirement = { required: true, reason: 'kmp_error' };
+  return safeParseKmp(_runtimeBuilder.defaultApprovalRequirement(dispatchStatus), SAFE_DEFAULT, 'Runtime.defaultApprovalRequirement');
 }
 
 export class OrchestrationRuntimeService {
@@ -52,39 +35,14 @@ export class OrchestrationRuntimeService {
     dispatchStatus: ActionOrchestrationMetadata['dispatchStatus'];
     highRisk: boolean;
   }): RuntimeSemantics {
-    const autonomy = deriveRuntimeAutonomy(input.autopilotLevel);
-
-    let disposition: RuntimeSemantics['disposition'] = 'visible_execution';
-    if (input.dispatchStatus === 'ephemeral') {
-      disposition = 'ephemeral_preview';
-    } else if (input.dispatchStatus === 'analysis_only' || input.dispatchStatus === 'blocked') {
-      disposition = 'analysis_only';
-    } else if (input.dispatchStatus === 'awaiting_approval') {
-      if (input.autopilotLevel === 0) {
-        disposition = 'manual_review';
-      } else if (input.highRisk && input.autopilotLevel >= 3) {
-        disposition = 'high_risk_review';
-      } else {
-        disposition = 'proposal_review';
-      }
-    } else if (input.historyMode === 'silent' || input.autopilotLevel === 5) {
-      disposition = 'silent_execution';
-    }
-
-    const historyDestination: RuntimeSemantics['historyDestination'] =
-      disposition === 'ephemeral_preview'
-        ? 'none'
-        : disposition === 'silent_execution'
-          ? 'silent_audit'
-          : 'standard';
-
+    const s = _runtimeBuilder.build(input.autopilotLevel, input.historyMode, input.dispatchStatus, input.highRisk);
     return {
-      autopilotLevel: input.autopilotLevel,
-      autonomy,
-      disposition,
-      historyDestination,
-      willPersistHistory: historyDestination === 'standard',
-      shouldNotifyUser: disposition !== 'silent_execution',
+      autopilotLevel: s.autopilotLevel as AutopilotLevel,
+      autonomy: s.autonomy as RuntimeAutonomy,
+      disposition: s.disposition as RuntimeSemantics['disposition'],
+      historyDestination: s.historyDestination as RuntimeSemantics['historyDestination'],
+      willPersistHistory: s.willPersistHistory,
+      shouldNotifyUser: s.shouldNotifyUser,
     };
   }
 
@@ -172,20 +130,6 @@ export class OrchestrationRuntimeService {
   }
 
   static getNoticePrefix(runtime: RuntimeSemantics): string | null {
-    switch (runtime.disposition) {
-      case 'manual_review':
-        return 'Manual review required before execution';
-      case 'proposal_review':
-        return 'Pending approval before execution';
-      case 'high_risk_review':
-        return 'High-risk action requires approval';
-      case 'analysis_only':
-      case 'ephemeral_preview':
-        return 'Not executed in this session';
-      case 'incident_review':
-        return 'Execution failed and requires incident review';
-      default:
-        return null;
-    }
+    return _runtimeBuilder.getNoticePrefix(runtime.disposition) ?? null;
   }
 }

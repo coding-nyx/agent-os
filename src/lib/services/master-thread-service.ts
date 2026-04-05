@@ -852,7 +852,7 @@ export class MasterThreadService {
     if (input.planningProposal) {
       const moduleName = input.planningProposal.targetModuleId
         ? MODULE_MANIFEST[input.planningProposal.targetModuleId]?.alias ?? input.planningProposal.targetModuleId
-        : 'Nexus';
+        : 'Nyx';
       const stepSummary = input.planningProposal.nodeCount && input.planningProposal.nodeCount > 1
         ? ` ${input.planningProposal.nodeCount} coordinated steps are ready.`
         : '';

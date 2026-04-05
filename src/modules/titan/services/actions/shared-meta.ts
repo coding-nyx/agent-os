@@ -41,6 +41,16 @@ export const titanAllowedActions = [
   // Scheduling actions
   'schedule_workout',
   'update_planned_workout',
-  // Workout intelligence
+  'clear_workout_program',
+  'update_active_program',
+  // Workout programs & intelligence
+  'create_workout_plan',
+  'apply_program_template',
+  'suggest_progression',
   'suggest_exercise_substitute',
+  // Nutrition
+  'log_meal',
+  // Injury management
+  'log_injury',
+  'update_injury',
 ] as const;

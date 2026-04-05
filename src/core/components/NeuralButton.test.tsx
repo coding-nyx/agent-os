@@ -210,9 +210,9 @@ describe('NeuralButton — disabled state', () => {
     expect(getButton()).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('applies opacity-40 class when disabled', () => {
+  it('applies disabled opacity class when disabled', () => {
     render(<NeuralButton disabled>Action</NeuralButton>);
-    expect(getButton().className).toContain('disabled:opacity-40');
+    expect(getButton().className).toContain('disabled:opacity-35');
   });
 
   it('does not fire onClick when disabled', async () => {

@@ -3,7 +3,7 @@
  * See docs/architecture/llm-entrypoint-runtime.md for the full message flow.
  */
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { useGlobalSoulActions, useGlobalSoulStore } from '../global-soul-context';
 import { useAuth } from '../auth-context';
 import { Message, MessageContent, GuestQuota, ContextPolicy, NeuralStateVectorPatch } from '../types';
@@ -29,12 +29,15 @@ import { OrchestrationActionGateService } from '@/lib/services/orchestration-act
 import { OrchestrationPersistenceService } from '@/lib/services/orchestration-persistence-service';
 import { OrchestrationRuntimeService } from '@/lib/services/orchestration-runtime-service';
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
-import { CommandIntelligenceService } from '@/lib/services/command-intelligence-service';
+import { CommandIntelligenceServiceJs } from '@cortex-logic';
+
+const _kmpCommandParser = new CommandIntelligenceServiceJs();
 import { MasterThreadService } from '@/lib/services/master-thread-service';
 import { ModuleAIActionExecutionService, type DeferredApproval } from '@/lib/services/module-ai-action-execution-service';
 export type { DeferredApproval };
 import { NexusActionPlannerService } from '@/lib/services/nexus-action-planner-service';
 import { NexusActionDispatchExecutionService } from '@/lib/services/nexus-action-dispatch-execution-service';
+import { isOpenRouterAuthError } from '@/lib/services/openrouter-key';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual' | 'ephemeral';
 
@@ -57,6 +60,13 @@ interface UseModuleAIOptions {
    * without requiring messages as a systemPrompt useMemo dependency.
    */
   getSessionProgressBlock?: () => string | null;
+  /**
+   * Optional per-module context forwarded to KMP's DefaultPersonaFactory.assemble().
+   * Module pages can include typed profile data (e.g. `{ titan_profile: {...} }`)
+   * which KMP will deserialize into Kotlin data classes for scoped prompt building.
+   * Merged with `{ baseRole }` before being serialized as moduleContextJson.
+   */
+  moduleContext?: Record<string, unknown>;
 }
 
 const MEMORY_SECTION_CHAR_LIMIT = 1800;
@@ -74,6 +84,7 @@ const HISTORY_WINDOW = 40;
  * is ready.
  */
 const HISTORY_FALLBACK_WINDOW = 80;
+const OPENROUTER_AUTH_ERROR_MESSAGE = 'OpenRouter authentication failed (401). Add a valid API key in Settings -> Models.';
 
 function trimToCharLimit(text: string, limit: number): string {
   if (text.length <= limit) return text;
@@ -90,6 +101,21 @@ function contentToText(content: MessageContent): string {
     .filter((part) => part.type === 'text')
     .map((part) => (part as { type: 'text'; text: string }).text)
     .join(' ');
+}
+
+function toUserFacingAiError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (isOpenRouterAuthError(message)) {
+    return OPENROUTER_AUTH_ERROR_MESSAGE;
+  }
+  if (/429|rate limit|too many requests/i.test(message)) {
+    return 'The neural link is congested. Please try again in a moment.';
+  }
+  if (/network|fetch|timeout|connection|offline/i.test(message)) {
+    return 'Network interruption while contacting the model provider. Please retry.';
+  }
+  return message || 'The neural tunnel encountered an interference packet.';
 }
 
 /**
@@ -197,7 +223,8 @@ function appendExecutionHoldNotice(
     | 'High-risk action requires approval'
     | 'Not executed in this session'
     | 'Execution failed and needs review'
-    | 'Execution escalated for manual recovery',
+    | 'Execution escalated for manual recovery'
+    | 'Action not permitted for this module',
 ): string {
   if (labels.length === 0) return text;
   const uniqueLabels = Array.from(new Set(labels));
@@ -217,9 +244,12 @@ export function useModuleAI({
   persistencePolicy = 'auto',
   onError,
   autopilotLevelOverride,
+  getSessionProgressBlock,
+  moduleContext,
 }: UseModuleAIOptions) {
   const { streamMessage, sendMessage, generateJSON } = useAI();
   const threadIdRef = useRef<string | undefined>(undefined);
+  const openRouterAuthBlockedRef = useRef(false);
   const { enhanceContext, enhanceContextForModule } = useGlobalSoulActions();
   // Read globalSoul once for initializing the ref, then keep it updated via
   // Zustand's subscribe (non-hook) API so this hook does NOT trigger a
@@ -256,6 +286,10 @@ export function useModuleAI({
       (state) => { globalSoulRef.current = state.globalSoul; },
     );
   }, []);
+  // Keep moduleContext in a ref so handleSendMessage picks up the latest value
+  // without triggering re-renders when the module page updates its context.
+  const moduleContextRef = useRef(moduleContext);
+  moduleContextRef.current = moduleContext;
   const activeSessionId = sessionId ?? 'current';
   const resolvedContextPolicy: ContextPolicy = contextPolicy ?? 'base-context';
 
@@ -275,8 +309,8 @@ export function useModuleAI({
   resolvedEnhanceContextRef.current = resolvedEnhanceContext;
 
   // Keep getSessionProgressBlock in a ref so handleSendMessage doesn't need it as a dep.
-  const getSessionProgressBlockRef = useRef(options?.getSessionProgressBlock);
-  getSessionProgressBlockRef.current = options?.getSessionProgressBlock;
+  const getSessionProgressBlockRef = useRef(getSessionProgressBlock);
+  getSessionProgressBlockRef.current = getSessionProgressBlock;
   // Stable wrapper that always delegates to the current ref. Passed to sub-hooks
   // (e.g. useConsolidation) so their callbacks don't recreate when globalSoul changes.
   const stableEnhanceContext = useCallback(
@@ -355,7 +389,9 @@ export function useModuleAI({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      abortControllerRef.current?.abort('unmount');
+      if (isProcessingRef.current) {
+        abortControllerRef.current?.abort('unmount');
+      }
       if (streamRafRef.current) {
         cancelAnimationFrame(streamRafRef.current);
         streamRafRef.current = 0;
@@ -647,6 +683,30 @@ export function useModuleAI({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [flushActiveSession]);
 
+  // Clear auth circuit-breaker when model/provider/key inputs change.
+  useEffect(() => {
+    const clearAuthBlock = () => {
+      openRouterAuthBlockedRef.current = false;
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (
+        event.key === 'nexus_debug_provider' ||
+        event.key === 'preferred_model' ||
+        event.key === 'VITE_OPENROUTER_API_KEY' ||
+        event.key === 'openrouter_api_key' ||
+        event.key === 'OPENROUTER_API_KEY'
+      ) {
+        clearAuthBlock();
+      }
+    };
+    window.addEventListener('nexus_model_changed', clearAuthBlock);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('nexus_model_changed', clearAuthBlock);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
   const handleSendMessage = useCallback(
     async (
       content: MessageContent,
@@ -655,6 +715,10 @@ export function useModuleAI({
     ) => {
       if (isProcessingRef.current) return;
       if (isGuest && quota.isHardLocked) return;
+      if (openRouterAuthBlockedRef.current) {
+        setError(OPENROUTER_AUTH_ERROR_MESSAGE);
+        return;
+      }
 
       threadIdRef.current = options?.threadId;
 
@@ -686,10 +750,77 @@ export function useModuleAI({
         ? NexusActionPlannerService.extractExecutionPacket(contentText)
         : null;
       const semanticContentText = NexusActionPlannerService.getSemanticInput(contentText);
-      const parsedCommand = await CommandIntelligenceService.parseWithLLM(semanticContentText, {
-        sourceModuleId: moduleId,
-        generateJSON,
-      });
+      const nowIso = new Date().toISOString().slice(0, 10);
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      let parserAuthError: string | null = null;
+      const parsedCommand = await (async (): Promise<ParsedCommandEnvelope> => {
+        try {
+          return await new Promise<ParsedCommandEnvelope>((resolve, reject) => {
+            const task = _kmpCommandParser.parseWithLlm(
+              semanticContentText,
+              moduleId,
+              nowIso,
+              timezone,
+              (prompt, systemPrompt, onComplete, onError) => {
+                generateJSON<string>(prompt, { systemPrompt, temperature: 0.1, maxTokens: 600 })
+                  .then((result) => onComplete(typeof result === 'string' ? result : JSON.stringify(result)))
+                  .catch((e: unknown) => onError(String(e)));
+              },
+              (envelopeJson) => {
+                try { resolve(JSON.parse(envelopeJson) as ParsedCommandEnvelope); }
+                catch (e) { reject(e); }
+              },
+              (err) => reject(new Error(err))
+            );
+            // Cancel the KMP coroutine if the component unmounts during parsing.
+            if (!mountedRef.current) task.cancel();
+          });
+        } catch (llmParseError) {
+          // Keep chat alive if LLM-assisted parsing fails (regex/runtime/provider issues).
+          // Use deterministic phase-1 parser as fallback and continue the turn.
+          NexusLogger.emit('ai', {
+            moduleId,
+            label: 'command_parse_fallback',
+            detail: llmParseError instanceof Error ? llmParseError.message : String(llmParseError),
+          });
+          if (isOpenRouterAuthError(llmParseError instanceof Error ? llmParseError.message : String(llmParseError))) {
+            openRouterAuthBlockedRef.current = true;
+            parserAuthError = OPENROUTER_AUTH_ERROR_MESSAGE;
+          }
+          try {
+            const envelopeJson = _kmpCommandParser.parse(semanticContentText, moduleId, nowIso, timezone);
+            return JSON.parse(envelopeJson) as ParsedCommandEnvelope;
+          } catch (phase1Error) {
+            NexusLogger.emit('ai', {
+              moduleId,
+              label: 'command_parse_failed',
+              detail: phase1Error instanceof Error ? phase1Error.message : String(phase1Error),
+            });
+            return {
+              rawInput: semanticContentText,
+              normalizedInput: semanticContentText,
+              parserVersion: 'phase1-v1',
+              parserMode: 'llm-fallback',
+              sourceModuleId: moduleId,
+              generatedAt: new Date().toISOString(),
+              timezone,
+              confidence: 0,
+              intents: [],
+              temporalReferences: [],
+              sharedRouteHints: [],
+              mentions: [],
+              mentionedModuleIds: [],
+              requiresClarification: false,
+              ambiguityReasons: [],
+            };
+          }
+        }
+      })();
+      if (parserAuthError) {
+        if (mountedRef.current) setError(parserAuthError);
+        markPendingRequestFailed();
+        return;
+      }
       setLastParsedCommand(parsedCommand);
       if (debugModeRef.current) {
         NexusLogger.emit('ai', {
@@ -889,7 +1020,8 @@ export function useModuleAI({
           moduleId,
           baseRole: baseWithProgress,
           userProfile: profileRef.current,
-          globalSoul: globalSoulRef.current
+          globalSoul: globalSoulRef.current,
+          moduleContext: moduleContextRef.current
         });
         const now = new Date();
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1030,6 +1162,7 @@ export function useModuleAI({
           heldForApprovalLabels,
           highRiskReviewLabels,
           manualReviewLabels,
+          schemaBlockedLabels,
           orchestrationMetadata,
           profileDirty,
           soulUpdates,
@@ -1235,6 +1368,8 @@ export function useModuleAI({
                     ? `Execution escalated for manual recovery: ${Array.from(new Set(escalatedExecutionLabels)).join(', ')}.`
                     : failedExecutionLabels.length > 0
                       ? `Execution failed and needs review: ${Array.from(new Set(failedExecutionLabels)).join(', ')}.`
+                  : schemaBlockedLabels.length > 0
+                    ? `Action not permitted for this module: ${Array.from(new Set(schemaBlockedLabels)).join(', ')}.`
                   : analysisOnlyLabels.length > 0
                     ? `Not executed in this session: ${Array.from(new Set(analysisOnlyLabels)).join(', ')}.`
                     : `${response.actions.map((action) => getActionLabel(action.type)).join(', ')}.`;
@@ -1265,6 +1400,7 @@ export function useModuleAI({
             'Execution failed and needs review',
           );
           adjustedPublicText = appendExecutionHoldNotice(adjustedPublicText, analysisOnlyLabels, 'Not executed in this session');
+          adjustedPublicText = appendExecutionHoldNotice(adjustedPublicText, schemaBlockedLabels, 'Action not permitted for this module');
         }
         // If we rewrote the public text, reflect it in the final content shown to the user.
         if (adjustedPublicText && adjustedPublicText !== visibleAssistantText) {
@@ -1411,14 +1547,10 @@ export function useModuleAI({
           label: 'error',
           detail: e instanceof Error ? e.message : String(e),
         });
-        if (mountedRef.current) {
-          const errorMessage = e instanceof Error ? e.message : String(e);
-          if (errorMessage.includes('429')) {
-            setError('The neural link is congested. Please try again in a moment.');
-          } else {
-            setError('The neural tunnel encountered an interference packet.');
-          }
+        if (isOpenRouterAuthError(e instanceof Error ? e.message : String(e))) {
+          openRouterAuthBlockedRef.current = true;
         }
+        if (mountedRef.current) setError(toUserFacingAiError(e));
         if (onError) {
           onError(e);
         }

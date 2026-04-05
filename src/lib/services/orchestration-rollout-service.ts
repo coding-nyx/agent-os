@@ -1,8 +1,12 @@
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
 import type { OrchestrationTurnRuntimeSummary } from '@/lib/contracts/orchestration';
 import type { RoutingDecision } from './nexus-routing-service';
+import { OrchestrationRolloutServiceJs } from '@cortex-logic';
+import { safeParseKmp } from '@/cortex-bridge/kmp-parse';
 
-interface RolloutSnapshot {
+const _service = new OrchestrationRolloutServiceJs();
+
+export interface RolloutSnapshot {
   parseSuccesses: number;
   parseClarifications: number;
   parsedRouteHits: number;
@@ -16,76 +20,37 @@ interface RolloutSnapshot {
   executionFailureByAction: Record<string, number>;
 }
 
-const EMPTY_SNAPSHOT: RolloutSnapshot = {
-  parseSuccesses: 0,
-  parseClarifications: 0,
-  parsedRouteHits: 0,
-  capabilityRouteHits: 0,
-  keywordRouteHits: 0,
-  defaultRouteHits: 0,
-  planningBuilds: 0,
-  planningSkips: 0,
-  approvalInterruptions: 0,
-  executionFailures: 0,
-  executionFailureByAction: {},
-};
-
 export class OrchestrationRolloutService {
-  private static snapshot: RolloutSnapshot = { ...EMPTY_SNAPSHOT, executionFailureByAction: {} };
-
   static recordParsedCommand(envelope: ParsedCommandEnvelope): void {
-    if (envelope.requiresClarification) {
-      this.snapshot.parseClarifications += 1;
-      return;
-    }
-    this.snapshot.parseSuccesses += 1;
+    _service.recordParsedCommand(Boolean(envelope.requiresClarification));
   }
 
   static recordRoutingDecision(decision: RoutingDecision): void {
-    if (decision.reason.startsWith('command:')) {
-      this.snapshot.parsedRouteHits += 1;
-      return;
-    }
-    if (decision.reason.startsWith('capability:')) {
-      this.snapshot.capabilityRouteHits += 1;
-      return;
-    }
-    if (decision.reason.startsWith('matched:')) {
-      this.snapshot.keywordRouteHits += 1;
-      return;
-    }
-    this.snapshot.defaultRouteHits += 1;
+    _service.recordRoutingDecision(decision.reason ?? 'default_nexus');
   }
 
   static recordPlanningAttempt(built: boolean): void {
-    if (built) {
-      this.snapshot.planningBuilds += 1;
-      return;
-    }
-    this.snapshot.planningSkips += 1;
+    _service.recordPlanningAttempt(built);
   }
 
   static recordRuntimeSummary(summary: OrchestrationTurnRuntimeSummary): void {
-    this.snapshot.approvalInterruptions += summary.counts.awaitingApproval;
-
-    for (const action of summary.actions) {
-      if (action.executionStatus !== 'failed' && action.executionStatus !== 'failed_escalated') {
-        continue;
-      }
-      this.snapshot.executionFailures += 1;
-      this.snapshot.executionFailureByAction[action.actionType] =
-        (this.snapshot.executionFailureByAction[action.actionType] ?? 0) + 1;
-    }
+    _service.recordRuntimeSummary(JSON.stringify(summary));
   }
 
   static getSnapshot(): RolloutSnapshot {
-    return {
-      ...this.snapshot,
-      executionFailureByAction: { ...this.snapshot.executionFailureByAction },
-    };
+    const EMPTY: RolloutSnapshot = { parseSuccesses: 0, parseClarifications: 0, parsedRouteHits: 0, capabilityRouteHits: 0, keywordRouteHits: 0, defaultRouteHits: 0, planningBuilds: 0, planningSkips: 0, approvalInterruptions: 0, executionFailures: 0, executionFailureByAction: {} };
+    return safeParseKmp(_service.getSnapshot(), EMPTY, 'Rollout.getSnapshot');
   }
 
+  static reset(): void {
+    const service = _service as unknown as { reset?: () => void };
+    if (typeof service.reset === 'function') {
+      service.reset();
+    }
+  }
+
+  /** @deprecated Use reset() */
   static resetForTests(): void {
-    this.snapshot = { ...EMPTY_SNAPSHOT, executionFailureByAction: {} };
+    this.reset();
   }
 }

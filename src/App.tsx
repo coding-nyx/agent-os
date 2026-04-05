@@ -1,10 +1,10 @@
-import React, { lazy, Suspense, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './core/components/ThemeProvider';
 import { AuthProvider, useAuth } from './lib/auth-context';
 import { VaultProvider, useVault } from './lib/vault-context';
 import { GlobalSoulProvider } from './lib/global-soul-context';
-import { AIProvider, useAI } from './llm-engine/ai-context';
+import { AIProvider, useAI } from './cortex-bridge/ai-context';
 import { BootLoader } from './core/components/BootLoader';
 import { AppErrorBoundary } from './core/components/AppErrorBoundary';
 import { ProtectedRoute } from './core/components/ProtectedRoute';
@@ -38,6 +38,7 @@ import {
 } from './lib/spine/cascade-rules';
 import { DataLayerProvider } from './lib/data-layer/provider';
 import { registerScoutHandoffConsumer } from './modules/scout/services/scout-handoff-consumer';
+import { setActionHubUser, invalidateActionHubBridge } from './cortex-bridge/action-hub-bridge';
 
 // Route-level lazy loading for chunk splitting.
 const LandingPage = lazy(() => import('./modules/landing/LandingPage'));
@@ -54,8 +55,47 @@ const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'));
 const NotificationsPage = lazy(() => import('./modules/notifications/NotificationsPage'));
 
 function AIWrapper({ children }: { children: React.ReactNode }) {
-  const { isGuest } = useAuth();
-  return <AIProvider guestMode={isGuest}>{children}</AIProvider>;
+  const { user, isGuest, profile } = useAuth();
+  const { getMasterKey, isUnlocked } = useVault();
+  const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
+  useEffect(() => {
+    if (isUnlocked) {
+      getMasterKey().then((key) => setEncryptionKey(key)).catch(() => setEncryptionKey(null));
+    } else {
+      setEncryptionKey(null);
+    }
+  }, [isUnlocked, getMasterKey]);
+
+  // Sync Firestore-backed AI preferences to localStorage on login / profile load,
+  // enabling cross-device model preference sync. Only writes when the stored value
+  // differs so this never clobbers a preference the user just set on this device.
+  const profileModel = profile?.aiPreferences?.preferredModel;
+  const profileProvider = profile?.aiPreferences?.preferredProvider;
+  useEffect(() => {
+    if (!profileModel && !profileProvider) return;
+    let changed = false;
+    if (profileModel && !localStorage.getItem('preferred_model')) {
+      localStorage.setItem('preferred_model', profileModel);
+      changed = true;
+    }
+    if (profileProvider && !localStorage.getItem('nexus_debug_provider')) {
+      localStorage.setItem('nexus_debug_provider', profileProvider);
+      changed = true;
+    }
+    if (changed) {
+      window.dispatchEvent(new CustomEvent('nexus_model_changed'));
+    }
+  }, [profileModel, profileProvider]);
+
+  return (
+    <AIProvider
+      guestMode={isGuest}
+      userId={user?.uid}
+      encryptionKey={encryptionKey}
+    >
+      {children}
+    </AIProvider>
+  );
 }
 
 function SpineRuntimeBootstrap() {
@@ -77,9 +117,11 @@ function SpineRuntimeBootstrap() {
 
   useEffect(() => {
     Spine.setUser(userId);
+    setActionHubUser(userId);
   }, [userId]);
 
   useEffect(() => {
+    invalidateActionHubBridge();
     if (!userId) {
       registerScoutHandoffConsumer({ userId: null, encryptionKey: null });
       return;
@@ -193,7 +235,7 @@ function BridgeMount() {
     }
 
     if (mountedUserId.current === user.uid) return;
-    
+
     mountedUserId.current = user.uid;
     console.log('[BridgeMount] Initializing services for:', user.uid);
 
@@ -205,7 +247,7 @@ function BridgeMount() {
           void BridgeService.requestPermissionAndInit();
         }
       });
-    
+
     ReminderScheduler.start(user.uid);
     SchedulerService.start();
     OrchestrationRetryWorkerService.start(user.uid);
@@ -226,7 +268,7 @@ function BridgeMount() {
 function AppContent() {
   const { profile, isGuest, isAuthenticated } = useAuth();
   useOrchestrationProfileSync();
-  
+
   // A session is "onboarded" if it's a guest session (which bypasses Nexus onboarding)
   // or if the authenticated user has completed their core profile.
   const isOnboardingComplete = isGuest || !!profile?.onboardingComplete;
@@ -254,13 +296,13 @@ function AppContent() {
 
       <SpineToastProvider />
       <DebugActivityOverlay />
-      
+
       <Routes>
         <Route path="/" element={<LandingPage />} />
 
         {/* Vault unlock gate — outside ProtectedRoute so it's always reachable */}
         <Route path="/vault-gate" element={<AppVaultGate />} />
-        
+
         <Route path="/nexus/*" element={
           <ProtectedRoute requireOnboarding={false}>
             <NexusPage />

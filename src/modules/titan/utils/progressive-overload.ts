@@ -19,9 +19,12 @@
 
 import type { WorkoutSession, PersonalRecord } from '@/lib/types';
 import { EXERCISE_LIBRARY } from '../data/exercise-library';
+import { ProgressiveOverloadEngineJs } from '@cortex-logic';
+
+const _overloadEngine = new ProgressiveOverloadEngineJs();
 
 // ── Volume Landmarks per muscle group (sets/week) ──────────────────────────
-// Science-based MEV/MAV/MRV from Renaissance Periodization research
+// Sourced from cortex-logic KMP (single source of truth for both platforms)
 
 export interface VolumeEntry {
   /** Minimum Effective Volume — below this threshold, little adaptation occurs. */
@@ -32,21 +35,7 @@ export interface VolumeEntry {
   mrv: number;
 }
 
-export const VOLUME_LANDMARKS: Record<string, VolumeEntry> = {
-  chest:      { mev: 8,  mav: 16, mrv: 22 },
-  back:       { mev: 10, mav: 18, mrv: 25 },
-  shoulders:  { mev: 8,  mav: 16, mrv: 22 },
-  biceps:     { mev: 8,  mav: 14, mrv: 20 },
-  triceps:    { mev: 6,  mav: 14, mrv: 20 },
-  quads:      { mev: 8,  mav: 16, mrv: 20 },
-  hamstrings: { mev: 6,  mav: 12, mrv: 16 },
-  glutes:     { mev: 4,  mav: 12, mrv: 16 },
-  calves:     { mev: 8,  mav: 16, mrv: 20 },
-  core:       { mev: 6,  mav: 16, mrv: 20 },
-  traps:      { mev: 4,  mav: 12, mrv: 16 },
-  lats:       { mev: 8,  mav: 16, mrv: 20 },
-  forearms:   { mev: 4,  mav: 10, mrv: 14 },
-};
+export const VOLUME_LANDMARKS: Record<string, VolumeEntry> = JSON.parse(_overloadEngine.getAllLandmarks());
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

@@ -1,18 +1,19 @@
+import { AgnesGravityEngineJs } from '@cortex-logic';
 import { Spine } from '@/lib/spine/spine-event-bus';
 
 /**
- * GravityEngine Logic
- * Monitors chat sentiment and core-wound keywords to trigger session invitations.
- * Formula: G = w1 * |S| + w2 * K
+ * GravityEngine — delegates G-score computation to KMP's GravityCalculator.
+ * Formula (in KMP): G = w1·|S| + w2·K  (w1=0.6, w2=0.4)
+ * Spine event emission stays in TS (browser side-effect).
  */
 
-const W1 = 0.6; // Weight for sentiment polarity
-const W2 = 0.4; // Weight for keyword density
+const SESSION_INVITATION_THRESHOLD = 0.8;
 
-const CORE_WOUND_KEYWORDS = [
-  'failure', 'abandonment', 'rejection', 'shame', 'guilt', 'trauma',
-  'worthless', 'unlovable', 'hopeless', 'helpless', 'betrayal', 'fear'
-];
+let _engine: InstanceType<typeof AgnesGravityEngineJs> | null = null;
+function getEngine() {
+  if (!_engine) _engine = new AgnesGravityEngineJs();
+  return _engine;
+}
 
 export class GravityEngine {
   /**
@@ -22,18 +23,7 @@ export class GravityEngine {
    * @returns Gravity score between 0.0 and 1.0.
    */
   public static calculateGravity(text: string, sentiment: number): number {
-    const absSentiment = Math.abs(sentiment);
-    
-    const words = text.toLowerCase().split(/\s+/);
-    const keywordMatches = words.filter(word => 
-      CORE_WOUND_KEYWORDS.some(k => word.includes(k))
-    ).length;
-    
-    const keywordDensity = Math.min(1.0, keywordMatches / 3); // Maxed at 3 keywords for density
-
-    const gravity = (W1 * absSentiment) + (W2 * keywordDensity);
-    
-    return Math.min(1.0, gravity);
+    return getEngine().calculateGravity(text, sentiment);
   }
 
   /**
@@ -41,10 +31,10 @@ export class GravityEngine {
    */
   public static evaluate(text: string, sentiment: number, moduleId: string) {
     const gravity = this.calculateGravity(text, sentiment);
-    
-    if (gravity > 0.8) {
+
+    if (gravity > SESSION_INVITATION_THRESHOLD) {
       console.info(`[GravityEngine] Gravity Spike Detected: ${gravity.toFixed(2)}. Issuing Session Invitation.`);
-      
+
       Spine.emit({
         intent: 'SESSION_INVITATION',
         source: 'AGNES',

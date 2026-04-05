@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { NexusRoutingService } from './nexus-routing-service';
-import { CommandIntelligenceService } from './command-intelligence-service';
+import { parseCommand } from './__test-helpers__/parse-command';
+const CommandIntelligenceService = { parse: parseCommand };
 import { OrchestrationCacheService } from './orchestration-cache-service';
 import { AutonomyFeatureFlags } from './autonomy-feature-flags';
 

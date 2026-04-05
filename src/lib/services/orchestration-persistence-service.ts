@@ -9,6 +9,15 @@ import type {
 import type { BatchOperation, NexusDataLayer, NexusRecord } from '@/lib/data-layer';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { MasterThreadService, type MasterThreadShellSnapshot } from './master-thread-service';
+import { OrchestrationPersistenceUtilsJs } from '@cortex-logic';
+import { safeParseKmp } from '@/cortex-bridge/kmp-parse';
+import { NexusLogger } from '@/lib/nexus-logger';
+
+const _utils = new OrchestrationPersistenceUtilsJs();
+
+// ---------------------------------------------------------------------------
+// Collection-path constants
+// ---------------------------------------------------------------------------
 
 export const ORCHESTRATION_PROPOSAL_SUBCOLLECTION = 'orchestration_proposals';
 export const ORCHESTRATION_EXECUTION_SUBCOLLECTION = 'orchestration_execution_records';
@@ -21,6 +30,10 @@ export const DEFAULT_ORCHESTRATION_RETENTION_LIMITS = {
   failures: 150,
   threads: 25,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Record shape types
+// ---------------------------------------------------------------------------
 
 export interface PersistedProposalRecord {
   id: string;
@@ -67,6 +80,10 @@ export interface PersistedThreadState {
   snapshot: MasterThreadShellSnapshot;
 }
 
+// ---------------------------------------------------------------------------
+// Local sort helper (used in async I/O methods — stays in TS)
+// ---------------------------------------------------------------------------
+
 function sortByTimestampDesc<T extends { id: string }>(
   records: T[],
   getTimestamp: (record: T) => string,
@@ -100,21 +117,16 @@ async function pruneCollectionByTimestamp<T extends { id: string }>(input: {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Pure helpers — delegated to KMP
+// ---------------------------------------------------------------------------
+
+/**
+ * Strips `undefined` values and replaces them with `null` so the result is
+ * safe to write to Firestore. Delegates to KMP; KMP method is toFirestoreSafeJson.
+ */
 function toFirestoreSafeValue<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return value.map((entry) => (entry === undefined ? null : toFirestoreSafeValue(entry))) as T;
-  }
-
-  if (value instanceof Date || value === null || value === undefined || typeof value !== 'object') {
-    return value;
-  }
-
-  const sanitizedEntries = Object.entries(value).flatMap(([key, entry]) => {
-    if (entry === undefined) return [];
-    return [[key, toFirestoreSafeValue(entry)]];
-  });
-
-  return Object.fromEntries(sanitizedEntries) as T;
+  return safeParseKmp(_utils.toFirestoreSafeJson(JSON.stringify(value)), value, 'Persistence.toFirestoreSafeValue');
 }
 
 function isUserScopedDecision(
@@ -123,68 +135,79 @@ function isUserScopedDecision(
   return decision.patientScope !== 'GUEST';
 }
 
-function sanitizeRuntimeSummary(
-  runtimeSummary: OrchestrationTurnRuntimeSummary | null | undefined,
-): OrchestrationTurnRuntimeSummary | null {
-  if (!runtimeSummary) return null;
-
-  const actions = runtimeSummary.actions.filter((action) => action.patientScope !== 'GUEST');
-  const counts = {
-    total: actions.length,
-    visibleExecutions: actions.filter(
-      (action) => action.runtime.disposition === 'visible_execution' && action.executionStatus === 'executed',
-    ).length,
-    silentExecutions: actions.filter(
-      (action) => action.runtime.disposition === 'silent_execution' && action.executionStatus === 'executed',
-    ).length,
-    awaitingApproval: actions.filter((action) =>
-      action.runtime.disposition === 'manual_review' ||
-      action.runtime.disposition === 'proposal_review' ||
-      action.runtime.disposition === 'high_risk_review').length,
-    analysisOnly: actions.filter(
-      (action) => action.runtime.disposition === 'analysis_only' && action.executionStatus !== 'failed' && action.executionStatus !== 'failed_escalated',
-    ).length,
-    blocked: actions.filter(
-      (action) => action.dispatchStatus === 'blocked' && action.executionStatus !== 'failed' && action.executionStatus !== 'failed_escalated',
-    ).length,
-    ephemeral: actions.filter((action) => action.runtime.disposition === 'ephemeral_preview').length,
-    failed: actions.filter((action) => action.executionStatus === 'failed' || action.executionStatus === 'failed_escalated').length,
-    escalated: actions.filter(
-      (action) => action.failure?.status === 'escalated' || action.executionStatus === 'failed_escalated',
-    ).length,
-  };
-
-  return {
-    ...runtimeSummary,
-    actions,
-    counts,
-    shouldSuppressAssistantMessage:
-      counts.total > 0 &&
-      counts.silentExecutions > 0 &&
-      counts.visibleExecutions === 0 &&
-      counts.awaitingApproval === 0 &&
-      counts.analysisOnly === 0 &&
-      counts.ephemeral === 0 &&
-      counts.failed === 0,
-  };
-}
+// ---------------------------------------------------------------------------
+// Service class
+// ---------------------------------------------------------------------------
 
 export class OrchestrationPersistenceService {
+  // -- Collection path builders: delegated to KMP ---------------------------
+
   static getProposalCollectionPath(uid: string): string {
-    return `users/${uid}/${ORCHESTRATION_PROPOSAL_SUBCOLLECTION}`;
+    return _utils.getProposalCollectionPath(uid);
   }
 
   static getExecutionCollectionPath(uid: string): string {
-    return `users/${uid}/${ORCHESTRATION_EXECUTION_SUBCOLLECTION}`;
+    return _utils.getExecutionCollectionPath(uid);
   }
 
   static getExecutionFailureCollectionPath(uid: string): string {
-    return `users/${uid}/${ORCHESTRATION_EXECUTION_FAILURE_SUBCOLLECTION}`;
+    return _utils.getExecutionFailureCollectionPath(uid);
   }
 
   static getThreadCollectionPath(uid: string): string {
-    return `users/${uid}/${ORCHESTRATION_THREAD_SUBCOLLECTION}`;
+    return _utils.getThreadCollectionPath(uid);
   }
+
+  // -- Record builders: delegated to KMP ------------------------------------
+
+  static toProposalRecord(
+    moduleId: string,
+    metadata: ActionOrchestrationMetadata,
+    storedAt: string,
+  ): PersistedProposalRecord {
+    try {
+      return JSON.parse(
+        _utils.toProposalRecord(moduleId, JSON.stringify(metadata), storedAt),
+      ) as PersistedProposalRecord;
+    } catch (err) {
+      NexusLogger.warn('KMP', `Persistence.toProposalRecord JSON.parse failed: ${err}`);
+      throw err;
+    }
+  }
+
+  static toExecutionRecord(
+    moduleId: string,
+    metadata: ActionOrchestrationMetadata,
+    storedAt: string,
+  ): PersistedExecutionRecord {
+    try {
+      return JSON.parse(
+        _utils.toExecutionRecord(moduleId, JSON.stringify(metadata), storedAt),
+      ) as PersistedExecutionRecord;
+    } catch (err) {
+      NexusLogger.warn('KMP', `Persistence.toExecutionRecord JSON.parse failed: ${err}`);
+      throw err;
+    }
+  }
+
+  // -- sanitizeRuntimeSummary: delegated to KMP ------------------------------
+
+  static sanitizeRuntimeSummary(
+    runtimeSummary: OrchestrationTurnRuntimeSummary | null | undefined,
+  ): OrchestrationTurnRuntimeSummary | null {
+    if (!runtimeSummary) return null;
+    try {
+      return JSON.parse(
+        _utils.sanitizeRuntimeSummary(JSON.stringify(runtimeSummary)),
+      ) as OrchestrationTurnRuntimeSummary | null;
+    } catch {
+      // Compatibility fallback for KMP serializers that reject null-heavy
+      // nested runtime payloads during in-progress migrations.
+      return toFirestoreSafeValue(runtimeSummary);
+    }
+  }
+
+  // -- Thread snapshot: stays in TS (depends on MasterThreadService) ---------
 
   static buildThreadStateSnapshot(input: {
     moduleId: string;
@@ -207,6 +230,8 @@ export class OrchestrationPersistenceService {
     };
   }
 
+  // -- Async I/O: unchanged --------------------------------------------------
+
   static async persistRuntimeArtifacts(
     uid: string,
     input: {
@@ -227,7 +252,7 @@ export class OrchestrationPersistenceService {
       ...DEFAULT_ORCHESTRATION_RETENTION_LIMITS,
       ...(input.retention ?? {}),
     };
-    const runtimeSummary = sanitizeRuntimeSummary(input.runtimeSummary);
+    const runtimeSummary = this.sanitizeRuntimeSummary(input.runtimeSummary);
 
     const operations: BatchOperation[] = [
       ...decisions.map((decision) => ({
@@ -408,50 +433,5 @@ export class OrchestrationPersistenceService {
       failureId,
       toFirestoreSafeValue(updates),
     );
-  }
-
-  private static toProposalRecord(
-    moduleId: string,
-    metadata: ActionOrchestrationMetadata,
-    storedAt: string,
-  ): PersistedProposalRecord {
-    return {
-      id: metadata.proposal.id,
-      moduleId,
-      actionType: metadata.actionType,
-      threadId: metadata.activeThreadId,
-      executionId: metadata.execution.id,
-      dispatchStatus: metadata.dispatchStatus,
-      executionMode: metadata.executionMode,
-      historyMode: metadata.historyMode,
-      approvalRequirement: metadata.approvalRequirement,
-      patientScope: metadata.patientScope,
-      mutatesState: metadata.mutatesState,
-      highRisk: metadata.highRisk,
-      proposal: metadata.proposal,
-      proposalCard: metadata.proposalCard,
-      runtime: metadata.runtime,
-      createdAt: metadata.proposal.createdAt,
-      storedAt,
-    };
-  }
-
-  private static toExecutionRecord(
-    moduleId: string,
-    metadata: ActionOrchestrationMetadata,
-    storedAt: string,
-  ): PersistedExecutionRecord {
-    return {
-      id: metadata.execution.id,
-      moduleId,
-      actionType: metadata.actionType,
-      threadId: metadata.activeThreadId,
-      dispatchStatus: metadata.dispatchStatus,
-      approvalRequirement: metadata.approvalRequirement,
-      proposalCard: metadata.proposalCard,
-      execution: metadata.execution,
-      executedAt: metadata.execution.executedAt,
-      storedAt,
-    };
   }
 }

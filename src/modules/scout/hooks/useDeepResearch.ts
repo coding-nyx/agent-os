@@ -12,7 +12,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { WebCrawlerService as WebSearchService, type WebCrawlerResponse as WebSearchResponse } from '@/lib/services/web-crawler-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { ScoutKnowledgeNode } from '../services/scout-knowledge-service';

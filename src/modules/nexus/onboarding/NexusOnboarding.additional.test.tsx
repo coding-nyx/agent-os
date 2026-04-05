@@ -77,7 +77,7 @@ vi.mock('@/lib/global-soul-context', () => {
 vi.mock('@/lib/data-layer/provider', () => ({ useDataLayer: vi.fn(() => ({})) }));
 
 // AI context (needed indirectly by useGuidedChatIntake / useOnboardingSchema)
-vi.mock('@/llm-engine/ai-context', () => ({ useAI: vi.fn() }));
+vi.mock('@/cortex-bridge/ai-context', () => ({ useAI: vi.fn() }));
 
 // Spine event bus — getRecentEvents must return an array
 vi.mock('@/lib/spine/spine-event-bus', () => ({
@@ -127,7 +127,7 @@ import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useOrchestrationStore } from '@/lib/stores/orchestration-store';
 import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 
 // ─── Shared fixture builders ───────────────────────────────────────────────────
 

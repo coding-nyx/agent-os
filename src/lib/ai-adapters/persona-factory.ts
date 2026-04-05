@@ -1,1 +1,1 @@
-export { PersonaFactory } from '@/llm-engine/persona-factory';
+export { PersonaFactory } from '@/cortex-bridge/persona-factory';

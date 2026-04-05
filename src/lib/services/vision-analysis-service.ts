@@ -1,4 +1,5 @@
 import { analyzeImageWithVisionAgent } from '@/lib/ai-adapters/vision-agent';
+import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
 
 export type VisionAnalysisMode = 'medical_report' | 'financial_document';
 
@@ -58,15 +59,6 @@ function stripActionTagsAndMarkdown(text: string): string {
   cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
   cleaned = cleaned.replace(/```/g, '');
   return cleaned.trim();
-}
-
-function resolveOpenRouterKey(explicitKey?: string) {
-  if (explicitKey) return explicitKey;
-  if (typeof window !== 'undefined') {
-    const fromLocal = localStorage.getItem('VITE_OPENROUTER_API_KEY');
-    if (fromLocal) return fromLocal;
-  }
-  return (import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined) ?? '';
 }
 
 function resolveVisionModel(explicit?: string): string {

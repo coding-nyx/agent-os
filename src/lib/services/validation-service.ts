@@ -13,7 +13,7 @@
  * Architecture notes:
  *   - Does NOT import Firebase directly; all persistence goes through
  *     getNexusDataLayer() which is already abstracted in field-validation-service.
- *   - Does NOT import from src/llm-engine/. LLM transport is injected via the
+ *   - Does NOT import from src/bridge/. LLM transport is injected via the
  *     optional `sendMessage` parameter (filled from useAI() at the call-site).
  *   - Open/Closed: add new module personas to MODULE_VALIDATOR_PERSONAS without
  *     touching any other function.

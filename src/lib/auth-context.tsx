@@ -8,6 +8,8 @@ import { GlobalProjectionService } from './services/global-projection-service';
 import { CoreUserProfile } from './types';
 import { useDataLayer } from './data-layer/provider';
 import { NexusHandoffService } from './services/nexus-handoff-service';
+import { CognitiveAgent } from '@/cortex-bridge/engine/CognitiveAgent';
+import { invalidateCredentialStore } from '@/cortex-bridge/credential-store-bridge';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -154,6 +156,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    // Wipe KMP credentials from memory before clearing storage.
+    CognitiveAgent.clearCredentials();
+    invalidateCredentialStore();
+
     await authService.logout();
     setUser(null);
     setProfile(null);

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { FieldType, type FieldDefinition } from '@/lib/field-system/types';
+import { isOpenRouterAuthError } from '@/lib/services/openrouter-key';
 import type { ModuleOnboardingSpec } from './onboarding-types';
 
 interface OnboardingSchemaResult {
@@ -150,7 +151,12 @@ export function useOnboardingSchema(spec: ModuleOnboardingSpec): OnboardingSchem
         const fallback = buildFallbackFields(spec);
         setFields(fallback);
         setSections(extractSections(fallback));
-        setError('Using default fields (AI offline)');
+        const message = err instanceof Error ? err.message : String(err);
+        setError(
+          isOpenRouterAuthError(message)
+            ? 'OpenRouter authentication failed (401). Update API key in Settings -> Models. Using default fields.'
+            : 'Using default fields (AI offline)'
+        );
       })
       .finally(() => setIsLoading(false));
   }, [isInitialized, spec, generateJSON, cacheKey]);

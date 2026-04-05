@@ -62,7 +62,7 @@ describe('computeSessionPRs', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].isNewPR).toBe(true);
-    expect(results[0].previousE1RM).toBeUndefined();
+    expect(results[0].previousE1RM).toBeNull();
     expect(results[0].newE1RM).toBe(calculateE1RM(100, 5));
     expect(results[0].exerciseName).toBe('Bench Press');
 
@@ -139,7 +139,7 @@ describe('computeSessionPRs', () => {
 
     const deadliftResult = results.find(r => r.exerciseName === 'Deadlift')!;
     expect(deadliftResult.isNewPR).toBe(true);
-    expect(deadliftResult.previousE1RM).toBeUndefined();
+    expect(deadliftResult.previousE1RM).toBeNull();
     expect(updatedPRs['deadlift']).toBe(150); // 1-rep set → e1RM = weight
   });
 

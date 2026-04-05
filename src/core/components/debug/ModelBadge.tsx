@@ -6,7 +6,7 @@
  * and alternates between model name and link status every 3 seconds.
  */
 import { useState, useEffect } from 'react';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 
 const DEFAULT_MODEL = 'deepseek/deepseek-chat';
 const STORAGE_KEY_MODEL = 'preferred_model';

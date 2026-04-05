@@ -6,7 +6,17 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Message, ConversationContext, MessageContent } from './types';
 import { CognitiveAgent } from './engine/CognitiveAgent';
-import { StructuredResponse, StreamChunk } from './engine/types';
+import { EngineConfig, StructuredResponse, StreamChunk } from './engine/types';
+import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
+import { getCredentialStore } from './credential-store-bridge';
+
+function deriveProvider(config: Pick<EngineConfig, 'openrouterKey' | 'grokKey' | 'googleKey' | 'isMockMode'>): 'openrouter' | 'grok' | 'google' | 'mock' {
+  if (config.isMockMode) return 'mock';
+  if (config.openrouterKey) return 'openrouter';
+  if (config.grokKey) return 'grok';
+  if (config.googleKey) return 'google';
+  return 'mock';
+}
 
 export interface AIContextType {
   sendMessage: (
@@ -41,9 +51,11 @@ const AIContext = createContext<AIContextType | null>(null);
 interface AIProviderProps {
   children: ReactNode;
   guestMode?: boolean;
+  userId?: string | null;
+  encryptionKey?: CryptoKey | null;
 }
 
-export function AIProvider({ children, guestMode }: AIProviderProps) {
+export function AIProvider({ children, guestMode, userId, encryptionKey }: AIProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [initFailed, setInitFailed] = useState(false);
   const [agent, setAgent] = useState<CognitiveAgent | null>(null);
@@ -51,42 +63,54 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
   const [runtimeProvider, setRuntimeProvider] = useState<'openrouter' | 'grok' | 'google' | 'mock' | null>(null);
   const initRef = useRef(false);
   const reinitRef = useRef(false);
-  const lastConfigRef = useRef<{ model: string | null; provider: string | null; guest: boolean } | null>(null);
+  const lastConfigRef = useRef<{ model: string | null; provider: string | null; guest: boolean; hasCredentialStore: boolean } | null>(null);
 
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
 
     const init = async () => {
-        const openrouterKey = localStorage.getItem('VITE_OPENROUTER_API_KEY') || import.meta.env.VITE_OPENROUTER_API_KEY;
+        // Try credential store path when user context is available.
+        const credentialStore = getCredentialStore(userId ?? null, encryptionKey ?? null);
+
+        // Legacy key resolution (fallback when credential store unavailable or for env vars).
+        const openrouterKey = resolveOpenRouterKey();
         const grokKey = localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY;
         const googleKey = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY;
+        const preferredProvider = (localStorage.getItem('nexus_debug_provider') as 'openrouter' | 'grok' | 'google' | null) || undefined;
+        const safePreferredProvider =
+          preferredProvider === 'openrouter' && !openrouterKey ? undefined : preferredProvider;
 
-        const config = {
-            openrouterKey,
-            grokKey,
-            googleKey,
-            preferredModelId: localStorage.getItem('preferred_model') || undefined,
-            preferredProvider: (localStorage.getItem('nexus_debug_provider') as 'openrouter' | 'grok' | 'google' | null) || undefined,
-            isMockMode: !openrouterKey && !grokKey && !googleKey,
-            freeModelsOnly: guestMode
-        };
+        const config: EngineConfig = credentialStore
+          ? {
+              credentialStore,
+              preferredModelId: localStorage.getItem('preferred_model') || undefined,
+              preferredProvider: safePreferredProvider,
+              isMockMode: false,
+              freeModelsOnly: guestMode,
+            }
+          : {
+              openrouterKey,
+              grokKey,
+              googleKey,
+              preferredModelId: localStorage.getItem('preferred_model') || undefined,
+              preferredProvider: safePreferredProvider,
+              isMockMode: !openrouterKey && !grokKey && !googleKey,
+              freeModelsOnly: guestMode,
+            };
 
         const newAgent = new CognitiveAgent(config);
         await newAgent.initialize();
 
         setAgent(newAgent);
-        const state = newAgent.getOrchestratorState();
-        setRuntimeModelId(state.activeModelId);
-        setRuntimeProvider(state.provider);
+        setRuntimeModelId(config.freeModelsOnly ? 'google/gemini-2.0-flash:free' : (config.preferredModelId ?? null));
+        setRuntimeProvider(credentialStore ? (safePreferredProvider ?? 'openrouter') : deriveProvider(config));
         setInitFailed(false);
         setIsInitialized(true);
     };
 
     const timer = setTimeout(() => {
         console.warn("AIProvider: initialization timed out after 8s. Running in degraded mode.");
-        // Do NOT set isInitialized — agent is still null here.
-        // Signal failure so the gate can render a degraded-mode banner instead of blocking.
         setInitFailed(true);
     }, 8000);
 
@@ -105,9 +129,7 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
   useEffect(() => {
     if (agent) {
       agent.setFreeModelsOnly(!!guestMode);
-      const state = agent.getOrchestratorState();
-      setRuntimeModelId(state.activeModelId);
-      setRuntimeProvider(state.provider);
+      setRuntimeModelId(guestMode ? 'google/gemini-2.0-flash:free' : (localStorage.getItem('preferred_model') || null));
     }
   }, [guestMode, agent]);
 
@@ -117,37 +139,50 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
       model: localStorage.getItem('preferred_model'),
       provider: localStorage.getItem('nexus_debug_provider'),
       guest: !!guestMode,
+      hasCredentialStore: !!getCredentialStore(userId ?? null, encryptionKey ?? null),
     });
     lastConfigRef.current = readConfig();
 
     const reinitIfChanged = async () => {
       const next = readConfig();
       const prev = lastConfigRef.current;
-      if (prev && prev.model === next.model && prev.provider === next.provider && prev.guest === next.guest) return;
+      if (prev && prev.model === next.model && prev.provider === next.provider && prev.guest === next.guest && prev.hasCredentialStore === next.hasCredentialStore) return;
       if (reinitRef.current) return;
       reinitRef.current = true;
       lastConfigRef.current = next;
       try {
-        const openrouterKey = localStorage.getItem('VITE_OPENROUTER_API_KEY') || import.meta.env.VITE_OPENROUTER_API_KEY;
+        const credentialStore = getCredentialStore(userId ?? null, encryptionKey ?? null);
+
+        const openrouterKey = resolveOpenRouterKey();
         const grokKey = localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY;
         const googleKey = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY;
+        const preferredProvider = (localStorage.getItem('nexus_debug_provider') as 'openrouter' | 'grok' | 'google' | null) || undefined;
+        const safePreferredProvider =
+          preferredProvider === 'openrouter' && !openrouterKey ? undefined : preferredProvider;
 
-        const config = {
-          openrouterKey,
-          grokKey,
-          googleKey,
-          preferredModelId: localStorage.getItem('preferred_model') || undefined,
-          preferredProvider: (localStorage.getItem('nexus_debug_provider') as 'openrouter' | 'grok' | 'google' | null) || undefined,
-          isMockMode: !openrouterKey && !grokKey && !googleKey,
-          freeModelsOnly: !!guestMode
-        };
+        const config: EngineConfig = credentialStore
+          ? {
+              credentialStore,
+              preferredModelId: localStorage.getItem('preferred_model') || undefined,
+              preferredProvider: safePreferredProvider,
+              isMockMode: false,
+              freeModelsOnly: !!guestMode,
+            }
+          : {
+              openrouterKey,
+              grokKey,
+              googleKey,
+              preferredModelId: localStorage.getItem('preferred_model') || undefined,
+              preferredProvider: safePreferredProvider,
+              isMockMode: !openrouterKey && !grokKey && !googleKey,
+              freeModelsOnly: !!guestMode,
+            };
 
         const newAgent = new CognitiveAgent(config);
         await newAgent.initialize();
         setAgent(newAgent);
-        const state = newAgent.getOrchestratorState();
-        setRuntimeModelId(state.activeModelId);
-        setRuntimeProvider(state.provider);
+        setRuntimeModelId(config.freeModelsOnly ? 'google/gemini-2.0-flash:free' : (config.preferredModelId ?? null));
+        setRuntimeProvider(credentialStore ? (safePreferredProvider ?? 'openrouter') : deriveProvider(config));
         setInitFailed(false);
       } catch (e) {
         console.warn('AIProvider: re-init failed', e);
@@ -170,7 +205,7 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('nexus_model_changed', handleCustom);
     };
-  }, [agent, guestMode]);
+  }, [agent, guestMode, userId, encryptionKey]);
 
   /** Empty StructuredResponse returned when the agent is unavailable (degraded mode). */
   const degradedResponse = useCallback((context: ConversationContext) => ({
@@ -179,6 +214,7 @@ export function AIProvider({ children, guestMode }: AIProviderProps) {
       publicText: '',
       internalThoughts: null,
       actions: [],
+      mutations: [],
       isInterrupted: false,
     } satisfies StructuredResponse,
     updatedHistory: context.history,

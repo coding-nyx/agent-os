@@ -13,7 +13,7 @@ describe('buildAgnesSessionPrompt', () => {
     );
 
     expect(prompt).toContain('Active mode: Casual Chat');
-    expect(prompt).toContain('Keep the conversation warm, present-focused, and emotionally supportive');
+    expect(prompt).toContain('SUPPORTIVE THERAPY DIRECTIVE (Casual)');
   });
 
   it('adds continuity instructions when switching modes mid-session', () => {

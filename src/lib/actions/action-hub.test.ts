@@ -361,9 +361,7 @@ describe('ActionHub guest firewall', () => {
 
     expect(result).toBe(true);
     expect(handler).not.toHaveBeenCalled();
-    expect(pushAssistantMessage).toHaveBeenCalledWith(
-      'Not executed in this session: guest mode cannot change saved health, training, or account state.',
-    );
+    expect(pushAssistantMessage).not.toHaveBeenCalled();
   });
 
   it('still allows guest non-mutating analysis actions', async () => {
@@ -442,7 +440,7 @@ describe('ActionHub guest firewall', () => {
       }),
       error,
     }));
-    expect(pushAssistantMessage).toHaveBeenCalledWith('Execution failed and was routed into orchestration review.');
+    expect(pushAssistantMessage).not.toHaveBeenCalled();
   });
 
   it('records missing-handler failures instead of letting them vanish silently', async () => {
@@ -481,7 +479,7 @@ describe('ActionHub guest firewall', () => {
       actionType: 'MISSING_ACTION',
       metadata: orchestration,
     });
-    expect(pushAssistantMessage).toHaveBeenCalledWith('Execution failed because no compatible action handler was available.');
+    expect(pushAssistantMessage).not.toHaveBeenCalled();
   });
 
   it('prefers capability providers before nexus fallback and records the real execution owner', async () => {

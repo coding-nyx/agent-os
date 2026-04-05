@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Cpu, ChevronDown, Search, RefreshCw, Check, Loader2 } from 'lucide-react';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
+import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
 
 type ProviderId = 'openrouter' | 'google' | 'grok';
 
@@ -73,9 +74,7 @@ export function VisionModelSelector() {
   const [isOpen, setIsOpen] = useState(false);
 
   const fetchModels = useCallback(async () => {
-    const apiKey =
-      localStorage.getItem('VITE_OPENROUTER_API_KEY') ||
-      (import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined);
+    const apiKey = resolveOpenRouterKey();
     if (!apiKey) return;
     setLoading(true);
     try {

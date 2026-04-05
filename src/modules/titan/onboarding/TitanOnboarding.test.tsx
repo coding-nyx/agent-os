@@ -1,13 +1,13 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TitanOnboarding } from './TitanOnboarding';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { useAuth } from '@/lib/auth-context';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';
 
 // Mock dependencies
-vi.mock('@/llm-engine/ai-context', () => ({
+vi.mock('@/cortex-bridge/ai-context', () => ({
   useAI: vi.fn()
 }));
 

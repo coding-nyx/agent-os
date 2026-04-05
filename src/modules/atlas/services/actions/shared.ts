@@ -5,6 +5,9 @@ import {
   loadAtlasProfile,
   saveAtlasProfile
 } from '../atlas-profile-service';
+import { AtlasComputeUtilsJs } from '@cortex-logic';
+
+const _atlas = new AtlasComputeUtilsJs();
 
 export const MAX_TITLE_LENGTH = 500;
 
@@ -23,30 +26,29 @@ export const BLOCKER_STOP_WORDS = new Set([
 export type JournalTone = 'grounding' | 'self-compassion' | 'perspective' | 'ambition' | 'reflective';
 
 export const JOURNAL_PROMPTS: Record<JournalTone, string> = {
-  'grounding': "Take a breath. What's one thing that felt manageable today, even if small?",
-  'self-compassion': "What's something you'd tell a close friend who had a day like yours?",
-  'perspective': "When you look back at today in a year, what will matter most?",
-  'ambition': "You brought real energy today. What's the one thing you want to build on tomorrow?",
-  'reflective': "What surprised you today — about your work, the world, or yourself?",
+  'grounding': _atlas.getJournalPrompt('grounding'),
+  'self-compassion': _atlas.getJournalPrompt('self-compassion'),
+  'perspective': _atlas.getJournalPrompt('perspective'),
+  'ambition': _atlas.getJournalPrompt('ambition'),
+  'reflective': _atlas.getJournalPrompt('reflective'),
 };
 
 export const JOURNAL_FORWARD: Record<JournalTone, string> = {
-  'grounding': "Tomorrow doesn't need to be big — one small step is enough.",
-  'self-compassion': "You showed up today. That always counts for more than you think.",
-  'perspective': "The things that feel urgent today rarely define tomorrow — keep your bigger picture in view.",
-  'ambition': "That energy you brought today? Build on it — you're already in motion.",
-  'reflective': "Reflection like this compounds over time. Keep going.",
+  'grounding': _atlas.getJournalForward('grounding'),
+  'self-compassion': _atlas.getJournalForward('self-compassion'),
+  'perspective': _atlas.getJournalForward('perspective'),
+  'ambition': _atlas.getJournalForward('ambition'),
+  'reflective': _atlas.getJournalForward('reflective'),
 };
 
 export function parseBoundedScore(value: unknown, fallback = 5): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
-  return Math.max(0, Math.min(10, value));
+  return _atlas.parseBoundedScore(value, fallback);
 }
 
 export function sanitizeTitle(raw: unknown, defaultValue: string): string {
   if (typeof raw !== 'string') return defaultValue;
-  const trimmed = raw.trim().slice(0, MAX_TITLE_LENGTH);
-  return trimmed.length > 0 ? trimmed : defaultValue;
+  return _atlas.sanitizeTitle(raw, defaultValue, MAX_TITLE_LENGTH);
 }
 
 export async function loadProfile(userId?: string | null, encryptionKey?: CryptoKey | null) {
@@ -59,28 +61,13 @@ export async function persistProfile(profile: AtlasProfile, userId?: string | nu
 }
 
 export function calculateActiveLoad(tasks: AtlasTask[]): number {
-  const active = tasks.filter(t => t.status === 'active' || t.status === 'queued');
-  return Math.min(10, Math.round((active.length / 50) * 10));
+  const slim = tasks.map(t => ({ status: t.status }));
+  return _atlas.calculateActiveLoad(JSON.stringify(slim));
 }
 
 export function calculateDeadlinePressure(tasks: AtlasTask[]): number {
-  const now = Date.now();
-  const overdue = tasks.filter(
-    t => t.deadline &&
-      new Date(t.deadline).getTime() < now &&
-      t.status !== 'done' &&
-      t.status !== 'deferred'
-  );
-  const upcoming = tasks
-    .filter(
-      t => t.deadline &&
-        new Date(t.deadline).getTime() >= now &&
-        t.status !== 'done' &&
-        t.status !== 'deferred'
-    )
-    .filter(t => new Date(t.deadline!).getTime() - now < 48 * 60 * 60 * 1000);
-  const overduePenalty = Math.min(overdue.length * 1.5, 4);
-  return Math.min(10, upcoming.length * 3 + overduePenalty);
+  const slim = tasks.map(t => ({ status: t.status, deadline: t.deadline ?? null }));
+  return _atlas.calculateDeadlinePressure(JSON.stringify(slim), Date.now());
 }
 
 export function unblockDependents(tasks: AtlasTask[], completedId: string, _visited = new Set<string>()): void {
@@ -141,11 +128,7 @@ export function deriveNsvTone(nsv: Record<string, unknown> | null | undefined): 
   const focusScore: number =
     typeof cognitive?.focusScore === 'number' ? cognitive.focusScore : 5;
 
-  if (stressLoad >= 8 || cnsFatigue >= 0.75) return 'grounding';
-  if (emotionalResilience <= 3) return 'self-compassion';
-  if (moodTrend <= 2 && stressLoad >= 6) return 'perspective';
-  if (energyLevel >= 7 && focusScore >= 7) return 'ambition';
-  return 'reflective';
+  return _atlas.deriveNsvTone(stressLoad, cnsFatigue, emotionalResilience, moodTrend, energyLevel, focusScore) as JournalTone;
 }
 
 export function dateToWeekday(dateStr: string): string {

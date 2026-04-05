@@ -21,7 +21,10 @@
  */
 
 import { ModuleId } from '@/lib/module-manifest';
-import { NSV_OWNERSHIP, NSVMetricPath } from './nsv-ownership';
+import { NSVMetricPath } from './nsv-ownership';
+import { SoulAuthorityServiceJs } from '@cortex-logic';
+
+const _service = new SoulAuthorityServiceJs();
 
 /** Error thrown when a module attempts an unauthorized NSV write. */
 export class SoulAuthorityError extends Error {
@@ -41,21 +44,6 @@ export class SoulAuthorityError extends Error {
   }
 }
 
-/**
- * Resolve which module holds write authority for a given NSV path.
- * Falls back to 'nexus' for paths not found in any module's ownership list
- * (which should not occur with a well-maintained NSV_OWNERSHIP map).
- */
-function resolveAuthority(nsvPath: NSVMetricPath): ModuleId {
-  for (const [moduleId, paths] of Object.entries(NSV_OWNERSHIP)) {
-    if ((paths as NSVMetricPath[]).includes(nsvPath)) {
-      return moduleId as ModuleId;
-    }
-  }
-  // Unknown path — default to nexus as fallback authority
-  return 'nexus';
-}
-
 export const SoulAuthorityGuard = {
   /**
    * Returns true if `moduleId` is authorized to write `nsvPath`.
@@ -64,11 +52,7 @@ export const SoulAuthorityGuard = {
    * All other modules must appear in NSV_OWNERSHIP[moduleId] for the given path.
    */
   canWrite(moduleId: ModuleId, nsvPath: NSVMetricPath): boolean {
-    // Nexus has super-authority over all NSV paths
-    if (moduleId === 'nexus') return true;
-
-    const ownedPaths = NSV_OWNERSHIP[moduleId] ?? [];
-    return (ownedPaths as NSVMetricPath[]).includes(nsvPath);
+    return _service.canWrite(moduleId, nsvPath);
   },
 
   /**
@@ -77,7 +61,7 @@ export const SoulAuthorityGuard = {
    */
   assertCanWrite(moduleId: ModuleId, nsvPath: NSVMetricPath): void {
     if (!SoulAuthorityGuard.canWrite(moduleId, nsvPath)) {
-      const authority = resolveAuthority(nsvPath);
+      const authority = SoulAuthorityGuard.getAuthoritativeModule(nsvPath);
       throw new SoulAuthorityError(moduleId, nsvPath, authority);
     }
   },
@@ -87,7 +71,7 @@ export const SoulAuthorityGuard = {
    * Returns 'nexus' for unrecognized paths.
    */
   getAuthoritativeModule(nsvPath: NSVMetricPath): ModuleId {
-    return resolveAuthority(nsvPath);
+    return _service.getAuthoritativeModule(nsvPath) as ModuleId;
   },
 
   /**
@@ -101,14 +85,8 @@ export const SoulAuthorityGuard = {
     moduleId: ModuleId,
     patch: Partial<Record<NSVMetricPath, unknown>>
   ): Array<{ path: NSVMetricPath; authority: ModuleId }> {
-    const violations: Array<{ path: NSVMetricPath; authority: ModuleId }> = [];
-
-    for (const path of Object.keys(patch) as NSVMetricPath[]) {
-      if (!SoulAuthorityGuard.canWrite(moduleId, path)) {
-        violations.push({ path, authority: resolveAuthority(path) });
-      }
-    }
-
-    return violations;
-  }
+    return JSON.parse(
+      _service.auditPatch(moduleId, JSON.stringify(patch)),
+    ) as Array<{ path: NSVMetricPath; authority: ModuleId }>;
+  },
 } as const;

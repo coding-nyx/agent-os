@@ -14,12 +14,12 @@ import { AGENT_GENDER_OPTIONS } from './agent-gender';
 
 export const NEXUS_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
   moduleId: 'nexus',
-  displayName: 'Nexus',
+  displayName: 'Nyx',
   themeColor: 'indigo',
   icon: Sparkles,
-  goal: 'Capture identity baseline so the Nexus orchestrator can personalise every cross-module interaction.',
+  goal: 'Capture identity baseline so the Nyx orchestrator can personalise every cross-module interaction.',
   context:
-    'Nexus is the system orchestrator. It routes between Agnes (therapy), Titan (fitness), Soma (health), Ledger (finance), Atlas (productivity), Scout (research), and Forge (dev). Knowing the user\'s name, pronouns, occupation, and sleep patterns lets Nexus tailor tone, timing, and recommendations across every module.',
+    'Nyx is the system orchestrator. It routes between Agnes (therapy), Titan (fitness), Soma (health), Ledger (finance), Atlas (productivity), Scout (research), and Forge (dev). Knowing the user\'s name, pronouns, occupation, and sleep patterns lets Nyx tailor tone, timing, and recommendations across every module.',
   fastTrackEnabled: true,
   fastTrackRequiredIds: ['preferred_name'],
   dataPoints: [

@@ -36,7 +36,6 @@ import {
 } from '@/lib/types';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import { buildTitanSessionPrompt } from './prompts/titan-session-prompt';
 import { loadTitanProfile, saveTitanProfile } from './services/titan-profile-service';
 import { calculateE1RM } from './utils/e1rm';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
@@ -53,7 +52,7 @@ import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import type { NexusHandoff } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import type { ModuleId } from '@/lib/module-manifest';
-import { NSV_CALIBRATION_PROMPTS, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
+import { getCalibrationPrompt, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { TITAN_PERSONA } from './personas';
 import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
@@ -158,17 +157,19 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
   // ── AI ─────────────────────────────────────────────────────────────────────
   const agentAlias = globalSoul?.displayNames?.titan || 'Titan';
-  const systemPrompt = useMemo(() => {
-    if (!profile) return TITAN_PERSONA;
-    return buildTitanSessionPrompt(profile, {
-      mode: isRecoveryActive ? 'recovery' : 'training',
-      recoveryScore: globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null,
-      hormonalContext: globalSoul?.crossFunctionalState?.biological?.hormonalContext ?? null,
-      somaProfile,
-    });
-  }, [profile, globalSoul?.crossFunctionalState?.biological?.recoveryScore, globalSoul?.crossFunctionalState?.biological?.hormonalContext, somaProfile, isRecoveryActive]);
 
-  const ai = useModuleAI({ moduleId: 'titan', systemPrompt, encryptionKey });
+  const ai = useModuleAI({
+    moduleId: 'titan',
+    systemPrompt: TITAN_PERSONA,
+    encryptionKey,
+    moduleContext: {
+      titan_profile: profile,
+      titan_mode: isRecoveryActive ? 'recovery' : 'training',
+      titan_recovery_score: globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null,
+      titan_hormonal_context: globalSoul?.crossFunctionalState?.biological?.hormonalContext ?? null,
+      titan_soma_profile: somaProfile,
+    },
+  });
 
   const openChatAndSend = useCallback((prompt: string) => {
     setIsChatCollapsed(false);
@@ -569,7 +570,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   const handleCalibrate = useCallback((metricKey: string) => {
     const key = metricKey as NSVMetricPath;
     const owner = getMetricOwner(key);
-    const prompt = NSV_CALIBRATION_PROMPTS[key] || 'Share the missing metric value.';
+    const prompt = getCalibrationPrompt(key);
     NexusHandoffService.store({ moduleId: owner, type: 'delegate', content: prompt, reason: 'calibration_request', sourceModuleId: 'titan', createdAt: new Date().toISOString() });
     const route = NexusRoutingService.getRoute(owner as ModuleId);
     if (route) navigate(route);

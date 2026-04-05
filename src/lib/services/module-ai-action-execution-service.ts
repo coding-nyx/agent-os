@@ -68,6 +68,7 @@ interface ExecuteModuleAIActionsResult {
   heldForApprovalLabels: string[];
   highRiskReviewLabels: string[];
   manualReviewLabels: string[];
+  schemaBlockedLabels: string[];
   orchestrationMetadata: ActionOrchestrationMetadata[];
   profileDirty: boolean;
   soulUpdates: NeuralStateVectorPatch;
@@ -123,6 +124,7 @@ export class ModuleAIActionExecutionService {
     const heldForApprovalLabels: string[] = [];
     const highRiskReviewLabels: string[] = [];
     const manualReviewLabels: string[] = [];
+    const schemaBlockedLabels: string[] = [];
     const orchestrationMetadata: ActionOrchestrationMetadata[] = [];
     const threadArtifacts: SpecialistConsultationArtifact[] = [];
     const executionArtifacts: ThreadExecutionArtifact[] = [];
@@ -161,11 +163,51 @@ export class ModuleAIActionExecutionService {
       });
     };
 
+    // Defense-in-depth: map hallucinated action types to their real equivalents.
+    // LLMs sometimes invent actions like "list_tasks" or "get_tasks" instead of
+    // using "query_module_data" with the correct moduleId target.
+    const HALLUCINATED_ACTION_MAP: Record<string, { type: string; patchPayload?: (p: Record<string, unknown>) => Record<string, unknown> }> = {
+      list_tasks:        { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'atlas' }) },
+      get_tasks:         { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'atlas' }) },
+      get_task:          { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'atlas' }) },
+      fetch_tasks:       { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'atlas' }) },
+      query_tasks:       { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'atlas' }) },
+      list_habits:       { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'atlas' }) },
+      get_habits:        { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'atlas' }) },
+      list_transactions: { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'ledger' }) },
+      get_transactions:  { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'ledger' }) },
+      list_workouts:     { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'titan' }) },
+      get_workouts:      { type: 'query_module_data', patchPayload: (p) => ({ ...p, moduleId: p.moduleId ?? 'titan' }) },
+    };
+
     for (const parsedAction of responseActions) {
-      const { type, payload } = parsedAction;
+      let { type, payload } = parsedAction;
+      // Guard: payload must be a plain object. If KMP serialized it as a JSON string,
+      // parse it here before spreading — otherwise {..."jsonString"} produces {"0":"{","1":"\"", ...}
+      const safePayload: Record<string, unknown> =
+        typeof payload === 'string' ? (JSON.parse(payload) as Record<string, unknown>) : payload;
+
+      // Normalize type to lowercase_snake_case before any lookup — guards against LLMs emitting
+      // Title Case or space-separated variants (e.g. "Retrieve Tasks" → "retrieve_tasks").
+      type = type.trim().toLowerCase().replace(/\s+/g, '_');
+
+      // Auto-translate hallucinated action types to real ones
+      const translation = HALLUCINATED_ACTION_MAP[type];
+      if (translation) {
+        NexusLogger.emit('ai', {
+          moduleId,
+          label: 'hallucinated_action_translated',
+          detail: { originalType: type, translatedType: translation.type },
+        });
+        type = translation.type;
+        if (translation.patchPayload) {
+          Object.assign(safePayload, translation.patchPayload(safePayload));
+        }
+      }
+
       const adjustedPayload = type === 'propose_reminder'
-        ? adjustRelativeReminderPayload(payload)
-        : { ...payload };
+        ? adjustRelativeReminderPayload(safePayload)
+        : { ...safePayload };
       const signature = `${type}|${stableSerialize(adjustedPayload)}`;
       if (executedActionSignatures.has(signature)) {
         NexusLogger.emit('ai', {
@@ -178,7 +220,12 @@ export class ModuleAIActionExecutionService {
       executedActionSignatures.add(signature);
 
       if (!allowedActions.includes(type)) {
-        console.warn(`[SchemaGuard] Blocked unauthorized action "${type}" for module "${moduleId}"`);
+        NexusLogger.emit('ai', {
+          moduleId,
+          label: 'schema_guard_blocked',
+          detail: { actionType: type },
+        });
+        schemaBlockedLabels.push(getActionLabel(type));
         continue;
       }
 
@@ -327,6 +374,7 @@ export class ModuleAIActionExecutionService {
       heldForApprovalLabels,
       highRiskReviewLabels,
       manualReviewLabels,
+      schemaBlockedLabels,
       orchestrationMetadata,
       profileDirty,
       soulUpdates,

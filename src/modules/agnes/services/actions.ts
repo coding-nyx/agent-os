@@ -85,7 +85,7 @@ export function registerAgnesActions() {
     }
   });
 
-  ActionHub.register('agnes', 'update_agnes_profile', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
+  ActionHub.register('agnes', 'update_agnes_profile', async ({ userId, encryptionKey, payload, markProfileDirty }) => {
     if (!userId || !encryptionKey) { return; }
     const current = await loadAgnesProfile({ userId, encryptionKey });
     if (!current) { return; }

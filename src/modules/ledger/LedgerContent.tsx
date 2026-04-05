@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { UniversalUploadZone } from '@/core/components/forms/UniversalUploadZone';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { VaultLockedShell } from '@/core/components/VaultLockedShell';
@@ -225,6 +225,10 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
     encryptionKey,
     persistencePolicy: 'ledger-financial',
     autopilotLevelOverride: 5, // financial mutations the user explicitly requests execute immediately
+    moduleContext: {
+      ledger_profile: profile,
+      ledger_mode: 'general',
+    },
   });
 
   // Vision analysis state for financial documents

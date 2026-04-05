@@ -66,7 +66,7 @@ describe('PersonaFactory.generateSystemPrompt', () => {
       userProfile: makeMockProfile(),
       globalSoul: makeMockSoul(),
     });
-    expect(result).toContain('warm, empathetic');
+    expect(result).toContain('Your Gender Personality: default');
   });
 
   it('applies neutral tone for non-binary gender', () => {
@@ -76,7 +76,7 @@ describe('PersonaFactory.generateSystemPrompt', () => {
       userProfile: makeMockProfile(),
       globalSoul: makeMockSoul(),
     });
-    expect(result).toContain('balanced, inclusive');
+    expect(result).toContain('Your Gender Personality: default');
   });
 
   it('adds biological context only for assignedSexAtBirth=female', () => {

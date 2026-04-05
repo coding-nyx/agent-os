@@ -9,9 +9,6 @@ import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import type { AtlasReviewBlueprint, SpineDomain, SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { ATLAS_PERSONA } from './personas';
-import { buildAtlasPrompt, type AtlasDataContext } from './prompts/atlas-prompt-builder';
-import { formatNSVForAtlasPlanner } from '@/lib/services/nsv-service';
-import type { NeuralStateVector } from '@/lib/types';
 import { AtlasActionsProvider } from './context/AtlasActionsContext';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
 import { AtlasActionRail } from './components/AtlasActionRail';
@@ -41,18 +38,13 @@ import { CoreProfileService } from '@/lib/services/core-profile-service';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import {
   loadJournalEntry,
-  loadJournalEntries,
   saveJournalEntry,
   createEmptyJournalEntry,
   mergeCheckInData,
 } from './services/journal-service';
-import type { AtlasJournalSummary, AtlasCheckInSummary } from './prompts/atlas-prompt-builder';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { AtlasReviewService } from './services/atlas-review-service';
 import { useUIStore } from '@/lib/stores/ui-store';
-import { AtlasPlanningEngine } from './services/atlas-planning-engine';
-import { AtlasProactiveService } from './services/atlas-proactive-service';
-import { AtlasBlueprintService } from './services/atlas-blueprint-service';
 import { createFlowMeta } from '@/lib/spine/flow-contracts';
 
 function buildRecoveryWindow(reason: string): RecoveryWindow {
@@ -106,22 +98,6 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     () => (optimisticPatch && profile ? { ...profile, ...optimisticPatch } : profile),
     [profile, optimisticPatch],
   );
-
-  // Recent journal summaries for AI context — loaded async, non-blocking
-  const [recentJournalSummaries, setRecentJournalSummaries] = useState<AtlasJournalSummary[]>([]);
-  useEffect(() => {
-    if (!user?.uid || !encryptionKey) return;
-    loadJournalEntries({ userId: user.uid, encryptionKey, limit: 5 }).then((entries) => {
-      setRecentJournalSummaries(entries.map((e) => ({
-        date: e.date,
-        mood: e.mood,
-        energyLevel: e.energyLevel,
-        morningIntent: e.morningIntent || undefined,
-        blockers: e.blockers || undefined,
-        freeformSnippet: e.freeform ? e.freeform.slice(0, 120) : undefined,
-      })));
-    }).catch(() => { /* non-critical — context will be absent */ });
-  }, [user?.uid, encryptionKey]);
 
   // Clear optimistic patch when real Firestore profile arrives
   const lastProfileRef = useRef(profile);
@@ -287,88 +263,22 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     removeFieldValue,
   } = useExtensionFieldValues('atlas');
 
-  // Build dynamic system prompt from live profile + NSV so the AI knows
-  // the user's actual tasks, goals, habits, and energy state on every call.
-  const systemPrompt = useMemo((): string => {
-    if (!profile) return ATLAS_PERSONA;
-
-    const nsv = globalSoul?.crossFunctionalState as NeuralStateVector | undefined;
-    const nsvBlock = nsv ? formatNSVForAtlasPlanner(nsv) : undefined;
-
-    const extBlock = extensions.length > 0
-      ? `CUSTOM TRACKING FIELDS:\n${extensions.map(f => `- "${f.name}" (${f.type})`).join('\n')}`
-      : undefined;
-
-    const today = new Date().toISOString().split('T')[0];
-
-    // Map today's DailyCheckInEntry records to AtlasCheckInSummary shape
-    const todayCheckIns: AtlasCheckInSummary[] = (profile.dailyCheckIns ?? [])
-      .filter((ci) => ci.date === today)
-      .map((ci) => ({
-        type: 'evening' as const,
-        completedAt: ci.loggedAt,
-        energyRating: ci.energyLevel,
-      }));
-
-    // ── Computed planning intelligence ──────────────────────────────────
-    const soul = globalSoul ?? null;
-
-    const planningDigest = profile
-      ? AtlasProactiveService.generatePlanningDigest(profile, soul)
-      : undefined;
-
-    const dependencyGraph = profile?.tasks
-      ? (() => {
-          const dg = AtlasPlanningEngine.buildDependencyGraph(profile.tasks);
-          return {
-            criticalPath: dg.criticalPath,
-            blockedChains: dg.blockedChains,
-            orphanTasks: dg.orphanTasks,
-            cycleDetected: dg.cycleDetected,
-          };
-        })()
-      : undefined;
-
-    const goalVelocities = profile?.goals && profile.goals.length > 0
-      ? AtlasPlanningEngine.computeGoalVelocities(profile.goals, profile.tasks ?? [], new Date())
-      : undefined;
-
-    const historicalPatterns = profile
-      ? AtlasPlanningEngine.computeHistoricalPatterns(profile)
-      : undefined;
-
-    const capacityBlueprint = profile
-      ? AtlasBlueprintService.computeQuickCapacitySnapshot(profile, soul)
-      : undefined;
-
-    const dataContext: AtlasDataContext = {
-      tasks: profile.tasks,           // full list — prompt builder groups them
-      goals: profile.goals,
-      habits: profile.habits?.filter(h => h.status !== 'archived'),
-      projects: profile.projects,
-      routine: profile.routine ?? null,
-      today,
-      journalSummaries: recentJournalSummaries.length > 0 ? recentJournalSummaries : undefined,
-      checkIns: todayCheckIns.length > 0 ? todayCheckIns : undefined,
-      // Intelligence blocks
-      planningDigest,
-      dependencyGraph,
-      goalVelocities,
-      historicalPatterns: historicalPatterns ?? undefined,
-      capacityBlueprint: capacityBlueprint ?? undefined,
-    };
-
-    return buildAtlasPrompt({ kind: 'general' }, nsvBlock, extBlock, dataContext, nsv);
-  // Only recalculate when the NSV data or profile content actually changes —
-  // not on every global_souls write (which always creates a new object reference).
-  }, [profile, globalSoul?.crossFunctionalState, extensions, recentJournalSummaries]);
+  // KMP's PersonaFactory now owns full Atlas intelligence computation
+  // (dependency graphs, goal velocities, capacity snapshots, planning digests).
+  // The static persona is used as a fallback; KMP builds the complete prompt
+  // when atlas_profile is present in moduleContext.
+  const systemPrompt = ATLAS_PERSONA;
 
   // AI Logic for Atlas
   const ai = useModuleAI({
     moduleId: 'atlas',
     systemPrompt,
     encryptionKey,
-    persistencePolicy: 'atlas-planning'
+    persistencePolicy: 'atlas-planning',
+    moduleContext: {
+      atlas_profile: profile,
+      atlas_mode: 'general',
+    },
   });
 
 

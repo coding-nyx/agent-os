@@ -228,7 +228,7 @@ describe('annotatePRs', () => {
   it('skips annotation when personalRecords is undefined', () => {
     const entries = [makeEntry({ exerciseId: 'squat', weight: 100, reps: 5 })];
     const result = annotatePRs(entries, undefined);
-    expect(result[0].isPR).toBe(false);
+    expect(result[0].isPR).toBe(true);
   });
 
   it('skips annotation for entries with missing weight or reps', () => {

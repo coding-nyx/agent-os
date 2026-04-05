@@ -1,1 +1,1 @@
-export { MemoryManager } from '@/llm-engine/engine/MemoryManager';
+export { MemoryManager } from '@/cortex-bridge/engine/MemoryManager';

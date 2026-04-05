@@ -7,7 +7,7 @@ import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import type { Message, GuestQuota, MessageContent, SpineEvent } from '@/lib/types';
 import { CommandPalette } from './CommandPalette';
 import { useGlobalSoulActions } from '@/lib/global-soul-context';
-import { useAI } from '@/llm-engine/ai-context';
+import { useAI } from '@/cortex-bridge/ai-context';
 import { type DocumentPipelineStage } from '@/lib/services/document-pipeline';
 import { useNexusCrossModuleBlocker } from '@/lib/hooks/use-nexus-cross-module-blocker';
 import { useNexusConflictBlocker } from '@/lib/hooks/use-nexus-conflict-blocker';
@@ -50,6 +50,7 @@ interface NexusDashboardProps {
       onActionParsed?: (type: string, payload: Record<string, unknown>) => void,
       options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; threadId?: string }
     ) => Promise<void>;
+    setMessages: (msgs: Message[]) => void;
     clearSession: () => Promise<void>;
   };
   agentName: string;
@@ -77,7 +78,7 @@ function buildPlanningExecutionVisibleContent(planningSuggestion: {
 }): string {
   const targetLabel = planningSuggestion.targetModuleId
     ? MODULE_MANIFEST[planningSuggestion.targetModuleId]?.alias ?? planningSuggestion.targetModuleId
-    : 'Nexus';
+    : 'Nyx';
   if (planningSuggestion.nodeCount && planningSuggestion.nodeCount > 1) {
     return `Execute the proposed ${planningSuggestion.nodeCount}-step ${targetLabel} plan. ${planningSuggestion.summary}`;
   }
@@ -173,6 +174,26 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
   const autopilotLevel = useOrchestrationStore((state) => state.autopilotLevel);
   const lastTurnRuntime = useOrchestrationStore((state) => state.lastTurnRuntime);
   const currentThreadId = activeThreadId ?? lastTurnRuntime?.activeThreadId ?? 'nexus.dashboard';
+
+  // Thread-aware setMessages: maps a truncated filtered-view back to the full
+  // unfiltered history.  The edit/retry hook calls setMessages(msgs) where msgs
+  // is a prefix of the thread-filtered array.  We keep every message that does
+  // NOT belong to the current thread and replace the current-thread slice with
+  // the truncated set, preserving chronological interleaving.
+  const threadAwareSetMessages = useCallback(
+    (newThreadMsgs: Message[]) => {
+      const kept = new Set(newThreadMsgs);
+      ai.setMessages(
+        ai.messages.filter((m) => {
+          const isCurrentThread = m.threadId
+            ? m.threadId === currentThreadId
+            : currentThreadId === 'nexus.dashboard';
+          return isCurrentThread ? kept.has(m) : true;
+        }),
+      );
+    },
+    [ai, currentThreadId],
+  );
   const setThreadParticipants = useOrchestrationStore((state) => state.setThreadParticipants);
   const applyThreadSnapshot = useOrchestrationStore((state) => state.applyThreadSnapshot);
   const threadParticipantsByThreadId = useOrchestrationStore((state) => state.threadParticipantsByThreadId);
@@ -792,9 +813,9 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
               if (m.threadId) return m.threadId === currentThreadId;
               return currentThreadId === 'nexus.dashboard';
             }),
-            // Disable edit/retry in the Nexus dashboard because messages are filtered
-            // by thread; setMessages operates on the full history and is not safe here.
-            setMessages: undefined,
+            // Thread-aware edit/retry: maps filtered-view truncation back to
+            // the full unfiltered history, preserving messages from other threads.
+            setMessages: threadAwareSetMessages,
             handleSendMessage: handleSendWithRouting,
             isProcessing: ai.isProcessing || isNexusBusy,
           }}

@@ -1,4 +1,4 @@
-import { CognitiveAgent } from '@/llm-engine/engine/CognitiveAgent';
+import { CognitiveAgent } from '@/cortex-bridge/engine/CognitiveAgent';
 
 export async function generateJSONWithAgent<T = unknown>(opts: {
   prompt: string;
