@@ -1,6 +1,9 @@
 import type { NexusDataLayer, NexusRecord } from '@/lib/data-layer';
 import type { AliveEntity, AliveEntityRuntimeContext, AliveEntityRuntimeReference, SoulImpactPreset } from '@/lib/contracts/orchestration';
 import type { ModuleId } from '@/lib/module-manifest';
+import { AliveEntityUtilsJs } from '@cortex-logic';
+
+const _aliveUtils = new (AliveEntityUtilsJs as any)();
 import type { SleepEntry, WorkoutSession, AtlasGoal, AtlasHabit, JournalEntry, PhysicalAssessment, VitalReading } from '@/lib/types';
 import type {
   FinancialGoal as LedgerFinancialGoal,
@@ -10,11 +13,6 @@ import type { ScoutDigest, ScoutKnowledgeNode } from '@/modules/scout/types';
 
 export const ALIVE_ENTITY_COLLECTION = 'alive_entities';
 
-const PROVENANCE_PRIORITY: Record<AliveEntity['provenance'], number> = {
-  native: 3,
-  adapter: 2,
-  bootstrap: 1,
-};
 
 function resolveAliveEntityCollectionPath(options?: {
   uid?: string;
@@ -32,44 +30,8 @@ function getAliveEntityPrefix(id: string): string {
   return lastDelimiter === -1 ? id : id.slice(0, lastDelimiter);
 }
 
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function normalizeTags(tags: string[]): string[] {
-  return Array.from(
-    new Set(
-      tags
-        .map((tag) => tag.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  );
-}
-
-function compareAliveEntityPreference(left: AliveEntity, right: AliveEntity): number {
-  const provenanceDelta = PROVENANCE_PRIORITY[left.provenance] - PROVENANCE_PRIORITY[right.provenance];
-  if (provenanceDelta !== 0) return provenanceDelta;
-
-  const updatedDelta = left.updatedAt.localeCompare(right.updatedAt);
-  if (updatedDelta !== 0) return updatedDelta;
-
-  const createdDelta = left.createdAt.localeCompare(right.createdAt);
-  if (createdDelta !== 0) return createdDelta;
-
-  return left.label.localeCompare(right.label);
-}
-
 export function normalizeAliveEntity(entity: AliveEntitySeed): AliveEntity {
-  const timestamp = nowIso();
-  return {
-    ...entity,
-    label: entity.label.trim(),
-    semantic_tags: normalizeTags(entity.semantic_tags),
-    attributes: entity.attributes ?? {},
-    soul_impact_preset: entity.soul_impact_preset ?? {},
-    createdAt: entity.createdAt ?? timestamp,
-    updatedAt: entity.updatedAt ?? timestamp,
-  };
+  return JSON.parse(_aliveUtils.normalize(JSON.stringify(entity))) as AliveEntity;
 }
 
 export function createAliveEntity(entity: AliveEntitySeed): AliveEntity {
@@ -77,17 +39,7 @@ export function createAliveEntity(entity: AliveEntitySeed): AliveEntity {
 }
 
 export function dedupeAliveEntities(entities: AliveEntitySeed[]): AliveEntity[] {
-  const deduped = new Map<string, AliveEntity>();
-
-  for (const entity of entities) {
-    const normalized = normalizeAliveEntity(entity);
-    const existing = deduped.get(normalized.id);
-    if (!existing || compareAliveEntityPreference(normalized, existing) >= 0) {
-      deduped.set(normalized.id, normalized);
-    }
-  }
-
-  return Array.from(deduped.values()).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  return JSON.parse(_aliveUtils.dedupeAndSort(JSON.stringify(entities))) as AliveEntity[];
 }
 
 export function buildAliveEntityRuntimeContext(
@@ -97,41 +49,11 @@ export function buildAliveEntityRuntimeContext(
     limitPerModule?: number;
   },
 ): AliveEntityRuntimeContext {
-  const normalized = dedupeAliveEntities(entities);
-  const allowedModules = options?.moduleFilter ? new Set(options.moduleFilter) : null;
-  const limitPerModule = options?.limitPerModule ?? 3;
-  const filtered = allowedModules
-    ? normalized.filter((entity) => allowedModules.has(entity.sourceModule))
-    : normalized;
-
-  const byModule = {} as Partial<Record<ModuleId, AliveEntityRuntimeReference[]>>;
-  const tagSet = new Set<string>();
-
-  for (const entity of filtered) {
-    entity.semantic_tags.forEach((tag) => tagSet.add(tag));
-    const bucket = byModule[entity.sourceModule] ?? [];
-    if (bucket.length < limitPerModule) {
-      bucket.push({
-        id: entity.id,
-        label: entity.label,
-        type: entity.type,
-        sourceModule: entity.sourceModule,
-        sourceEntityId: entity.sourceEntityId,
-        provenance: entity.provenance,
-        semantic_tags: entity.semantic_tags,
-        updatedAt: entity.updatedAt,
-      });
-      byModule[entity.sourceModule] = bucket;
-    }
-  }
-
-  return {
-    total: filtered.length,
-    moduleIds: Object.keys(byModule) as ModuleId[],
-    byModule,
-    tags: Array.from(tagSet).sort(),
-    lastUpdatedAt: filtered[0]?.updatedAt ?? null,
-  };
+  const moduleFilterJson = options?.moduleFilter ? JSON.stringify(options.moduleFilter) : 'null';
+  const limit = options?.limitPerModule ?? 3;
+  return JSON.parse(
+    _aliveUtils.buildRuntimeContext(JSON.stringify(entities), moduleFilterJson, limit),
+  ) as AliveEntityRuntimeContext;
 }
 
 export function adaptAtlasGoalToAliveEntity(goal: AtlasGoal, sourceModule: ModuleId = 'atlas'): AliveEntity {

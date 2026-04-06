@@ -38,7 +38,6 @@ import { ModuleIcon, moduleTextColor } from '@/core/components/ModuleIcon';
 import { ReminderOutcomeService } from '@/lib/notifications/reminder-outcome-service';
 import { ReminderLifecycleService } from '@/lib/notifications/reminder-lifecycle-service';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { NOTIFICATIONS_PERSONA } from './personas';
 import { serializeNotificationContext, NOTIFICATION_SCOPE_ACTIONS } from './prompts/notification-prompt-builder';
 import {
   buildNotificationSummary,
@@ -1119,13 +1118,8 @@ function NotificationAIPanel({
     () => serializeNotificationContext(notificationSummary, quietHoursEnabled),
     [notificationSummary, quietHoursEnabled]
   );
-  // KMP handles notification context injection via notification_context in moduleContext.
-  // Only pass the base persona here to avoid double-context.
-  const enrichedSystemPrompt = NOTIFICATIONS_PERSONA;
-
   const ai = useModuleAI({
     moduleId: 'notifications' as ModuleId,
-    systemPrompt: enrichedSystemPrompt,
     persistencePolicy: 'session-only' as any,
     moduleContext: {
       notification_context: serializedNotifContext,

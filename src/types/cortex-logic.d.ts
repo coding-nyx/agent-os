@@ -487,6 +487,129 @@ declare module '@cortex-logic' {
     computeFinancialFriction(profileJson: string): number;
     verifyCoherence(profileJson: string): string;
     computeNsvFinancialPatch(profileJson: string): string;
+    /** Returns JSON: { resonanceROI: number, financialFriction: number, frictionTier: string, analysis: string } */
+    computeResonanceROI(profileJson: string): string;
+    /** Returns TaxCategory: "deductible" | "non-deductible" | "partial" | "unknown" */
+    categorizeTax(expenseJson: string): string;
+    calculateBehavioralROI(itemJson: string, usageFrequency: number): number;
+    estimateUsageFrequency(itemJson: string): number;
+    /** Returns JSON array of DebtPayoffPlan objects (snowball strategy). */
+    planDebtSnowball(debtsJson: string, extraBudget: number): string;
+    /** Returns JSON SavingsProjection with base/optimistic/pessimistic confidence bands. */
+    projectSavingsGoal(goalJson: string): string;
+    /** Returns JSON: { estimatedLiability: number, nextDeadline: string } */
+    estimateQuarterlyTax(monthlyIncome: number, monthlyDeductibles: number): string;
+    /** Returns JSON array of { fieldId, current, suggested, reason } optimization hints. */
+    suggestTaxOptimizations(expensesJson: string): string;
+    /** Returns JSON LedgerAnalysisSummary (orchestrates all of the above). */
+    analyzeProfile(profileJson: string, savingsContributionsJson: string): string;
+  }
+
+  // ─── AtlasPlanningEngine ────────────────────────────────────────────────────
+
+  export class AtlasPlanningEngineJs {
+    /** Returns JSON DependencyGraph (adjacency as plain object, not Map). */
+    buildDependencyGraph(tasksJson: string): string;
+    /** Returns JSON array of GoalVelocity objects. */
+    computeGoalVelocities(goalsJson: string, tasksJson: string, nowIso: string): string;
+    /** Returns JSON array of DailyLoadForecast objects. */
+    forecastLoad(profileJson: string, nsvJson: string, daysAhead: number, nowIso: string): string;
+    /** Returns JSON ConflictReport. */
+    detectConflicts(profileJson: string, daysAhead: number, nowIso: string): string;
+    /** Returns JSON TaskBreakdownSuggestion. */
+    suggestTaskBreakdown(taskJson: string): string;
+    /** Returns JSON HistoricalPatterns. */
+    computeHistoricalPatterns(profileJson: string, nowIso: string): string;
+  }
+
+  // ─── BlueprintEngine ────────────────────────────────────────────────────────
+
+  export class BlueprintEngineJs {
+    /** Calculate daily capacity [0.1, 1.0] from a partial NSV JSON. */
+    calculateCapacity(nsvJson: string): number;
+    /** Returns true if the sum of weights exceeds capacity. */
+    isOverloaded(weightsJson: string, capacity: number): boolean;
+    /** Returns JSON array of task objects to defer. */
+    getTasksToDefer(tasksJson: string, capacity: number): string;
+  }
+
+  // ─── AtlasPredictiveEngine ──────────────────────────────────────────────────
+
+  export class AtlasPredictiveEngineJs {
+    /** Effective energy budget with biological/emotional/resource modifiers, clamped [0, 10]. */
+    computeEffectiveEnergyBudget(nsvJson: string): number;
+    /** Safe planning threshold (80% of effective energy budget). */
+    getSafePlanningThreshold(nsvJson: string): number;
+    /** True if totalEnergyCost exceeds safe planning threshold. */
+    isOverloaded(totalEnergyCost: number, nsvJson: string): boolean;
+    /** Burnout trajectory score 0–10 from NSV history array (newest first). */
+    computeBurnoutTrajectoryScore(nsvHistoryJson: string): number;
+    /** Transition risk 0.0–1.0 based on aggregate delta of load metrics. */
+    computeTransitionRisk(currentNsvJson: string, previousNsvJson: string): number;
+    /** Returns JSON: { nextState, newCleanCount, isBurnout, emitOverload } */
+    evaluateNextState(currentState: string, nsvJson: string, consecutiveClearCount: number): string;
+    /** Returns JSON FlatteningPlan (day0 −20 %, redistribute to days 1–3). */
+    flattenEnergyWave(energyWaveJson: string, reason: string): string;
+  }
+
+  // ─── AtlasBlueprintService (Phase C) ──────────────────────────────────────
+
+  export class AtlasBlueprintServiceJs {
+    /** Returns "structured" | "unstructured" based on confidence threshold (≥0.7 → structured). */
+    inferIngestionMode(confidence: number): string;
+    /** Returns JSON CapacityProjection: { capacity, headroom, overflowTasks, summary }. */
+    projectCapacityBlueprint(blueprintJson: string, capacityPct: number): string;
+    /** Returns JSON AtlasReviewBlueprint. profile and soul may be serialised null. */
+    computeReviewBlueprint(profileJson: string, soulJson: string, nowIso: string): string;
+    /** Returns JSON AtlasCapacityBlueprint, or the string "null" when profile is null. */
+    computeQuickSnapshot(profileJson: string, soulJson: string): string;
+    /** Returns JSON DailyCapacityEstimate: { totalCapacity, committedEnergy, availableEnergy, dayOfWeek }. */
+    computeDailyCapacity(profileJson: string, soulJson: string, targetDate: string): string;
+    /** Weighted deadline pressure score 0–10 from tasks and goals arrays. */
+    computeDeadlinePressureScore(tasksJson: string, goalsJson: string, taskCompletionRate: number): number;
+  }
+
+  // ─── TitanClearanceEngine (Phase A) ──────────────────────────────────────
+
+  export class TitanClearanceEngineJs {
+    /** Returns JSON ClearanceReport: { score, cleared, vetoReason?, consequence?, warnings[] }. */
+    evaluate(nsvJson: string): string;
+  }
+
+  // ─── MedicalClearanceEvaluator ───────────────────────────────────────────
+
+  export class MedicalClearanceEvaluatorJs {
+    /** Returns JSON ClearanceRecord: { id, activity, status, reason, issuedAt }. */
+    evaluate(profileJson: string, activity: string): string;
+    isActivitySafe(profileJson: string, activity: string): boolean;
+    /** Returns JSON ClearanceRecord or "null" if the profile has no clearances. */
+    getLatestClearance(profileJson: string): string;
+  }
+
+  // ─── EmbeddingUtils ──────────────────────────────────────────────────────
+
+  export class EmbeddingUtilsJs {
+    /** Cosine similarity between two embedding vectors supplied as JSON arrays. */
+    cosineSimilarity(aJson: string, bJson: string): number;
+    /** BM25-inspired keyword score: fraction of query tokens (len > 2) found in claim. */
+    computeKeywordScore(claim: string, query: string): number;
+    /** Removes near-duplicate results sharing > overlapThreshold word overlap (input sorted by score desc). */
+    deduplicateTextResults(resultsJson: string, overlapThreshold: number): string;
+    /** True when inferred value meaningfully differs from stored (null stored → always true). */
+    evaluateDiscrepancy(inferredJson: string, storedJson: string): boolean;
+    /** Returns JSON-serialised value at dot-notation path, or "null" when any segment is missing. */
+    resolveFieldPath(objJson: string, path: string): string;
+  }
+
+  // ─── AliveEntityUtils ────────────────────────────────────────────────────
+
+  export class AliveEntityUtilsJs {
+    /** Normalises an AliveEntitySeed: trim label, lowercase/dedup/sort tags, default timestamps. */
+    normalize(entityJson: string): string;
+    /** De-duplicates by id (provenance priority wins), sorts by updatedAt desc. */
+    dedupeAndSort(entitiesJson: string): string;
+    /** Filters by optional module list, groups into byModule buckets, collects tags. */
+    buildRuntimeContext(entitiesJson: string, moduleFilterJson: string, limitPerModule: number): string;
   }
 
   // ─── RetirementCalculator ───────────────────────────────────────────────────
@@ -925,5 +1048,92 @@ export class ActionHubJs {
       onComplete: (handled: boolean) => void,
       onError: (err: string) => void,
     ): CancellableTask;
+  }
+
+  // ─── LedgerAutomationEngine ──────────────────────────────────────────────
+
+  /**
+   * Evaluates automation rules against a LedgerIntakeProfile and returns
+   * AutomationSuggestion objects for triggered, non-dismissed rules.
+   * UUIDs for suggestions are generated in jsMain via Web Crypto.
+   */
+  export class LedgerAutomationEngineJs {
+    /**
+     * Evaluate all enabled automation rules against the profile.
+     * @param profileJson JSON string conforming to LedgerIntakeProfile.
+     * @param nowIso      ISO-8601 instant string representing the current time.
+     * @returns           JSON array of AutomationSuggestion objects.
+     */
+    evaluateRules(profileJson: string, nowIso: string): string;
+    /**
+     * Return the default set of automation rules for a new user.
+     * @param nowIso ISO-8601 instant string used for createdAt timestamps.
+     * @returns      JSON array of AutomationRule objects.
+     */
+    getDefaultRules(nowIso: string): string;
+  }
+
+  // ─── RecurringBillEngine ─────────────────────────────────────────────────
+
+  /**
+   * Processes recurring bill rules — advancing due dates, auto-posting
+   * transactions, and computing upcoming bills. UUIDs for new Transaction
+   * objects are generated in jsMain via Web Crypto.
+   */
+  export class RecurringBillEngineJs {
+    /**
+     * Advance a YYYY-MM-DD date string by one recurrence period.
+     * @param dateStr   YYYY-MM-DD source date.
+     * @param frequency One of: daily | weekly | biweekly | monthly | quarterly | yearly.
+     * @returns         YYYY-MM-DD result date.
+     */
+    advanceByFrequency(dateStr: string, frequency: string): string;
+    /**
+     * Compute the next due date for a rule after a reference date.
+     * @param ruleJson JSON RecurringRule.
+     * @param fromIso  YYYY-MM-DD reference date (uses today when null).
+     * @returns        YYYY-MM-DD string.
+     */
+    computeNextDueDate(ruleJson: string, fromIso: string | null | undefined): string;
+    /**
+     * Return all active rules whose nextDueDate is today or in the past.
+     * @param rulesJson JSON array of RecurringRule.
+     * @param todayIso  YYYY-MM-DD reference date.
+     * @returns         JSON array of RecurringRule objects.
+     */
+    computeDueRules(rulesJson: string, todayIso: string): string;
+    /**
+     * Return active rules due within the next [days] days (inclusive of today).
+     * Result is sorted ascending by due date and includes a dueDateFormatted field.
+     * @param rulesJson JSON array of RecurringRule.
+     * @param todayIso  YYYY-MM-DD reference date.
+     * @param days      Lookahead window in days.
+     * @returns         JSON array of RecurringRule objects annotated with dueDateFormatted.
+     */
+    computeUpcomingBills(rulesJson: string, todayIso: string, days: number): string;
+    /**
+     * Process all due recurring rules for auto-posting.
+     * Rules with autoPost=true are posted; autoPost=false rules are returned as pending.
+     * @param rulesJson   JSON array of RecurringRule.
+     * @param profileJson JSON LedgerIntakeProfile.
+     * @param todayIso    YYYY-MM-DD reference date.
+     * @returns           JSON: { updatedProfile, autoPosted: Transaction[], pendingRules: RecurringRule[] }
+     */
+    postDueTransactions(rulesJson: string, profileJson: string, todayIso: string): string;
+    /**
+     * Post a single pending rule once (user-confirmed). Advances its nextDueDate.
+     * @param ruleJson    JSON RecurringRule.
+     * @param profileJson JSON LedgerIntakeProfile.
+     * @param todayIso    YYYY-MM-DD reference date.
+     * @returns           JSON: { updatedProfile, transaction: Transaction }
+     */
+    postSingleRule(ruleJson: string, profileJson: string, todayIso: string): string;
+    /**
+     * Skip the next occurrence of a rule — advances nextDueDate without posting.
+     * @param ruleJson    JSON RecurringRule.
+     * @param profileJson JSON LedgerIntakeProfile.
+     * @returns           JSON string of the updated LedgerIntakeProfile.
+     */
+    skipNextOccurrence(ruleJson: string, profileJson: string): string;
   }
 }

@@ -2,23 +2,12 @@ import { EpisodicMemoryService } from './episodic-memory-service';
 import { SemanticMemoryService } from './semantic-memory-service';
 import { ModuleMemoryEnvelope, SemanticFact, Message, UnifiedMemoryResult } from '../types';
 import { RagService } from './rag/rag-service';
+import { EmbeddingUtilsJs } from '@cortex-logic';
 
-/**
- * Removes near-duplicate results where two entries share >60% word overlap.
- * Results must be pre-sorted by score descending — the higher-scored entry wins.
- */
+const _utils = new (EmbeddingUtilsJs as any)();
+
 function deduplicateMemoryResults(results: UnifiedMemoryResult[]): UnifiedMemoryResult[] {
-  const seenTexts: string[] = [];
-  return results.filter((result) => {
-    const words = new Set(result.text.toLowerCase().split(/\s+/).filter(Boolean));
-    const isDuplicate = seenTexts.some((prev) => {
-      const prevWords = new Set(prev.toLowerCase().split(/\s+/).filter(Boolean));
-      const overlap = [...words].filter((w) => prevWords.has(w)).length;
-      return overlap / Math.max(words.size, prevWords.size) > 0.6;
-    });
-    if (!isDuplicate) seenTexts.push(result.text);
-    return !isDuplicate;
-  });
+  return JSON.parse(_utils.deduplicateTextResults(JSON.stringify(results), 0.6)) as UnifiedMemoryResult[];
 }
 
 export class MemoryOrchestrator {

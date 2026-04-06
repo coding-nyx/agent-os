@@ -25,8 +25,6 @@ import {
   saveLedgerProfile,
 } from './services/ledger-intake-service';
 import { computeBudgetActuals, matchCategoryToTransaction } from './services/aggregation';
-import { LEDGER_PERSONA, buildLedgerExtendedContext } from './personas';
-import { serializeLedgerFinancialContext, serializeLedgerExtensionFields } from './prompts/ledger-prompt-builder';
 import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
 import { useExtensionFieldValues } from '@/lib/hooks/use-extension-field-values';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
@@ -164,64 +162,8 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
   const { extensions } = useSchemaRegistry('ledger');
   const { fieldValues } = useExtensionFieldValues('ledger');
 
-  // ─── Dynamic system prompt enriched with live financial context ────────────
-  const enrichedSystemPrompt = useMemo(() => {
-    if (!profile) return LEDGER_PERSONA;
-    const nowMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
-    let txIncome = 0;
-    let txExpenses = 0;
-    for (const t of profile.transactions ?? []) {
-      if (!t.date?.startsWith(nowMonth)) continue;
-      if (t.type === 'income') txIncome += t.amount;
-      else if (t.type === 'expense') txExpenses += t.amount;
-    }
-    const context = serializeLedgerFinancialContext({
-      accounts: profile.accounts,
-      debtItems: profile.debtItems,
-      netWorthHistory: profile.netWorthHistory,
-      recurringRules: profile.recurringRules,
-      lastCashFlowForecast: profile.lastCashFlowForecast,
-      currency: profile.currency,
-      subscriptions: profile.subscriptions,
-      investments: profile.investments,
-      alertRules: profile.alertRules,
-      creditScoreHistory: profile.creditScoreHistory,
-      insurancePolicies: profile.insurancePolicies,
-      lastRetirementProjection: profile.lastRetirementProjection,
-      monthlyIncome: profile.monthlyIncome,
-      fixedExpenses: profile.fixedExpenses,
-      variableExpenses: profile.variableExpenses,
-      actualTotalIncome: txIncome,
-      actualTotalExpenses: txExpenses,
-      budgetCategories: profile.budgetCategories,
-      financialGoals: profile.financialGoals,
-      plans: profile.plans,
-      activePlanId: profile.activePlanId,
-      transactions: profile.transactions,
-    });
-    const extensionBlock = serializeLedgerExtensionFields(
-      extensions,
-      Object.fromEntries(Object.entries(fieldValues).map(([k, v]) => [k, v.value])),
-      profile.currency,
-    );
-    const extendedContext = buildLedgerExtendedContext({
-      investments: profile.investments,
-      creditScoreHistory: profile.creditScoreHistory,
-      creditFactors: profile.creditFactors,
-      insurancePolicies: profile.insurancePolicies,
-      retirementPlans: profile.retirementPlans,
-      taxDeductions: profile.taxDeductions,
-      lastTaxSummary: profile.lastTaxSummary,
-      automationRules: profile.automationRules,
-      currency: profile.currency,
-    });
-    const parts = [LEDGER_PERSONA, context, extendedContext, extensionBlock].filter(Boolean);
-    return parts.join('\n\n');
-  }, [profile?.accounts, profile?.debtItems, profile?.netWorthHistory, profile?.recurringRules, profile?.lastCashFlowForecast, profile?.currency, profile?.subscriptions, profile?.investments, profile?.alertRules, profile?.creditScoreHistory, profile?.creditFactors, profile?.insurancePolicies, profile?.lastRetirementProjection, profile?.retirementPlans, profile?.taxDeductions, profile?.lastTaxSummary, profile?.automationRules, profile?.monthlyIncome, profile?.fixedExpenses, profile?.variableExpenses, profile?.transactions, profile?.budgetCategories, profile?.financialGoals, profile?.plans, profile?.activePlanId, extensions, fieldValues]);
-
   const ai = useModuleAI({
     moduleId: 'ledger',
-    systemPrompt: enrichedSystemPrompt,
     encryptionKey,
     persistencePolicy: 'ledger-financial',
     autopilotLevelOverride: 5, // financial mutations the user explicitly requests execute immediately

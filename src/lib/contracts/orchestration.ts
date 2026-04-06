@@ -62,7 +62,7 @@ export interface MutationProposal {
 
 export interface ApprovalRequirement {
   required: boolean;
-  reason: 'manual_level' | 'explicit_gate' | 'high_risk' | 'conflict' | 'guest_scope' | 'none';
+  reason: 'manual_level' | 'explicit_gate' | 'high_risk' | 'conflict' | 'guest_scope' | 'none' | 'kmp_parse_error' | 'kmp_error';
 }
 
 export interface ProposalCard {

@@ -29,6 +29,9 @@ export interface OrchestrationActionGateDecision {
 const BLOCKED_DECISION: OrchestrationActionGateDecision = {
   shouldDispatch: false,
   metadata: {
+    actionType: '',
+    autopilotLevel: 0 as const,
+    highRisk: true,
     executionMode: 'autonomous',
     historyMode: 'standard',
     mutatesState: false,
@@ -41,7 +44,7 @@ const BLOCKED_DECISION: OrchestrationActionGateDecision = {
     execution: { id: '', source: 'nexus', status: 'failed', executedAt: new Date().toISOString() },
     activeThreadId: null,
     failure: null,
-  } as ActionOrchestrationMetadata,
+  } as unknown as ActionOrchestrationMetadata,
 };
 
 export class OrchestrationActionGateService {

@@ -101,7 +101,7 @@ describe('NexusOnboarding', () => {
       />
     );
 
-    expect(screen.getByText(/^Nexus$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Nyx$/i)).toBeInTheDocument();
     expect(screen.getByText(/Choose onboarding style/i)).toBeInTheDocument();
 
     await openGuidedMode();

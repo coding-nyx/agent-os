@@ -1,8 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { EmbeddingUtilsJs } from '@cortex-logic';
 
 const EMBEDDING_MODEL = 'gemini-embedding-001';
 const EMBEDDING_DIMENSION = 256;
-const warnedDimensionPairs = new Set<string>();
+
+const _utils = new (EmbeddingUtilsJs as any)();
 
 function hashToken(token: string): number {
   let hash = 0;
@@ -13,6 +15,7 @@ function hashToken(token: string): number {
   return Math.abs(hash);
 }
 
+// Kept in TypeScript to preserve hash-function compatibility with embeddings stored in Firestore.
 function lexicalFallbackEmbedding(text: string): number[] {
   const vector = new Array<number>(EMBEDDING_DIMENSION).fill(0);
   const tokens = text.toLowerCase().split(/\W+/).filter(Boolean);
@@ -34,32 +37,7 @@ function normalizeEmbeddingDimension(values: number[]): number[] {
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {
-  const length = Math.min(a.length, b.length);
-  if (length === 0) return 0;
-  if (a.length !== b.length) {
-    const key = `${a.length}:${b.length}`;
-    if (!warnedDimensionPairs.has(key)) {
-      warnedDimensionPairs.add(key);
-      console.warn(
-        `[EmbeddingService] Dimension mismatch: ${a.length} vs ${b.length}, using overlap=${length}`
-      );
-    }
-  }
-
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < length; i += 1) {
-    const ai = a[i] || 0;
-    const bi = b[i] || 0;
-    dot += ai * bi;
-    normA += ai * ai;
-    normB += bi * bi;
-  }
-
-  if (normA === 0 || normB === 0) return 0;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  return _utils.cosineSimilarity(JSON.stringify(a), JSON.stringify(b)) as number;
 }
 
 async function googleEmbedding(text: string): Promise<number[] | null> {

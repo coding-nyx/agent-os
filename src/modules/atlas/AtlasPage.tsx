@@ -8,7 +8,6 @@ import { IntakeBaseContextService } from '@/lib/services/intake-base-context-ser
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import type { AtlasReviewBlueprint, SpineDomain, SpineEventType } from '@/lib/types';
 import { ActionHub } from '@/lib/actions/action-hub';
-import { ATLAS_PERSONA } from './personas';
 import { AtlasActionsProvider } from './context/AtlasActionsContext';
 import { EnhancedAtlasDashboard } from './components/EnhancedAtlasDashboard';
 import { AtlasActionRail } from './components/AtlasActionRail';
@@ -248,8 +247,6 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     });
   }, [profile, user?.uid]);
 
-  // Extension field management via SchemaRegistry — declared early so
-  // it can be referenced in the dynamic systemPrompt computation below.
   const {
     extensions,
     addExtension,
@@ -263,16 +260,8 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     removeFieldValue,
   } = useExtensionFieldValues('atlas');
 
-  // KMP's PersonaFactory now owns full Atlas intelligence computation
-  // (dependency graphs, goal velocities, capacity snapshots, planning digests).
-  // The static persona is used as a fallback; KMP builds the complete prompt
-  // when atlas_profile is present in moduleContext.
-  const systemPrompt = ATLAS_PERSONA;
-
-  // AI Logic for Atlas
   const ai = useModuleAI({
     moduleId: 'atlas',
-    systemPrompt,
     encryptionKey,
     persistencePolicy: 'atlas-planning',
     moduleContext: {

@@ -52,7 +52,13 @@ function requireEngineExport<T = any>(name: string): T {
 }
 
 export const AccountAggregationJs = requireEngineExport('AccountAggregationJs');
+export const AliveEntityUtilsJs = requireEngineExport('AliveEntityUtilsJs');
+export const EmbeddingUtilsJs = requireEngineExport('EmbeddingUtilsJs');
+export const MedicalClearanceEvaluatorJs = requireEngineExport('MedicalClearanceEvaluatorJs');
 export const AgnesGravityEngineJs = requireEngineExport('AgnesGravityEngineJs');
+export const AtlasBlueprintServiceJs = requireEngineExport('AtlasBlueprintServiceJs');
+export const AtlasPlanningEngineJs = requireEngineExport('AtlasPlanningEngineJs');
+export const AtlasPredictiveEngineJs = requireEngineExport('AtlasPredictiveEngineJs');
 export const DocumentFieldExtractorJs = requireEngineExport('DocumentFieldExtractorJs');
 // ActionHubJs is resolved lazily — the KMP build must include ActionHubJs.kt before this is non-null.
 export const ActionHubJs: (new (...args: unknown[]) => unknown) | null = (() => {
@@ -62,6 +68,7 @@ export const ActionCapabilityResolverJs = requireEngineExport('ActionCapabilityR
 export const AgentRegistryJs = requireEngineExport('AgentRegistryJs');
 export const AtlasComputeUtilsJs = requireEngineExport('AtlasComputeUtilsJs');
 export const AutopilotActionPolicyServiceJs = requireEngineExport('AutopilotActionPolicyServiceJs');
+export const BlueprintEngineJs = requireEngineExport('BlueprintEngineJs');
 export const BudgetAggregationJs = requireEngineExport('BudgetAggregationJs');
 export const CalendarAggregationJs = requireEngineExport('CalendarAggregationJs');
 // CancellableTask is only present after the cortex-logic KMP build includes CancellableTask.kt.
@@ -86,6 +93,7 @@ export const HabitEnergyMatcherJs = requireEngineExport('HabitEnergyMatcherJs');
 export const InsuranceAggregationJs = requireEngineExport('InsuranceAggregationJs');
 export const InteractionGateJs = requireEngineExport('InteractionGateJs');
 export const LedgerAggregationUtilsJs = requireEngineExport('LedgerAggregationUtilsJs');
+export const LedgerAutomationEngineJs = requireEngineExport('LedgerAutomationEngineJs');
 export const LlmSanitizerJs = requireEngineExport('LlmSanitizerJs');
 export const NetWorthAggregationJs = requireEngineExport('NetWorthAggregationJs');
 export const OnboardingValidationJs = requireEngineExport('OnboardingValidationJs');
@@ -115,6 +123,7 @@ export const PortfolioAggregationJs = requireEngineExport('PortfolioAggregationJ
 export const PrecedenceResolverJs = requireEngineExport('PrecedenceResolverJs');
 export const ProgressiveOverloadEngineJs = requireEngineExport('ProgressiveOverloadEngineJs');
 export const QuickLogParserJs = requireEngineExport('QuickLogParserJs');
+export const RecurringBillEngineJs = requireEngineExport('RecurringBillEngineJs');
 export const RecoveryTemplatesJs = requireEngineExport('RecoveryTemplatesJs');
 export const RetirementCalculatorJs = requireEngineExport('RetirementCalculatorJs');
 export const RuntimeSemanticsBuilderJs = requireEngineExport('RuntimeSemanticsBuilderJs');
@@ -124,6 +133,7 @@ export const SoulAuthorityServiceJs = requireEngineExport('SoulAuthorityServiceJ
 export const SpecVectorCalculatorJs = requireEngineExport('SpecVectorCalculatorJs');
 export const SubscriptionAggregationJs = requireEngineExport('SubscriptionAggregationJs');
 export const TaxAggregationJs = requireEngineExport('TaxAggregationJs');
+export const TitanClearanceEngineJs = requireEngineExport('TitanClearanceEngineJs');
 export const TitanNsvUpdaterJs = requireEngineExport('TitanNsvUpdaterJs');
 // TitanPromptBuilderJs is only present after the cortex-logic KMP build includes TitanPromptBuilderJs.kt.
 export const TitanPromptBuilderJs: (new (...args: unknown[]) => unknown) | null = (() => {

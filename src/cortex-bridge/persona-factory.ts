@@ -81,7 +81,7 @@ function toNsvJs(crossFunctionalState: unknown): NeuralStateVectorJs | null {
 
 export const PersonaFactory = {
   generateSystemPrompt({ moduleId, baseRole, userProfile, globalSoul, moduleContext }: PersonaConfig): string {
-    if (!userProfile || !globalSoul) return baseRole;
+    if (!userProfile || !globalSoul) return baseRole || moduleId;
     const nsv = toNsvJs((globalSoul as any).crossFunctionalState);
     const identity = buildIdentity(userProfile, globalSoul, moduleId);
     // Merge baseRole into the module context so KMP has the TS-built system prompt

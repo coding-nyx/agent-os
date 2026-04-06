@@ -471,7 +471,7 @@ describe('MasterThreadStatusCard', () => {
 
     render(<MasterThreadStatusCard thread={thread} compact />);
 
-    expect(screen.getByTestId('master-thread-participant-nexus')).toHaveTextContent('Nexus');
+    expect(screen.getByTestId('master-thread-participant-nexus')).toHaveTextContent('Nyx');
     expect(screen.getByTestId('master-thread-participant-atlas')).toHaveTextContent('Atlas');
     expect(screen.getByTestId('master-thread-participants')).toHaveTextContent('Invited');
     expect(screen.getByTestId('master-thread-participants')).toHaveTextContent('Idle');
@@ -575,7 +575,7 @@ describe('MasterThreadStatusCard', () => {
     expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Thread activity');
     expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Nexus synthesized 2 runtime actions');
     expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Atlas');
-    expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Reply to Nexus');
+    expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Reply to Nyx');
     expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Ledger');
     expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Waiting for approval because high risk');
   });

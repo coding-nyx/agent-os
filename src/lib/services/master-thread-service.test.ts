@@ -384,7 +384,7 @@ describe('MasterThreadService', () => {
       {
         author: 'nexus',
         body: 'Scheduling cooking at 11:00 next.',
-        actorLabel: 'Nexus',
+        actorLabel: 'Nyx',
       },
     ]);
     expect(snapshot.thread.turns).toHaveLength(3);

@@ -76,7 +76,19 @@ export class NexusActionDispatchExecutionService {
       retryPacketJson,
       retryPrompt,
     );
-    return JSON.parse(artifactsJson) as ThreadExecutionArtifact[];
+    // KMP kotlinx.serialization emits null for Kotlin nullable types.
+    // JSON.parse preserves null, but TS optional fields (`?:`) expect undefined.
+    // Convert null → undefined for optional ThreadExecutionArtifact fields.
+    const parsed = JSON.parse(artifactsJson) as Record<string, unknown>[];
+    const OPTIONAL_KEYS = ['retryOfPlanId', 'retryAttempt', 'retryParentExecutionId', 'errorMessage', 'retrySummary', 'retryPrompt', 'retryVisibleContent'];
+    for (const artifact of parsed) {
+      for (const key of OPTIONAL_KEYS) {
+        if (key in artifact && artifact[key] === null) {
+          artifact[key] = undefined;
+        }
+      }
+    }
+    return parsed as unknown as ThreadExecutionArtifact[];
   }
 
   static async executePacket(

@@ -14,6 +14,9 @@
 
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { DataHint, HintVerificationResult } from '@/lib/types';
+import { EmbeddingUtilsJs } from '@cortex-logic';
+
+const _utils = new (EmbeddingUtilsJs as any)();
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -117,52 +120,13 @@ function readHintCount(targetModule: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/**
- * Resolves a dot-notation path like `incomeSources[0].monthlyIncome` against
- * an arbitrary nested object.  Returns `undefined` when any segment is missing.
- *
- * Supports:
- *  - Simple keys: `weeklyWorkouts`
- *  - Nested keys: `training.weeklyWorkouts`
- *  - Array indices: `incomeSources[0].amount`
- */
 function resolveFieldPath(obj: Record<string, unknown>, path: string): unknown {
-  // Normalise array notation: "arr[0].foo" → "arr.0.foo"
-  const normalised = path.replace(/\[(\d+)\]/g, '.$1');
-  const segments = normalised.split('.');
-
-  let cursor: unknown = obj;
-  for (const segment of segments) {
-    if (cursor === null || cursor === undefined) return undefined;
-    if (typeof cursor !== 'object') return undefined;
-    cursor = (cursor as Record<string, unknown>)[segment];
-  }
-  return cursor;
+  const result = _utils.resolveFieldPath(JSON.stringify(obj), path) as string;
+  return JSON.parse(result); // "null" → null (treated as not-found)
 }
 
-/**
- * Returns true when the inferred value meaningfully differs from the stored value.
- *
- * Rules:
- *  - null / undefined stored → always discrepant (new data opportunity)
- *  - Numbers: discrepant if |diff| > 15% of stored value OR |diff| > 1
- *  - Strings / enums: discrepant if not equal (case-insensitive)
- *  - All other types: discrepant if not strictly equal
- */
 function evaluateDiscrepancy(inferred: unknown, stored: unknown): boolean {
-  if (stored === null || stored === undefined) return true;
-
-  if (typeof inferred === 'number' && typeof stored === 'number') {
-    const diff = Math.abs(inferred - stored);
-    const pctDiff = stored !== 0 ? diff / Math.abs(stored) : diff;
-    return diff > 1 || pctDiff > 0.15;
-  }
-
-  if (typeof inferred === 'string' && typeof stored === 'string') {
-    return inferred.toLowerCase() !== stored.toLowerCase();
-  }
-
-  return inferred !== stored;
+  return _utils.evaluateDiscrepancy(JSON.stringify(inferred), JSON.stringify(stored)) as boolean;
 }
 
 /**

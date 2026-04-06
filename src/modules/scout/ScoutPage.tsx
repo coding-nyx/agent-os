@@ -5,7 +5,6 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useAI } from '@/cortex-bridge/ai-context';
 import type { MessageContent } from '@/lib/types';
 import { contentToString } from '@/core/components/chat/ChatBubble';
-import { SCOUT_PERSONA } from './personas';
 import { ScoutDashboard } from './components/ScoutDashboard';
 import { UniversalUploadZone } from '@/core/components/forms/UniversalUploadZone';
 import {
@@ -624,7 +623,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
   const ai = useModuleAI({
     moduleId: 'scout',
-    systemPrompt: SCOUT_PERSONA,
+
     encryptionKey,
     sessionId: activeSessionId || 'default',
     persistencePolicy: 'scout-research',

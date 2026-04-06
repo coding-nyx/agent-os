@@ -69,7 +69,8 @@ describe('ScoutSessionList', () => {
     );
 
     expect(screen.getByText('Current')).toBeInTheDocument();
-    expect(screen.getByText(/Jan 2, 2024/i)).toBeInTheDocument();
+    // Intl.DateTimeFormat output varies by locale (e.g. "Jan 2, 2024" vs "2 Jan 2024")
+    expect(screen.getByText(/Jan.*2.*2024|2.*Jan.*2024/i)).toBeInTheDocument();
     expect(screen.getByText(/1 question/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^Open$/)).toHaveLength(2);
   });

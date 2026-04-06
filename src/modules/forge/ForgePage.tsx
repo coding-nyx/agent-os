@@ -9,7 +9,6 @@ import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { cn } from '@/lib/utils';
-import { FORGE_PERSONA, FORGE_CODE_OVERLAY, FORGE_COMMS_OVERLAY, FORGE_DOCS_OVERLAY, FORGE_LIFE_OVERLAY } from './personas';
 import { ForgeDashboard } from './components/ForgeDashboard';
 import {
   ForgeExecutionRecord,
@@ -25,11 +24,11 @@ import { ForgeOnboarding } from './onboarding/ForgeOnboarding';
 
 type ForgeMode = 'code' | 'comms' | 'docs' | 'life';
 
-const FORGE_MODES: { id: ForgeMode; label: string; icon: LucideIcon; overlay: string; switchPrompt: string }[] = [
-  { id: 'code',  label: 'Code',  icon: Code,       overlay: FORGE_CODE_OVERLAY,  switchPrompt: 'Switching to Code mode.' },
-  { id: 'comms', label: 'Comms', icon: Mail,        overlay: FORGE_COMMS_OVERLAY, switchPrompt: 'Switching to Comms mode.' },
-  { id: 'docs',  label: 'Docs',  icon: FileText,    overlay: FORGE_DOCS_OVERLAY,  switchPrompt: 'Switching to Docs mode.' },
-  { id: 'life',  label: 'Life',  icon: ListChecks,  overlay: FORGE_LIFE_OVERLAY,  switchPrompt: 'Switching to Life Ops mode.' },
+const FORGE_MODES: { id: ForgeMode; label: string; icon: LucideIcon; switchPrompt: string }[] = [
+  { id: 'code',  label: 'Code',  icon: Code,       switchPrompt: 'Switching to Code mode.' },
+  { id: 'comms', label: 'Comms', icon: Mail,        switchPrompt: 'Switching to Comms mode.' },
+  { id: 'docs',  label: 'Docs',  icon: FileText,    switchPrompt: 'Switching to Docs mode.' },
+  { id: 'life',  label: 'Life',  icon: ListChecks,  switchPrompt: 'Switching to Life Ops mode.' },
 ];
 
 function formatExecutionOutput(payload: { logs?: string[]; result?: string; error?: string }): string {
@@ -71,13 +70,8 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
   const [showDashboard, setShowDashboard] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
 
-  // KMP handles overlay injection via forge_mode in moduleContext.
-  // Only pass the base persona here to avoid double-overlay.
-  const systemPrompt = FORGE_PERSONA;
-
   const ai = useModuleAI({
     moduleId: 'forge',
-    systemPrompt,
     encryptionKey,
     moduleContext: { forge_mode: selectedMode },
   });

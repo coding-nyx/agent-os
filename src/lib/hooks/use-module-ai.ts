@@ -43,7 +43,13 @@ export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | '
 
 interface UseModuleAIOptions {
   moduleId: string;
-  systemPrompt: string;
+  /**
+   * Optional base system prompt. When omitted, KMP's PersonaPromptCatalog supplies
+   * the persona for the moduleId automatically — module pages should not pass this.
+   * Only provide for inline/utility conversations that need an explicit prompt
+   * (e.g. NexusOverlay, CollapsibleAIPanel, diagnosis mode).
+   */
+  systemPrompt?: string;
   encryptionKey?: CryptoKey | null;
   navigateTo?: (path: string) => void;
   sessionId?: string;
@@ -236,7 +242,7 @@ function appendExecutionHoldNotice(
 
 export function useModuleAI({
   moduleId,
-  systemPrompt: baseRole,
+  systemPrompt: baseRole = '',
   encryptionKey,
   navigateTo,
   sessionId,

@@ -54,7 +54,6 @@ import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
 import type { ModuleId } from '@/lib/module-manifest';
 import { getCalibrationPrompt, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
 import { ActionHub } from '@/lib/actions/action-hub';
-import { TITAN_PERSONA } from './personas';
 import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { QuickReminderModal } from '@/core/components/QuickReminderModal';
@@ -160,7 +159,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
   const ai = useModuleAI({
     moduleId: 'titan',
-    systemPrompt: TITAN_PERSONA,
+
     encryptionKey,
     moduleContext: {
       titan_profile: profile,

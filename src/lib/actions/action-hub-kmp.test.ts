@@ -40,12 +40,11 @@ describe('ActionHub KMP bridge', () => {
     expect(atlasLogSleepRegistered).toBe(true);
   });
 
-  it('should execute a titan action', (done) => {
+  it('should execute a titan action', () => {
     const hub = getActionHubJs(null);
 
     if (!hub) {
       expect(hub).toBeTruthy();
-      done();
       return;
     }
 
@@ -57,20 +56,22 @@ describe('ActionHub KMP bridge', () => {
       wakeTime: '06:00',
     };
 
-    (hub as any).execute(
-      'titan',
-      'log_sleep',
-      JSON.stringify(payload),
-      'test-user-123',
-      (handled: boolean) => {
-        console.log('Action execution completed, handled:', handled);
-        expect(handled).toBe(true);
-        done();
-      },
-      (err: string) => {
-        console.error('Action execution failed:', err);
-        done(new Error(err));
-      }
-    );
+    return new Promise<void>((resolve, reject) => {
+      (hub as any).execute(
+        'titan',
+        'log_sleep',
+        JSON.stringify(payload),
+        'test-user-123',
+        (handled: boolean) => {
+          console.log('Action execution completed, handled:', handled);
+          expect(handled).toBe(true);
+          resolve();
+        },
+        (err: string) => {
+          console.error('Action execution failed:', err);
+          reject(new Error(err));
+        }
+      );
+    });
   });
 });

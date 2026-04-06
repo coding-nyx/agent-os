@@ -12,6 +12,9 @@ import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { EmbeddingService, cosineSimilarity } from '@/lib/services/embedding-service';
+import { EmbeddingUtilsJs } from '@cortex-logic';
+
+const _embUtils = new (EmbeddingUtilsJs as any)();
 import { ScoutKnowledgeNode as ScoutKnowledgeNodeBase } from '../types';
 
 export interface ScoutKnowledgeNode extends ScoutKnowledgeNodeBase {
@@ -176,11 +179,7 @@ export async function addKnowledgeNode(
  * Splits query into tokens and counts how many appear in the claim text.
  */
 function computeKeywordScore(claim: string, query: string): number {
-  const claimLower = claim.toLowerCase();
-  const tokens = query.toLowerCase().split(/\s+/).filter(t => t.length > 2);
-  if (tokens.length === 0) return 0;
-  const hits = tokens.filter(token => claimLower.includes(token)).length;
-  return hits / tokens.length;
+  return _embUtils.computeKeywordScore(claim, query) as number;
 }
 
 export async function queryKnowledgeNodes(
