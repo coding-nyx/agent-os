@@ -1,101 +1,66 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { useGlobalSoulStore, useGlobalSoulActions } from '@/lib/global-soul-context';
-import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
+import { useAuth } from '@/lib/auth-context';
 import { AgnesOnboarding } from './onboarding/AgnesOnboarding';
-import { AGNES_PERSONA } from './personas';
-import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { Sparkles, ShieldAlert, CheckSquare, LogOut, Brain, Clock, MessageSquare, Shield, ArrowRight, ChevronLeft, ChevronRight, Activity, Settings } from 'lucide-react';
-import { SomaticSessionPicker, type SomaticExerciseType } from './components/somatic/SomaticSessionPicker';
+import { LogOut, Brain, Clock, MessageSquare, Shield, Settings, CheckSquare } from 'lucide-react';
+import { SomaticSessionPicker } from './components/somatic/SomaticSessionPicker';
 import { BreathworkExercise } from './components/somatic/BreathworkExercise';
 import { GroundingExercise } from './components/somatic/GroundingExercise';
-import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { AgnesTelemetryHeader } from './components/AgnesTelemetryHeader';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { AnimatePresence, motion } from 'framer-motion';
 import { NexusChat } from '@/core/components/NexusChat';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
-import { MODULE_MANIFEST } from '@/lib/module-manifest';
-import { buildAgnesSessionPrompt } from './prompts/agnes-session-prompt';
-import { computeSessionProgress, buildSessionProgressBlock, type AgnesSessionPhase } from './session-arc';
 import { AgnesClosingBar } from './components/AgnesClosingBar';
-import { formatNSVForModulePrompt } from '@/lib/services/nsv-service';
-import { NSV_READ_PERMISSIONS } from '@/lib/services/nsv-ownership';
-import type { NeuralStateVector } from '@/lib/types';
 import { Agnes3DEnvironment } from './components/Agnes3DEnvironment';
 import { AgnesSettingsPanel } from './components/AgnesSettingsPanel';
 import { AgnesDashboard } from './components/AgnesDashboard';
-import { AgnesPersonalitySidebar } from './components/AgnesPersonalitySidebar';
-import { AgnesTherapistCard } from './components/AgnesTherapistCard';
-import {
-  dismissBeliefGraphProposal,
-  subscribeBeliefGraphWorkflow,
-  type BeliefGraphWorkflow,
-  confirmBeliefGraphProposal,
-  loadBeliefGraphWorkflow,
-  updateBeliefSessionInvitationStatus,
-} from './services/belief-graph-workflow-service';
-import { buildBeliefSessionInvitationSnapshot } from './services/belief-trigger-service';
-import {
-  compactBeliefGraphDocument,
-  subscribeBeliefGraph,
-  type BeliefGraph as AgnesBeliefGraph,
-} from './services/belief-graph-service';
+import { AgnesSanctuarySidebar } from './components/AgnesSanctuarySidebar';
+import { AgnesSanctuaryContent } from './components/AgnesSanctuaryContent';
+import { AgnesEngagementModeControl } from './components/AgnesEngagementModeControl';
 import {
   createEmptyAgnesProfile,
   loadAgnesProfile,
   saveAgnesProfile,
   subscribeAgnesProfile,
-  TherapyIntakeProfile
+  TherapyIntakeProfile,
 } from './services/agnes-profile-service';
-import { NeuralToggle } from '@/core/components/NeuralToggle';
-import { ModuleMemoryService } from '@/lib/services/module-memory-service';
 import { IntakeBaseContextService } from '@/lib/services/intake-base-context-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
 import type { ContentRenderProps } from '@/core/components/UnifiedModulePage';
-import { useUIStore } from '@/lib/stores/ui-store';
-import { useAI } from '@/cortex-bridge/ai-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { AgnesNotificationSettingsPanel } from './components/AgnesNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
-
 import { SanctuaryBackground } from './components/SanctuaryBackground';
-import { AgnesSanctuarySidebar } from './components/AgnesSanctuarySidebar';
-import { AgnesSanctuaryContent } from './components/AgnesSanctuaryContent';
-import { AgnesEngagementModeControl } from './components/AgnesEngagementModeControl';
-import {
-  AGNES_ENGAGEMENT_MODE_DEFINITIONS,
-  AgnesEngagementMode,
-  AgnesPersistentEngagementMode,
-  buildAgnesPromptContinuity,
-  DEFAULT_AGNES_ENGAGEMENT_MODE,
-  getAgnesSessionModeOptions,
-  resolvePersistentAgnesMode,
-  saveGuestAgnesPreferredMode,
-  loadGuestAgnesPreferredMode,
-} from './engagement-modes';
+import type { Message } from '@/lib/types';
+import type { AgnesState } from './hooks/types';
 
-type AgnesState = 'selecting' | 'session' | 'somatic';
+// Extracted hooks
+import { useAgnesEngagement } from './hooks/useAgnesEngagement';
+import { useAgnesBeliefs } from './hooks/useAgnesBeliefs';
+import { useAgnesSomatic } from './hooks/useAgnesSomatic';
+import { useAgnesSystemPrompt } from './hooks/useAgnesSystemPrompt';
+import { useAgnesSession } from './hooks/useAgnesSession';
 
 const AgnesSidebar = React.memo(function AgnesSidebar({
   profile,
   agentAlias,
-  onSave
+  onSave,
 }: {
   profile: TherapyIntakeProfile | null;
   agentAlias: string;
   onSave: (updated: TherapyIntakeProfile) => Promise<void>;
 }) {
   const [collapsed, setCollapsed] = React.useState(false);
-  const toggleCollapsed = React.useCallback(() => setCollapsed(c => !c), []);
+  const toggleCollapsed = React.useCallback(() => setCollapsed((c) => !c), []);
 
   return (
-    <AgnesSanctuarySidebar 
-      collapsed={collapsed} 
-      onToggle={toggleCollapsed} 
-      agentAlias={agentAlias} 
+    <AgnesSanctuarySidebar
+      collapsed={collapsed}
+      onToggle={toggleCollapsed}
+      agentAlias={agentAlias}
       profile={profile}
     />
   );
@@ -106,855 +71,129 @@ interface AgnesContentProps extends ContentRenderProps<TherapyIntakeProfile> {}
 function AgnesContent({
   profile,
   encryptionKey,
-  setSessionActive
+  setSessionActive,
 }: AgnesContentProps) {
-  const { generateJSON } = useAI();
-  const globalSoul = useGlobalSoulStore(s => s.globalSoul);
-  const { updateCrossFunctionalState } = useGlobalSoulActions();
-  // Keep globalSoul in a ref so callbacks that read it at call-time don't list it as a dep.
-  const globalSoulRef = useRef(globalSoul);
-  globalSoulRef.current = globalSoul;
-
-  const { user, isGuest, profile: coreProfile } = useAuth();
+  const { user } = useAuth();
   const { isModuleAccessible } = useVault();
-  const navigate = useNavigate();
   const isAccessible = isModuleAccessible('agnes');
+
+  // ── Lifted shared state ─────────────────────────────────────────────────
+  // These are shared across multiple hooks and must be owned at the component level.
   const [currentState, setCurrentState] = useState<AgnesState>('selecting');
-  const setHideGlobalFAB = useUIStore((s) => s.setHideGlobalFAB);
-
   const [sessionType, setSessionType] = useState<'impromptu' | 'new' | null>(null);
-  const [engagementMode, setEngagementMode] = useState<AgnesEngagementMode>(DEFAULT_AGNES_ENGAGEMENT_MODE);
-  const [preferredPersistentMode, setPreferredPersistentMode] = useState<AgnesPersistentEngagementMode>(DEFAULT_AGNES_ENGAGEMENT_MODE);
-  const [modeContinuity, setModeContinuity] = useState<ReturnType<typeof buildAgnesPromptContinuity>>();
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [isClosingSession, setIsClosingSession] = useState(false);
-  const [isCompactingMemory, setIsCompactingMemory] = useState(false);
-  const [compactMemoryStatus, setCompactMemoryStatus] = useState<string | null>(null);
-  const [isCompactingBeliefGraph, setIsCompactingBeliefGraph] = useState(false);
-  const [compactBeliefGraphStatus, setCompactBeliefGraphStatus] = useState<string | null>(null);
-  const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number>(Date.now());
-  const [pendingImpromptuWelcome, setPendingImpromptuWelcome] = useState<string | null>(null);
-  const [pendingBeliefOpen, setPendingBeliefOpen] = useState(false);
-  const [detectedPhase, setDetectedPhase] = useState<AgnesSessionPhase | null>(null);
-  const closingHeldTurnsRef = useRef(0);
-  const [activeBeliefContext, setActiveBeliefContext] = useState<{ triggeringBeliefs: string[]; rationale: string[] } | null>(null);
-  const [beliefGraph, setBeliefGraph] = useState<AgnesBeliefGraph | null>(null);
-  const [beliefWorkflow, setBeliefWorkflow] = useState<BeliefGraphWorkflow | null>(null);
-  const [beliefWorkflowBusy, setBeliefWorkflowBusy] = useState(false);
-  const prevUserRef = useRef(user);
 
-  // Somatic session state
-  const [selectedSomaticExercise, setSelectedSomaticExercise] = useState<SomaticExerciseType | null>(null);
-  const somaticStartedAt = useRef<number>(0);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // Ref for messages — populated by session hook's return, read at call-time by
+  // engagement and system-prompt hooks without creating circular deps.
+  const messagesRef = useRef<Message[]>([]);
 
-  // S14-006: Reactive Spine event handling
-  const handledSpineEventsRef = useRef<Set<string>>(new Set());
+  // ── 1. Engagement mode management ───────────────────────────────────────
+  const engagement = useAgnesEngagement({
+    profile,
+    encryptionKey,
+    sessionType,
+    messagesRef,
+  });
 
-  // Belief workflow arrivals during an active session are deferred and shown post-session
-  const pendingPostSessionBeliefWorkflowRef = useRef<BeliefGraphWorkflow | null>(null);
+  // ── 2. Beliefs ──────────────────────────────────────────────────────────
+  const beliefs = useAgnesBeliefs({
+    encryptionKey,
+    currentState,
+  });
 
-  // Somatic support requested via Spine cascade (e.g. from Ledger or Soma)
-  useSpineEvent('SOMATIC_SUPPORT_REQUESTED', useCallback((event: import('@/lib/types').SpineEvent) => {
-    if (currentState === 'session') return; // Don't interrupt active therapy session
-    if (!profile?.onboardingComplete || currentState !== 'selecting') return;
-    const eventKey = `somatic-req-${event.id}`;
-    if (handledSpineEventsRef.current.has(eventKey)) return;
-    handledSpineEventsRef.current.add(eventKey);
+  // ── 3. System prompt ────────────────────────────────────────────────────
+  const prompt = useAgnesSystemPrompt({
+    profile,
+    engagementMode: engagement.engagementMode,
+    modeContinuity: engagement.modeContinuity,
+    isImpromptu: engagement.isImpromptu,
+    activeBeliefContext: beliefs.activeBeliefContext,
+    sessionStartedAt,
+    messagesRef,
+  });
 
-    // Auto-open somatic picker
-    setCurrentState('somatic');
-    setSelectedSomaticExercise(null);
-  }, [profile?.onboardingComplete, currentState]));
+  // ── 4. Session lifecycle (orchestrator) ─────────────────────────────────
+  const session = useAgnesSession({
+    profile,
+    encryptionKey,
+    setSessionActive,
+    currentState,
+    setCurrentState,
+    sessionType,
+    setSessionType,
+    sessionStartedAt,
+    setSessionStartedAt,
+    engagementMode: engagement.engagementMode,
+    preferredPersistentMode: engagement.preferredPersistentMode,
+    isImpromptu: engagement.isImpromptu,
+    resetEngagementToPreferred: engagement.resetEngagementToPreferred,
+    setEngagementForImpromptu: engagement.setEngagementForImpromptu,
+    setEngagementForSession: engagement.setEngagementForSession,
+    resetOnLogout: engagement.resetOnLogout,
+    activeBeliefContext: beliefs.activeBeliefContext,
+    setActiveBeliefContext: beliefs.setActiveBeliefContext,
+    flushPendingPostSessionWorkflow: beliefs.flushPendingPostSessionWorkflow,
+    autoHandlePendingBeliefSuggestions: beliefs.autoHandlePendingBeliefSuggestions,
+    acceptBeliefInvitationAndGetContext: beliefs.acceptBeliefInvitationAndGetContext,
+    systemPrompt: prompt.systemPrompt,
+    getSessionProgressBlock: prompt.getSessionProgressBlock,
+  });
 
-  useEffect(() => {
-    const handleOpenSettings = () => setIsSettingsOpen(true);
-    window.addEventListener('agnes:open-settings', handleOpenSettings);
-    return () => window.removeEventListener('agnes:open-settings', handleOpenSettings);
-  }, []);
+  // Keep messagesRef live so engagement & prompt hooks read current messages at call-time.
+  messagesRef.current = session.messages;
 
-  useEffect(() => {
-    if (!user || isGuest || !encryptionKey) {
-      setBeliefGraph(null);
-      setBeliefWorkflow(null);
-      return;
-    }
+  // ── 5. Somatic ──────────────────────────────────────────────────────────
+  const somatic = useAgnesSomatic({
+    currentState,
+    onboardingComplete: profile?.onboardingComplete,
+    setCurrentState,
+  });
 
-    const unsubscribeGraph = subscribeBeliefGraph({ userId: user.uid, encryptionKey }, setBeliefGraph);
-    const unsubscribeWorkflow = subscribeBeliefGraphWorkflow({ userId: user.uid, encryptionKey }, (workflow) => {
-      // During an active therapy session, queue belief workflow arrivals for post-session
-      // rather than surfacing them immediately. The session is a sacred container.
-      if (currentState === 'session') {
-        pendingPostSessionBeliefWorkflowRef.current = workflow;
-        return;
-      }
-      setBeliefWorkflow(workflow);
-    });
-
-    return () => {
-      unsubscribeGraph();
-      unsubscribeWorkflow();
-    };
-  }, [encryptionKey, isGuest, user, currentState]);
-
-  useEffect(() => {
-    const storedMode = user
-      ? resolvePersistentAgnesMode(
-          profile?.baseContext && 'preferredEngagementMode' in profile.baseContext
-            ? (profile.baseContext as { preferredEngagementMode?: unknown }).preferredEngagementMode
-            : DEFAULT_AGNES_ENGAGEMENT_MODE,
-        )
-      : loadGuestAgnesPreferredMode();
-
-    setPreferredPersistentMode(storedMode);
-    if (!sessionType) {
-      setEngagementMode(storedMode);
-      setModeContinuity(undefined);
-    }
-  }, [user, profile?.baseContext, sessionType]);
-
-  // Somatic preference toggle (mirrors AgnesSettingsPanel logic)
-  const [somaticEnabled, setSomaticEnabled] = useState<boolean>(
-    profile?.baseContext?.somaticEnabled !== false
-  );
-  const pendingSomaticSave = useRef(false);
-
-  useEffect(() => {
-    if (pendingSomaticSave.current) return;
-    setSomaticEnabled(profile?.baseContext?.somaticEnabled !== false);
-  }, [profile?.baseContext?.somaticEnabled]);
-
-  const handleSomaticToggle = useCallback(async () => {
-    if (!profile) return;
-    const newValue = !somaticEnabled;
-    setSomaticEnabled(newValue);
-    pendingSomaticSave.current = true;
-    try {
-      await saveAgnesProfile(
-        {
-          ...profile,
-          baseContext: { ...profile.baseContext, somaticEnabled: newValue },
-          updatedAt: new Date().toISOString(),
-        },
-        { userId: user?.uid, encryptionKey }
-      );
-    } finally {
-      setTimeout(() => { pendingSomaticSave.current = false; }, 500);
-    }
-  }, [profile, user, somaticEnabled, encryptionKey]);
-
-  const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
-
-  const isImpromptu = sessionType === 'impromptu';
-  const sessionModeOptions = useMemo(
-    () => getAgnesSessionModeOptions(isImpromptu ? 'ephemeral' : 'persistent'),
-    [isImpromptu]
-  );
-  const activeModeDefinition = AGNES_ENGAGEMENT_MODE_DEFINITIONS[engagementMode];
-
-  // Fingerprint only the NSV fields Agnes is permitted to read (per NSV_READ_PERMISSIONS).
-  // This prevents the systemPrompt from rebuilding on every NSV write — only the fields
-  // Agnes actually uses need to trigger a rebuild.
-  const agnesNsvFingerprint = useMemo(() => {
-    const nsv = globalSoul?.crossFunctionalState as NeuralStateVector | undefined;
-    if (!nsv) return '';
-    return JSON.stringify({
-      bio: {
-        cnsFatigue: nsv.biological?.cnsFatigue,
-        sleepQuality: nsv.biological?.sleepQuality,
-        hormonalContext: nsv.biological?.hormonalContext,
-      },
-      emo: {
-        emotionalResilience: nsv.emotional?.emotionalResilience,
-        stressLoad: nsv.emotional?.stressLoad,
-        moodTrend: nsv.emotional?.moodTrend,
-        traumaMarkers: nsv.emotional?.traumaMarkers,
-      },
-      cog: {
-        energyBudget: nsv.cognitive?.energyBudget,
-        activeLoad: nsv.cognitive?.activeLoad,
-      },
-      plan: { streakHealth: nsv.planning?.streakHealth },
-      res: { financialFriction: nsv.resource?.financialFriction },
-    });
-  }, [globalSoul?.crossFunctionalState]);
-
-  const systemPrompt = useMemo(
-    () => {
-      const nsv = globalSoul?.crossFunctionalState as NeuralStateVector | undefined;
-      const nsvBlock = (!isImpromptu && nsv)
-        ? formatNSVForModulePrompt(nsv, NSV_READ_PERMISSIONS['agnes'])
-        : undefined;
-      return buildAgnesSessionPrompt(
-        AGNES_PERSONA,
-        isImpromptu ? null : profile?.baseContext,
-        coreProfile?.agentPersonalityProvision?.agentGenders?.agnes,
-        {
-          engagementMode,
-          continuity: modeContinuity,
-          nsvBlock,
-          beliefInvitationContext: (!isImpromptu && activeBeliefContext) ? activeBeliefContext : undefined,
-        }
-      );
-    },
-    [isImpromptu, profile?.baseContext, coreProfile?.agentPersonalityProvision?.agentGenders?.agnes, engagementMode, modeContinuity, agnesNsvFingerprint, activeBeliefContext] // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
-  // Mirror of messages, updated every render without being a dep of systemPrompt useMemo.
-  // Used by getSessionProgressBlock to read exchange count at send time.
-  const agnesMessagesRef = useRef<import('@/lib/types').Message[]>([]);
-
-  const getSessionProgressBlock = useCallback((): string | null => {
-    if (isImpromptu) return null;
-    const userExchanges = agnesMessagesRef.current.filter((m) => m.role === 'user').length;
-    if (userExchanges === 0) return null;
-    const progress = computeSessionProgress(userExchanges, sessionStartedAt, engagementMode);
-    return buildSessionProgressBlock(progress, engagementMode);
-  }, [isImpromptu, sessionStartedAt, engagementMode]);
-
+  // ── Destructure for JSX readability ─────────────────────────────────────
   const {
+    agentAlias,
+    hasActiveSession,
+    detectedPhase,
+    isSettingsOpen,
+    setIsSettingsOpen,
+    isSummarizing,
+    isClosingSession,
+    isCompactingMemory,
+    compactMemoryStatus,
+    sessionSummary,
+    setSessionSummary,
+    setCompactMemoryStatus,
     messages,
-    setMessages,
     isProcessing,
     isHydrating,
     streamingText,
     error,
     quota,
     routingSuggestion,
-    setRoutingSuggestion: setRoutingSuggestionRaw,
-    handleSendMessage,
-    prewarmMemory,
-    clearSession,
-    summarizeSession,
     pendingApprovals,
     approveAction,
     dismissAction,
-  } = useModuleAI({
-    moduleId: 'agnes',
-    systemPrompt,
-    encryptionKey,
-    contextPolicy: isImpromptu ? 'doc-only' : 'prompted',
-    persistencePolicy: isImpromptu ? 'ephemeral' : 'auto',
-    sessionId: isImpromptu ? 'impromptu' : undefined,
-    getSessionProgressBlock,
-  });
+    startSession,
+    endSession,
+    handleSendMessageWithArcCheck,
+    handleMergeAndClose,
+    handleDiscardAndClose,
+    handleCompactCurrentMemory,
+    handleAcceptBeliefInvitation,
+    handleRouteConfirm,
+    handleRouteDismiss,
+  } = session;
 
-  // Keep agnesMessagesRef live so getSessionProgressBlock always reads current exchange count.
-  agnesMessagesRef.current = messages;
+  const userName = (typeof profile?.baseContext?.identity === 'object'
+    ? profile?.baseContext?.identity?.name
+    : profile?.baseContext?.identity) || (user as unknown as { displayName?: string })?.displayName || 'User';
 
-  // Guard: never accumulate routing suggestions while a session is active.
-  // Dismissals (null) are always allowed through so stale state can be cleared.
-  const setRoutingSuggestion = useCallback(
-    (value: Parameters<typeof setRoutingSuggestionRaw>[0]) => {
-      if (currentState === 'session' && value !== null) return; // Never interrupt an active session with routing
-      setRoutingSuggestionRaw(value);
-    },
-    [currentState, setRoutingSuggestionRaw],
-  );
-
-  useEffect(() => {
-    setSessionActive?.(currentState === 'session');
-  }, [currentState, setSessionActive]);
-
-  // Hide Nexus FAB universally in Agnes as it's not required
-  useEffect(() => {
-    setHideGlobalFAB(true);
-    return () => setHideGlobalFAB(false);
-  }, [setHideGlobalFAB]);
-
-  // s18-002: once hydration settles, auto-advance to session if messages already exist
-  // This prevents the picker rendering on reload and the user accidentally wiping their session
-  useEffect(() => {
-    if (!isHydrating && messages.length > 0 && currentState === 'selecting' && !sessionType) {
-      setSessionType('new');
-      setCurrentState('session');
-    }
-  }, [isHydrating, messages.length, currentState, sessionType]);
-
-  // s18-006: logout guard — clear local session state when user transitions to null
-  useEffect(() => {
-    if (prevUserRef.current && !user) {
-      clearSession();
-      setCurrentState('selecting');
-      setSessionType(null);
-      setEngagementMode(loadGuestAgnesPreferredMode());
-      setPreferredPersistentMode(loadGuestAgnesPreferredMode());
-      setModeContinuity(undefined);
-      setActiveBeliefContext(null);
-      setPendingBeliefOpen(false);
-      setDetectedPhase(null);
-      closingHeldTurnsRef.current = 0;
-      setSessionSummary(null);
-    }
-    prevUserRef.current = user;
-  }, [user, clearSession]);
-
-  // Inject impromptu welcome AFTER the hook's reset+hydration effects settle.
-  // Without this, the welcome set during startSession() gets overwritten by
-  // useModuleAI's reset effect (activeSessionId change) and hydration effect.
-  useEffect(() => {
-    if (pendingImpromptuWelcome && !isHydrating && isImpromptu) {
-      setMessages([{ role: 'assistant', content: pendingImpromptuWelcome }]);
-      setPendingImpromptuWelcome(null);
-    }
-  }, [pendingImpromptuWelcome, isHydrating, isImpromptu, setMessages]);
-
-  // For belief-triggered sessions, fire a hidden trigger so Agnes generates a
-  // personalised opening (tone adapts to the belief context in the system prompt).
-  // Waits for hydration to settle so the trigger isn't overwritten by the reset effect.
-  useEffect(() => {
-    if (pendingBeliefOpen && !isHydrating && !isImpromptu && !isProcessing) {
-      setPendingBeliefOpen(false);
-      handleSendMessage(
-        '[Open session — begin with a warm, present greeting. Let the client lead.]',
-        undefined,
-        { hideUserMessage: true },
-      );
-    }
-  }, [pendingBeliefOpen, isHydrating, isImpromptu, isProcessing, handleSendMessage]);
-
-  // Parse Agnes's declared Phase from the last assistant message after each completed turn.
-  // The <thought> block is stored in full message content (not stripped) — see use-module-ai.ts.
-  useEffect(() => {
-    if (messages.length === 0 || isProcessing || isImpromptu) return;
-    const last = [...messages].reverse().find((m) => m.role === 'assistant');
-    if (!last) return;
-    const content = typeof last.content === 'string' ? last.content : '';
-    const match = content.match(/<thought>[\s\S]*?Phase:\s*(OPENING|DEEPENING|INTEGRATION|CLOSING)[\s\S]*?<\/thought>/);
-    if (!match) return;
-    const phase = match[1] as AgnesSessionPhase;
-    setDetectedPhase(phase);
-    closingHeldTurnsRef.current = phase === 'CLOSING' ? closingHeldTurnsRef.current + 1 : 0;
-  }, [messages, isProcessing, isImpromptu]);
-
-  // Reset arc state whenever a new session starts.
-  useEffect(() => {
-    setDetectedPhase(null);
-    closingHeldTurnsRef.current = 0;
-  }, [sessionStartedAt]);
-
-  const handleRouteConfirm = useCallback(() => {
-    if (!routingSuggestion) return;
-    const manifest = MODULE_MANIFEST[routingSuggestion.target];
-    if (manifest) {
-      navigate(manifest.route);
-    }
-    setRoutingSuggestion(null);
-  }, [routingSuggestion, navigate, setRoutingSuggestion]);
-
-  const handleRouteDismiss = useCallback(() => {
-    setRoutingSuggestion(null);
-  }, [setRoutingSuggestion]);
-
-  const persistPreferredMode = useCallback(async (mode: AgnesPersistentEngagementMode) => {
-    if (user) {
-      if (!profile) return;
-      await saveAgnesProfile(
-        {
-          ...profile,
-          baseContext: { ...profile.baseContext, preferredEngagementMode: mode } as TherapyIntakeProfile['baseContext'],
-          updatedAt: new Date().toISOString(),
-        },
-        { userId: user.uid, encryptionKey }
-      );
-      return;
-    }
-
-    saveGuestAgnesPreferredMode(mode);
-    if (!profile) return;
-    await saveAgnesProfile(
-      {
-        ...profile,
-        baseContext: { ...profile.baseContext, preferredEngagementMode: mode } as TherapyIntakeProfile['baseContext'],
-        updatedAt: new Date().toISOString(),
-      },
-      { userId: undefined, encryptionKey }
-    );
-  }, [user, profile, encryptionKey]);
-
-  const handlePreferredPersistentModeChange = useCallback(async (mode: AgnesPersistentEngagementMode) => {
-    setPreferredPersistentMode(mode);
-    if (!sessionType) {
-      setEngagementMode(mode);
-      setModeContinuity(undefined);
-    }
-    await persistPreferredMode(mode);
-  }, [persistPreferredMode, sessionType]);
-
-  const handleEngagementModeChange = useCallback(async (nextMode: AgnesEngagementMode) => {
-    if (nextMode === engagementMode) return;
-    setModeContinuity(buildAgnesPromptContinuity(messages, engagementMode));
-    setEngagementMode(nextMode);
-
-    if (!isImpromptu && nextMode !== 'impromptu') {
-      const persistentMode = resolvePersistentAgnesMode(nextMode);
-      setPreferredPersistentMode(persistentMode);
-      await persistPreferredMode(persistentMode);
-    }
-  }, [engagementMode, messages, isImpromptu, persistPreferredMode]);
-
-  const startSession = useCallback(async (type: 'impromptu' | 'new' | 'continue', beliefContext?: { triggeringBeliefs: string[]; rationale: string[] }) => {
-    if (type === 'continue') {
-      setSessionType('new'); // Continue is effectively a 'new' persistent session from a routing perspective
-      setEngagementMode(preferredPersistentMode);
-      setModeContinuity(undefined);
-      setSessionStartedAt(Date.now());
-      setCurrentState('session');
-      const ctx = profile?.baseContext;
-      if (ctx) {
-        const seedParts = [
-          typeof ctx.struggles !== 'undefined' && `struggles: ${Array.isArray(ctx.struggles) ? ctx.struggles.join(', ') : ctx.struggles}`,
-          typeof ctx.goals !== 'undefined' && `goals: ${Array.isArray(ctx.goals) ? ctx.goals.join(', ') : ctx.goals}`,
-          ctx.backgroundSummary || ctx.childhood
-        ].filter(Boolean).join('. ');
-        prewarmMemory(seedParts || 'therapy session');
-      }
-      return;
-    }
-
-    if (type === 'impromptu') {
-      // Clear any stale impromptu cache so the hydration effect finds nothing
-      // and doesn't overwrite the welcome we're about to inject.
-      sessionStorage.removeItem(`nexus_session_agnes_impromptu`);
-      const quickSupportGreetings = [
-        "You reached out, and that matters. This is Impromptu mode — private, off the record, and focused on what you need right now. Take a breath, and whenever you're ready, tell me what's happening.",
-        "This is a quiet, off-the-record space. We can keep it immediate and simple for as long as you need. What's coming up for you right now?",
-        "Whatever brought you here, you don't have to hold it alone right now. This Impromptu session leaves no trace. I'm with you — start wherever feels most urgent."
-      ];
-      const greeting = quickSupportGreetings[Math.floor(Math.random() * quickSupportGreetings.length)];
-      // Store greeting to inject AFTER the hook's reset+hydration effects settle
-      setPendingImpromptuWelcome(greeting);
-      setSessionType('impromptu');
-      setEngagementMode('impromptu');
-      setModeContinuity(undefined);
-      setSessionStartedAt(Date.now());
-      setCurrentState('session');
-      return;
-    }
-
-    // Starting a new regular session — clear the previous one first
-    await clearSession();
-    setSessionType('new');
-    setEngagementMode(preferredPersistentMode);
-    setModeContinuity(undefined);
-    setSessionStartedAt(Date.now());
-    setCurrentState('session');
-    setActiveBeliefContext(beliefContext ?? null);
-
-    if (profile?.baseContext) {
-      const ctx = profile.baseContext;
-      const seedParts = [
-        typeof ctx.struggles !== 'undefined' && `struggles: ${Array.isArray(ctx.struggles) ? ctx.struggles.join(', ') : ctx.struggles}`,
-        typeof ctx.goals !== 'undefined' && `goals: ${Array.isArray(ctx.goals) ? ctx.goals.join(', ') : ctx.goals}`,
-        ctx.backgroundSummary || ctx.childhood
-      ].filter(Boolean).join('. ');
-      prewarmMemory(seedParts || 'therapy session');
-    }
-
-    const userName = (typeof profile?.baseContext?.identity === 'object' 
-      ? profile?.baseContext?.identity?.name 
-      : profile?.baseContext?.identity) || 'there';
-    const isFirstSession = !profile?.onboardingComplete;
-
-    const firstTimeGreetings = {
-      casual: [
-        `Hi, I'm ${agentAlias}. We can keep this light and conversational today. What's been on your mind?`,
-        `Hello, I'm ${agentAlias}. Casual Chat is open — we can start wherever feels easiest.`,
-      ],
-      deep: [
-        `Hi, I'm ${agentAlias}. I'm here to provide a safe, encrypted space for your thoughts. Where shall we begin?`,
-        `Hello, I'm ${agentAlias}. It's a privilege to establish this link with you. How are you feeling today?`,
-        `Hi there, I'm ${agentAlias}. Think of me as a mirror for your inner world. What's on your mind?`,
-      ],
-      somatic: [
-        `Hi, I'm ${agentAlias}. We can go slowly and pay attention to what your system is signaling as we talk. What feels most present right now?`,
-        `Hello, I'm ${agentAlias}. Somatic Mode is open — we can track what's happening in your body and emotions without rushing.`,
-      ],
-    } satisfies Record<AgnesPersistentEngagementMode, string[]>;
-    const returningGreetings = {
-      casual: [
-        `Hi ${userName}, good to see you again. We can keep this simple today — what's most alive for you right now?`,
-        `Welcome back, ${userName}. Casual Chat is open. Where would you like to start?`,
-      ],
-      deep: [
-        `Hi ${userName}, it's good to see you again. Shall we pick up where we left off?`,
-        `Hello ${userName}, welcome back. How has your journey been since we last spoke?`,
-        `Hi ${userName}, I'm glad you're back. How are you holding up today?`,
-        `Good to see you, ${userName}. What's been surfacing for you lately?`,
-      ],
-      somatic: [
-        `Hi ${userName}, welcome back. Let's move slowly and notice what feels most present in your system today.`,
-        `Good to see you, ${userName}. We can start with whatever feels most activated, tense, or unsettled right now.`,
-      ],
-    } satisfies Record<AgnesPersistentEngagementMode, string[]>;
-
-    if (beliefContext?.triggeringBeliefs?.length) {
-      // Let Agnes generate a personalised opening — tone is shaped by the belief context
-      // already injected into the system prompt via beliefFocusBlock.
-      setPendingBeliefOpen(true);
-    } else {
-      const initialMsg = isFirstSession
-        ? firstTimeGreetings[preferredPersistentMode][Math.floor(Math.random() * firstTimeGreetings[preferredPersistentMode].length)]
-        : returningGreetings[preferredPersistentMode][Math.floor(Math.random() * returningGreetings[preferredPersistentMode].length)];
-      setMessages([{ role: 'assistant', content: initialMsg }]);
-    }
-  }, [
-    agentAlias,
-    clearSession,
-    preferredPersistentMode,
-    prewarmMemory,
-    profile,
-    setMessages,
-    setActiveBeliefContext,
-    setPendingBeliefOpen,
-  ]);
-
-  const hasActiveSession = !isGuest && messages.length > 0;
-
-  const beliefInvitationSnapshot = useMemo(
-    () => buildBeliefSessionInvitationSnapshot(beliefWorkflow?.invitation),
-    [beliefWorkflow?.invitation],
-  );
-
-  const handleConfirmBeliefProposal = useCallback(
-    async (proposalId: string, editedGraph: AgnesBeliefGraph) => {
-      if (!user || isGuest || !encryptionKey) return;
-      setBeliefWorkflowBusy(true);
-      try {
-        await confirmBeliefGraphProposal({
-          proposalId,
-          editedGraph,
-          userId: user.uid,
-          encryptionKey,
-          emotionalState: globalSoul?.crossFunctionalState.emotional ?? null,
-          isGuest,
-        });
-      } finally {
-        setBeliefWorkflowBusy(false);
-      }
-    },
-    [encryptionKey, globalSoul?.crossFunctionalState.emotional, isGuest, user],
-  );
-
-  const handleDismissBeliefProposal = useCallback(
-    async (proposalId: string) => {
-      if (!user || isGuest || !encryptionKey) return;
-      setBeliefWorkflowBusy(true);
-      try {
-        await dismissBeliefGraphProposal({
-          proposalId,
-          userId: user.uid,
-          encryptionKey,
-        });
-      } finally {
-        setBeliefWorkflowBusy(false);
-      }
-    },
-    [encryptionKey, isGuest, user],
-  );
-
-  const handleAcceptBeliefInvitation = useCallback(async () => {
-    if (user && !isGuest && encryptionKey) {
-      setBeliefWorkflowBusy(true);
-      try {
-        await updateBeliefSessionInvitationStatus({
-          status: 'accepted',
-          userId: user.uid,
-          encryptionKey,
-        });
-      } finally {
-        setBeliefWorkflowBusy(false);
-      }
-    }
-    const invitation = beliefWorkflow?.invitation;
-    const beliefContext = invitation
-      ? {
-          triggeringBeliefs: invitation.triggeringBeliefs ?? [],
-          rationale: invitation.rationale ?? [],
-        }
-      : undefined;
-    await startSession('new', beliefContext);
-  }, [beliefWorkflow?.invitation, encryptionKey, isGuest, startSession, user]);
-
-  const handleDismissBeliefInvitation = useCallback(async () => {
-    if (!user || isGuest || !encryptionKey) return;
-    setBeliefWorkflowBusy(true);
-    try {
-      await updateBeliefSessionInvitationStatus({
-        status: 'dismissed',
-        userId: user.uid,
-        encryptionKey,
-      });
-    } finally {
-      setBeliefWorkflowBusy(false);
-    }
-  }, [encryptionKey, isGuest, user]);
-
-  const autoHandlePendingBeliefSuggestions = useCallback(async () => {
-    if (!user || isGuest || !encryptionKey) return;
-
-    try {
-      const workflow = await loadBeliefGraphWorkflow({ userId: user.uid, encryptionKey });
-      const pendingProposals = workflow?.proposals.filter((proposal) => proposal.status === 'pending') ?? [];
-      if (pendingProposals.length === 0) return;
-
-      setBeliefWorkflowBusy(true);
-      let latestGraph: AgnesBeliefGraph | null = null;
-      let latestWorkflow: BeliefGraphWorkflow | null = workflow;
-
-      for (const proposal of pendingProposals) {
-        try {
-          const result = await confirmBeliefGraphProposal({
-            proposalId: proposal.id,
-            userId: user.uid,
-            encryptionKey,
-            emotionalState: globalSoul?.crossFunctionalState.emotional ?? null,
-            isGuest,
-          });
-          if (result.graph) latestGraph = result.graph;
-          if (result.workflow) latestWorkflow = result.workflow;
-        } catch (error) {
-          console.warn('[Agnes] Failed to auto-apply pending belief proposal:', proposal.id, error);
-        }
-      }
-
-      if (latestGraph) setBeliefGraph(latestGraph);
-      if (latestWorkflow) setBeliefWorkflow(latestWorkflow);
-    } catch (error) {
-      console.warn('[Agnes] Failed to auto-handle pending belief suggestions:', error);
-    } finally {
-      setBeliefWorkflowBusy(false);
-    }
-  }, [encryptionKey, globalSoul?.crossFunctionalState.emotional, isGuest, user]);
-
-  const endSession = async () => {
-    setIsSummarizing(true);
-    setCompactMemoryStatus(null);
-    try {
-      const summary = await summarizeSession();
-      setSessionSummary(summary);
-    } catch (e) {
-      console.error("Summary failed:", e);
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
-
-  const handleSendMessageWithArcCheck = useCallback<typeof handleSendMessage>(
-    async (content, onActionParsed?, options?) => {
-      if (
-        !isImpromptu &&
-        !isProcessing &&
-        !isSummarizing &&
-        !isClosingSession &&
-        closingHeldTurnsRef.current >= 2
-      ) {
-        void endSession();
-        return;
-      }
-      return handleSendMessage(content, onActionParsed, options);
-    },
-    [handleSendMessage, isImpromptu, isProcessing, isSummarizing, isClosingSession, endSession],
-  );
-
-  const finalizeClose = async () => {
-    if (isImpromptu) {
-      // Ephemeral session: only wipe sessionStorage, never touch Firestore
-      try { sessionStorage.removeItem('nexus_session_agnes_impromptu'); } catch { /* ignore */ }
-      setMessages([]);
-    } else {
-      await clearSession();
-    }
-    setCurrentState('selecting');
-    setSessionType(null);
-    setEngagementMode(preferredPersistentMode);
-    setModeContinuity(undefined);
-    setSessionSummary(null);
-    setActiveBeliefContext(null);
-    setPendingBeliefOpen(false);
-    setDetectedPhase(null);
-    closingHeldTurnsRef.current = 0;
-
-    // Flush any belief workflow that arrived during the session
-    if (pendingPostSessionBeliefWorkflowRef.current !== null) {
-      setBeliefWorkflow(pendingPostSessionBeliefWorkflowRef.current);
-      pendingPostSessionBeliefWorkflowRef.current = null;
-    }
-
-    // Auto-handle any pending belief suggestions after session close so the
-    // user does not need to manually review post-session proposal backlog.
-    void autoHandlePendingBeliefSuggestions();
-  };
-
-  const handleMergeAndClose = async () => {
-    setIsClosingSession(true);
-    try {
-      if (user && !isGuest && messages.length > 0) {
-        const snapshot = JSON.stringify({
-          moduleId: 'agnes',
-          endedAt: new Date().toISOString(),
-          // Persist only retrieval-relevant message fields.
-          // tool_calls/debug artifacts can be extremely large and are not needed for episodic recall.
-          history: messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-            timestamp: msg.timestamp,
-          }))
-        });
-
-        const existing = await ModuleMemoryService.getEnvelope(user.uid, 'agnes', encryptionKey);
-        if (!existing) {
-          if (!encryptionKey) {
-            console.warn('[Agnes] Skipping session merge: missing encryption key for vault-scoped module.');
-          } else {
-            await ModuleMemoryService.initializeEnvelope(user.uid, 'agnes', encryptionKey);
-          }
-        }
-
-        if (existing || encryptionKey) {
-          await ModuleMemoryService.commitSession(
-            user.uid,
-            'agnes',
-            {
-              id: `agnes_${Date.now()}`,
-              timestamp: new Date().toISOString(),
-              summary: sessionSummary || 'Agnes session completed.',
-              keyInsights: [],
-              sentiment: 0,
-              tokenUsage: 0
-            },
-            snapshot,
-            { encryptionKey }
-          );
-        }
-
-        // Always increment sessionCount regardless of memory service state
-        if (profile) {
-          const updatedCount = (profile.baseContext?.sessionCount ?? 0) + 1;
-          await saveAgnesProfile(
-            {
-              ...profile,
-              baseContext: { ...profile.baseContext, sessionCount: updatedCount },
-              updatedAt: new Date().toISOString(),
-            },
-            { userId: user.uid, encryptionKey }
-          );
-        }
-      }
-
-      await finalizeClose();
-    } catch (e) {
-      console.error('Failed to merge agnes session:', e);
-    } finally {
-      setIsClosingSession(false);
-    }
-  };
-
-  const handleDiscardAndClose = async () => {
-    setIsClosingSession(true);
-    try {
-      await finalizeClose();
-    } finally {
-      setIsClosingSession(false);
-    }
-  };
-
-  const handleCompactCurrentMemory = useCallback(async () => {
-    if (!user || isGuest || !encryptionKey) return;
-    setCompactMemoryStatus(null);
-    setIsCompactingMemory(true);
-    try {
-      const result = await ModuleMemoryService.compactEnvelope(user.uid, 'agnes', { encryptionKey });
-      if (result.compacted) {
-        setCompactMemoryStatus(
-          `Compacted successfully (${result.eventCount ?? 0} events${result.snapshotTruncated ? ', snapshot trimmed' : ''}${result.historyCompacted ? ', history compacted' : ''}).`
-        );
-      } else {
-        setCompactMemoryStatus(`Compaction skipped: ${result.reason ?? 'unknown reason'}.`);
-      }
-    } catch (error) {
-      console.error('[Agnes] Manual memory compaction failed:', error);
-      setCompactMemoryStatus('Compaction failed. Check console for details.');
-    } finally {
-      setIsCompactingMemory(false);
-    }
-  }, [encryptionKey, isGuest, user]);
-
-  const handleCompactBeliefGraph = useCallback(async () => {
-    if (!user || isGuest || !encryptionKey) return;
-    setCompactBeliefGraphStatus(null);
-    setIsCompactingBeliefGraph(true);
-    try {
-      const result = await compactBeliefGraphDocument(
-        { userId: user.uid, encryptionKey },
-        { maxNodes: 60, generateJSON },
-      );
-      if (result.compacted) {
-        setCompactBeliefGraphStatus(
-          `Belief graph compacted (${result.nodeCount} beliefs, ${result.edgeCount} links).`,
-        );
-      } else {
-        setCompactBeliefGraphStatus(`Belief graph compaction skipped: ${result.reason ?? 'unknown reason'}.`);
-      }
-    } catch (error) {
-      console.error('[Agnes] Belief graph compaction failed:', error);
-      setCompactBeliefGraphStatus('Belief graph compaction failed. Check console for details.');
-    } finally {
-      setIsCompactingBeliefGraph(false);
-    }
-  }, [encryptionKey, generateJSON, isGuest, user]);
-
-  // ── Somatic session handlers ──────────────────────────────────────────────
-
-  const handleOpenSomatic = useCallback(() => {
-    somaticStartedAt.current = Date.now();
-    setSelectedSomaticExercise(null);
-    setCurrentState('somatic');
-  }, []);
-
-  const handleSomaticSelect = useCallback((exercise: SomaticExerciseType) => {
-    somaticStartedAt.current = Date.now();
-    setSelectedSomaticExercise(exercise);
-  }, []);
-
-  const handleSomaticComplete = useCallback(async () => {
-    const durationSeconds = Math.round((Date.now() - somaticStartedAt.current) / 1000);
-    const exerciseType = selectedSomaticExercise ?? 'breathwork';
-
-    // Update NSV: reduce stress load, increase resilience
-    // Read from ref so this callback doesn't need globalSoul as a dep.
-    const emotional = globalSoulRef.current?.crossFunctionalState?.emotional;
-    await updateCrossFunctionalState({
-      emotional: {
-        stressLoad: Math.max(0, (emotional?.stressLoad ?? 5) - 1.5),
-        emotionalResilience: Math.min(10, (emotional?.emotionalResilience ?? 5) + 0.5),
-      },
-    });
-
-    // Emit Spine event
-    Spine.publish({
-      type: 'SOMATIC_SESSION_COMPLETE',
-      source: 'agnes',
-      domain: 'E',
-      priority: 'info',
-      data: { exerciseType, durationSeconds, completedFully: true },
-    });
-
-    setCurrentState('selecting');
-    setSelectedSomaticExercise(null);
-  // globalSoul is read from globalSoulRef at call-time — no dep needed.
-  }, [selectedSomaticExercise, updateCrossFunctionalState]);
-
-  const handleSomaticExit = useCallback(() => {
-    setCurrentState('selecting');
-    setSelectedSomaticExercise(null);
-  }, []);
+  // ── JSX ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full relative">
       <SanctuaryBackground />
-      
+
       <div className="absolute inset-0 pointer-events-none">
         <Agnes3DEnvironment activeSession={currentState === 'session'} isProcessing={isProcessing} />
       </div>
@@ -964,7 +203,7 @@ function AgnesContent({
       )}>
         <AnimatePresence mode="wait">
           {currentState === 'selecting' ? (
-            <motion.div 
+            <motion.div
               key="selecting"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -979,26 +218,24 @@ function AgnesContent({
               ) : (
                 <AgnesSanctuaryContent
                   onStartSession={startSession}
-                  onConfirmBeliefProposal={handleConfirmBeliefProposal}
-                  onDismissBeliefProposal={handleDismissBeliefProposal}
+                  onConfirmBeliefProposal={beliefs.handleConfirmBeliefProposal}
+                  onDismissBeliefProposal={beliefs.handleDismissBeliefProposal}
                   onAcceptInvitation={handleAcceptBeliefInvitation}
-                  onDismissInvitation={handleDismissBeliefInvitation}
-                  onCompactBeliefGraph={handleCompactBeliefGraph}
-                  selectedPersistentMode={preferredPersistentMode}
-                  onPersistentModeChange={handlePreferredPersistentModeChange}
+                  onDismissInvitation={beliefs.handleDismissBeliefInvitation}
+                  onCompactBeliefGraph={beliefs.handleCompactBeliefGraph}
+                  selectedPersistentMode={engagement.preferredPersistentMode}
+                  onPersistentModeChange={engagement.handlePreferredPersistentModeChange}
                   agentAlias={agentAlias}
-                  userName={(typeof profile?.baseContext?.identity === 'object' 
-                    ? profile?.baseContext?.identity?.name 
-                    : profile?.baseContext?.identity) || (user as unknown as { displayName?: string })?.displayName || 'User'}
-                  somaticEnabled={somaticEnabled}
+                  userName={userName}
+                  somaticEnabled={engagement.somaticEnabled}
                   isAccessible={isAccessible}
                   hasActiveSession={hasActiveSession}
-                  beliefGraph={beliefGraph}
-                  beliefWorkflow={beliefWorkflow}
-                  beliefInvitationSnapshot={beliefInvitationSnapshot}
-                  beliefWorkflowBusy={beliefWorkflowBusy}
-                  compactBeliefGraphBusy={isCompactingBeliefGraph}
-                  compactBeliefGraphStatus={compactBeliefGraphStatus}
+                  beliefGraph={beliefs.beliefGraph}
+                  beliefWorkflow={beliefs.beliefWorkflow}
+                  beliefInvitationSnapshot={beliefs.beliefInvitationSnapshot}
+                  beliefWorkflowBusy={beliefs.beliefWorkflowBusy}
+                  compactBeliefGraphBusy={beliefs.isCompactingBeliefGraph}
+                  compactBeliefGraphStatus={beliefs.compactBeliefGraphStatus}
                 />
               )}
             </motion.div>
@@ -1011,26 +248,26 @@ function AgnesContent({
               className="flex-1 flex flex-col min-h-0 h-full relative z-[var(--z-content)] overflow-hidden"
             >
               <div className="flex-1 flex flex-col min-h-0 h-full items-center justify-center p-4">
-                {selectedSomaticExercise === 'breathwork' ? (
-                  <BreathworkExercise 
-                    onComplete={handleSomaticComplete}
-                    onExit={handleSomaticExit}
+                {somatic.selectedSomaticExercise === 'breathwork' ? (
+                  <BreathworkExercise
+                    onComplete={somatic.handleSomaticComplete}
+                    onExit={somatic.handleSomaticExit}
                   />
-                ) : selectedSomaticExercise === 'grounding' ? (
-                  <GroundingExercise 
-                    onComplete={handleSomaticComplete}
-                    onExit={handleSomaticExit}
+                ) : somatic.selectedSomaticExercise === 'grounding' ? (
+                  <GroundingExercise
+                    onComplete={somatic.handleSomaticComplete}
+                    onExit={somatic.handleSomaticExit}
                   />
                 ) : (
-                  <SomaticSessionPicker 
-                    onSelect={handleSomaticSelect}
-                    onExit={handleSomaticExit}
+                  <SomaticSessionPicker
+                    onSelect={somatic.handleSomaticSelect}
+                    onExit={somatic.handleSomaticExit}
                   />
                 )}
               </div>
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               key="session"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1059,7 +296,7 @@ function AgnesContent({
                       animate={{ opacity: 1 }}
                       className="flex-1 flex flex-col min-h-0 h-full"
                     >
-                      {/* Session Telemetry & Control Bar - Persistent above chat to prevent clipping */}
+                      {/* Session Telemetry & Control Bar */}
                       <div className="shrink-0 flex flex-col gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/[0.09] bg-slate-900/70 backdrop-blur-2xl z-[var(--z-content)]">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1 overflow-hidden">
@@ -1072,11 +309,11 @@ function AgnesContent({
                               panel={<AgnesNotificationSettingsPanel />}
                               compact
                             />
-                            <NeuralButton 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={endSession} 
-                              loading={isSummarizing} 
+                            <NeuralButton
+                              size="sm"
+                              variant="ghost"
+                              onClick={endSession}
+                              loading={isSummarizing}
                               className="flex items-center gap-2 px-4 rounded-full border-white/[0.09] hover:border-rose-500/20 hover:text-rose-400"
                             >
                               <LogOut className="w-3.5 h-3.5" />
@@ -1087,22 +324,22 @@ function AgnesContent({
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                           <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-white/60">
                             <span className="px-3 py-1 rounded-full border border-indigo-400/20 bg-indigo-500/10 text-indigo-100/80">
-                              {activeModeDefinition.label}
+                              {engagement.activeModeDefinition.label}
                             </span>
                             <span className="px-3 py-1 rounded-full border border-white/[0.12] bg-white/[0.045] text-white/60">
-                              {isImpromptu ? 'Off the Record' : 'Vault Continuity'}
+                              {engagement.isImpromptu ? 'Off the Record' : 'Vault Continuity'}
                             </span>
-                            {engagementMode === 'somatic' && (
+                            {engagement.engagementMode === 'somatic' && (
                               <span className="px-3 py-1 rounded-full border border-white/[0.12] bg-white/[0.045] text-white/60">
-                                Somatic Inquiry {somaticEnabled ? 'Enabled' : 'Adapted'}
+                                Somatic Inquiry {engagement.somaticEnabled ? 'Enabled' : 'Adapted'}
                               </span>
                             )}
                           </div>
                           <AgnesEngagementModeControl
                             compact
-                            value={engagementMode}
-                            onChange={(mode) => { void handleEngagementModeChange(mode); }}
-                            modes={sessionModeOptions}
+                            value={engagement.engagementMode}
+                            onChange={(mode) => { void engagement.handleEngagementModeChange(mode); }}
+                            modes={engagement.sessionModeOptions}
                             label="Switch Agnes engagement mode"
                             className="lg:justify-end"
                             disabled={currentState === 'session'}
@@ -1111,14 +348,14 @@ function AgnesContent({
                       </div>
 
                       <NexusChat
-                        ai={{ messages, setMessages, isProcessing, streamingText, error, quota, handleSendMessage: handleSendMessageWithArcCheck, pendingApprovals, approveAction, dismissAction }}
+                        ai={{ messages, setMessages: session.setMessages, isProcessing, streamingText, error, quota, handleSendMessage: handleSendMessageWithArcCheck, pendingApprovals, approveAction, dismissAction }}
                         agentName={agentAlias}
                         themeColor="indigo"
                         placeholder="Communicate..."
                         authMode="agnes"
                       />
                       <AgnesClosingBar
-                        visible={detectedPhase === 'CLOSING' && !isSummarizing && !isClosingSession && !isImpromptu}
+                        visible={detectedPhase === 'CLOSING' && !isSummarizing && !isClosingSession && !engagement.isImpromptu}
                         onClose={endSession}
                         isBusy={isSummarizing}
                       />
@@ -1161,16 +398,16 @@ function AgnesContent({
           </motion.div>
         )}
 
-        <NeuralModal 
-          key="session-summary-modal" 
-          isOpen={!!sessionSummary} 
+        <NeuralModal
+          key="session-summary-modal"
+          isOpen={!!sessionSummary}
           onClose={() => {
             setSessionSummary(null);
             setCompactMemoryStatus(null);
           }}
-          title="Session Complete" 
-          subtitle="Neural synthesis finalized" 
-          icon={Brain} 
+          title="Session Complete"
+          subtitle="Neural synthesis finalized"
+          icon={Brain}
           maxWidth="lg"
         >
           <div className="space-y-8">
@@ -1181,7 +418,7 @@ function AgnesContent({
                   <span className="text-[11px] font-black uppercase tracking-[0.15em] text-white/68">Exchanges</span>
                 </div>
                 <span className="text-2xl font-black text-white tabular-nums">
-                  {messages.filter(m => m.role === 'user').length}
+                  {messages.filter((m) => m.role === 'user').length}
                 </span>
               </div>
               <div className="p-4 rounded-2xl sm:rounded-[2rem] bg-white/[0.045] border border-white/[0.09] shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
@@ -1276,7 +513,7 @@ function AgnesOnboardingWrapper({ profile, onComplete }: { profile: TherapyIntak
           ...(profile ?? createEmptyAgnesProfile()),
           onboardingComplete: true,
           baseContext: ctx,
-          updatedAt: now
+          updatedAt: now,
         };
         onComplete(completedProfile);
       }}
@@ -1285,8 +522,7 @@ function AgnesOnboardingWrapper({ profile, onComplete }: { profile: TherapyIntak
 }
 
 export default function AgnesPage() {
-  // Primitive selector — only re-renders when the display name string changes.
-  const agentAlias = useGlobalSoulStore(s => s.globalSoul?.displayNames?.agnes || 'Agnes');
+  const agentAlias = useGlobalSoulStore((s) => s.globalSoul?.displayNames?.agnes || 'Agnes');
 
   return (
     <UnifiedModulePage<TherapyIntakeProfile>
@@ -1298,7 +534,7 @@ export default function AgnesPage() {
         loadProfile: loadAgnesProfile,
         saveProfile: saveAgnesProfile,
         subscribeProfile: subscribeAgnesProfile,
-        refreshProfile: loadAgnesProfile
+        refreshProfile: loadAgnesProfile,
       }}
       renderOnboarding={AgnesOnboardingWrapper}
       renderContent={AgnesContent}
@@ -1309,7 +545,6 @@ export default function AgnesPage() {
         <AgnesDashboard profile={profile} encryptionKey={encryptionKey} />
       )}
       renderMobileFooter={({ sessionActive }) => {
-        // Hide settings button on mobile during active session
         if (sessionActive) return null;
         return (
           <div className="flex items-center justify-center p-3">

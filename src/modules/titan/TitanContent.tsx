@@ -1,12 +1,11 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { AnalyticsTab } from './components/AnalyticsTab';
 import { QuickLogDrawer } from './components/QuickLogDrawer';
 import type { QuickLogPayload } from './components/QuickLogDrawer';
 import { QuickLogBar } from './components/QuickLogBar';
 import { LogConfirmCard } from './components/LogConfirmCard';
-import { TitanProposalCard, type TitanProposal } from './components/TitanProposalCard';
+import { TitanProposalCard } from './components/TitanProposalCard';
 import { RecoveryPlanModal } from './components/RecoveryPlanModal';
-import type { RecoveryConsultResult } from './components/RecoveryPlanModal';
 import { RecoveryBanner } from './components/RecoveryBanner';
 import { RecoveryCheckinPanel } from './components/RecoveryCheckinPanel';
 import { RecoveryManager } from './components/RecoveryManager';
@@ -14,31 +13,15 @@ import { TrainTab } from './tabs/TrainTab';
 import { PlanTab } from './tabs/PlanTab';
 import { BodyTab } from './tabs/BodyTab';
 import { CyclesTab } from './tabs/CyclesTab';
-import { useGlobalSoulStore, useGlobalSoulActions } from '@/lib/global-soul-context';
+import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
+import type {
   TitanProfile,
   WorkoutSession,
   PersonalRecord,
-  SleepEntry,
-  CycleEntry,
-  BodyWeightEntry,
-  CardioSession,
-  CustomField,
-  Routine,
-  MealEntry,
-  Injury,
-  WorkoutGoal,
-  PlannedWorkout,
-  Weekday,
 } from '@/lib/types';
-import { useSpineEvent } from '@/lib/spine/spine-event-bus';
-import { Spine } from '@/lib/spine/spine-event-bus';
-import { loadTitanProfile, saveTitanProfile } from './services/titan-profile-service';
-import { calculateE1RM } from './utils/e1rm';
-import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralTabGroup, NeuralTabItem } from '@/core/components/NeuralTabGroup';
@@ -48,16 +31,12 @@ import { Activity, RefreshCw, Zap, X, ShieldAlert, TrendingUp, Scale, Dumbbell, 
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useVault } from '@/lib/vault-context';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
-import type { NexusHandoff } from '@/lib/services/nexus-handoff-service';
 import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
-import type { ModuleId } from '@/lib/module-manifest';
-import { getCalibrationPrompt, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
-import { ActionHub } from '@/lib/actions/action-hub';
 import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { QuickReminderModal } from '@/core/components/QuickReminderModal';
-import { isPhysicalCommitmentMissed } from '@/lib/spine/flow-contracts';
+import { saveTitanProfile } from './services/titan-profile-service';
+import { calculateE1RM } from './utils/e1rm';
 
 // ── Custom hooks ──────────────────────────────────────────────────────────────
 import type { TitanTab } from './hooks/types';
@@ -66,6 +45,11 @@ import { useTitanSomaSync } from './hooks/useTitanSomaSync';
 import { useTitanClearanceGate } from './hooks/useTitanClearanceGate';
 import { useTitanRecovery } from './hooks/useTitanRecovery';
 import { useTitanQuickLog } from './hooks/useTitanQuickLog';
+import { useTitanDirectWrite } from './hooks/useTitanDirectWrite';
+import { useTitanProgram } from './hooks/useTitanProgram';
+import { useTitanSpineEvents } from './hooks/useTitanSpineEvents';
+import { useTitanCycleAutoAdvance } from './hooks/useTitanCycleAutoAdvance';
+import { useTitanChat } from './hooks/useTitanChat';
 import { activateBiomarkerMigration } from './services/titan-migration-service';
 
 function resolveInitialTab(searchParams: URLSearchParams, recoveryActive: boolean): TitanTab {
@@ -81,8 +65,6 @@ function resolveInitialTab(searchParams: URLSearchParams, recoveryActive: boolea
 
 export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
   const globalSoul = useGlobalSoulStore(s => s.globalSoul);
-  // Keep globalSoul in a ref so callbacks that need it at call-time don't list it
-  // as a dep — prevents re-renders of callbacks on every NSV write.
   const globalSoulRef = useRef(globalSoul);
   globalSoulRef.current = globalSoul;
   const { isModuleAccessible, getMasterKey, lockVault } = useVault();
@@ -97,12 +79,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   const [activeTab, setActiveTab] = useState<TitanTab>(() => resolveInitialTab(searchParams, isRecoveryActive));
   const [isChatCollapsed, setIsChatCollapsed] = useState(true);
   const [calendarSelectedRoutine, setCalendarSelectedRoutine] = useState<Parameters<typeof TrainTab>[0]['calendarSelectedRoutine']>(null);
-  const [activeProposal, setActiveProposal] = useState<TitanProposal | null>(null);
-  const [showAdvisory, setShowAdvisory] = useState(false);
-  const [isClearProgramModalOpen, setIsClearProgramModalOpen] = useState(false);
-  const [planResetVersion, setPlanResetVersion] = useState(0);
 
-  const directWrite = profile?.directWriteMode ?? false;
   const recoveryPlan = profile?.recoveryPlan ?? null;
 
   // ── Custom hooks ───────────────────────────────────────────────────────────
@@ -122,6 +99,18 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     user,
   });
 
+  const chat = useTitanChat({
+    profile,
+    encryptionKey,
+    user: user ?? null,
+    somaProfile,
+    globalSoul,
+    isRecoveryActive,
+    isModuleAccessible,
+    lockVault,
+    setIsChatCollapsed,
+  });
+
   const recovery = useTitanRecovery({
     profile,
     encryptionKey,
@@ -131,18 +120,14 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     isGuest,
     isRecoveryActive,
     setActiveTab,
-    ai: { handleSendMessage: (msg: string) => ai.handleSendMessage(msg) },
+    ai: { handleSendMessage: (msg: string) => chat.ai.handleSendMessage(msg) },
   });
 
-  const loadLatestPersistedProfile = useCallback(async (): Promise<TitanProfile | null> => {
-    if (!user?.uid || !encryptionKey) return profile;
-    try {
-      return await loadTitanProfile({ userId: user.uid, encryptionKey }) ?? profile;
-    } catch (error) {
-      console.error('[Titan] Failed to load latest profile before save:', error);
-      return profile;
-    }
-  }, [user?.uid, encryptionKey, profile]);
+  const directWriteHook = useTitanDirectWrite({
+    profile,
+    encryptionKey,
+    user: user ?? null,
+  });
 
   const quickLog = useTitanQuickLog({
     profile,
@@ -150,222 +135,36 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     user,
     isRecoveryActive,
     trainingGateState: clearanceGate.trainingGateState,
-    loadLatestPersistedProfile,
+    loadLatestPersistedProfile: directWriteHook.loadLatestPersistedProfile,
     setRecoveryGate: clearanceGate.setRecoveryGate,
   });
 
-  // ── AI ─────────────────────────────────────────────────────────────────────
-  const agentAlias = globalSoul?.displayNames?.titan || 'Titan';
-
-  const ai = useModuleAI({
-    moduleId: 'titan',
-
+  const program = useTitanProgram({
+    profile,
     encryptionKey,
-    moduleContext: {
-      titan_profile: profile,
-      titan_mode: isRecoveryActive ? 'recovery' : 'training',
-      titan_recovery_score: globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null,
-      titan_hormonal_context: globalSoul?.crossFunctionalState?.biological?.hormonalContext ?? null,
-      titan_soma_profile: somaProfile,
-    },
+    user: user ?? null,
   });
 
-  const openChatAndSend = useCallback((prompt: string) => {
-    setIsChatCollapsed(false);
-    ai.handleSendMessage(prompt);
-  }, [ai.handleSendMessage]);
+  const spineEvents = useTitanSpineEvents({
+    profile,
+    encryptionKey,
+    user: user ?? null,
+    isGuest,
+    globalSoulRef,
+    openChatAndSend: chat.openChatAndSend,
+    handleSendMessage: chat.ai.handleSendMessage,
+    setSomaConsult: recovery.setSomaConsult,
+    setAgnesConsult: recovery.setAgnesConsult,
+    setPendingConsults: recovery.setPendingConsults,
+    setActiveTab,
+    locationState: location.state,
+  });
 
-  // ── Existing exercises memo for QuickLogDrawer autocomplete ───────────────
-  const existingExercises = useMemo(() => {
-    const names = new Set<string>();
-    for (const session of profile?.workoutSessions ?? []) {
-      for (const ex of session.exercises) names.add(ex.exerciseName);
-    }
-    for (const routine of profile?.routines ?? []) {
-      for (const ex of routine.exercises) names.add(ex.name);
-    }
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [profile?.workoutSessions, profile?.routines]);
-
-  // ── Spine: focus redirect (e.g. deep-link into a session) ─────────────────
-  useEffect(() => {
-    const focusId = (location.state as { focusId?: string } | null)?.focusId;
-    if (!focusId) return;
-    if (focusId.startsWith('session:')) setActiveTab('train');
-  }, [location.state]);
-
-  // ── Spine: AI proposal cards ───────────────────────────────────────────────
-  useSpineEvent('TITAN_PROPOSAL', useCallback((event) => {
-    const proposal = event.data as unknown as TitanProposal;
-    if (proposal && (proposal.type === 'routine_proposal' || proposal.type === 'sleep_log_proposal' || proposal.type === 'workout_log_proposal')) {
-      setActiveProposal(proposal);
-    }
-  }, []));
-
-  // ── Spine: incoming module handoffs ───────────────────────────────────────
-  const parseRecoveryConsult = useCallback((content: string): RecoveryConsultResult | null => {
-    if (!content) return null;
-    const start = content.indexOf('{');
-    const end = content.lastIndexOf('}');
-    if (start === -1 || end === -1 || end <= start) return null;
-    try {
-      const json = JSON.parse(content.slice(start, end + 1)) as RecoveryConsultResult;
-      if (!json.summary) return null;
-      return json;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const handleIncomingHandoff = useCallback((handoff: NexusHandoff) => {
-    if (handoff.type === 'query_result' && handoff.content) {
-      const parsed = parseRecoveryConsult(handoff.content);
-      if (parsed && (handoff.sourceModuleId === 'soma' || handoff.sourceModuleId === 'agnes')) {
-        if (handoff.sourceModuleId === 'soma') {
-          recovery.setSomaConsult(parsed);
-          recovery.setPendingConsults((prev) => ({ ...prev, soma: false }));
-        } else {
-          recovery.setAgnesConsult(parsed);
-          recovery.setPendingConsults((prev) => ({ ...prev, agnes: false }));
-        }
-        return;
-      }
-    }
-
-    if (handoff.type === 'delegate') {
-      if (handoff.sourceModuleId === 'agnes') {
-        openChatAndSend(`[Context from Agnes] ${handoff.content}`);
-      } else if (handoff.sourceModuleId === 'atlas') {
-        openChatAndSend(
-          `[Atlas] A physical commitment was missed: "${handoff.content}". ` +
-          `Should we reschedule or adjust the training plan?`,
-        );
-      } else {
-        openChatAndSend(`[${handoff.sourceModuleId ?? 'System'}] ${handoff.content}`);
-      }
-      return;
-    }
-
-    if (handoff.type === 'query_result' && handoff.content) {
-      openChatAndSend(`[Query Result from ${handoff.sourceModuleId ?? 'module'}] ${handoff.content}`);
-    }
-  }, [openChatAndSend, parseRecoveryConsult, recovery.setSomaConsult, recovery.setAgnesConsult, recovery.setPendingConsults]);
-
-  useSpineEvent('MODULE_HANDOFF_RECEIVED', useCallback((event) => {
-    const handoff = event.data as unknown as NexusHandoff;
-    if (handoff && handoff.moduleId === 'titan') handleIncomingHandoff(handoff);
-  }, [handleIncomingHandoff]));
-
-  // ── Spine: commitment missed / financial stress (stays in coordinator) ─────
-  const handledMiscEventsRef = useRef<Set<string>>(new Set());
-
-  useSpineEvent('COMMITMENT_MISSED', useCallback((event) => {
-    if (!profile?.onboardingComplete) return;
-    const eventKey = `commitment-missed-${event.id}`;
-    if (handledMiscEventsRef.current.has(eventKey)) return;
-    handledMiscEventsRef.current.add(eventKey);
-    if (!isPhysicalCommitmentMissed(event)) return;
-    const title = event.data?.commitmentTitle ?? event.data?.title ?? 'a physical commitment';
-    ai.handleSendMessage(
-      `[System] You missed ${title as string}. Should we adjust your training plan or reschedule this session?`,
-    );
-  }, [profile?.onboardingComplete, ai.handleSendMessage]));
-
-  useSpineEvent('FINANCIAL_STRESS', useCallback((event) => {
-    if (!profile?.onboardingComplete) return;
-    const eventKey = `financial-stress-${event.id}`;
-    if (handledMiscEventsRef.current.has(eventKey)) return;
-    handledMiscEventsRef.current.add(eventKey);
-    const rawLevel = (event.data?.stressLevel ?? event.data?.level) as number | undefined;
-    const stressLevel = rawLevel ?? 0;
-    if (stressLevel < 7) return;
-    ai.handleSendMessage(
-      `[System] Financial stress detected at ${stressLevel}/10. This is a cortisol contributor that compresses recovery capacity. Please factor this into today's training intensity and recovery recommendations.`,
-    );
-  }, [profile?.onboardingComplete, ai.handleSendMessage]));
-
-  // ── Cycle phase auto-advance ───────────────────────────────────────────────
-  const isAutoAdvancingRef = useRef(false);
-  useEffect(() => {
-    if (isAutoAdvancingRef.current) return;
-    if (!profile?.cycles?.length || !user || !encryptionKey) return;
-
-    const today = new Date().toISOString().slice(0, 10);
-    let needsUpdate = false;
-
-    const updatedCycles = profile.cycles.map((cycle) => {
-      if (cycle.status !== 'active') return cycle;
-      const currentPhase = cycle.phases[cycle.currentPhaseIndex];
-      if (!currentPhase?.durationDays) return cycle;
-
-      const phaseStart = new Date(cycle.currentPhaseStartDate);
-      const phaseEnd = new Date(phaseStart);
-      phaseEnd.setDate(phaseStart.getDate() + currentPhase.durationDays);
-      const phaseEndISO = phaseEnd.toISOString().slice(0, 10);
-
-      if (today > phaseEndISO) {
-        needsUpdate = true;
-        const now = new Date().toISOString();
-        const nextPhaseIndex = cycle.currentPhaseIndex + 1;
-        if (nextPhaseIndex >= cycle.phases.length) {
-          return { ...cycle, status: 'completed' as const, updatedAt: now };
-        }
-        return { ...cycle, currentPhaseIndex: nextPhaseIndex, currentPhaseStartDate: today, updatedAt: now };
-      }
-      return cycle;
-    });
-
-    if (!needsUpdate) return;
-
-    isAutoAdvancingRef.current = true;
-    const updated: TitanProfile = { ...profile, cycles: updatedCycles, updatedAt: new Date().toISOString() };
-    saveTitanProfile(updated, { userId: user.uid, encryptionKey })
-      .catch((e) => console.error('cycle auto-advance failed:', e))
-      .finally(() => { isAutoAdvancingRef.current = false; });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.cycles, user, encryptionKey]);
-
-  // ── AI: seed opening message after onboarding ──────────────────────────────
-  useEffect(() => {
-    if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
-      const hasRoutine = profile.routines && profile.routines.length > 0;
-      ai.setMessages([{
-        role: 'assistant',
-        content: hasRoutine
-          ? "You're synchronized. Do you want a new routine for this week, or should we keep your current plan?"
-          : "You're synchronized. Do you want me to generate a weekly routine, or do you already have one?",
-      }]);
-    }
-  }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages, profile?.routines]);
-
-  // ── Medical-data vault advisory (S21-015) ─────────────────────────────────
-  useEffect(() => {
-    const hasMedicalData = (
-      (profile?.labSummaries?.length ?? 0) > 0 ||
-      (profile?.medicalImageAnalyses?.length ?? 0) > 0 ||
-      (profile?.medications?.length ?? 0) > 0
-    );
-    if (!hasMedicalData || !profile?.onboardingComplete || !isModuleAccessible('titan')) return;
-    const sessionKey = `titan-vault-advisory-${user?.uid ?? 'guest'}`;
-    if (sessionStorage.getItem(sessionKey)) return;
-    sessionStorage.setItem(sessionKey, '1');
-    setShowAdvisory(true);
-  }, [
-    profile?.labSummaries?.length,
-    profile?.medicalImageAnalyses?.length,
-    profile?.medications?.length,
-    profile?.onboardingComplete,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  ]);
-  useEffect(() => {
-    if (!showAdvisory) return;
-    const timer = window.setTimeout(() => setShowAdvisory(false), 8000);
-    return () => window.clearTimeout(timer);
-  }, [showAdvisory]);
+  useTitanCycleAutoAdvance({ profile, encryptionKey, user: user ?? null });
 
   // ── Biomarker migration (Titan → Soma, one-shot per profile load) ──────────
-  const migrationRanRef = useRef(false);
-  useEffect(() => {
+  const migrationRanRef = React.useRef(false);
+  React.useEffect(() => {
     if (migrationRanRef.current) return;
     if (!profile || !somaProfile || !user?.uid || !encryptionKey) return;
     migrationRanRef.current = true;
@@ -380,351 +179,6 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       })
       .catch((err) => console.error('[Titan] Biomarker migration failed:', err));
   }, [profile, somaProfile, user, encryptionKey]);
-
-  // ── Proposal action handler ────────────────────────────────────────────────
-  const handleProposalAction = useCallback(async (handler: string, data?: Record<string, unknown>) => {
-    if (!user?.uid || !encryptionKey) throw new Error('Not authenticated');
-
-    const actionMap: Record<string, string> = {
-      log_sleep: 'log_sleep', saveSleepLog: 'log_sleep',
-      log_workout_session: 'log_workout_session', commitWorkoutSession: 'log_workout_session',
-      update_routine: 'update_routine', createRoutine: 'update_routine',
-    };
-    const actionType = actionMap[handler] ?? handler;
-    let resolvedPayload: Record<string, unknown> = data ?? {};
-    if (actionType === 'update_routine' && !Array.isArray(resolvedPayload.routines)) {
-      resolvedPayload = { routines: [resolvedPayload] };
-    }
-
-    const success = await ActionHub.execute('titan', actionType, {
-      moduleId: 'titan',
-      payload: resolvedPayload,
-      userId: user.uid,
-      isGuest,
-      encryptionKey,
-      getLatestNSV: () => globalSoulRef.current?.crossFunctionalState ?? {},
-      pushAssistantMessage: (msg: string) => { console.log('[Titan Proposal]', msg); },
-      emitSpineEvent: (type, payload) => {
-        Spine.emit({ type, source: 'titan', domain: 'B', data: payload, cascadeDepth: 0, priority: 'info' });
-      },
-      updateGlobalSoul: async () => {},
-      delegateToModule: () => {},
-    });
-
-    if (!success) throw new Error(`Action "${actionType}" could not be found. Please try again.`);
-    setActiveProposal(null);
-  // globalSoul is read from globalSoulRef at call-time via getLatestNSV — no dep needed.
-  }, [user?.uid, isGuest, encryptionKey]);
-
-  // ── Direct-write handlers ──────────────────────────────────────────────────
-  const handleToggleDirectWrite = useCallback(async () => {
-    if (!profile || !encryptionKey || !user) return;
-    await saveTitanProfile(
-      { ...profile, directWriteMode: !directWrite, updatedAt: new Date().toISOString() },
-      { userId: user.uid, encryptionKey },
-    );
-  }, [profile, directWrite, encryptionKey, user]);
-
-  const handleDirectSaveBodyWeight = useCallback(async (entry: BodyWeightEntry) => {
-    if (!profile || !encryptionKey || !user) return;
-    await saveTitanProfile({ ...profile, bodyWeightLog: [entry, ...(profile.bodyWeightLog ?? [])].slice(0, 1000), updatedAt: new Date().toISOString() }, { userId: user.uid, encryptionKey });
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectSaveCardio = useCallback(async (session: CardioSession) => {
-    if (!profile || !encryptionKey || !user) return;
-    await saveTitanProfile({ ...profile, cardioLog: [session, ...(profile.cardioLog ?? [])].slice(0, 500), updatedAt: new Date().toISOString() }, { userId: user.uid, encryptionKey });
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectSaveSleep = useCallback(async (entry: SleepEntry) => {
-    if (!profile || !encryptionKey || !user) return;
-    await saveTitanProfile({ ...profile, sleepLog: [entry, ...(profile.sleepLog ?? [])].slice(0, 365), updatedAt: new Date().toISOString() }, { userId: user.uid, encryptionKey });
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectSaveInjury = useCallback(async (injury: Injury) => {
-    if (!profile || !encryptionKey || !user) return;
-    const existingInjuries: Injury[] = (profile.history?.injuries ?? []).filter(
-      (i): i is Injury => typeof i === 'object' && i !== null && 'id' in i
-    );
-    const updatedHistory = {
-      ...profile.history,
-      injuries: [injury, ...existingInjuries].slice(0, 50),
-    };
-    await saveTitanProfile(
-      { ...profile, history: updatedHistory, updatedAt: new Date().toISOString() },
-      { userId: user.uid, encryptionKey }
-    );
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectUpdateInjury = useCallback(async (updated: Injury) => {
-    if (!profile || !encryptionKey || !user) return;
-    const existingInjuries: Injury[] = (profile.history?.injuries ?? []).filter(
-      (i): i is Injury => typeof i === 'object' && i !== null && 'id' in i
-    );
-    const updatedInjuries = existingInjuries.map((i) => (i.id === updated.id ? updated : i));
-    const updatedHistory = { ...profile.history, injuries: updatedInjuries };
-    await saveTitanProfile(
-      { ...profile, history: updatedHistory, updatedAt: new Date().toISOString() },
-      { userId: user.uid, encryptionKey }
-    );
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectSaveMeal = useCallback(async (entry: MealEntry) => {
-    if (!profile || !encryptionKey || !user) return;
-    await saveTitanProfile(
-      { ...profile, mealLog: [entry, ...(profile.mealLog ?? [])].slice(0, 2000), updatedAt: new Date().toISOString() },
-      { userId: user.uid, encryptionKey },
-    );
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectSavePlan = useCallback(async (plan: PlannedWorkout) => {
-    if (!profile || !encryptionKey || !user) return;
-    await saveTitanProfile(
-      {
-        ...profile,
-        plannedWorkouts: [plan, ...(profile.plannedWorkouts ?? [])].slice(0, 200),
-        updatedAt: new Date().toISOString(),
-      },
-      { userId: user.uid, encryptionKey },
-    );
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectUpdatePlan = useCallback(async (updated: PlannedWorkout) => {
-    if (!profile || !encryptionKey || !user) return;
-    const existing = profile.plannedWorkouts ?? [];
-    const idx = existing.findIndex(pw => pw.id === updated.id);
-    const updatedList = idx >= 0
-      ? existing.map((pw, i) => (i === idx ? updated : pw))
-      : existing;
-    await saveTitanProfile(
-      { ...profile, plannedWorkouts: updatedList, updatedAt: new Date().toISOString() },
-      { userId: user.uid, encryptionKey },
-    );
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectSaveGoal = useCallback(async (goal: WorkoutGoal) => {
-    if (!profile || !encryptionKey || !user) return;
-    const existingGoals: WorkoutGoal[] = (profile.goals ?? []).filter(
-      (g): g is WorkoutGoal => typeof g === 'object' && g !== null && 'id' in g
-    );
-    await saveTitanProfile(
-      { ...profile, goals: [goal, ...existingGoals].slice(0, 50), updatedAt: new Date().toISOString() },
-      { userId: user.uid, encryptionKey }
-    );
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectUpdateGoal = useCallback(async (updated: WorkoutGoal) => {
-    if (!profile || !encryptionKey || !user) return;
-    const existingGoals: WorkoutGoal[] = (profile.goals ?? []).filter(
-      (g): g is WorkoutGoal => typeof g === 'object' && g !== null && 'id' in g
-    );
-    const updatedGoals = existingGoals.map((g) => (g.id === updated.id ? updated : g));
-    await saveTitanProfile(
-      { ...profile, goals: updatedGoals, updatedAt: new Date().toISOString() },
-      { userId: user.uid, encryptionKey }
-    );
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectCreateMacros = useCallback(async (fields: CustomField[]) => {
-    if (!profile || !encryptionKey || !user) return;
-    const existing = profile.customFields ?? [];
-    const existingNames = new Set(existing.map((f) => f.name.toLowerCase()));
-    const newFields = fields.filter((f) => !existingNames.has(f.name.toLowerCase()));
-    if (newFields.length === 0) return;
-    await saveTitanProfile({ ...profile, customFields: [...existing, ...newFields].slice(0, 20), updatedAt: new Date().toISOString() }, { userId: user.uid, encryptionKey });
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectCreateCycle = useCallback(async (cycle: CycleEntry) => {
-    if (!profile || !encryptionKey || !user) return;
-    await saveTitanProfile({ ...profile, cycles: [...(profile.cycles ?? []), cycle], updatedAt: new Date().toISOString() }, { userId: user.uid, encryptionKey });
-  }, [profile, encryptionKey, user]);
-
-  const handleDirectDeleteCycle = useCallback(async (cycleId: string) => {
-    if (!profile || !encryptionKey || !user) return;
-    await saveTitanProfile({ ...profile, cycles: (profile.cycles ?? []).filter((c) => c.id !== cycleId), updatedAt: new Date().toISOString() }, { userId: user.uid, encryptionKey });
-  }, [profile, encryptionKey, user]);
-
-  // ── Session commit (shared by QuickLogDrawer and TrainTab) ─────────────────
-  const commitWorkoutSession = useCallback(async (session: WorkoutSession, recoverySession?: boolean) => {
-    if (!profile || !encryptionKey || !user) return;
-    const latestProfile = await loadLatestPersistedProfile();
-    if (!latestProfile) return;
-    const sessionWithFlag = { ...session, recoverySession: recoverySession ?? session.recoverySession };
-    const updatedSessions = [sessionWithFlag, ...(latestProfile.workoutSessions ?? [])].slice(0, 500);
-    const updatedPRs: Record<string, PersonalRecord> = { ...(latestProfile.personalRecords ?? {}) };
-    for (const exLog of sessionWithFlag.exercises) {
-      const key = exLog.exerciseName.toLowerCase().trim();
-      for (const s of exLog.sets) {
-        if (!s.completed || !s.weight || !s.repsCompleted) continue;
-        const e1RM = calculateE1RM(s.weight, s.repsCompleted);
-        const existing = updatedPRs[key];
-        if (!existing || e1RM > existing.e1RM) {
-          updatedPRs[key] = { exerciseName: exLog.exerciseName, maxWeight: s.weight, repsAtMax: s.repsCompleted, e1RM, achievedDate: sessionWithFlag.date, sessionId: sessionWithFlag.id };
-        }
-      }
-    }
-    await saveTitanProfile({ ...latestProfile, workoutSessions: updatedSessions, personalRecords: updatedPRs, updatedAt: new Date().toISOString() }, { userId: user.uid, encryptionKey });
-  }, [profile, encryptionKey, user, loadLatestPersistedProfile]);
-
-  // ── Chat-prompt helpers ────────────────────────────────────────────────────
-  const handleCalibrate = useCallback((metricKey: string) => {
-    const key = metricKey as NSVMetricPath;
-    const owner = getMetricOwner(key);
-    const prompt = getCalibrationPrompt(key);
-    NexusHandoffService.store({ moduleId: owner, type: 'delegate', content: prompt, reason: 'calibration_request', sourceModuleId: 'titan', createdAt: new Date().toISOString() });
-    const route = NexusRoutingService.getRoute(owner as ModuleId);
-    if (route) navigate(route);
-  }, [navigate]);
-
-  const handleAnalyzeRoutine = useCallback((routine: Parameters<typeof PlanTab>[0]['onAnalyzeRoutine'] extends (r: infer R) => void ? R : never) => {
-    const exerciseList = routine.exercises.map((ex, i) => `${i + 1}. **${ex.name}** — ${ex.sets}×${ex.reps}${ex.notes ? ` (${ex.notes})` : ''}`).join('\n');
-    openChatAndSend([
-      `Analyze my ${routine.weekday?.toUpperCase() || ''} routine "${routine.name}":`,
-      routine.rationale ? `Rationale: ${routine.rationale}` : '',
-      `\nExercises:\n${exerciseList}`,
-      '\nIs this well-balanced? Any improvements for injury prevention or performance?',
-    ].filter(Boolean).join('\n'));
-  }, [openChatAndSend]);
-
-  const handleGeneratePlan = useCallback(() => {
-    openChatAndSend('Generate a personalized weekly training routine based on my profile, goals, and current recovery state.');
-  }, [openChatAndSend]);
-
-  const handleImportRoutine = useCallback(() => {
-    openChatAndSend("I already have a training routine I'd like to log. Let me describe it to you.");
-  }, [openChatAndSend]);
-
-  const handleSubmitRoutineForApproval = useCallback((routine: Parameters<typeof PlanTab>[0]['onSubmitRoutineForApproval'] extends (r: infer R) => void ? R : never) => {
-    const isEdit = (profile?.routines ?? []).some((r) => r.id === routine.id);
-    const exerciseList = routine.exercises.map((ex, i) => `  ${i + 1}. ${ex.name} — ${ex.sets}×${ex.reps}${ex.notes ? ` (${ex.notes})` : ''}`).join('\n');
-    const meta = [
-      routine.rationale ? `Rationale: ${routine.rationale}` : null,
-      routine.timeframe ? `Duration: ${routine.timeframe}` : null,
-    ].filter(Boolean).join(' | ');
-    openChatAndSend([
-      isEdit ? `I've edited my ${routine.weekday?.toUpperCase() || ''} routine "${routine.name}".` : `I've manually built a new ${routine.weekday?.toUpperCase() || ''} routine: "${routine.name}".`,
-      meta,
-      `\nExercises:\n${exerciseList}`,
-      '\nPlease review this against my current goals, recovery state, and training history.',
-      'If it is appropriate and well-structured, commit it now using the update_routine action.',
-      'If you have concerns or improvements, raise them first — but be concise.',
-    ].filter(Boolean).join('\n'));
-  }, [profile?.routines, openChatAndSend]);
-
-  const handleApplyProgram = useCallback(async (routines: Routine[], programName: string, programId?: string, durationWeeks: number = 12, phases?: { name: string; weeks: [number, number] }[]) => {
-    if (!profile || !encryptionKey || !user) return;
-
-    // Always apply program templates as direct writes — they're static trusted data.
-    const existingNames = new Set((profile.routines ?? []).map((r) => r.name));
-    const incoming = routines.filter((r) => !existingNames.has(r.name));
-    const merged = [...incoming, ...(profile.routines ?? [])];
-
-    // Generate planned workouts for the next 4 weeks based on the applied routines
-    const today = new Date();
-    const plannedWorkouts: PlannedWorkout[] = [...(profile.plannedWorkouts ?? [])];
-    const generatedIds = new Set(plannedWorkouts.map(pw => `${pw.date}:${pw.routineName}`));
-
-    // Only generate for incoming routines (so we don't double-schedule existing ones)
-    // Actually, we should generate for ALL routines in the program to be safe
-    const routinesToSchedule = routines;
-
-    for (let i = 0; i < 28; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        // "monday", "tuesday", etc.
-        const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as Weekday;
-        
-        // Find routines that run on this day
-        const dayRoutines = routinesToSchedule.filter(r => r.weekday === dayName);
-        
-        for (const routine of dayRoutines) {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const dayStr = String(d.getDate()).padStart(2, '0');
-            const isoDate = `${y}-${m}-${dayStr}`;
-
-            const uniqueKey = `${isoDate}:${routine.name}`;
-            if (generatedIds.has(uniqueKey)) continue;
-
-            plannedWorkouts.push({
-                id: crypto.randomUUID(),
-                date: isoDate,
-                routineName: routine.name,
-                exerciseNames: routine.exercises.map(e => e.name),
-                status: 'planned',
-                createdAt: new Date().toISOString()
-            });
-            generatedIds.add(uniqueKey);
-        }
-    }
-
-    const activeProgram = {
-      id: programId ?? programName.toLowerCase().replace(/\s+/g, '-'),
-      name: programName,
-      startDate: new Date().toISOString(),
-      durationWeeks,
-      phases,
-    };
-
-    await saveTitanProfile(
-      { 
-        ...profile, 
-        routines: merged, 
-        plannedWorkouts: plannedWorkouts.slice(0, 200),
-        activeProgram,
-        updatedAt: new Date().toISOString() 
-      },
-      { userId: user.uid, encryptionKey },
-    );
-  }, [profile, directWrite, encryptionKey, user]);
-
-  const handleClearProgram = useCallback(() => {
-    setIsClearProgramModalOpen(true);
-  }, []);
-
-  const handleConfirmClearProgram = useCallback(async () => {
-    if (!profile || !encryptionKey || !user) {
-      setIsClearProgramModalOpen(false);
-      return;
-    }
-    
-    await saveTitanProfile(
-      { 
-        ...profile, 
-        routines: [], 
-        activeProgram: undefined,
-        plannedWorkouts: [],
-        updatedAt: new Date().toISOString() 
-      },
-      { userId: user.uid, encryptionKey },
-    );
-    setPlanResetVersion((prev) => prev + 1);
-    setIsClearProgramModalOpen(false);
-  }, [profile, encryptionKey, user]);
-
-  const handleUpdateProgram = useCallback(async (updates: Partial<NonNullable<TitanProfile['activeProgram']>>) => {
-    if (!profile || !encryptionKey || !user || !profile.activeProgram) return;
-    
-    await saveTitanProfile(
-      { 
-        ...profile, 
-        activeProgram: { ...profile.activeProgram, ...updates },
-        updatedAt: new Date().toISOString() 
-      },
-      { userId: user.uid, encryptionKey },
-    );
-  }, [profile, encryptionKey, user]);
-
-  const handleSubmitCustomFieldsForApproval = useCallback((values: Record<string, unknown>, categoryLabel: string) => {
-    const nonEmpty = Object.entries(values).filter(([, v]) => v !== '' && v !== null && v !== undefined);
-    if (nonEmpty.length === 0) return;
-    openChatAndSend([
-      `I want to update my custom ${categoryLabel} tracking fields:`,
-      nonEmpty.map(([key, val]) => `  • ${key}: ${val}`).join('\n'),
-      'Please review these values against my current goals and nutrition context.',
-      'If they look correct and relevant, commit them via the update_titan_profile action.',
-      'Flag anything that looks inconsistent or out of range.',
-    ].join('\n'));
-  }, [openChatAndSend]);
 
   // ── Tab configuration ──────────────────────────────────────────────────────
   const activeCycleCount = (profile?.cycles ?? []).filter((c) => c.status === 'active').length;
@@ -744,6 +198,32 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
         { id: 'cycles' as const, label: 'Cycles', icon: RefreshCw, badge: activeCycleCount > 0 ? activeCycleCount : undefined },
       ];
 
+  const handleOpenResumeModal = useCallback(() => recovery.setIsResumeModalOpen(true), [recovery]);
+  const handleOpenRecoveryQuickLog = useCallback(() => {
+    quickLog.setQuickLogIsRecovery(true);
+    quickLog.setQuickLogDate(new Date());
+    quickLog.setIsQuickLogOpen(true);
+  }, [quickLog]);
+  const handleDismissAdvisoryBanner = useCallback(() => clearanceGate.setAdvisoryBanner(null), [clearanceGate]);
+  const handleOpenQuickLogForDate = useCallback((date: Date, isRecovery: boolean) => {
+    quickLog.setQuickLogDate(date);
+    quickLog.setQuickLogIsRecovery(isRecovery);
+    quickLog.setIsQuickLogOpen(true);
+  }, [quickLog]);
+  const handleDismissProposal = useCallback(() => spineEvents.setActiveProposal(null), [spineEvents]);
+  const handleOpenRecoveryModal = useCallback(() => recovery.openRecoveryModal(null), [recovery]);
+  const handleOpenManualLog = useCallback(() => {
+    quickLog.setQuickLogDate(new Date());
+    quickLog.setQuickLogIsRecovery(isRecoveryActive);
+    quickLog.setIsQuickLogOpen(true);
+  }, [quickLog, isRecoveryActive]);
+  const handleOpenChatCollapsed = useCallback(() => setIsChatCollapsed(false), [setIsChatCollapsed]);
+  const handleCardioTab = useCallback(() => setActiveTab('body'), [setActiveTab]);
+  const handleCloseQuickLog = useCallback(() => {
+    quickLog.setIsQuickLogOpen(false);
+    quickLog.setQuickLogIsRecovery(false);
+  }, [quickLog]);
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'recovery':
@@ -752,13 +232,9 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             recoveryPlan={recoveryPlan}
             daysRemaining={recovery.daysRemaining}
             hasCheckinToday={recovery.hasCheckinToday}
-            onResume={() => recovery.setIsResumeModalOpen(true)}
+            onResume={handleOpenResumeModal}
             onSaveCheckin={recovery.handleSaveRecoveryCheckin}
-            onOpenQuickLog={() => {
-              quickLog.setQuickLogIsRecovery(true);
-              quickLog.setQuickLogDate(new Date());
-              quickLog.setIsQuickLogOpen(true);
-            }}
+            onOpenQuickLog={handleOpenRecoveryQuickLog}
           />
         );
       case 'analytics':
@@ -768,55 +244,55 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
           <BodyTab
             profile={profile}
             encryptionKey={encryptionKey}
-            directWriteMode={directWrite}
-            onAnalyze={openChatAndSend}
-            onDirectSaveBodyWeight={handleDirectSaveBodyWeight}
-            onDirectSaveCardio={handleDirectSaveCardio}
-            onDirectSaveSleep={handleDirectSaveSleep}
+            directWriteMode={directWriteHook.directWrite}
+            onAnalyze={chat.openChatAndSend}
+            onDirectSaveBodyWeight={directWriteHook.handleDirectSaveBodyWeight}
+            onDirectSaveCardio={directWriteHook.handleDirectSaveCardio}
+            onDirectSaveSleep={directWriteHook.handleDirectSaveSleep}
             mealLog={profile?.mealLog}
             macroTargets={profile?.nutrition?.macroEstimate}
-            onDirectSaveMeal={handleDirectSaveMeal}
-            onDirectSaveInjury={handleDirectSaveInjury}
-            onDirectUpdateInjury={handleDirectUpdateInjury}
+            onDirectSaveMeal={directWriteHook.handleDirectSaveMeal}
+            onDirectSaveInjury={directWriteHook.handleDirectSaveInjury}
+            onDirectUpdateInjury={directWriteHook.handleDirectUpdateInjury}
             goals={profile?.goals}
-            onDirectSaveGoal={handleDirectSaveGoal}
-            onDirectUpdateGoal={handleDirectUpdateGoal}
+            onDirectSaveGoal={directWriteHook.handleDirectSaveGoal}
+            onDirectUpdateGoal={directWriteHook.handleDirectUpdateGoal}
           />
         );
       case 'cycles':
         return (
           <CyclesTab
             cycles={profile?.cycles ?? []}
-            directWriteMode={directWrite}
-            onSubmitForApproval={openChatAndSend}
-            onDirectCreate={handleDirectCreateCycle}
-            onDirectDelete={handleDirectDeleteCycle}
+            directWriteMode={directWriteHook.directWrite}
+            onSubmitForApproval={chat.openChatAndSend}
+            onDirectCreate={directWriteHook.handleDirectCreateCycle}
+            onDirectDelete={directWriteHook.handleDirectDeleteCycle}
           />
         );
       case 'plan':
         return (
           <PlanTab
-            key={`plan-${planResetVersion}`}
+            key={`plan-${program.planResetVersion}`}
             profile={profile}
-            directWriteMode={directWrite}
-            onAnalyzeRoutine={handleAnalyzeRoutine}
-            onGeneratePlan={handleGeneratePlan}
-            onImportRoutine={handleImportRoutine}
-            onSubmitRoutineForApproval={handleSubmitRoutineForApproval}
+            directWriteMode={directWriteHook.directWrite}
+            onAnalyzeRoutine={chat.handleAnalyzeRoutine}
+            onGeneratePlan={chat.handleGeneratePlan}
+            onImportRoutine={chat.handleImportRoutine}
+            onSubmitRoutineForApproval={chat.handleSubmitRoutineForApproval}
             onStartSession={(routine) => {
               setCalendarSelectedRoutine(routine);
               setActiveTab('train');
             }}
-            onSubmitCustomFieldsForApproval={handleSubmitCustomFieldsForApproval}
-            onDirectCreateMacros={handleDirectCreateMacros}
-            onApplyProgram={handleApplyProgram}
-            onClearProgram={handleClearProgram}
-            onUpdateProgram={handleUpdateProgram}
+            onSubmitCustomFieldsForApproval={chat.handleSubmitCustomFieldsForApproval}
+            onDirectCreateMacros={directWriteHook.handleDirectCreateMacros}
+            onApplyProgram={program.handleApplyProgram}
+            onClearProgram={program.handleClearProgram}
+            onUpdateProgram={program.handleUpdateProgram}
             plannedWorkouts={profile?.plannedWorkouts}
             completedSessions={profile?.workoutSessions}
-            onDirectSavePlan={handleDirectSavePlan}
-            onDirectUpdatePlan={handleDirectUpdatePlan}
-            onAnalyzePlan={ai.handleSendMessage}
+            onDirectSavePlan={directWriteHook.handleDirectSavePlan}
+            onDirectUpdatePlan={directWriteHook.handleDirectUpdatePlan}
+            onAnalyzePlan={chat.ai.handleSendMessage}
           />
         );
       case 'train':
@@ -831,22 +307,18 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
             clearanceMessage={clearanceGate.trainingGateState.enforcementReason}
             activeDebtCount={clearanceGate.trainingGateState.activeDebtCount}
             readinessPresentationMode={clearanceGate.trainingGateState.presentationMode}
-            directWriteMode={directWrite}
+            directWriteMode={directWriteHook.directWrite}
             advisoryBanner={clearanceGate.advisoryBanner}
-            onDismissAdvisory={() => clearanceGate.setAdvisoryBanner(null)}
+            onDismissAdvisory={handleDismissAdvisoryBanner}
             calendarSelectedRoutine={calendarSelectedRoutine}
             onCalendarRoutineSelect={setCalendarSelectedRoutine}
             plannedWorkouts={profile?.plannedWorkouts}
-            onOpenQuickLog={(date, isRecovery) => {
-              quickLog.setQuickLogDate(date);
-              quickLog.setQuickLogIsRecovery(isRecovery);
-              quickLog.setIsQuickLogOpen(true);
-            }}
+            onOpenQuickLog={handleOpenQuickLogForDate}
             onRemindDate={quickLog.setRemindDate}
-            onCalibrate={handleCalibrate}
-            onOpenChatAndSend={openChatAndSend}
+            onCalibrate={chat.handleCalibrate}
+            onOpenChatAndSend={chat.openChatAndSend}
             guardRecoveryAction={clearanceGate.guardRecoveryAction}
-            commitWorkoutSession={commitWorkoutSession}
+            commitWorkoutSession={directWriteHook.commitWorkoutSession}
             onSetAdvisoryBanner={clearanceGate.setAdvisoryBanner}
           />
         );
@@ -858,21 +330,21 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
     <>
       <SingleAgentLayout
         moduleId="titan"
-        agentName={agentAlias}
+        agentName={chat.agentAlias}
         themeColor="module"
-        ai={ai}
+        ai={chat.ai}
         authMode="titan"
         placeholder="Input training data or queries..."
         isChatCollapsed={isChatCollapsed}
         onToggleChat={setIsChatCollapsed}
         hideChatTrigger={activeTab === 'train'}
         aboveInput={
-          activeProposal ? (
+          spineEvents.activeProposal ? (
             <div className="px-3 sm:px-4 pb-2">
               <TitanProposalCard
-                proposal={activeProposal}
-                onAction={handleProposalAction}
-                onDismiss={() => setActiveProposal(null)}
+                proposal={spineEvents.activeProposal}
+                onAction={spineEvents.handleProposalAction}
+                onDismiss={handleDismissProposal}
               />
             </div>
           ) : null
@@ -897,7 +369,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                 daysRemaining={recovery.daysRemaining}
                 onOpenCheckin={() => setActiveTab('recovery')}
                 onViewPlan={() => setActiveTab('recovery')}
-                onResume={() => recovery.setIsResumeModalOpen(true)}
+                onResume={handleOpenResumeModal}
               />
             </div>
           )}
@@ -926,7 +398,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                     <NeuralButton
                       variant="secondary"
                       size="sm"
-                      onClick={() => recovery.openRecoveryModal(null)}
+                      onClick={handleOpenRecoveryModal}
                       className="min-h-9 rounded-xl px-3.5 text-[11px] font-semibold tracking-[0.02em]"
                     >
                       Start Recovery
@@ -934,15 +406,15 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
                     <div className="flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.045] px-3 py-1.5 text-[11px] sm:text-xs">
                       <span className="font-medium text-white/45">
-                        {directWrite ? 'Direct Logbook' : 'Coach Review'}
+                        {directWriteHook.directWrite ? 'Direct Logbook' : 'Coach Review'}
                       </span>
                       <NeuralToggle
-                        checked={directWrite}
-                        onChange={handleToggleDirectWrite}
+                        checked={directWriteHook.directWrite}
+                        onChange={directWriteHook.handleToggleDirectWrite}
                         color="orange"
-                        label={directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
+                        label={directWriteHook.directWrite ? 'Direct Logbook Mode: sessions save instantly' : 'Coach Review Mode: Titan reviews session updates before commit'}
                       />
-                      <Zap className={cn('h-3.5 w-3.5 transition-colors', directWrite ? 'text-[var(--module-color-400)]' : 'text-white/30')} />
+                      <Zap className={cn('h-3.5 w-3.5 transition-colors', directWriteHook.directWrite ? 'text-[var(--module-color-400)]' : 'text-white/30')} />
                     </div>
                   </>
                 )}
@@ -995,13 +467,9 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                       value={quickLog.quickLogBarInput}
                       onChange={quickLog.setQuickLogBarInput}
                       onSubmit={quickLog.handleQuickLogBarSubmit}
-                      onOpenChat={() => setIsChatCollapsed(false)}
-                      onManualLog={() => {
-                        quickLog.setQuickLogDate(new Date());
-                        quickLog.setQuickLogIsRecovery(isRecoveryActive);
-                        quickLog.setIsQuickLogOpen(true);
-                      }}
-                      onCardioLog={() => setActiveTab('body')}
+                      onOpenChat={handleOpenChatCollapsed}
+                      onManualLog={handleOpenManualLog}
+                      onCardioLog={handleCardioTab}
                       recentSessions={profile?.workoutSessions ?? []}
                       disabled={quickLog.pendingLogEntries.length > 0}
                       onFocusChange={keyboardLayout.setIsQuickLogFocused}
@@ -1104,8 +572,8 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
       </NeuralModal>
 
       <NeuralModal
-        isOpen={isClearProgramModalOpen}
-        onClose={() => setIsClearProgramModalOpen(false)}
+        isOpen={program.isClearProgramModalOpen}
+        onClose={() => program.setIsClearProgramModalOpen(false)}
         title="Clear Program"
         subtitle="Remove all planned routines and scheduled workouts"
         themeColor="module"
@@ -1118,13 +586,13 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
           <div className="flex items-center justify-end gap-3">
             <NeuralButton
               variant="ghost"
-              onClick={() => setIsClearProgramModalOpen(false)}
+              onClick={() => program.setIsClearProgramModalOpen(false)}
             >
               Cancel
             </NeuralButton>
             <NeuralButton
               variant="danger"
-              onClick={() => void handleConfirmClearProgram()}
+              onClick={() => void program.handleConfirmClearProgram()}
             >
               Clear Program
             </NeuralButton>
@@ -1144,21 +612,18 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
       <QuickLogDrawer
         isOpen={quickLog.isQuickLogOpen}
-        onClose={() => {
-          quickLog.setIsQuickLogOpen(false);
-          quickLog.setQuickLogIsRecovery(false);
-        }}
+        onClose={handleCloseQuickLog}
         selectedDate={quickLog.quickLogDate}
-        existingExercises={existingExercises}
+        existingExercises={chat.existingExercises}
         recoverySession={quickLog.quickLogIsRecovery}
         onCommit={async (payload: QuickLogPayload) => {
           if (!profile || !encryptionKey || !user) return;
 
           const handleCommit = async (isRecovery: boolean) => {
             if ('exercises' in payload) {
-              await commitWorkoutSession({ ...payload, recoverySession: isRecovery }, isRecovery);
+              await directWriteHook.commitWorkoutSession({ ...payload, recoverySession: isRecovery }, isRecovery);
             } else {
-              const latestProfile = await loadLatestPersistedProfile();
+              const latestProfile = await directWriteHook.loadLatestPersistedProfile();
               if (!latestProfile) return;
               const record = payload;
               const updatedPRs: Record<string, PersonalRecord> = { ...(latestProfile.personalRecords ?? {}) };
@@ -1223,7 +688,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
 
       {/* ── Medical-data vault advisory toast (S21-015) ──────────────────── */}
       <AnimatePresence>
-        {showAdvisory && (
+        {chat.showAdvisory && (
           <motion.div
             key="vault-advisory"
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -1240,7 +705,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                 <p className="text-xs text-white/80 font-bold leading-snug">Medical data is unprotected</p>
                 <p className="text-[11px] text-white/50 mt-1 leading-relaxed">Your Titan profile contains lab reports or clinical data. Lock the vault to encrypt it.</p>
                 <button
-                  onClick={() => { lockVault(); setShowAdvisory(false); }}
+                  onClick={() => { lockVault(); chat.setShowAdvisory(false); }}
                   className="mt-3 px-3 py-1.5 rounded-xl bg-[var(--module-accent-muted)] hover:bg-[var(--module-accent-glow)] border border-[var(--module-accent-border)] text-[11px] font-semibold text-[var(--module-color-300)] transition-colors"
                   aria-label="Lock vault now"
                 >
@@ -1248,7 +713,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
                 </button>
               </div>
               <button
-                onClick={() => setShowAdvisory(false)}
+                onClick={() => chat.setShowAdvisory(false)}
                 className="w-6 h-6 rounded-lg bg-white/[0.045] hover:bg-white/10 flex items-center justify-center shrink-0 transition-colors"
                 aria-label="Dismiss advisory"
               >

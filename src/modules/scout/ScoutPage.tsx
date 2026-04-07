@@ -7,10 +7,6 @@ import type { MessageContent } from '@/lib/types';
 import { contentToString } from '@/core/components/chat/ChatBubble';
 import { ScoutDashboard } from './components/ScoutDashboard';
 import { UniversalUploadZone } from '@/core/components/forms/UniversalUploadZone';
-import {
-  buildDocumentAnalysisPrompt,
-} from './services/scout-document-service';
-import type { DocumentParseResult } from './services/scout-document-service';
 import { parseDocument } from './services/scout-document-service';
 import {
   type ScoutProfile,
@@ -20,7 +16,6 @@ import {
   syncGuestScoutProfileToUser,
   loadKnowledgeNodes,
   addKnowledgeNode,
-  queryKnowledgeNodes,
 } from './services/scout-knowledge-service';
 import { generateNewsBriefs } from './services/scout-news-service';
 import { UnifiedModulePage } from '@/core/components/UnifiedModulePage';
@@ -54,29 +49,21 @@ import { ExportDialog } from './components/ExportDialog';
 import { ActiveResearchWorkspace } from './components/ActiveResearchWorkspace';
 import { ScoutResearchArtifactsPanel } from './components/ScoutResearchArtifactsPanel';
 import { ScoutSessionList } from './components/ScoutSessionList';
-import type { ExportTarget } from './services/scout-export-service';
 import type { DeepResearchResult } from './hooks/useDeepResearch';
-import { WebCrawlerService } from '@/lib/services/web-crawler-service';
-import {
-  classifyMasterIntent,
-  formatSearchDigest,
-  isRecheckIntent,
-  updateMasterTopicStreakWithPolicy,
-} from './services/scout-flow-orchestrator';
-import { runDocumentPipeline, type DocumentParsed } from '@/lib/services/document-pipeline';
-import { scoutDocumentPolicy, type ScoutDocumentProposal } from './services/scout-document-policy';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NewSessionDialog } from './components/NewSessionDialog';
-import { useUIStore } from '@/lib/stores/ui-store';
-import { prepareDocumentChatPrompt } from '@/lib/services/document-chat-handoff-service';
-import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 import {
   SCOUT_SHELL_BREAKPOINTS,
-  resolveScoutShellState,
   type ScoutTopLevelView,
 } from './scout-shell-layout';
-import { createFlowMeta } from '@/lib/spine/flow-contracts';
+
+// Extracted hooks
+import { useScoutShellLayout } from './hooks/useScoutShellLayout';
+import { useScoutResearchSessions } from './hooks/useScoutResearchSessions';
+import { useScoutPromptBuilder } from './hooks/useScoutPromptBuilder';
+import { useScoutDocumentUpload } from './hooks/useScoutDocumentUpload';
+import { useScoutSpineEvents } from './hooks/useScoutSpineEvents';
 
 registerDiagnosisSpec(scoutDiagnosisSpec);
 
@@ -91,98 +78,12 @@ interface ScoutViewProps {
 function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews, onActionParsed }: ScoutViewProps) {
   const { user } = useAuth();
   const globalSoul = useGlobalSoulStore(s => s.globalSoul);
-  // Primitive selector — only re-renders when the display name string itself changes.
   const agentAlias = useGlobalSoulStore(s => s.globalSoul?.displayNames?.scout || 'Scout');
   const { sendMessage, analyzeImage } = useAI();
-  const setHideGlobalFAB = useUIStore((state) => state.setHideGlobalFAB);
 
-  const [selectedView, setSelectedView] = useState<ScoutTopLevelView>('research');
-  const [showUploadZone, setShowUploadZone] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
-  const [isSessionSheetOpen, setIsSessionSheetOpen] = useState(false);
-  const [isArtifactsSheetOpen, setIsArtifactsSheetOpen] = useState(false);
-  const [isArtifactsDockedOpen, setIsArtifactsDockedOpen] = useState(true);
-  const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth : SCOUT_SHELL_BREAKPOINTS.desktop,
-  );
 
-  const [deepResearchOpen, setDeepResearchOpen] = useState(false);
-  const [deepResearchInitialQuery, setDeepResearchInitialQuery] = useState('');
-  const [exportTarget, setExportTarget] = useState<ExportTarget | null>(null);
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [docProposal, setDocProposal] = useState<ScoutDocumentProposal | null>(null);
-  const [docProposalSummary, setDocProposalSummary] = useState<string | null>(null);
-  const [docProposalParsed, setDocProposalParsed] = useState<DocumentParseResult | null>(null);
-  const [docReviewOpen, setDocReviewOpen] = useState(false);
-  const [isNewSessionDialogOpen, setIsNewSessionDialogOpen] = useState(false);
-  const [researchProposal, setResearchProposal] = useState<{
-    query: string;
-    reason: string;
-    mode: 'web' | 'deep';
-  } | null>(null);
-
-  useEffect(() => {
-    const handleResize = () => setViewportWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    setHideGlobalFAB(deepResearchOpen);
-
-    return () => {
-      setHideGlobalFAB(false);
-    };
-  }, [deepResearchOpen, setHideGlobalFAB]);
-
-  const shellState = useMemo(
-    () =>
-      resolveScoutShellState({
-        viewportWidth,
-        selectedView,
-        activeSessionId,
-        isSessionSheetOpen,
-        isArtifactsSheetOpen,
-        isArtifactsDockedOpen,
-      }),
-    [viewportWidth, selectedView, activeSessionId, isSessionSheetOpen, isArtifactsSheetOpen, isArtifactsDockedOpen],
-  );
-
-  useEffect(() => {
-    if (shellState.shouldCollapseChat) {
-      setIsChatCollapsed(true);
-    }
-  }, [shellState.shouldCollapseChat]);
-
-  useEffect(() => {
-    if (shellState.viewport === 'desktop') {
-      setIsSessionSheetOpen(false);
-      setIsArtifactsSheetOpen(false);
-    }
-  }, [shellState.viewport]);
-
-  useEffect(() => {
-    if (!shellState.hasActiveResearchSession) {
-      setIsArtifactsSheetOpen(false);
-    }
-  }, [shellState.hasActiveResearchSession]);
-
-  const hasShellOverlayOpen = shellState.isSessionSheetVisible || shellState.artifactsVisibility === 'sheet';
-
-  useEffect(() => {
-    if (!hasShellOverlayOpen || typeof document === 'undefined') {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [hasShellOverlayOpen]);
+  // --- Data hooks (already existed) ---
 
   const ctx = useMemo(
     () => ({ userId: user?.uid, encryptionKey }),
@@ -221,16 +122,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     encryptionKey,
   });
 
-  const profileRef = useRef(profile);
-  profileRef.current = profile;
-  const sourcesRef = useRef(sources);
-  sourcesRef.current = sources;
-  const digestsRef = useRef(digests);
-  digestsRef.current = digests;
-  const localExportOriginRef = useRef<string | null>(null);
-  if (localExportOriginRef.current === null) {
-    localExportOriginRef.current = `scout-export:${crypto.randomUUID()}`;
-  }
+  // --- openDeepResearch (defined here to avoid circular dep between hooks) ---
 
   const emitDeepResearchBackupFound = useCallback((query: string) => {
     const trimmed = query.trim();
@@ -263,269 +155,105 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     });
   }, [knowledgeNodes]);
 
+  // --- Spine events hook (owns deepResearchOpen state) ---
+
+  // We need a stable openDeepResearch but it requires spine events' setters.
+  // Use a ref to break the initialization cycle.
+  const openDeepResearchRef = useRef<(query: string) => void>(() => {});
+
+  const spineEvents = useScoutSpineEvents({
+    userId: user?.uid,
+    encryptionKey,
+    sources,
+    digests,
+    openDeepResearch: useCallback((query: string) => openDeepResearchRef.current(query), []),
+    setSelectedView: useCallback((view: ScoutTopLevelView) => sessionsRef.current.setSelectedView(view), []),
+    setActiveSessionId: useCallback((id: string) => sessionsRef.current.setActiveSessionId(id), []),
+  });
+
+  // Now define the real openDeepResearch and keep the ref up to date
   const openDeepResearch = useCallback((query: string) => {
     const trimmed = query.trim();
-    setDeepResearchInitialQuery(trimmed);
-    setDeepResearchOpen(true);
+    spineEvents.setDeepResearchInitialQuery(trimmed);
+    spineEvents.setDeepResearchOpen(true);
     emitDeepResearchBackupFound(trimmed);
-  }, [emitDeepResearchBackupFound]);
+  }, [emitDeepResearchBackupFound, spineEvents.setDeepResearchInitialQuery, spineEvents.setDeepResearchOpen]);
 
-  const activeSession = useMemo(
-    () => sessions.find((session) => session.id === activeSessionId) ?? null,
-    [sessions, activeSessionId],
-  );
+  openDeepResearchRef.current = openDeepResearch;
 
-  const sessionContext = useMemo(() => {
-    if (!activeSession || knowledgeNodes.length === 0) return '';
-    const sessionNodes = knowledgeNodes
-      .filter((n: any) => n.parentSessionId === activeSession.id || !n.parentSessionId)
-      .slice(0, 15);
-    if (sessionNodes.length === 0) return 'No prior findings in this session yet.';
-    return sessionNodes
-      .map((n: any) => `- ${n.claim} (confidence: ${n.confidence.toFixed(2)}, status: ${n.status})`)
-      .join('\n');
-  }, [activeSession, knowledgeNodes]);
+  // --- Research sessions hook ---
 
-  const seedSessionContext = useCallback(async (
-    session: { id: string; topic: string },
-    options?: { force?: boolean },
-  ) => {
-    if (!user?.uid || !encryptionKey) return;
-    if (!options?.force) {
-      const alreadySeeded = knowledgeNodes.some((node) => node.parentSessionId === session.id);
-      if (alreadySeeded) {
-        await updateSessionFn(session.id, { seedState: 'seeded', seededAt: new Date().toISOString() });
-        return;
-      }
-    }
+  const researchSessions = useScoutResearchSessions({
+    userId: user?.uid,
+    encryptionKey,
+    sessions,
+    knowledgeNodes,
+    updateSessionFn,
+    createSessionFn,
+    addSourceFn,
+    openDeepResearch,
+  });
 
-    await updateSessionFn(session.id, { seedState: 'seeding' });
-    const response = await WebCrawlerService.search(session.topic, { maxResults: 5, includeImages: false });
-    const topResults = response.results.slice(0, 3);
+  // Use ref so spine events can call setSelectedView/setActiveSessionId without stale closures
+  const sessionsRef = useRef(researchSessions);
+  sessionsRef.current = researchSessions;
 
-    await Promise.allSettled(
-      topResults.map(async (result) => {
-        const source = await addSourceFn({
-          url: result.url,
-          title: result.title,
-          snippet: (result.content ?? '').slice(0, 280),
-          discoveredVia: 'search',
-        });
-        await addKnowledgeNode(
-          {
-            claim: (result.content ?? result.title).slice(0, 420),
-            confidence: typeof result.score === 'number' ? Math.min(0.85, result.score) : 0.65,
-            evidence: source ? [source.id] : [],
-            status: 'pending',
-            parentSessionId: session.id,
-            source: result.url,
-            sources: [result.url],
-          },
-          { userId: user.uid, encryptionKey },
-        );
-      }),
-    );
+  const {
+    activeSessionId,
+    setActiveSessionId,
+    activeSession,
+    sessionContext,
+    selectedView,
+    setSelectedView,
+    isNewSessionDialogOpen,
+    setIsNewSessionDialogOpen,
+    seedSessionContext,
+    handleSelectSession: handleSelectSessionBase,
+    handleViewChange: handleViewChangeBase,
+    handleRenameSession,
+    handleArchiveSession,
+    handleStartSession,
+    handleNewSessionSubmit: handleNewSessionSubmitBase,
+  } = researchSessions;
 
-    await updateSessionFn(session.id, {
-      seedState: 'seeded',
-      seededAt: new Date().toISOString(),
-      lastSearchAt: new Date().toISOString(),
-    });
-  }, [user?.uid, encryptionKey, knowledgeNodes, updateSessionFn, addSourceFn]);
+  // --- Shell layout hook ---
 
-  const buildMasterDeterministicPrompt = useCallback(async (rawUserText: string) => {
-    const intentDecision = classifyMasterIntent(rawUserText);
-    const topicState = updateMasterTopicStreakWithPolicy({
-      userText: rawUserText,
-      shouldTrack: intentDecision.shouldTrackTopic,
-    });
+  const shell = useScoutShellLayout({
+    activeSessionId,
+    selectedView,
+  });
 
-    if (topicState.shouldProposeSession) {
-      Spine.emit({
-        type: 'RESEARCH_PROPOSED' as any,
-        source: 'scout',
-        domain: 'C',
-        data: {
-          query: rawUserText,
-          reason: `We've covered ${topicState.topicKey} across several exchanges — this looks like a research session candidate.`,
-          mode: 'deep',
-        },
-        cascadeDepth: 0,
-        priority: 'info',
-      });
-    }
+  const {
+    shellState,
+    isChatCollapsed,
+    setIsChatCollapsed,
+    isSessionSheetOpen,
+    setIsSessionSheetOpen,
+    isArtifactsSheetOpen,
+    setIsArtifactsSheetOpen,
+    isArtifactsDockedOpen,
+    setIsArtifactsDockedOpen,
+  } = shell;
 
-    if (!intentDecision.shouldSearch) {
-      return [
-        '[MASTER_FLOW_INSTRUCTION]',
-        'Respond naturally in conversational mode.',
-        `Detected intent: ${intentDecision.intentClass}.`,
-        intentDecision.conversationStyle === 'brief_ack'
-          ? 'Keep it very short (one sentence).'
-          : intentDecision.conversationStyle === 'chatty'
-            ? 'Keep it warm, brief, and conversational.'
-            : 'Provide a direct answer without forced citations.',
-        'Do not emit web_search or expanded_web_search for this turn.',
-        'Do not append a source list unless explicitly requested by the user.',
-        '[USER_QUERY]',
-        rawUserText,
-      ].join('\n\n');
-    }
-
-    const response = await WebCrawlerService.search(rawUserText, { maxResults: 5, includeImages: false });
-    const digest = formatSearchDigest(rawUserText, response.results);
-    return [
-      '[MASTER_FLOW_INSTRUCTION]',
-      'Use the pre-fetched search context below to answer directly.',
-      'Do not emit web_search or expanded_web_search for this turn.',
-      intentDecision.shouldIncludeSources
-        ? 'Include key sources in the response.'
-        : 'Do not add an explicit source list unless user requests citations.',
-      digest,
-      '[USER_QUERY]',
-      rawUserText,
-    ].join('\n\n');
-  }, []);
-
-  const buildSessionDeterministicPrompt = useCallback(async (rawUserText: string) => {
-    if (!activeSession) return rawUserText;
-
-    const intentDecision = classifyMasterIntent(rawUserText);
-    if (intentDecision.intentClass === 'acknowledgment' || intentDecision.intentClass === 'smalltalk' || intentDecision.intentClass === 'conversational') {
-      return [
-        '[SESSION_FLOW_INSTRUCTION]',
-        'Respond conversationally without triggering search.',
-        `Detected intent: ${intentDecision.intentClass}.`,
-        'Keep response concise and context-aware.',
-        'Do not emit web_search or expanded_web_search for this turn.',
-        '[USER_QUERY]',
-        rawUserText,
-      ].join('\n\n');
-    }
-
-    const shouldRecheck = isRecheckIntent(rawUserText);
-    const sessionHits = shouldRecheck
-      ? []
-      : await queryKnowledgeNodes(rawUserText, { userId: user?.uid ?? null, encryptionKey }, { limit: 5, threshold: 0.62 })
-        .then((nodes) => nodes.filter((node) => node.parentSessionId === activeSession.id));
-
-    const shouldSearch = shouldRecheck || intentDecision.shouldSearch || sessionHits.length === 0;
-    if (!shouldSearch) {
-      const hitLines = sessionHits
-        .slice(0, 5)
-        .map((node) => `- ${node.claim} (confidence: ${Math.round(node.confidence * 100)}%)`)
-        .join('\n');
-      return [
-        '[SESSION_FLOW_INSTRUCTION]',
-        'Use session context first. Do not run web_search or expanded_web_search for this turn.',
-        'Answer conversationally; do not force source blocks unless requested.',
-        `[ACTIVE_SESSION_TOPIC] ${activeSession.topic}`,
-        '[SESSION_CONTEXT_HITS]',
-        hitLines,
-        '[USER_QUERY]',
-        rawUserText,
-      ].join('\n\n');
-    }
-
-    const searchResponse = await WebCrawlerService.search(rawUserText, { maxResults: 5, includeImages: false });
-    const topResults = searchResponse.results.slice(0, 3);
-    const digest = formatSearchDigest(rawUserText, searchResponse.results);
-
-    if (user?.uid && encryptionKey) {
-      await Promise.allSettled(
-        topResults.map(async (result) => {
-          const source = await addSourceFn({
-            url: result.url,
-            title: result.title,
-            snippet: (result.content ?? '').slice(0, 280),
-            discoveredVia: 'search',
-          });
-          await addKnowledgeNode(
-            {
-              claim: (result.content ?? result.title).slice(0, 420),
-              confidence: typeof result.score === 'number' ? Math.min(0.85, result.score) : 0.66,
-              evidence: source ? [source.id] : [],
-              status: 'pending',
-              parentSessionId: activeSession.id,
-              source: result.url,
-              sources: [result.url],
-            },
-            { userId: user.uid, encryptionKey },
-          );
-        }),
-      );
-      await updateSessionFn(activeSession.id, { lastSearchAt: new Date().toISOString() });
-    }
-
-    return [
-      '[SESSION_FLOW_INSTRUCTION]',
-      'Use session context and the pre-fetched search context below to answer directly.',
-      'Do not emit web_search or expanded_web_search for this turn.',
-      intentDecision.shouldIncludeSources
-        ? 'Include key sources.'
-        : 'Do not add explicit source list unless user requests citations.',
-      `[ACTIVE_SESSION_TOPIC] ${activeSession.topic}`,
-      digest,
-      '[USER_QUERY]',
-      rawUserText,
-    ].join('\n\n');
-  }, [activeSession, addSourceFn, encryptionKey, updateSessionFn, user?.uid]);
-
-  useEffect(() => {
-    if (activeSessionId && !activeSession) {
-      setActiveSessionId(null);
-      setIsArtifactsSheetOpen(false);
-    }
-  }, [activeSessionId, activeSession]);
-
-  useEffect(() => {
-    if (!activeSession) return;
-    if (activeSession.mode !== 'deep') return;
-    if (activeSession.seedState === 'seeded' || activeSession.seedState === 'seeding') return;
-    seedSessionContext(activeSession).catch((error) => {
-      console.warn('[Scout] Deep-session seed failed:', error);
-      void updateSessionFn(activeSession.id, { seedState: 'unseeded' });
-    });
-  }, [activeSession, seedSessionContext, updateSessionFn]);
-
-  const presentExportDialog = useCallback((target: ExportTarget) => {
-    setExportTarget(target);
-    setExportDialogOpen(true);
-  }, []);
-
-  const requestExport = useCallback((target: ExportTarget) => {
-    const flowMeta = createFlowMeta(localExportOriginRef.current!);
-    Spine.emit({
-      type: 'EXPORT_REQUESTED',
-      source: 'scout',
-      domain: 'C',
-      data: { exportType: target.type },
-      cascadeDepth: 0,
-      priority: 'info',
-      ...flowMeta,
-      idempotencyKey: `export:${target.type}:${flowMeta.flowId}`,
-    });
-    presentExportDialog(target);
-  }, [presentExportDialog]);
+  // --- Wrapped handlers that bridge sessions + shell layout ---
 
   const handleSelectSession = useCallback(
     (sessionId: string) => {
-      setActiveSessionId(sessionId);
-      setSelectedView('research');
+      handleSelectSessionBase(sessionId);
       if (!shellState.isSessionRailDocked) {
         setIsSessionSheetOpen(false);
       }
     },
-    [shellState.isSessionRailDocked],
+    [handleSelectSessionBase, shellState.isSessionRailDocked, setIsSessionSheetOpen],
   );
 
   const handleViewChange = useCallback((view: ScoutTopLevelView) => {
-    setSelectedView(view);
+    handleViewChangeBase(view);
     setIsSessionSheetOpen(false);
     if (view !== 'research') {
       setIsArtifactsSheetOpen(false);
     }
-  }, []);
+  }, [handleViewChangeBase, setIsSessionSheetOpen, setIsArtifactsSheetOpen]);
 
   const handleToggleArtifacts = useCallback(() => {
     if (!activeSessionId || selectedView !== 'research') {
@@ -539,91 +267,38 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
 
     setIsSessionSheetOpen(false);
     setIsArtifactsSheetOpen((current) => !current);
-  }, [activeSessionId, selectedView, shellState.viewport]);
+  }, [activeSessionId, selectedView, shellState.viewport, setIsArtifactsDockedOpen, setIsSessionSheetOpen, setIsArtifactsSheetOpen]);
 
-  const handleDeepResearchAccepted = useCallback(async (result: DeepResearchResult) => {
-    if (!profileRef.current || !encryptionKey) return;
-
-    try {
-      const addedSourceIds: string[] = [];
-      for (const src of result.capturedSources) {
-        const added = await addSourceFn(src).catch(() => null);
-        if (added) addedSourceIds.push(added.id);
-      }
-
-      await addKnowledgeNode(
-        {
-          ...result.synthesisNode,
-          evidence: addedSourceIds,
-          parentSessionId: activeSessionId || undefined,
-        },
-        { userId: user?.uid, encryptionKey },
-      );
-    } catch (err) {
-      console.error('Failed to persist deep research node', err);
-    }
-
-    deepResearch.reset();
-    setDeepResearchOpen(false);
-    setSelectedView('research');
-  }, [encryptionKey, addSourceFn, deepResearch, user?.uid, activeSessionId]);
-
+  // Clear artifacts sheet when session deselected
   useEffect(() => {
-    const unsubDeepResearch = Spine.subscribe('DEEP_RESEARCH_STARTED', (event) => {
-      const query = (event.data?.query as string) ?? '';
-      openDeepResearch(query);
-    });
+    if (activeSessionId === null) {
+      setIsArtifactsSheetOpen(false);
+    }
+  }, [activeSessionId, setIsArtifactsSheetOpen]);
 
-    const unsubExport = Spine.subscribe('EXPORT_REQUESTED', (event) => {
-      if (event.originId === localExportOriginRef.current) return;
-      const exportType = event.data?.exportType as string;
-      const s = sourcesRef.current;
-      const d = digestsRef.current;
-      if (exportType === 'full-library') {
-        loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then((nodes) => {
-          presentExportDialog({ type: 'full-library', nodes, digests: d, sources: s });
-        });
-      } else if (exportType === 'sources') {
-        presentExportDialog({ type: 'sources', sources: s });
-      } else if (exportType === 'nodes') {
-        loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then((nodes) => {
-          presentExportDialog({ type: 'nodes', nodes });
-        });
-      } else if (exportType === 'digest' && d[0]) {
-        presentExportDialog({ type: 'digest', digest: d[0] });
-      }
-    });
+  const handleNewSessionSubmit = useCallback(async (topic: string, isDeepResearch: boolean) => {
+    try {
+      await handleNewSessionSubmitBase(topic, isDeepResearch);
+      setIsSessionSheetOpen(false);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to create session.');
+    }
+  }, [handleNewSessionSubmitBase, setIsSessionSheetOpen]);
 
-    const unsubDigest = Spine.subscribe('DIGEST_GENERATION_STARTED', () => {
-      setSelectedView('briefings');
-    });
+  // --- Prompt builder hook ---
 
-    const unsubSession = Spine.subscribe('SESSION_STARTED', (event) => {
-      if (typeof event.data?.sessionId === 'string') {
-        setActiveSessionId(event.data.sessionId);
-        setSelectedView('research');
-      }
-    });
+  const { buildMasterDeterministicPrompt, buildSessionDeterministicPrompt } = useScoutPromptBuilder({
+    activeSession,
+    addSourceFn,
+    encryptionKey,
+    updateSessionFn,
+    userId: user?.uid,
+  });
 
-    const unsubProposal = Spine.subscribe('RESEARCH_PROPOSED' as any, (event) => {
-      const query = typeof event.data?.query === 'string' ? event.data.query : '';
-      const reason = typeof event.data?.reason === 'string' ? event.data.reason : '';
-      const mode = event.data?.mode === 'deep' ? 'deep' : 'web';
-      if (query) setResearchProposal({ query, reason, mode });
-    });
-
-    return () => {
-      unsubDeepResearch();
-      unsubExport();
-      unsubDigest();
-      unsubSession();
-      unsubProposal();
-    };
-  }, [openDeepResearch, presentExportDialog, user?.uid, encryptionKey]);
+  // --- AI hook ---
 
   const ai = useModuleAI({
     moduleId: 'scout',
-
     encryptionKey,
     sessionId: activeSessionId || 'default',
     persistencePolicy: 'scout-research',
@@ -634,127 +309,54 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     },
   });
 
-  const handleUploadSubmit = useCallback(async (result: DocumentParseResult) => {
-    setShowUploadZone(false);
-    setErrorMessage(null);
-    try {
-      const normalizedType = result.metadata.fileType === 'pdf' || result.metadata.fileType === 'csv'
-        ? result.metadata.fileType
-        : 'text';
-
-      const parsedOverride: DocumentParsed = {
-        fileName: result.metadata.filename,
-        fileType: normalizedType,
-        fileSizeBytes: result.metadata.fileSize,
-        pageCount: result.metadata.pageCount ?? 1,
-        wordCount: result.metadata.wordCount,
-        detectedTitle: result.metadata.extractedTitle,
-        rawText: result.text,
-        notes: result.notes,
-        parsedAt: result.metadata.parsedAt,
-        extras: { scoutParseResult: result },
-      };
-
-      const llmPrimary = async (prompt: string) => {
-        const { response } = await sendMessage(prompt, {
-          systemPrompt: 'You are a research document analyst. Follow the instructions exactly.',
-          memoryContext: [],
-          summary: 'Research document analysis.',
-          history: [],
-        });
-        return response.publicText;
-      };
-      const llmFallback = async (prompt: string) => {
-        const { response } = await sendMessage(prompt, {
-          systemPrompt: 'Return a plain-text summary and key findings as instructed.',
-          memoryContext: [],
-          summary: 'Research analysis fallback.',
-          history: [],
-        });
-        return response.publicText;
-      };
-
-      const pipeline = await runDocumentPipeline({
-        file: new File([result.text], result.metadata.filename, { type: 'text/plain' }),
-        policy: scoutDocumentPolicy,
-        sendMessage: llmPrimary,
-        sendMessageFallback: llmFallback,
-        parsedOverride,
-      });
-
-      setDocProposal(pipeline.proposal);
-      setDocProposalSummary(pipeline.summary);
-      setDocProposalParsed(result);
-      setDocReviewOpen(true);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to process document. Please try again.');
-    }
-  }, [sendMessage]);
-
-  const handleChatDocumentUploads = useCallback(async (request: DocumentUploadRequest) => {
-    const llmPrimary = async (prompt: string) => {
-      const { response } = await sendMessage(prompt, {
-        systemPrompt: 'You are a research document triage analyst. Return only valid JSON as instructed.',
-        memoryContext: [],
-        summary: 'Scout document triage.',
-        history: [],
-      });
-      return response.publicText;
-    };
-
-    const llmFallback = async (prompt: string) => {
-      const { response } = await sendMessage(prompt, {
-        systemPrompt: 'Return only valid JSON matching the requested schema.',
-        memoryContext: [],
-        summary: 'Scout document triage fallback.',
-        history: [],
-      });
-      return response.publicText;
-    };
-
-    try {
-      const { prompt } = await prepareDocumentChatPrompt({
-        moduleId: 'scout',
-        files: request.files,
-        sendMessage: llmPrimary,
-        sendMessageFallback: llmFallback,
-        analyzeImage,
-        userContext: request.caption,
-      });
-      await ai.handleSendMessage(prompt, onActionParsed, { visibleContent: request.visibleContent });
-    } catch (error) {
-      console.error('[Scout] Chat document analysis failed:', error);
-      setErrorMessage('I could not analyze those documents together. Please try again with supported files.');
-    }
-  }, [ai, analyzeImage, onActionParsed, sendMessage]);
-
-  const handleDocProposalCommit = useCallback(() => {
-    if (!docProposalParsed) return;
-    const prompt = buildDocumentAnalysisPrompt(docProposalParsed);
-    ai.handleSendMessage(prompt, onActionParsed);
-    setDocReviewOpen(false);
-    setDocProposal(null);
-    setDocProposalSummary(null);
-    setDocProposalParsed(null);
-  }, [docProposalParsed, ai, onActionParsed]);
+  // Re-instantiate the sessions hook with real messages + shell state
+  // (We can't re-call hooks conditionally. Instead, wire messages via a ref-based effect.)
+  // The reasoning history effect in useScoutResearchSessions uses `messages` from params.
+  // Since we can't re-pass them after AI hook is created, we handle it here:
+  const prevMessagesLengthRef = useRef(0);
 
   useEffect(() => {
-    if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
-      ai.setMessages([
-        {
-          role: 'assistant',
-          content: `Research protocol active. I am ${agentAlias}. How can I assist your inquiry?`,
-        },
-      ]);
-    }
-  }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages, agentAlias]);
+    prevMessagesLengthRef.current = ai.messages.length;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessionId]);
 
-  const tabs: NeuralTabItem<ScoutTopLevelView>[] = [
-    { id: 'research', label: 'Research', icon: Search },
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'sources', label: 'Sources', icon: BookMarked },
-    { id: 'briefings', label: 'Briefings', icon: FileText },
-  ];
+  useEffect(() => {
+    const msgs = ai.messages;
+    const prevLen = prevMessagesLengthRef.current;
+    if (!activeSession || msgs.length <= prevLen) {
+      prevMessagesLengthRef.current = msgs.length;
+      return;
+    }
+
+    const newMsgs = msgs.slice(prevLen);
+    prevMessagesLengthRef.current = msgs.length;
+
+    const newEntries = newMsgs
+      .filter((m) => m.role === 'assistant' || m.role === 'user')
+      .map((m) => ({
+        id: crypto.randomUUID(),
+        type: (m.role === 'user' ? 'user' : 'reasoning') as 'user' | 'reasoning',
+        text: contentToString(m.content),
+        timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
+      }));
+
+    if (newEntries.length === 0) return;
+
+    const existing = activeSession.reasoningHistory ?? [];
+    updateSessionFn(activeSession.id, { reasoningHistory: [...existing, ...newEntries] }).catch((err) => { console.warn('[Scout] Failed to persist reasoning history:', err); });
+  }, [ai.messages, activeSession, updateSessionFn]);
+
+  // --- Document upload hook ---
+
+  const docUpload = useScoutDocumentUpload({
+    sendMessage,
+    analyzeImage,
+    ai,
+    onActionParsed,
+    setErrorMessage,
+  });
+
+  // --- Wrapped send message ---
 
   const handleSendMessageWrapped = useCallback(async (
     content: MessageContent,
@@ -799,61 +401,49 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     handleSendMessage: handleSendMessageWrapped,
   }), [ai, handleSendMessageWrapped]);
 
-  // Watermark of how many AI messages have already been written to reasoningHistory.
-  // Resets when the active session changes so prior-session messages aren't re-recorded.
-  const prevMessagesLengthRef = useRef(0);
+  // --- Welcome message ---
 
   useEffect(() => {
-    prevMessagesLengthRef.current = ai.messages.length;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSessionId]);
+    if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
+      ai.setMessages([
+        {
+          role: 'assistant',
+          content: `Research protocol active. I am ${agentAlias}. How can I assist your inquiry?`,
+        },
+      ]);
+    }
+  }, [profile?.onboardingComplete, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages, agentAlias]);
 
-  useEffect(() => {
-    const msgs = ai.messages;
-    const prevLen = prevMessagesLengthRef.current;
-    if (!activeSession || msgs.length <= prevLen) {
-      prevMessagesLengthRef.current = msgs.length;
-      return;
+  // --- Deep research accept ---
+
+  const handleDeepResearchAccepted = useCallback(async (result: DeepResearchResult) => {
+    if (!profile || !encryptionKey) return;
+
+    try {
+      const addedSourceIds: string[] = [];
+      for (const src of result.capturedSources) {
+        const added = await addSourceFn(src).catch(() => null);
+        if (added) addedSourceIds.push(added.id);
+      }
+
+      await addKnowledgeNode(
+        {
+          ...result.synthesisNode,
+          evidence: addedSourceIds,
+          parentSessionId: activeSessionId || undefined,
+        },
+        { userId: user?.uid, encryptionKey },
+      );
+    } catch (err) {
+      console.error('Failed to persist deep research node', err);
     }
 
-    const newMsgs = msgs.slice(prevLen);
-    prevMessagesLengthRef.current = msgs.length;
+    deepResearch.reset();
+    spineEvents.setDeepResearchOpen(false);
+    setSelectedView('research');
+  }, [encryptionKey, addSourceFn, deepResearch, user?.uid, activeSessionId, profile, spineEvents.setDeepResearchOpen, setSelectedView]);
 
-    const newEntries = newMsgs
-      .filter((m) => m.role === 'assistant' || m.role === 'user')
-      .map((m) => ({
-        id: crypto.randomUUID(),
-        type: (m.role === 'user' ? 'user' : 'reasoning') as 'user' | 'reasoning',
-        text: contentToString(m.content),
-        timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
-      }));
-
-    if (newEntries.length === 0) return;
-
-    const existing = activeSession.reasoningHistory ?? [];
-    updateSessionFn(activeSession.id, { reasoningHistory: [...existing, ...newEntries] }).catch(() => {});
-  }, [ai.messages, activeSession, updateSessionFn]);
-
-  const handleRenameSession = useCallback(
-    async (sessionId: string, newTopic: string): Promise<void> => {
-      await updateSessionFn(sessionId, { topic: newTopic });
-    },
-    [updateSessionFn],
-  );
-
-  const handleArchiveSession = useCallback(
-    async (sessionId: string): Promise<void> => {
-      await updateSessionFn(sessionId, { archived: true });
-      if (activeSessionId === sessionId) {
-        setActiveSessionId(null);
-      }
-    },
-    [updateSessionFn, activeSessionId],
-  );
-
-  const handleStartSession = useCallback(() => {
-    setIsNewSessionDialogOpen(true);
-  }, []);
+  // --- Digest generation ---
 
   const handleGenerateDigest = useCallback(() => {
     loadKnowledgeNodes({ userId: user?.uid, encryptionKey }).then((nodes) => {
@@ -861,22 +451,29 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     });
   }, [user?.uid, encryptionKey, generateDigestFn, profile, sources]);
 
-  const handleNewSessionSubmit = useCallback(async (topic: string, isDeepResearch: boolean) => {
-    setIsNewSessionDialogOpen(false);
-    try {
-      const session = await createSessionFn(topic, { mode: isDeepResearch ? 'deep' : 'web' });
-      if (session) {
-        setActiveSessionId(session.id);
-        setSelectedView('research');
-        setIsSessionSheetOpen(false);
-        if (isDeepResearch) {
-          openDeepResearch(topic);
-        }
-      }
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to create session.');
+  // --- Proposal accept ---
+
+  const handleProposalAccept = useCallback(() => {
+    if (!spineEvents.researchProposal) return;
+    const { query, mode } = spineEvents.researchProposal;
+    spineEvents.setResearchProposal(null);
+    if (mode === 'deep') {
+      openDeepResearch(query);
+    } else {
+      ai.handleSendMessage(`Search the web for: "${query}"`, onActionParsed);
     }
-  }, [createSessionFn, openDeepResearch]);
+  }, [spineEvents.researchProposal, spineEvents.setResearchProposal, openDeepResearch, ai, onActionParsed]);
+
+  // --- Tabs ---
+
+  const tabs: NeuralTabItem<ScoutTopLevelView>[] = [
+    { id: 'research', label: 'Research', icon: Search },
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'sources', label: 'Sources', icon: BookMarked },
+    { id: 'briefings', label: 'Briefings', icon: FileText },
+  ];
+
+  // --- Render helpers ---
 
   const renderNewSessionButton = () => (
     <NeuralButton
@@ -947,28 +544,17 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     />
   ) : null;
 
-  const handleProposalAccept = useCallback(() => {
-    if (!researchProposal) return;
-    const { query, mode } = researchProposal;
-    setResearchProposal(null);
-    if (mode === 'deep') {
-      openDeepResearch(query);
-    } else {
-      ai.handleSendMessage(`Search the web for: "${query}"`, onActionParsed);
-    }
-  }, [researchProposal, openDeepResearch, ai, onActionParsed]);
-
   const renderResearchView = () => {
-    const proposalCard = researchProposal ? (
+    const proposalCard = spineEvents.researchProposal ? (
       <div className="mx-auto mb-3 w-full max-w-2xl rounded-2xl border border-lime-500/20 bg-lime-500/[0.06] px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-lime-400/70">Research Proposal</p>
-            <p className="mt-0.5 text-sm text-white/80">{researchProposal.reason}</p>
+            <p className="mt-0.5 text-sm text-white/80">{spineEvents.researchProposal.reason}</p>
           </div>
           <button
             type="button"
-            onClick={() => setResearchProposal(null)}
+            onClick={() => spineEvents.setResearchProposal(null)}
             className="mt-0.5 shrink-0 text-white/30 hover:text-white/60 transition-colors"
             aria-label="Dismiss proposal"
           >
@@ -982,13 +568,13 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
             themeColor="lime"
             onClick={handleProposalAccept}
           >
-            {researchProposal.mode === 'deep' ? 'Start Deep Research' : 'Search Web'}
+            {spineEvents.researchProposal.mode === 'deep' ? 'Start Deep Research' : 'Search Web'}
           </NeuralButton>
           <NeuralButton
             type="button"
             size="sm"
             variant="ghost"
-            onClick={() => setResearchProposal(null)}
+            onClick={() => spineEvents.setResearchProposal(null)}
           >
             Dismiss
           </NeuralButton>
@@ -1071,7 +657,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
             onAddSource={addSourceFn}
             onUpdateSource={updateSourceFn}
             onArchiveSource={archiveSourceFn}
-            onExportSources={() => requestExport({ type: 'sources', sources })}
+            onExportSources={() => spineEvents.requestExport({ type: 'sources', sources })}
           />
         );
       case 'briefings':
@@ -1088,7 +674,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
               });
             }}
             onDelete={deleteDigestFn}
-            onExport={(digest) => requestExport({ type: 'digest', digest })}
+            onExport={(digest) => spineEvents.requestExport({ type: 'digest', digest })}
           />
         );
       case 'overview':
@@ -1121,8 +707,8 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       authMode="scout"
       placeholder="Discuss research strategy..."
       dockChatBreakpoint={SCOUT_SHELL_BREAKPOINTS.desktop}
-      onUploadDocuments={handleChatDocumentUploads}
-      hideChatTrigger={deepResearchOpen}
+      onUploadDocuments={docUpload.handleChatDocumentUploads}
+      hideChatTrigger={spineEvents.deepResearchOpen}
       isChatCollapsed={isChatCollapsed}
       onToggleChat={setIsChatCollapsed}
       contentClassName="min-h-0"
@@ -1287,11 +873,11 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
         </AnimatePresence>
 
         <AnimatePresence>
-          {deepResearchOpen && (
+          {spineEvents.deepResearchOpen && (
             <DeepResearchPanel
-              isOpen={deepResearchOpen}
-              onClose={() => setDeepResearchOpen(false)}
-              initialQuery={deepResearchInitialQuery}
+              isOpen={spineEvents.deepResearchOpen}
+              onClose={() => spineEvents.setDeepResearchOpen(false)}
+              initialQuery={spineEvents.deepResearchInitialQuery}
               onResultAccepted={handleDeepResearchAccepted}
               deepResearch={deepResearch}
             />
@@ -1299,55 +885,50 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
         </AnimatePresence>
 
         <ExportDialog
-          isOpen={exportDialogOpen}
+          isOpen={spineEvents.exportDialogOpen}
           onClose={() => {
-            setExportDialogOpen(false);
-            setExportTarget(null);
+            spineEvents.setExportDialogOpen(false);
+            spineEvents.setExportTarget(null);
           }}
-          target={exportTarget}
+          target={spineEvents.exportTarget}
         />
 
         <NeuralModal
-          isOpen={docReviewOpen}
-          onClose={() => {
-            setDocReviewOpen(false);
-            setDocProposal(null);
-            setDocProposalSummary(null);
-            setDocProposalParsed(null);
-          }}
+          isOpen={docUpload.docReviewOpen}
+          onClose={docUpload.clearDocProposal}
           title="Document Evidence Detected"
           themeColor="emerald"
           maxWidth="2xl"
         >
           <div className="space-y-6">
-            {docProposal && (
+            {docUpload.docProposal && (
               <div className="space-y-4">
-                <p className="text-sm text-white/68">{docProposalSummary ?? 'Document analysis ready for review.'}</p>
+                <p className="text-sm text-white/68">{docUpload.docProposalSummary ?? 'Document analysis ready for review.'}</p>
                 <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-3 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                   <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/68">Analysis Summary</h4>
                   <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap text-sm text-white/68">
-                    {docProposal.summary}
+                    {docUpload.docProposal.summary}
                   </pre>
                 </div>
                 <div className="rounded-xl border border-white/[0.09] bg-white/[0.045] p-3">
                   <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/68">Text Preview</h4>
                   <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap text-[11px] text-white/50">
-                    {docProposal.rawTextPreview}
-                    {docProposal.rawTextPreview.length >= 2400 ? '\n[truncated]' : ''}
+                    {docUpload.docProposal.rawTextPreview}
+                    {docUpload.docProposal.rawTextPreview.length >= 2400 ? '\n[truncated]' : ''}
                   </pre>
                 </div>
               </div>
             )}
             <div className="flex gap-3 border-t border-white/[0.12] pt-4">
               <NeuralButton
-                onClick={handleDocProposalCommit}
+                onClick={docUpload.handleDocProposalCommit}
                 themeColor="lime"
                 className="flex-1"
               >
                 Apply
               </NeuralButton>
               <NeuralButton
-                onClick={() => setDocReviewOpen(false)}
+                onClick={() => docUpload.setDocReviewOpen(false)}
                 variant="secondary"
                 className="flex-1"
               >
@@ -1358,14 +939,14 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
         </NeuralModal>
 
         <AnimatePresence>
-          {showUploadZone && (
+          {docUpload.showUploadZone && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
               onClick={(event) => {
-                if (event.target === event.currentTarget) setShowUploadZone(false);
+                if (event.target === event.currentTarget) docUpload.setShowUploadZone(false);
               }}
             >
               <motion.div
@@ -1382,7 +963,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                   <NeuralButton
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowUploadZone(false)}
+                    onClick={() => docUpload.setShowUploadZone(false)}
                     className="h-9 w-9 p-0 text-white/50 transition-colors hover:bg-white/10"
                   >
                     <X size={18} />
@@ -1391,7 +972,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
                 <UniversalUploadZone
                   onFileSelected={async (file: File) => {
                     const result = await parseDocument(file);
-                    await handleUploadSubmit(result);
+                    await docUpload.handleUploadSubmit(result);
                   }}
                   themeColor="cyan"
                   label="Evidence Source"
