@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import type { LedgerIntakeProfile, RecurringRule, Transaction } from '../services/ledger-intake-service';
-import { computeDueRules, postDueTransactions, postSingleRule } from '../services/recurring-engine';
+import { computeDueRules, postDueTransactions, postSingleRule, skipNextOccurrence } from '../services/recurring-engine';
 
 export interface RecurringEngineState {
   /** Rules that are due but have autoPost=false — need user confirmation. */
@@ -76,7 +76,6 @@ export function useRecurringEngine(
   const dismissRule = useCallback(
     (ruleId: string): LedgerIntakeProfile => {
       if (!profile) throw new Error('No profile loaded');
-      const { skipNextOccurrence } = require('../services/recurring-engine');
       const rule = (profile.recurringRules ?? []).find((r) => r.id === ruleId);
       if (!rule) throw new Error(`Rule ${ruleId} not found`);
 

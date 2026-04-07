@@ -182,7 +182,7 @@ export async function generateDigest(
     source: 'scout',
     domain: 'C',
     priority: 'info',
-    data: { triggerSource },
+    data: { userId, triggerSource },
   });
 
   try {
@@ -279,13 +279,13 @@ export async function generateDigest(
       source: 'scout',
       domain: 'C',
       priority: 'alert',
-      data: { error: String(error) },
+      data: { userId, error: String(error) },
     });
     return null;
   }
 }
 
-export async function saveDigest(
+async function saveDigest(
   digest: ScoutDigestDecrypted,
   { userId }: DigestContext,
 ): Promise<void> {

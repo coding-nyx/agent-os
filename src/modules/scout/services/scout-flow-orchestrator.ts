@@ -77,7 +77,7 @@ function writeTopicState(state: MasterTopicState): void {
   }
 }
 
-export function updateMasterTopicStreak(input: { userText: string }): {
+function updateMasterTopicStreak(input: { userText: string }): {
   topicKey: string;
   streak: number;
   shouldProposeSession: boolean;

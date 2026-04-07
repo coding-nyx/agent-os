@@ -17,7 +17,7 @@ function buildCsvRow(cells: (string | number | undefined | null)[]): string {
   return cells.map(escapeCsv).join(',');
 }
 
-export function buildTransactionsCsv(transactions: Transaction[], currency = 'USD'): string {
+function buildTransactionsCsv(transactions: Transaction[], currency = 'USD'): string {
   const header = buildCsvRow(['Date', 'Description', 'Amount', 'Type', 'Category', 'Tax Category', 'Notes', 'Currency']);
   const rows = transactions
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -27,7 +27,7 @@ export function buildTransactionsCsv(transactions: Transaction[], currency = 'US
   return [header, ...rows].join('\n');
 }
 
-export function downloadCsv(filename: string, content: string): void {
+function downloadCsv(filename: string, content: string): void {
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -37,7 +37,7 @@ export function downloadCsv(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function exportTransactionsCsv(
+function exportTransactionsCsv(
   profile: LedgerIntakeProfile,
   options: { fromDate?: string; toDate?: string } = {}
 ): void {
@@ -62,13 +62,13 @@ function downloadJson(filename: string, data: unknown): void {
   URL.revokeObjectURL(url);
 }
 
-export function exportTaxSummaryJson(profile: LedgerIntakeProfile, taxYear?: number): void {
+function exportTaxSummaryJson(profile: LedgerIntakeProfile, taxYear?: number): void {
   const year = taxYear ?? new Date().getFullYear();
   const summary = buildTaxYearSummary(profile, year);
   downloadJson(`tax_summary_${year}.json`, summary);
 }
 
-export function exportNetWorthReportJson(profile: LedgerIntakeProfile): void {
+function exportNetWorthReportJson(profile: LedgerIntakeProfile): void {
   const current = computeCurrentNetWorth(profile.accounts ?? [], profile.debtItems ?? []);
   const report = {
     generatedAt: new Date().toISOString(),

@@ -632,8 +632,8 @@ export function registerFieldSuggestionActions(): void {
   });
 
   // Register generic baseline for modules that don't have their own field-action implementation.
-  // atlas, titan, and ledger are excluded — they register module-specific handlers that take precedence.
-  const modules = ['therapy', 'trainer', 'soma', 'scout', 'forge'];
+  // atlas, titan, ledger, and soma are excluded — they register module-specific handlers that take precedence.
+  const modules = ['therapy', 'trainer', 'scout', 'forge'];
   
   modules.forEach(moduleId => {
     ActionHub.registerMultiple(moduleId, {

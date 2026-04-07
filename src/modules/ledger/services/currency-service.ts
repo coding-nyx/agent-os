@@ -30,14 +30,14 @@ export function getExchangeRate(from: string, to: string, storedRates: CurrencyR
 /**
  * Converts an amount from one currency to another.
  */
-export function convertCurrency(amount: number, from: string, to: string, storedRates: CurrencyRate[]): number {
+function convertCurrency(amount: number, from: string, to: string, storedRates: CurrencyRate[]): number {
   return amount * getExchangeRate(from, to, storedRates);
 }
 
 /**
  * Formats an amount in the given ISO 4217 currency.
  */
-export function formatCurrencyAmount(amount: number, currency: string, locale = 'en-US'): string {
+function formatCurrencyAmount(amount: number, currency: string, locale = 'en-US'): string {
   try {
     return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
   } catch {

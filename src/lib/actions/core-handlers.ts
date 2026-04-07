@@ -19,6 +19,15 @@ import type { RoutineDefinition, RoutineProposal, RoutineTrigger } from '@/lib/r
 import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
 import { OrchestrationInteractionGateService } from '@/lib/services/orchestration-interaction-gate-service';
 import { SpecialistConsultationService } from '@/lib/services/specialist-consultation-service';
+import {
+  saveQuietHoursConfig,
+  loadQuietHoursConfig,
+  createDefaultQuietHours,
+  persistSnooze,
+  clearSnooze,
+  computeSnoozedUntil,
+  SNOOZE_OPTIONS,
+} from '@/modules/notifications/services/notification-service';
 
 /**
  * HANDLER_PRECEDENCE — documents the bootstrap registration order enforced in main.tsx.
@@ -80,7 +89,7 @@ function normalizeChannelPrefs(value: unknown): NotificationChannelPrefs {
     const prefs = value as { os?: boolean; inApp?: boolean };
     return {
       os: prefs.os !== false,
-      inApp: prefs.inApp !== false ? true : false,
+      inApp: prefs.inApp !== false,
     };
   }
   return { os: true, inApp: true };
@@ -248,7 +257,7 @@ function safeNumber(value: unknown): number | undefined {
 function safeString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
+  return trimmed || undefined;
 }
 
 function safeStringArray(value: unknown): string[] | null | undefined {
@@ -873,6 +882,118 @@ export function registerCoreActions() {
     }
   });
 
+  // ── Notification action handlers ──────────────────────────────────────────
+  // Declared in notification-prompt-builder.ts NOTIFICATION_SCOPE_ACTIONS.
+  // These enable the AI agent to manage quiet hours and snooze from conversation.
+
+  ActionHub.register('nexus', 'enable_quiet_hours', async ({ userId, pushAssistantMessage }) => {
+    if (!userId) { pushAssistantMessage?.('Sign in to enable quiet hours.'); return; }
+    const dataLayer = getNexusDataLayer();
+    const config = await loadQuietHoursConfig(dataLayer, userId);
+    config.enabled = true;
+    await saveQuietHoursConfig(dataLayer, userId, config);
+    pushAssistantMessage?.('Quiet hours enabled. Notifications will be suppressed during the configured window.');
+    Spine.emit({
+      type: 'QUIET_HOURS_UPDATED' as SpineEventType,
+      source: 'nexus',
+      domain: 'system',
+      data: { userId, enabled: true },
+      cascadeDepth: 0,
+      priority: 'info',
+    });
+  });
+
+  ActionHub.register('nexus', 'disable_quiet_hours', async ({ userId, pushAssistantMessage }) => {
+    if (!userId) { pushAssistantMessage?.('Sign in to disable quiet hours.'); return; }
+    const dataLayer = getNexusDataLayer();
+    const config = await loadQuietHoursConfig(dataLayer, userId);
+    config.enabled = false;
+    await saveQuietHoursConfig(dataLayer, userId, config);
+    pushAssistantMessage?.('Quiet hours disabled. All notifications will come through.');
+    Spine.emit({
+      type: 'QUIET_HOURS_UPDATED' as SpineEventType,
+      source: 'nexus',
+      domain: 'system',
+      data: { userId, enabled: false },
+      cascadeDepth: 0,
+      priority: 'info',
+    });
+  });
+
+  ActionHub.register('nexus', 'update_quiet_hours', async ({ userId, payload, pushAssistantMessage }) => {
+    if (!userId) { pushAssistantMessage?.('Sign in to update quiet hours.'); return; }
+    const dataLayer = getNexusDataLayer();
+    const config = await loadQuietHoursConfig(dataLayer, userId);
+    if (typeof payload?.from === 'string') config.from = payload.from;
+    if (typeof payload?.to === 'string') config.to = payload.to;
+    if (typeof payload?.enabled === 'boolean') config.enabled = payload.enabled;
+    await saveQuietHoursConfig(dataLayer, userId, config);
+    pushAssistantMessage?.(`Quiet hours updated: ${config.from} – ${config.to} (${config.enabled ? 'active' : 'paused'}).`);
+  });
+
+  ActionHub.register('nexus', 'add_exempt_module', async ({ userId, payload, pushAssistantMessage }) => {
+    if (!userId) { pushAssistantMessage?.('Sign in to update exemptions.'); return; }
+    const moduleId = typeof payload?.moduleId === 'string' ? payload.moduleId : '';
+    if (!moduleId) { pushAssistantMessage?.('Please specify a module to exempt.'); return; }
+    const dataLayer = getNexusDataLayer();
+    const config = await loadQuietHoursConfig(dataLayer, userId);
+    if (!config.exemptModules.includes(moduleId)) {
+      config.exemptModules.push(moduleId);
+      await saveQuietHoursConfig(dataLayer, userId, config);
+    }
+    pushAssistantMessage?.(`${moduleId} is now exempt from quiet hours.`);
+  });
+
+  ActionHub.register('nexus', 'snooze_notification', async ({ userId, payload, pushAssistantMessage }) => {
+    if (!userId) { pushAssistantMessage?.('Sign in to snooze notifications.'); return; }
+    const notificationId = typeof payload?.notificationId === 'string' ? payload.notificationId : '';
+    if (!notificationId) { pushAssistantMessage?.('Please specify which notification to snooze.'); return; }
+    const durationKey = typeof payload?.duration === 'string' ? payload.duration : '1h';
+    const option = SNOOZE_OPTIONS.find((o) => o.value === durationKey) ?? SNOOZE_OPTIONS[0];
+    const snoozedUntil = computeSnoozedUntil(option);
+    const dataLayer = getNexusDataLayer();
+    await persistSnooze(dataLayer, userId, notificationId, snoozedUntil);
+    pushAssistantMessage?.(`Notification snoozed for ${option.label}.`);
+  });
+
+  ActionHub.register('nexus', 'snooze_all_from_source', async ({ userId, payload, pushAssistantMessage }) => {
+    if (!userId) { pushAssistantMessage?.('Sign in to snooze notifications.'); return; }
+    const source = typeof payload?.source === 'string' ? payload.source : '';
+    if (!source) { pushAssistantMessage?.('Please specify a source module to snooze.'); return; }
+    const durationKey = typeof payload?.duration === 'string' ? payload.duration : '3h';
+    const option = SNOOZE_OPTIONS.find((o) => o.value === durationKey) ?? SNOOZE_OPTIONS[1];
+    const snoozedUntil = computeSnoozedUntil(option);
+    const dataLayer = getNexusDataLayer();
+    const inboxPath = `users/${userId}/notification_inbox`;
+    const all = await dataLayer.listDocuments<{ id: string; source: string }>(inboxPath, { limit: 0 });
+    const matches = all.filter((item) => item.source === source);
+    await Promise.all(matches.map((item) => persistSnooze(dataLayer, userId, item.id, snoozedUntil)));
+    pushAssistantMessage?.(`Snoozed ${matches.length} notification${matches.length !== 1 ? 's' : ''} from ${source} for ${option.label}.`);
+  });
+
+  ActionHub.register('nexus', 'mark_all_read', async ({ userId, pushAssistantMessage }) => {
+    if (!userId) { pushAssistantMessage?.('Sign in to manage notifications.'); return; }
+    const dataLayer = getNexusDataLayer();
+    const inboxPath = `users/${userId}/notification_inbox`;
+    const all = await dataLayer.listDocuments<{ id: string; read: boolean }>(inboxPath, { limit: 0 });
+    const unread = all.filter((item) => !item.read);
+    const now = new Date().toISOString();
+    await Promise.all(unread.map((item) => dataLayer.updateDocument(inboxPath, item.id, { read: true, updatedAt: now })));
+    pushAssistantMessage?.(`Marked ${unread.length} notification${unread.length !== 1 ? 's' : ''} as read.`);
+  });
+
+  ActionHub.register('nexus', 'bulk_delete', async ({ userId, payload, pushAssistantMessage }) => {
+    if (!userId) { pushAssistantMessage?.('Sign in to manage notifications.'); return; }
+    const ids = Array.isArray(payload?.notificationIds)
+      ? payload.notificationIds.filter((id: unknown): id is string => typeof id === 'string')
+      : [];
+    if (ids.length === 0) { pushAssistantMessage?.('No notification IDs provided.'); return; }
+    const dataLayer = getNexusDataLayer();
+    const inboxPath = `users/${userId}/notification_inbox`;
+    await Promise.all(ids.map((id) => dataLayer.deleteDocument(inboxPath, id)));
+    pushAssistantMessage?.(`Deleted ${ids.length} notification${ids.length !== 1 ? 's' : ''}.`);
+  });
+
   // Domain Actions that update NSV
   ActionHub.register('agnes', 'update_soul_resilience', async ({ payload, updateGlobalSoul }) => {
     const score = safeNumber(payload.score);
@@ -1166,17 +1287,9 @@ export function registerCoreActions() {
       console.error('[CoreHandlers] NSV write failed (sync_vitals):', e);
     });
   });
-  ActionHub.register('ledger', 'compute_resonance_roi', async ({ payload, updateGlobalSoul }) => {
-    const friction = safeNumber(payload?.financialFriction);
-    const roi = safeNumber(payload?.resonanceROI);
-    await updateGlobalSoul({
-      resource: { financialFriction: friction, resonanceROI: roi }
-    }).catch((e: unknown) => {
-      console.error('[CoreHandlers] NSV write failed (compute_resonance_roi):', e);
-    });
-  });
-
-  // NOTE: update_financial_friction is registered exclusively by
+  // NOTE: compute_resonance_roi is registered exclusively by
+  // ledger/services/actions.ts (module is authoritative — full ROI computation).
+  // update_financial_friction is registered exclusively by
   // ledger/actions/ledger-field-actions.ts (module is authoritative).
 
   // -------------------------------------------------------------------------

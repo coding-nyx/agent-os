@@ -326,15 +326,15 @@ const _service = createEncryptedProfileService<ScoutProfile>({
 // Guest / Subscription API
 // ---------------------------------------------------------------------------
 
-export function loadGuestScoutProfile(): ScoutProfile {
+function loadGuestScoutProfile(): ScoutProfile {
   return _service.loadGuest() ?? createEmptyScoutProfile();
 }
 
-export function saveGuestScoutProfile(profile: ScoutProfile): void {
+function saveGuestScoutProfile(profile: ScoutProfile): void {
   _service.saveGuest(profile);
 }
 
-export function clearGuestScoutProfile(): void {
+function clearGuestScoutProfile(): void {
   _service.clearGuest();
 }
 

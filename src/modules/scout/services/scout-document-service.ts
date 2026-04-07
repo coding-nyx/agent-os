@@ -50,7 +50,7 @@ const ACCEPTED_MIME_TYPES = new Set([
 
 const ACCEPTED_EXTENSIONS = new Set(['.pdf', '.txt', '.csv', '.md', '.markdown']);
 
-export const ACCEPTED_FILE_STRING = '.pdf,.txt,.csv,.md,.markdown';
+const ACCEPTED_FILE_STRING = '.pdf,.txt,.csv,.md,.markdown';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -76,7 +76,7 @@ function inferFileType(file: File): DocumentFileType {
   return 'unknown';
 }
 
-export function validateFile(file: File): DocumentValidation {
+function validateFile(file: File): DocumentValidation {
   const ext = getExtension(file.name);
   const mimeOk = ACCEPTED_MIME_TYPES.has(file.type);
   const extOk = ACCEPTED_EXTENSIONS.has(ext);

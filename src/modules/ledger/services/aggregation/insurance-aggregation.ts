@@ -27,7 +27,7 @@ export function toMonthlyPremium(premium: number, cycle: InsuranceBillingCycle):
 }
 
 // Not in KMP — retained locally.
-export function toAnnualPremium(premium: number, cycle: InsuranceBillingCycle): number {
+function toAnnualPremium(premium: number, cycle: InsuranceBillingCycle): number {
   switch (cycle) {
     case 'monthly':   return premium * 12;
     case 'quarterly': return premium * 4;

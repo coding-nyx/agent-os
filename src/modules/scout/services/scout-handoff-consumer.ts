@@ -79,7 +79,7 @@ export function registerScoutHandoffConsumer(context: HandoffConsumerContext): (
  * Dispatches a `query` handoff to Scout from another module.
  * The result will be stored as a `query_result` handoff for `fromModuleId`.
  */
-export function dispatchScoutQuery(query: string, fromModuleId: string): void {
+function dispatchScoutQuery(query: string, fromModuleId: string): void {
   NexusHandoffService.store({
     moduleId: 'scout',
     type: 'query',

@@ -12,6 +12,7 @@ import { computeCashFlowForecast } from '../services/aggregation/forecast-aggreg
 import { getDefaultAutomationRules } from '../services/automation-engine';
 import { upsertCurrencyRate } from '../services/currency-service';
 import { runExport } from '../services/export-service';
+import { postSingleRule, skipNextOccurrence } from '../services/recurring-engine';
 
 export interface LedgerRecurringActions {
   handleAddRecurringRule: (data: Omit<RecurringRule, 'id' | 'createdAt' | 'nextDueDate'>) => void;
@@ -79,7 +80,6 @@ export function useLedgerRecurring(
 
   const handlePostRecurringNow = useCallback((ruleId: string) => {
     if (!profile) return;
-    const { postSingleRule } = require('../services/recurring-engine');
     const rule = (profile.recurringRules ?? []).find(r => r.id === ruleId);
     if (!rule) return;
     const { updatedProfile } = postSingleRule(rule, profile);
@@ -88,7 +88,6 @@ export function useLedgerRecurring(
 
   const handleSkipRecurring = useCallback((ruleId: string) => {
     if (!profile) return;
-    const { skipNextOccurrence } = require('../services/recurring-engine');
     const rule = (profile.recurringRules ?? []).find(r => r.id === ruleId);
     if (!rule) return;
     persistUpdate(skipNextOccurrence(rule, profile));
