@@ -13,7 +13,7 @@ export interface ClearanceReport {
   warnings: string[];
 }
 
-const _engine = new (TitanClearanceEngineJs as any)();
+const _engine = new TitanClearanceEngineJs();
 
 export class ClearanceEngine {
   /**

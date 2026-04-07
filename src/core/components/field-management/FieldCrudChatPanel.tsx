@@ -53,6 +53,7 @@ You are in a FIELD-CRUD scope. Do not discuss personal wellness data unless it r
     streamingText,
     error
   } = useScopedConversation({
+    moduleId,
     scope: 'field-crud',
     allowedActions: ['suggest_field', 'create_field', 'delete_field'],
     systemPrompt

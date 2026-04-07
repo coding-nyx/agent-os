@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from 'react';
 import { Check, CornerDownRight, Eye, Ghost, GitBranch, Layers3, MessagesSquare, PencilLine, RotateCcw, ScrollText, Sparkles, Users, X } from 'lucide-react';
 import type { ProposalCard, SilentHistoryEntry, ThreadExecutionArtifact } from '@/lib/contracts/orchestration';
 import type { ModuleId } from '@/lib/module-manifest';
@@ -9,12 +8,14 @@ import type {
   MasterThreadState,
 } from '@/lib/services/master-thread-service';
 import type { MasterThreadMessage, OrchestrationTurnRuntimeSummary } from '@/lib/contracts/orchestration';
-import { compareMasterThreadMessages, compareMasterThreadTurns } from '@/lib/contracts/orchestration';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { AutonomyFeatureFlags } from '@/lib/services/autonomy-feature-flags';
 import { cn } from '@/lib/utils';
 import { SilentAuditDetailModal } from './SilentAuditDetailModal';
 import { AgentIcon } from './AgentIcon';
+import { useMasterThreadDerivedData } from './hooks/useMasterThreadDerivedData';
+import { useMasterThreadProposals } from './hooks/useMasterThreadProposals';
+import type { MasterThreadProposalActionHandlers } from './hooks/useMasterThreadProposals';
 
 const RESOLUTION_STYLES: Record<MasterThreadState['resolution']['status'], string> = {
   open: 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/20',
@@ -161,61 +162,6 @@ function describeSilentHistoryEntry(entry: SilentHistoryEntry): string {
   return firstMessage ?? entry.summary;
 }
 
-function fallbackProposalSurface(proposalCard: ProposalCard): MasterThreadProposalSurface {
-  const lifecycle: MasterThreadProposalLifecycle =
-    proposalCard.status === 'pending_approval'
-      ? 'pending_approval'
-      : proposalCard.status === 'deferred'
-        ? 'deferred'
-        : proposalCard.status === 'blocked'
-          ? 'blocked'
-          : proposalCard.status === 'draft'
-            ? 'draft'
-            : proposalCard.executionMode === 'ghost'
-              ? 'ghost_executed'
-              : proposalCard.executionMode === 'autonomous'
-                ? 'auto_approved'
-                : 'approved';
-
-  return {
-    id: proposalCard.id,
-    proposalId: proposalCard.proposalId,
-    title: proposalCard.title,
-    summary: proposalCard.summary,
-    source: proposalCard.source,
-    status: proposalCard.status,
-    lifecycle,
-    approvalRequirement: proposalCard.approvalRequirement,
-    executionMode: proposalCard.executionMode,
-    historyMode: proposalCard.historyMode,
-    dispatchStatus: 'transient',
-    runtimeDisposition: 'transient',
-    createdAt: '',
-    mutable: false,
-    origin: 'shell',
-    kind: 'runtime_action',
-    editableFields: [],
-    controls: {
-      approve: false,
-      defer: false,
-      dismiss: false,
-      reroute: false,
-      edit: false,
-    },
-  };
-}
-
-interface MasterThreadProposalEditDraft {
-  targetModuleId?: ModuleId;
-  reason?: string;
-}
-
-interface MasterThreadProposalActionHandlers {
-  onApprove?: (proposal: MasterThreadProposalSurface) => void;
-  onDismiss?: (proposal: MasterThreadProposalSurface) => void;
-  onEdit?: (proposal: MasterThreadProposalSurface, draft: MasterThreadProposalEditDraft) => void;
-}
-
 interface AgentIdentityProps {
   source: MasterThreadMessage['author'] | MasterThreadState['participants'][number]['moduleId'];
   actorId?: string;
@@ -300,117 +246,54 @@ export function MasterThreadStatusCard({
   onRetryExecution,
 }: MasterThreadStatusCardProps) {
   const chatActorIdentityEnabled = AutonomyFeatureFlags.isEnabled('chatActorIdentity');
-  const proposals = useMemo(() => {
-    if (proposalEntries && proposalEntries.length > 0) return proposalEntries;
-    return proposalCard ? [fallbackProposalSurface(proposalCard)] : [];
-  }, [proposalCard, proposalEntries]);
 
-  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(proposals[0]?.id ?? null);
-  const [isEditingSelectedProposal, setIsEditingSelectedProposal] = useState(false);
-  const [editTargetModuleId, setEditTargetModuleId] = useState<ModuleId | ''>('');
-  const [editReason, setEditReason] = useState('');
-  const [selectedSilentHistoryId, setSelectedSilentHistoryId] = useState<string | null>(null);
+  const derived = useMasterThreadDerivedData(thread, runtimeSummary, silentHistoryEntries);
+  const proposalState = useMasterThreadProposals({
+    proposalCard,
+    proposalEntries,
+    onProposalLifecycleChange,
+    proposalActions,
+    silentHistoryEntries,
+  });
 
-  useEffect(() => {
-    if (proposals.length === 0) {
-      if (selectedProposalId !== null) {
-        setSelectedProposalId(null);
-      }
-      return;
-    }
+  const {
+    threadParticipants,
+    threadTurns,
+    threadMessages,
+    threadMessageMap,
+    recentThreadMessages,
+    recentSilentHistoryEntries,
+    recentTurns,
+    ghostActions,
+    activeParticipantCount,
+    waitingParticipantCount,
+    inactiveParticipantCount,
+  } = derived;
 
-    if (!selectedProposalId || !proposals.some((proposal) => proposal.id === selectedProposalId)) {
-      setSelectedProposalId(proposals[0].id);
-    }
-  }, [proposals, selectedProposalId]);
-
-  const selectedProposal = proposals.find((proposal) => proposal.id === selectedProposalId) ?? proposals[0] ?? null;
-  const threadParticipants = thread.participants ?? [];
-  const threadMessages = thread.messages ?? [];
-  const threadTurns = thread.turns ?? [];
-  const canMutateSelectedProposal =
-    Boolean(selectedProposal?.mutable) &&
-    (selectedProposal?.lifecycle === 'draft' || selectedProposal?.lifecycle === 'deferred') &&
-    Boolean(onProposalLifecycleChange);
-  const canApproveSelectedProposal = Boolean(
-    selectedProposal?.controls?.approve && proposalActions?.onApprove,
-  );
-  const canDismissSelectedProposal = Boolean(
-    selectedProposal?.controls?.dismiss && proposalActions?.onDismiss,
-  );
-  const canEditSelectedProposal = Boolean(selectedProposal?.controls?.edit && proposalActions?.onEdit);
-  const canRerouteSelectedProposal = Boolean(
-    selectedProposal?.controls?.reroute && proposalActions?.onEdit,
-  );
-
-  useEffect(() => {
-    if (!selectedProposal || !canEditSelectedProposal) {
-      setIsEditingSelectedProposal(false);
-      setEditTargetModuleId('');
-      setEditReason('');
-      return;
-    }
-
-    setEditTargetModuleId(selectedProposal.targetModuleId ?? '');
-    setEditReason(selectedProposal.editReason ?? '');
-  }, [canEditSelectedProposal, selectedProposal]);
-
-  useEffect(() => {
-    setIsEditingSelectedProposal(false);
-  }, [selectedProposalId]);
-
-  const editableTargetModules = useMemo(
-    () =>
-      Object.keys(MODULE_MANIFEST).filter(
-        (moduleId): moduleId is ModuleId => moduleId !== 'nexus',
-      ),
-    [],
-  );
-  const threadMessageMap = useMemo(
-    () => new Map(threadMessages.map((message) => [message.id, message])),
-    [threadMessages],
-  );
-  const recentThreadMessages = useMemo(
-    () => [...threadMessages].sort(compareMasterThreadMessages).slice(-4),
-    [threadMessages],
-  );
-  const ghostActions = useMemo(
-    () =>
-      runtimeSummary?.actions.filter(
-        (action) => action.executionMode === 'ghost' || action.runtime.disposition === 'silent_execution',
-      ) ?? [],
-    [runtimeSummary],
-  );
-  const recentTurns = useMemo(
-    () => [...threadTurns].sort(compareMasterThreadTurns).slice(-4),
-    [threadTurns],
-  );
-  const recentSilentHistoryEntries = useMemo(
-    () => [...silentHistoryEntries].sort((left, right) => right.timestamp.localeCompare(left.timestamp)).slice(0, 3),
-    [silentHistoryEntries],
-  );
-  const selectedSilentHistoryEntry = useMemo(
-    () => silentHistoryEntries.find((entry) => entry.id === selectedSilentHistoryId) ?? null,
-    [selectedSilentHistoryId, silentHistoryEntries],
-  );
-  const activeParticipantCount = useMemo(
-    () => threadParticipants.filter((participant) => participant.state === 'active' || participant.state === 'joined').length,
-    [threadParticipants],
-  );
-  const waitingParticipantCount = useMemo(
-    () => threadParticipants.filter((participant) => participant.state === 'invited' || participant.state === 'waiting').length,
-    [threadParticipants],
-  );
-  const inactiveParticipantCount = useMemo(
-    () => threadParticipants.filter((participant) => participant.state === 'dismissed' || participant.state === 'left').length,
-    [threadParticipants],
-  );
-
-  useEffect(() => {
-    if (selectedSilentHistoryId && !selectedSilentHistoryEntry) {
-      setSelectedSilentHistoryId(null);
-    }
-  }, [selectedSilentHistoryEntry, selectedSilentHistoryId]);
+  const {
+    proposals,
+    selectedProposal,
+    setSelectedProposalId,
+    canMutateSelectedProposal,
+    canApproveSelectedProposal,
+    canDismissSelectedProposal,
+    canEditSelectedProposal,
+    canRerouteSelectedProposal,
+    isEditingSelectedProposal,
+    setIsEditingSelectedProposal,
+    editTargetModuleId,
+    setEditTargetModuleId,
+    editReason,
+    setEditReason,
+    editableTargetModules,
+    selectedSilentHistoryEntry,
+    setSelectedSilentHistoryId,
+    handleApprove,
+    handleDismiss,
+    handleLifecycleToggle,
+    handleEditSave,
+    handleEditCancel,
+  } = proposalState;
 
   return (
     <section
@@ -900,24 +783,14 @@ export function MasterThreadStatusCard({
                         <button
                           type="button"
                           className="rounded-lg border border-white/[0.12] bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70 transition hover:bg-white/[0.08]"
-                          onClick={() => {
-                            setIsEditingSelectedProposal(false);
-                            setEditTargetModuleId(selectedProposal.targetModuleId ?? '');
-                            setEditReason(selectedProposal.editReason ?? '');
-                          }}
+                          onClick={handleEditCancel}
                         >
                           Cancel
                         </button>
                         <button
                           type="button"
                           className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100 transition hover:bg-cyan-500/15"
-                          onClick={() => {
-                            proposalActions?.onEdit?.(selectedProposal, {
-                              targetModuleId: editTargetModuleId || undefined,
-                              reason: editReason.trim(),
-                            });
-                            setIsEditingSelectedProposal(false);
-                          }}
+                          onClick={handleEditSave}
                         >
                           Save changes
                         </button>
@@ -942,7 +815,7 @@ export function MasterThreadStatusCard({
                           <button
                             type="button"
                             className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200 transition hover:bg-emerald-500/15"
-                            onClick={() => selectedProposal && proposalActions?.onApprove?.(selectedProposal)}
+                            onClick={handleApprove}
                           >
                             <Check className="h-3.5 w-3.5" aria-hidden />
                             Approve
@@ -952,12 +825,7 @@ export function MasterThreadStatusCard({
                           <button
                             type="button"
                             className="rounded-lg border border-white/[0.12] bg-white/[0.045] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75 transition hover:bg-white/[0.08]"
-                            onClick={() =>
-                              onProposalLifecycleChange?.(
-                                selectedProposal.proposalId,
-                                selectedProposal.lifecycle === 'draft' ? 'deferred' : 'draft',
-                              )
-                            }
+                            onClick={handleLifecycleToggle}
                           >
                             {selectedProposal.lifecycle === 'draft' ? 'Defer' : 'Restore'}
                           </button>
@@ -984,7 +852,7 @@ export function MasterThreadStatusCard({
                           <button
                             type="button"
                             className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-200 transition hover:bg-rose-500/15"
-                            onClick={() => selectedProposal && proposalActions?.onDismiss?.(selectedProposal)}
+                            onClick={handleDismiss}
                           >
                             <X className="h-3.5 w-3.5" aria-hidden />
                             Dismiss

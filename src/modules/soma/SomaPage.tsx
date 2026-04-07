@@ -13,6 +13,7 @@ import type { VitalReading as UIVitalReading, PhysicalAssessment as UIPhysicalAs
 import type { PhysicalAssessment as StoredPhysicalAssessment } from '@/lib/types';
 import type { MessageContent } from '@/cortex-bridge/types';
 import { ActionHub } from '@/lib/actions/action-hub';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import type { SpineEventType } from '@/lib/types';
 import {
   loadSomaProfile,
@@ -104,6 +105,7 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
   const handleAnalyzeDocument = useCallback(async (content: MessageContent): Promise<string> => {
     try {
       const { response } = await sendMessage(content, {
+        moduleId: 'soma',
         systemPrompt: 'You are a medical document analysis engine. Return only valid JSON as instructed.',
         memoryContext: [],
         summary: 'Document analysis.',
@@ -119,6 +121,7 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
   const handleChatDocumentUploads = useCallback(async (request: DocumentUploadRequest) => {
     const llmPrimary = async (prompt: string) => {
       const { response } = await sendMessage(prompt, {
+        moduleId: 'soma',
         systemPrompt: 'You are a medical document triage analyst. Return only valid JSON as instructed.',
         memoryContext: [],
         summary: 'Soma document triage.',
@@ -129,6 +132,7 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
 
     const llmFallback = async (prompt: string) => {
       const { response } = await sendMessage(prompt, {
+        moduleId: 'soma',
         systemPrompt: 'Return only valid JSON matching the requested schema.',
         memoryContext: [],
         summary: 'Soma document triage fallback.',
@@ -273,7 +277,11 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
             emitSpineEvent: (type: SpineEventType, data: Record<string, unknown>) => {
               Spine.emit({ type, source: 'soma', domain: 'B', data, cascadeDepth: 0, priority: 'info' });
             },
-            updateGlobalSoul: async () => {},
+            updateGlobalSoul: async (patch) => {
+              if (user?.uid) {
+                await GlobalProjectionService.updateCrossFunctionalState(user.uid, patch);
+              }
+            },
             delegateToModule: () => {},
             pushAssistantMessage: (msg: string) => {
               ai.setMessages(prev => [...prev, { role: 'assistant' as const, content: msg, timestamp: new Date().toISOString() }]);

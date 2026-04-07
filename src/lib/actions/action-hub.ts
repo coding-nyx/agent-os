@@ -63,14 +63,14 @@ function getMetricValueFromPatch(patch: NeuralStateVectorPatch, metric: NSVMetri
   // NeuralStateVectorPatch supports both domain-based updates (e.g. `cognitive.researchLoad`)
   // and legacy root aliases (e.g. `cnsFatigue`, `emotionalResilience`).
   switch (metric) {
-    case 'biological.cnsFatigue': return patch.biological?.cnsFatigue ?? (patch as any).cnsFatigue;
-    case 'biological.sleepQuality': return patch.biological?.sleepQuality ?? (patch as any).sleepQuality;
+    case 'biological.cnsFatigue': return patch.biological?.cnsFatigue ?? patch.cnsFatigue;
+    case 'biological.sleepQuality': return patch.biological?.sleepQuality ?? patch.sleepQuality;
     case 'biological.recoveryScore': return patch.biological?.recoveryScore;
-    case 'biological.hormonalContext': return patch.biological?.hormonalContext ?? (patch as any).hormonalContext;
-    case 'emotional.emotionalResilience': return patch.emotional?.emotionalResilience ?? (patch as any).emotionalResilience;
+    case 'biological.hormonalContext': return patch.biological?.hormonalContext ?? patch.hormonalContext;
+    case 'emotional.emotionalResilience': return patch.emotional?.emotionalResilience ?? patch.emotionalResilience;
     case 'emotional.stressLoad': return patch.emotional?.stressLoad;
     case 'emotional.moodTrend': return patch.emotional?.moodTrend;
-    case 'emotional.traumaMarkers': return patch.emotional?.traumaMarkers ?? (patch as any).traumaMarkers;
+    case 'emotional.traumaMarkers': return patch.emotional?.traumaMarkers ?? patch.traumaMarkers;
     case 'cognitive.energyBudget': return patch.cognitive?.energyBudget;
     case 'cognitive.focusScore': return patch.cognitive?.focusScore;
     case 'cognitive.activeLoad': return patch.cognitive?.activeLoad;
@@ -102,9 +102,10 @@ function filterReadOnlyModuleNSVUpdate(
 
     const [domain, leaf] = metric.split('.') as ['biological' | 'emotional' | 'cognitive' | 'planning' | 'resource', string];
     // Domain objects are optional; we only create them if we have a value to write.
-    const domainObj = (filtered as any)[domain] ?? {};
+    const patchRecord = filtered as Record<string, Record<string, unknown>>;
+    const domainObj = patchRecord[domain] ?? {};
     domainObj[leaf] = value;
-    (filtered as any)[domain] = domainObj;
+    patchRecord[domain] = domainObj;
     wroteAny = true;
   }
 
@@ -210,9 +211,7 @@ class ModuleActionHub {
       try {
         const { useOrchestrationStore } = await import('../stores/orchestration-store');
         useOrchestrationStore.getState().recordActionFailure(actionType);
-      } catch {
-        // ignore — store may not be available in all contexts
-      }
+      } catch (e) { NexusLogger.warn('ActionHub', 'Orchestration store unavailable'); }
 
       return false;
     }
@@ -318,7 +317,7 @@ class ModuleActionHub {
     }
 
     // Autopilot policy check
-    const autopilotLevel = (context.orchestration as any)?.autopilotLevel ?? 0;
+    const autopilotLevel = context.orchestration?.autopilotLevel ?? 0;
     if (autopilotLevel > 0) {
       try {
         const { AutopilotActionPolicyService } = await import('../services/autopilot-action-policy-service');
@@ -327,9 +326,7 @@ class ModuleActionHub {
           // Don't surface to user — just block silently and log
           return true;
         }
-      } catch {
-        // If policy service unavailable, allow through
-      }
+      } catch (e) { NexusLogger.warn('ActionHub', 'Policy service unavailable, allowing through'); }
     }
 
     const scopedContext: ActionContext = {

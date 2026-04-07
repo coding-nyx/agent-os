@@ -78,7 +78,7 @@ const STATE_DISPLAY: Record<AtlasState, Omit<AtlasStateDisplay, 'state'>> = {
   },
 };
 
-const _engine = new (AtlasPredictiveEngineJs as any)();
+const _engine = new AtlasPredictiveEngineJs();
 
 // ─── Service Class ─────────────────────────────────────────────────────────────
 

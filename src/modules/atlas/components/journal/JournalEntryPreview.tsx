@@ -16,6 +16,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import DOMPurify from 'dompurify';
 import {
   PencilLine,
   X,
@@ -30,6 +31,21 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import type {
   JournalEntry,
 } from '@/lib/types';
+
+/**
+ * Sanitize user-authored HTML to prevent XSS.
+ * Allows only safe inline/block formatting tags produced by the rich-text editor.
+ */
+function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'b', 'i', 'em', 'strong', 'u', 's', 'a',
+      'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+    ALLOW_DATA_ATTR: false,
+  });
+}
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 
@@ -209,7 +225,7 @@ export function JournalEntryPreview({
         >
           <div
             className="rich-preview text-sm text-white/80 italic leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: entry.morningIntent }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(entry.morningIntent) }}
           />
         </PreviewSection>
       )}
@@ -234,7 +250,7 @@ export function JournalEntryPreview({
         >
           <div
             className="rich-preview text-sm text-white/80 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: entry.freeform }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(entry.freeform) }}
           />
         </PreviewSection>
       )}
@@ -247,7 +263,7 @@ export function JournalEntryPreview({
         >
           <div
             className="rich-preview text-sm text-white/80 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: entry.eveningReflection }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(entry.eveningReflection) }}
           />
         </PreviewSection>
       )}
@@ -283,7 +299,7 @@ export function JournalEntryPreview({
           {/* Amber tint signals friction without being alarming */}
           <div
             className="rich-preview text-sm text-amber-300/80 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: entry.blockers }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(entry.blockers) }}
           />
         </PreviewSection>
       )}

@@ -41,7 +41,12 @@ export function NeuralDropdown({ trigger, items, align = 'start', className }: N
 
   return (
     <div ref={containerRef} className={cn('relative inline-block', className)}>
-      <div onClick={() => setOpen((prev) => !prev)}>{trigger}</div>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((prev) => !prev)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((prev) => !prev); } }}
+      >{trigger}</div>
       {open && (
         <div
           role="menu"

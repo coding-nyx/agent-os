@@ -1,7 +1,8 @@
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
+import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
+import { LoadContext } from '@/lib/types/encrypted-document';
 import type {
   AtlasProfile,
   AtlasGoal,
@@ -43,13 +44,6 @@ export type {
   TemporalReview,
   AtlasReviewBlueprint
 } from '@/lib/types';
-
-const GUEST_ATLAS_KEY = 'nexus_atlas_profile_guest';
-const VAULT_SALT_MARKER = 'vault_salt_used';
-type LoadContext = {
-  userId?: string | null;
-  encryptionKey?: CryptoKey | null;
-};
 
 function parseNumber(value: unknown, fallback = 0): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -149,62 +143,42 @@ export function createEmptyAtlasProfile(): AtlasProfile {
   };
 }
 
-export async function loadAtlasProfile({ userId, encryptionKey }: LoadContext): Promise<AtlasProfile | null> {
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>('atlas_profiles', userId);
-    if (!data) return null;
-    if (!data?.encryptedData || !data?.iv) return null;
+// ---------------------------------------------------------------------------
+// Factory instance — all encryption / decryption / guest logic lives here.
+// ---------------------------------------------------------------------------
 
-    try {
-      const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-      return normalizeAtlasProfile(JSON.parse(decrypted));
-    } catch (error) {
-      console.error('Failed to decrypt atlas profile:', error);
-      return null;
-    }
-  }
+const _service = createEncryptedProfileService<AtlasProfile>({
+  collection: 'atlas_profiles',
+  guestStorageKey: 'nexus_atlas_profile_guest',
+  createEmpty: createEmptyAtlasProfile,
+  normalize: normalizeAtlasProfile,
+  metadataProjection: (p) => ({
+    onboardingComplete: p.onboardingComplete,
+    windows: p.recoveryWindows.length,
+  }),
+});
 
-  return loadGuestAtlasProfile();
-}
+// ---------------------------------------------------------------------------
+// Public API — load / subscribe / guest / sync use factory directly.
+// ---------------------------------------------------------------------------
 
-export function subscribeAtlasProfile(
-  { userId, encryptionKey }: LoadContext,
-  onUpdate: (profile: AtlasProfile | null) => void
-): () => void {
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const unsubscribe = dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
-      'atlas_profiles',
-      userId,
-      async (data) => {
-        if (!data) {
-          onUpdate(null);
-          return;
-        }
-        if (!data?.encryptedData || !data?.iv) {
-          onUpdate(null);
-          return;
-        }
-        try {
-          const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-          onUpdate(normalizeAtlasProfile(JSON.parse(decrypted)));
-        } catch (error) {
-          console.error('Failed to decrypt atlas profile:', error);
-          onUpdate(null);
-        }
-      }
-    );
-    return unsubscribe;
-  }
+export const loadAtlasProfile: (ctx: LoadContext) => Promise<AtlasProfile | null> =
+  _service.load.bind(_service);
 
-  onUpdate(loadGuestAtlasProfile());
-  return () => {};
-}
+export const subscribeAtlasProfile: (
+  ctx: LoadContext,
+  onUpdate: (profile: AtlasProfile | null) => void,
+) => () => void = _service.subscribe.bind(_service);
 
-// ── Debounced write queue ─────────────────────────────────────────────────
+export const syncGuestAtlasProfileToUser: (ctx: LoadContext) => Promise<boolean> =
+  _service.syncGuestToUser.bind(_service);
+
+// ---------------------------------------------------------------------------
+// Debounced write queue (Atlas-specific)
 // Batches rapid profile saves within a 500ms window into a single Firestore write.
 // Keyed by userId so multiple users in the same session are isolated.
+// ---------------------------------------------------------------------------
+
 const _pendingWrites = new Map<string, {
   profile: AtlasProfile;
   context: { userId: string; encryptionKey: CryptoKey | null };
@@ -229,46 +203,31 @@ async function flushWrite(userId: string): Promise<void> {
 async function _doSaveAtlasProfile(profile: AtlasProfile, { userId, encryptionKey }: { userId: string | null; encryptionKey: CryptoKey | null }): Promise<void> {
   const normalized = normalizeAtlasProfile(profile);
 
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
-    try {
-      await dataLayer.setDocument('atlas_profiles', userId, {
-        encryptedData: encrypted.ciphertext,
-        iv: encrypted.iv,
-        salt: VAULT_SALT_MARKER,
-        metadata: {
-          onboardingComplete: normalized.onboardingComplete,
-          lastActive: new Date().toISOString(),
-          windows: normalized.recoveryWindows.length
-        }
-      });
-    } catch (error) {
-      console.error('[AtlasProfileService] Failed to save atlas profile:', error);
-    }
-    try {
-      await syncAliveEntities(
-        dataLayer,
-        bootstrapAliveEntities({
-          goals: normalized.goals,
-          habits: normalized.habits,
-        }),
-        { uid: userId, pruneMissingWithinIncomingPrefixes: true },
-      );
-    } catch (error) {
-      console.error('[AtlasProfileService] Failed to sync alive entities:', error);
-    }
-    try {
-      await GlobalProjectionService.updateCrossFunctionalState(userId, {
-        cognitive: { activeLoad: normalized.taskGraph.length }
-      });
-    } catch (error) {
-      console.error('[AtlasProfileService] Failed to update cross-functional state:', error);
-    }
-    return;
-  }
+  // Delegate encryption + Firestore write (or guest localStorage) to the factory.
+  await _service.save(normalized, { userId, encryptionKey });
 
-  saveGuestAtlasProfile(normalized);
+  // Side effects — only for authenticated users.
+  if (!userId) return;
+
+  try {
+    await syncAliveEntities(
+      getNexusDataLayer(),
+      bootstrapAliveEntities({
+        goals: normalized.goals,
+        habits: normalized.habits,
+      }),
+      { uid: userId, pruneMissingWithinIncomingPrefixes: true },
+    );
+  } catch (error) {
+    console.error('[AtlasProfileService] Failed to sync alive entities:', error);
+  }
+  try {
+    await GlobalProjectionService.updateCrossFunctionalState(userId, {
+      cognitive: { activeLoad: normalized.taskGraph.length }
+    });
+  } catch (error) {
+    console.error('[AtlasProfileService] Failed to update cross-functional state:', error);
+  }
 }
 
 export async function saveAtlasProfile(
@@ -297,38 +256,4 @@ export async function saveAtlasProfile(
       timer,
     });
   });
-}
-
-export async function syncGuestAtlasProfileToUser({ userId, encryptionKey }: LoadContext): Promise<boolean> {
-  if (!userId || !encryptionKey) return false;
-
-  const guestProfile = loadGuestAtlasProfile();
-  if (!guestProfile) return false;
-
-  const dataLayer = getNexusDataLayer();
-  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('atlas_profiles', userId);
-  if (existing?.encryptedData) return false;
-
-  await saveAtlasProfile(guestProfile, { userId, encryptionKey });
-  clearGuestAtlasProfile();
-  return true;
-}
-
-export function loadGuestAtlasProfile(): AtlasProfile | null {
-  const raw = localStorage.getItem(GUEST_ATLAS_KEY);
-  if (!raw) return null;
-  try {
-    return normalizeAtlasProfile(JSON.parse(raw));
-  } catch (error) {
-    console.error('Failed to parse guest atlas profile:', error);
-    return null;
-  }
-}
-
-export function saveGuestAtlasProfile(profile: AtlasProfile): void {
-  localStorage.setItem(GUEST_ATLAS_KEY, JSON.stringify(normalizeAtlasProfile(profile)));
-}
-
-export function clearGuestAtlasProfile(): void {
-  localStorage.removeItem(GUEST_ATLAS_KEY);
 }

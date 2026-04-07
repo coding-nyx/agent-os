@@ -12,7 +12,9 @@ import {
  * Common regex for detecting implicit completion signals in AI responses.
  */
 function hasImplicitCompletionSignal(text: string): boolean {
-  return /\b(onboarding (?:is )?complete|intake (?:is )?complete|(?:(?:have|got) )?(?:all|everything) (?:the )?(?:information|(?:that )?i need|i need)|let'?s (?:finalize|begin|get started|move on|proceed|start our)|we(?:'re| are) (?:done|all set|good to go|ready)|protocol commit|finalize (?:the )?intake|ready to (?:begin|start|proceed)|baseline (?:is )?(?:set|established|complete|synchronized)|intake (?:is )?(?:finalized|done)|neural baseline (?:is )?(?:now )?synchronized)\b/i.test(
+  // NOTE: Avoid matching early-conversation phrases like "let's get started" or
+  // "let's begin" — those trigger false positives on the first AI response.
+  return /\b(onboarding (?:is )?complete|intake (?:is )?complete|(?:(?:have|got) )?(?:all|everything) (?:the )?(?:information|(?:that )?i need|i need)|let'?s (?:finalize|move on|proceed|wrap up)|we(?:'re| are) (?:done|all set|good to go|ready to go)|protocol commit|finalize (?:the )?intake|ready to proceed|baseline (?:is )?(?:set|established|complete|synchronized)|intake (?:is )?(?:finalized|done)|neural baseline (?:is )?(?:now )?synchronized)\b/i.test(
     text
   );
 }
@@ -78,7 +80,8 @@ export function useIntakeOrchestrator<TState extends { stepProgress: number }, T
     if (focusAction) {
       const targetStepIndex = steps.findIndex(s => s.focusActions?.includes(focusAction.type));
       if (targetStepIndex !== -1) {
-        nextStep = targetStepIndex;
+        // Only allow forward movement — never regress to an earlier step
+        nextStep = Math.max(nextStep, targetStepIndex);
       }
     } else {
       // 4. Fallback: Step inference from keywords in assistant response
@@ -136,6 +139,7 @@ export function useIntakeOrchestrator<TState extends { stepProgress: number }, T
     placeholder,
     canSend,
     buildContext: (state, history) => ({
+      moduleId,
       systemPrompt,
       memoryContext: [],
       summary: `${summary} Step: ${steps[state.stepProgress]?.label || 'Intake'}`,

@@ -84,8 +84,9 @@ export class InMemoryDataLayer implements NexusDataLayer {
     return record ? cloneValue(record) : null;
   }
 
-  async listDocuments<T>(collection: string): Promise<NexusRecord<T>[]> {
-    return this.query<T>({ collection });
+  async listDocuments<T>(collection: string, options?: { limit?: number }): Promise<NexusRecord<T>[]> {
+    const cap = options?.limit ?? 100;
+    return this.query<T>({ collection, ...(cap > 0 ? { limit: cap } : {}) });
   }
 
   async query<T>(nexusQuery: NexusQuery): Promise<NexusRecord<T>[]> {

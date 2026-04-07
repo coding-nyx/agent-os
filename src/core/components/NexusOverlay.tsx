@@ -113,6 +113,7 @@ function NexusOverlayContent() {
   const handleUploadDocuments = useCallback(async (request: DocumentUploadRequest) => {
     const llmPrimary = async (prompt: string) => {
       const { response } = await sendMessage(prompt, {
+        moduleId: 'nexus',
         systemPrompt: 'You are a neutral document analyst. Follow the instructions exactly.',
         memoryContext: [],
         summary: 'Nexus document analysis.',
@@ -122,6 +123,7 @@ function NexusOverlayContent() {
     };
     const llmFallback = async (prompt: string) => {
       const { response } = await sendMessage(prompt, {
+        moduleId: 'nexus',
         systemPrompt: 'Return a concise summary and key points. No action tags.',
         memoryContext: [],
         summary: 'Nexus document fallback.',

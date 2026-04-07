@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity } from 'lucide-react';
 import { Spine } from '@/lib/spine/spine-event-bus';
@@ -25,12 +25,21 @@ export function SpineOverlay() {
   const spineVisible = useSpineVisible();
   const setSpineVisible = useSetSpineVisible();
 
+  // Throttle Spine wildcard subscription to at most one React render per frame.
+  // Events arriving between frames are batched into a single setState call.
+  const pendingRef = useRef<SpinePulse[]>([]);
+  const rafRef = useRef<number | null>(null);
   useEffect(() => {
     return Spine.on('*', (event) => {
-      setPulses((prev) => [
-        { ...event, uiId: `${event.id}-${Date.now()}` },
-        ...prev
-      ].slice(0, 8));
+      pendingRef.current.push({ ...event, uiId: `${event.id}-${Date.now()}` });
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          const batch = pendingRef.current;
+          pendingRef.current = [];
+          rafRef.current = null;
+          setPulses((prev) => [...batch, ...prev].slice(0, 8));
+        });
+      }
     });
   }, []);
 

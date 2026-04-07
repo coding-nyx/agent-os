@@ -1,7 +1,7 @@
 import { MedicalClearanceEvaluatorJs } from '@cortex-logic';
 import type { SomaProfile, ClearanceRecord } from '@/lib/types';
 
-const _evaluator = new (MedicalClearanceEvaluatorJs as any)();
+const _evaluator = new MedicalClearanceEvaluatorJs();
 
 export class ClearanceService {
   static evaluate(profile: SomaProfile, activity: string): ClearanceRecord {

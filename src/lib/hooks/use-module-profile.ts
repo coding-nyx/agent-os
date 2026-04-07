@@ -123,7 +123,11 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       hasLoadedOnce.current = true;
     };
 
-    init();
+    init().catch((e) => {
+      if (!mounted) return;
+      console.error(`[useModuleProfile] ${moduleId} init failed:`, e);
+      setIsLoading(false);
+    });
 
     return () => {
       mounted = false;
@@ -140,7 +144,9 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
       if (!syncGuestProfileRef.current) return;
       const synced = await syncGuestProfileRef.current({ userId: user.uid, encryptionKey: key });
       if (synced) setHasSyncedGuest(true);
-    })();
+    })().catch((e) => {
+      console.error(`[useModuleProfile] ${moduleId} guest sync failed:`, e);
+    });
   }, [user?.uid, isUnlocked, hasSyncedGuest, getMasterKey, moduleId]);
 
   const persistProfile = useCallback(async (p: TProfile) => {

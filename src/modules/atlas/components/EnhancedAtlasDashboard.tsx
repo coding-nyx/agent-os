@@ -175,14 +175,17 @@ function ViewDropdown({
 
 const noop = () => {};
 
-export function EnhancedAtlasDashboard({
+const EMPTY_EXTENSIONS: never[] = [];
+const EMPTY_FIELD_VALUES: Record<string, import('@/lib/field-system/types').FieldValue> = {};
+
+export const EnhancedAtlasDashboard = React.memo(function EnhancedAtlasDashboard({
   soul,
   profile,
   isLocked = false,
   activeTab = 'dashboard',
   activeView = 'today',
-  extensions = [],
-  fieldValues = {},
+  extensions = EMPTY_EXTENSIONS,
+  fieldValues = EMPTY_FIELD_VALUES,
   encryptionKey = null,
   weeklyReviewPending = false,
   morningBriefVisible = false,
@@ -915,4 +918,4 @@ export function EnhancedAtlasDashboard({
 
     </div>
   );
-}
+});

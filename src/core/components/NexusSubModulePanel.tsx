@@ -6,7 +6,7 @@ import { PersonaPromptCatalogJs } from '@cortex-logic';
 import { MODULE_MANIFEST, ModuleId } from '@/lib/module-manifest';
 import { NexusChat } from './NexusChat';
 
-const _catalog = PersonaPromptCatalogJs ? new (PersonaPromptCatalogJs as any)() : null;
+const _catalog = PersonaPromptCatalogJs ? new PersonaPromptCatalogJs() : null;
 
 interface NexusSubModulePanelProps {
   moduleId: string;

@@ -1,4 +1,5 @@
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { NexusLogger } from '@/lib/nexus-logger';
 
 export type NexusHandoffType = 'delegate' | 'query' | 'query_result';
 
@@ -52,7 +53,7 @@ export const NexusHandoffService = {
     for (const [moduleId, handoff] of Object.entries(cache)) {
       await dl
         .setDocument<NexusHandoff>(pendingCollection(), moduleId, handoff)
-        .catch(() => {});
+        .catch((e) => { NexusLogger.warn('HandoffService', 'Failed to write handoff document', e); });
     }
     // sessionStorage now serves only as a same-tab write-through cache
   },
@@ -90,7 +91,7 @@ export const NexusHandoffService = {
       if (_userId) {
         getNexusDataLayer()
           .deleteDocument(pendingCollection(), moduleId)
-          .catch(() => {});
+          .catch((e) => { NexusLogger.warn('HandoffService', 'Failed to delete handoff document', e); });
       }
       return handoff;
     }
@@ -101,9 +102,10 @@ export const NexusHandoffService = {
     try {
       const doc = await dl.getDocument<NexusHandoff>(pendingCollection(), moduleId);
       if (!doc) return null;
-      await dl.deleteDocument(pendingCollection(), moduleId).catch(() => {});
+      await dl.deleteDocument(pendingCollection(), moduleId).catch((e) => { NexusLogger.warn('HandoffService', 'Failed to delete handoff document', e); });
       return doc;
-    } catch {
+    } catch (err) {
+      console.warn('[NexusHandoffService] Failed to consume handoff from Firestore:', err);
       return null;
     }
   },

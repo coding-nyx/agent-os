@@ -50,10 +50,5 @@ export interface FlowRegistrySchema {
   proposals: FlowProposalSpec[];
 }
 
-// Placeholder: the actual registry will be defined in Phase 1.
-export const FLOW_REGISTRY: FlowRegistrySchema = {
-  intents: [],
-  actions: [],
-  events: [],
-  proposals: [],
-};
+// The populated registry lives in registry.ts (imports registry.json).
+// Import FLOW_REGISTRY from '@/lib/flow-registry/registry' — not from this file.

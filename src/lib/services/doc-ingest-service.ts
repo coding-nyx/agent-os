@@ -154,10 +154,7 @@ async function ocrImageHybrid(dataUrl: string): Promise<string> {
   // Let's keep the hybrid approach but logging will help us see if Tesseract is "stealing" the job.
 
   try {
-    console.log('[DocIngest] Attempting local OCR (Tesseract)...');
     const localText = await ocrImageLocal(dataUrl);
-    console.log('[DocIngest] Local OCR result length:', localText.length);
-    console.log('[DocIngest] Local OCR preview:', localText.slice(0, 100));
     
     // INCREASE THRESHOLD: Medical images often have some text (patient name, date) but we want the VISION DESCRIPTION.
     // If Tesseract returns just "Patient Name: John Doe", that's > 40 chars but useless for diagnosis.
@@ -166,15 +163,12 @@ async function ocrImageHybrid(dataUrl: string): Promise<string> {
     // But this function is generic doc-ingest.
     
     if (localText && localText.length > 100) {
-       console.log('[DocIngest] Local OCR result > 100 chars, returning result.');
        return localText;
     }
-    console.log('[DocIngest] Local OCR result insufficient (<= 100 chars), falling back to vision.');
   } catch (error) {
     console.warn('[DocIngest] Local OCR failed, falling back to vision:', error);
   }
   
-  console.log('[DocIngest] Calling extractTextWithVision...');
   return extractTextWithVision(dataUrl);
 }
 
@@ -261,11 +255,7 @@ export async function parseDocument(
       notes.push('Parsed as image. Running hybrid OCR.');
       try {
         const dataUrl = await blobToDataURL(new Blob([buffer], { type: mimeType }));
-        console.log('[DocIngest] Image data URL created, length:', dataUrl.length, 'MIME:', mimeType);
-        
-        console.log('[DocIngest] Calling ocrImageHybrid...');
         text = await ocrImageHybrid(dataUrl);
-        console.log('[DocIngest] ocrImageHybrid returned text length:', text.length);
       } catch (err) {
         console.error('[DocIngest] Image processing failed:', err);
         throw err;

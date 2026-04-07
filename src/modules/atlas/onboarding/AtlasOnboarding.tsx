@@ -105,6 +105,7 @@ export function AtlasOnboarding({ initialProfile, initialBaseContext, onGlobalBa
       summary: 'Atlas cognitive onboarding intake.',
       placeholder: 'Describe your energy peaks, crashes, and task pressure...',
       buildContext: (state, history) => ({
+        moduleId: 'atlas',
         systemPrompt: `${ATLAS_ONBOARDING_PROMPT}
 [PREFILLED_BASE_CONTEXT]
 - Name: ${state.baseContext.name || 'Unknown'}
@@ -150,14 +151,31 @@ export function AtlasOnboarding({ initialProfile, initialBaseContext, onGlobalBa
           ['focus_energy_wave', 'focus_load_pressure', 'focus_recovery_constraints', 'focus_execution_baseline'].includes(a.type)
         );
         if (focusAction) {
-          if (focusAction.type === 'focus_energy_wave') nextStep = 0;
-          if (focusAction.type === 'focus_load_pressure') nextStep = 1;
-          if (focusAction.type === 'focus_recovery_constraints') nextStep = 2;
-          if (focusAction.type === 'focus_execution_baseline') nextStep = 3;
+          if (focusAction.type === 'focus_energy_wave') nextStep = Math.max(nextStep, 0);
+          if (focusAction.type === 'focus_load_pressure') nextStep = Math.max(nextStep, 1);
+          if (focusAction.type === 'focus_recovery_constraints') nextStep = Math.max(nextStep, 2);
+          if (focusAction.type === 'focus_execution_baseline') nextStep = Math.max(nextStep, 3);
         }
 
-        const completed = response.actions.some(a => a.type === 'complete_atlas_onboarding');
-        if (completed) { nextProfile.onboardingComplete = true; nextProfile.updatedAt = new Date().toISOString(); nextStep = ATLAS_STEPS.length - 1; }
+        let completed = response.actions.some(a => a.type === 'complete_atlas_onboarding');
+        // Validate minimum required fields before accepting completion
+        if (completed) {
+          const hasEnergyWave = (nextProfile.energyWave?.length ?? 0) >= 1;
+          const hasSummary = typeof nextProfile.summary === 'string' && nextProfile.summary.trim().length > 0;
+          if (!hasEnergyWave || !hasSummary) {
+            completed = false;
+            return {
+              nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep },
+              nextStep,
+              completed: false,
+              assistantMessage: 'Before we finalize, I still need ' +
+                (!hasEnergyWave ? 'at least one energy/focus window' : '') +
+                (!hasEnergyWave && !hasSummary ? ' and ' : '') +
+                (!hasSummary ? 'a summary of your operating pattern' : '') + '.',
+            };
+          }
+          nextProfile.onboardingComplete = true; nextProfile.updatedAt = new Date().toISOString(); nextStep = ATLAS_STEPS.length - 1;
+        }
 
         const rawVitals = response.actions.filter(a => a.type === 'sync_vitals').map(a => a.payload as Partial<NeuralStateVectorPatch>);
         let vitalsPatch: NeuralStateVectorPatch = {};

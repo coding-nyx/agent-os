@@ -43,7 +43,7 @@ function shouldRemoveLocalStorageKey(key: string): boolean {
 
 async function deleteSubcollection(collectionPath: string): Promise<void> {
   const dl = getNexusDataLayer();
-  const docs = await dl.listDocuments(collectionPath);
+  const docs = await dl.listDocuments(collectionPath, { limit: 0 });
   if (docs.length === 0) return;
 
   // NexusDataLayer.batchWrite supports up to 500 operations per call

@@ -74,6 +74,7 @@ export function useFastTrackValidation(moduleId: ModuleId) {
       }
 
       const context: ConversationContext = {
+        moduleId,
         systemPrompt: 'You are a strict onboarding payload validator.',
         memoryContext: [],
         summary: 'Fast-track validation',

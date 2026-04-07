@@ -899,7 +899,25 @@ export class NexusActionPlannerServiceJs {
 }
 
 export class NexusSynthesisServiceJs {
-  synthesize(_contextJson: string) { return j({ summary: '', conflicts: [] }); }
+  private _onEvent: (type: string, dataJson: string) => void;
+  private _surfacedIds = new Set<string>();
+  constructor(onEvent: (type: string, dataJson: string) => void) {
+    this._onEvent = onEvent;
+  }
+  detectConflicts(_nsvJson: string) { return j([]); }
+  shouldSurface(conflictJson: string) {
+    const c = JSON.parse(conflictJson);
+    return !this._surfacedIds.has(c.id);
+  }
+  markSurfaced(conflictJson: string) {
+    const c = JSON.parse(conflictJson);
+    this._surfacedIds.add(c.id);
+    this._onEvent('CONFLICT_DETECTED', conflictJson);
+  }
+  resolveConflict(conflictId: string, resolution: string) {
+    this._surfacedIds.delete(conflictId);
+    this._onEvent('CONFLICT_RESOLVED', j({ conflictId, resolution }));
+  }
 }
 
 // ─── NSV & Soul ─────────────────────────────────────────────────────────────
@@ -1298,24 +1316,66 @@ export class PrecedenceResolverJs {
 // ─── Cognitive Engine ───────────────────────────────────────────────────────
 
 export class CognitiveEngineJs {
-  constructor(..._args: unknown[]) {}
-  streamMessage(_contextJson: string, _onChunk: (chunk: string) => void, _onComplete: (full: string) => void, _onError: (err: string) => void) {
-    _onComplete('');
-    return null;
+  constructor() {}
+  init(
+    _openrouterKey?: string, _geminiKey?: string, _grokKey?: string,
+    _preferredModel?: string, _isMockMode?: boolean
+  ) {}
+  initWithCredentialStore(
+    _store: any, _preferredModel: string, _isMockMode: boolean,
+    onReady: () => void, _onError: (err: string) => void
+  ) {
+    setTimeout(onReady, 0);
+    return new CancellableTask();
   }
-  sendMessage(_contextJson: string, _onComplete: (response: string) => void, _onError: (err: string) => void) {
-    _onComplete(j({ fullText: '', actions: [], model: 'mock' }));
-    return null;
+  reinitFromCredentialStore(
+    _preferredModel: string, onReady: () => void, _onError: (err: string) => void
+  ) {
+    setTimeout(onReady, 0);
   }
-  generateJSON(_contextJson: string, _onComplete: (response: string) => void, _onError: (err: string) => void) {
-    _onComplete('{}');
-    return null;
+  clearCredentials() {}
+  chat(
+    _moduleId: string, _userMessage: string, _historyJson: string,
+    _identity: any, _nsvJson: string,
+    _onChunk: (chunk: { delta: string; isThinking: boolean; isActing: boolean; currentActionType: string | null }) => void,
+    onComplete: (final: { content: string; thoughts: string | null; actionsJson: string; mutationsJson: string }) => void,
+    _onError: (error: string) => void
+  ) {
+    setTimeout(() => onComplete({ content: '', thoughts: null, actionsJson: '[]', mutationsJson: '[]' }), 0);
+    return new CancellableTask();
+  }
+  chatWithContext(
+    _moduleId: string, _userMessage: string, _historyJson: string,
+    _systemPrompt: string, _memoryContextJson: string, _longTermSummary: string,
+    _onChunk: (chunk: { delta: string; isThinking: boolean; isActing: boolean; currentActionType: string | null }) => void,
+    onComplete: (final: { content: string; thoughts: string | null; actionsJson: string; mutationsJson: string }) => void,
+    _onError: (error: string) => void
+  ) {
+    setTimeout(() => onComplete({ content: '', thoughts: null, actionsJson: '[]', mutationsJson: '[]' }), 0);
+    return new CancellableTask();
+  }
+  generateText(
+    _prompt: string, _systemPrompt: string | null,
+    onComplete: (text: string) => void, _onError: (error: string) => void
+  ) {
+    setTimeout(() => onComplete('{}'), 0);
+    return new CancellableTask();
+  }
+  analyzeImage(
+    _imageDataUrl: string, _prompt: string, _systemPrompt: string,
+    onComplete: (text: string) => void, _onError: (error: string) => void
+  ) {
+    setTimeout(() => onComplete(''), 0);
+    return new CancellableTask();
   }
 }
 
-export const CancellableTask = class {
+export class CancellableTask {
+  readonly isActive = false;
+  readonly isCancelled = false;
+  readonly isCompleted = true;
   cancel() {}
-};
+}
 
 export class UserIdentityJs {
   _name: string; _pronouns: string; _uid: string | null; _assignedSex: string | null;
@@ -1814,6 +1874,394 @@ export const TitanPromptBuilderJs = class {
 };
 
 // ─── Agnes ──────────────────────────────────────────────────────────────────
+
+// ─── Belief Graph Service (Wave 9 KMP mock) ────────────────────────────────
+
+const BELIEF_INTENT_STOPWORDS = new Set([
+  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'been', 'being', 'but', 'by', 'for', 'from', 'had',
+  'has', 'have', 'i', 'if', 'in', 'is', 'it', 'its', 'me', 'my', 'of', 'on', 'or', 'so', 'that',
+  'the', 'their', 'them', 'there', 'they', 'this', 'to', 'was', 'we', 'were', 'with', 'you', 'your',
+]);
+const BELIEF_TOKEN_ALIASES: Record<string, string> = {
+  cannot: 'cant', cant: 'cant', couldnt: 'cant',
+  faking: 'fake', fake: 'fake',
+  never: 'not', wont: 'not',
+};
+
+function beliefStemToken(token: string): string {
+  if (token.length <= 3) return token;
+  if (token.endsWith('ing') && token.length > 5) return token.slice(0, -3);
+  if (token.endsWith('ed') && token.length > 4) return token.slice(0, -2);
+  if (token.endsWith('ly') && token.length > 4) return token.slice(0, -2);
+  if (token.endsWith('s') && token.length > 4) return token.slice(0, -1);
+  return token;
+}
+
+function beliefNormalizeIntentToken(rawToken: string): string {
+  const lower = rawToken.toLowerCase().trim();
+  if (!lower) return '';
+  const aliased = BELIEF_TOKEN_ALIASES[lower] ?? lower;
+  const stemmed = beliefStemToken(aliased);
+  return BELIEF_TOKEN_ALIASES[stemmed] ?? stemmed;
+}
+
+function beliefTokenizeIntent(label: string): string[] {
+  const rawTokens = label.toLowerCase().split(/[^a-z0-9]+/g).filter(Boolean);
+  const normalized = rawTokens.map(beliefNormalizeIntentToken).filter(t => t && !BELIEF_INTENT_STOPWORDS.has(t));
+  return Array.from(new Set(normalized));
+}
+
+function beliefCountOverlap(left: string[], right: string[]): number {
+  if (!left.length || !right.length) return 0;
+  const rightSet = new Set(right);
+  let overlap = 0;
+  for (const token of left) { if (rightSet.has(token)) overlap += 1; }
+  return overlap;
+}
+
+function beliefValenceCompatible(a: string, b: string): boolean {
+  return a === b || a === 'neutral' || b === 'neutral';
+}
+
+interface MockBeliefNode { id: string; label: string; valence: string; intensity: number; [k: string]: unknown }
+interface MockBeliefEdge { from: string; to: string; relation: string }
+interface MockBeliefGraph { nodes: MockBeliefNode[]; edges: MockBeliefEdge[]; neuralLinks?: unknown[]; summary: string; createdAt: string; updatedAt: string }
+
+function beliefNormalizeGraph(raw: unknown): MockBeliefGraph {
+  const now = new Date().toISOString();
+  const base: MockBeliefGraph = { nodes: [], edges: [], summary: '', createdAt: now, updatedAt: now };
+  if (!raw || typeof raw !== 'object') return base;
+  const c = raw as Record<string, unknown>;
+  return {
+    ...base,
+    nodes: Array.isArray(c.nodes)
+      ? c.nodes.map((r: Record<string, unknown>, i: number) => {
+          const n = r as Record<string, unknown> | null;
+          return {
+            id: typeof n?.id === 'string' ? n.id : `belief_${i}`,
+            label: typeof n?.label === 'string' ? n.label : 'Belief',
+            valence: n?.valence === 'positive' || n?.valence === 'negative' ? n.valence : 'neutral',
+            intensity: typeof n?.intensity === 'number' ? Math.max(0, Math.min(10, n.intensity)) : 5,
+          };
+        })
+      : [],
+    edges: Array.isArray(c.edges)
+      ? c.edges.map((r: Record<string, unknown>, i: number) => {
+          const e = r as Record<string, unknown> | null;
+          return {
+            from: typeof e?.from === 'string' ? e.from : `belief_${i}`,
+            to: typeof e?.to === 'string' ? e.to : `belief_${i}`,
+            relation: typeof e?.relation === 'string' ? e.relation : 'related',
+          };
+        })
+      : [],
+    summary: typeof c.summary === 'string' ? c.summary : '',
+    createdAt: typeof c.createdAt === 'string' ? c.createdAt : now,
+    updatedAt: typeof c.updatedAt === 'string' ? c.updatedAt : now,
+  };
+}
+
+function beliefEdgeKey(e: MockBeliefEdge): string {
+  return `${e.from}::${e.to}::${e.relation.trim().toLowerCase()}`;
+}
+
+function beliefDedupeByExactLabel(nodes: MockBeliefNode[]) {
+  const byLabel = new Map<string, MockBeliefNode>();
+  const aliasMap = new Map<string, string>();
+  for (const node of nodes) {
+    const label = node.label.trim() || 'Belief';
+    const key = label.trim().toLowerCase();
+    if (!key) continue;
+    const candidate = { ...node, label, intensity: Math.max(0, Math.min(10, node.intensity)) };
+    const existing = byLabel.get(key);
+    if (existing) {
+      if (candidate.intensity >= existing.intensity) { existing.label = candidate.label; existing.valence = candidate.valence; }
+      existing.intensity = Math.max(existing.intensity, candidate.intensity);
+      aliasMap.set(candidate.id, existing.id);
+    } else {
+      byLabel.set(key, candidate);
+      aliasMap.set(candidate.id, candidate.id);
+    }
+  }
+  return { canonicalNodes: Array.from(byLabel.values()), aliasMap };
+}
+
+function beliefMergeNodeInto(target: MockBeliefNode, source: MockBeliefNode) {
+  if (source.intensity >= target.intensity) { target.label = source.label; target.valence = source.valence; }
+  target.intensity = Math.max(target.intensity, source.intensity);
+}
+
+function beliefHeuristicSemanticMerge(canonicalNodes: MockBeliefNode[], aliasMap: Map<string, string>) {
+  const working = [...canonicalNodes];
+  const removed = new Set<string>();
+  for (let i = 0; i < working.length; i++) {
+    const left = working[i]; if (removed.has(left.id)) continue;
+    for (let jj = i + 1; jj < working.length; jj++) {
+      const right = working[jj]; if (removed.has(right.id)) continue;
+      if (!beliefValenceCompatible(left.valence, right.valence)) continue;
+      const lt = beliefTokenizeIntent(left.label), rt = beliefTokenizeIntent(right.label);
+      if (!lt.length || !rt.length) continue;
+      const overlap = beliefCountOverlap(lt, rt);
+      if (overlap === 0) continue;
+      const minSize = Math.min(lt.length, rt.length);
+      const union = new Set([...lt, ...rt]).size;
+      const jaccard = union > 0 ? overlap / union : 0;
+      const containment = minSize > 0 ? overlap / minSize : 0;
+      if (containment >= 0.95 || (containment >= 0.75 && jaccard >= 0.6)) {
+        beliefMergeNodeInto(left, right);
+        removed.add(right.id);
+        aliasMap.set(right.id, left.id);
+      }
+    }
+  }
+  const byId = new Map(working.filter(n => !removed.has(n.id)).map(n => [n.id, n] as const));
+  for (const [fromId, toId] of Array.from(aliasMap.entries())) {
+    const resolved = byId.get(toId);
+    if (resolved) aliasMap.set(fromId, resolved.id);
+  }
+  return working.filter(n => !removed.has(n.id));
+}
+
+function beliefFinalizeCompacted(normalized: MockBeliefGraph, compactedNodes: MockBeliefNode[], aliasMap: Map<string, string>, maxNodes: number): MockBeliefGraph {
+  const limit = Math.max(1, Math.floor(maxNodes));
+  const nodes = [...compactedNodes]
+    .sort((a, b) => { if (b.intensity !== a.intensity) return b.intensity - a.intensity; return a.label.localeCompare(b.label); })
+    .slice(0, limit);
+  const retainedIds = new Set(nodes.map(n => n.id));
+  const edges: MockBeliefEdge[] = [];
+  const seenEdges = new Set<string>();
+  for (const edge of normalized.edges) {
+    const from = aliasMap.get(edge.from) ?? edge.from;
+    const to = aliasMap.get(edge.to) ?? edge.to;
+    if (!retainedIds.has(from) || !retainedIds.has(to) || from === to) continue;
+    const ne = { from, to, relation: edge.relation.trim() || 'related' };
+    const key = beliefEdgeKey(ne);
+    if (seenEdges.has(key)) continue;
+    seenEdges.add(key);
+    edges.push(ne);
+  }
+  return { ...normalized, nodes, edges, updatedAt: new Date().toISOString() };
+}
+
+interface LLMMergePlan { groups: Array<{ canonicalId: string; memberIds: string[] }> }
+
+function beliefApplyLLMMerge(canonicalNodes: MockBeliefNode[], aliasMap: Map<string, string>, plan: LLMMergePlan | null): MockBeliefNode[] {
+  if (!plan || !Array.isArray(plan.groups) || plan.groups.length === 0) return canonicalNodes;
+  const byId = new Map(canonicalNodes.map(n => [n.id, n] as const));
+  const removed = new Set<string>();
+  const consumed = new Set<string>();
+  for (const rawGroup of plan.groups) {
+    if (!rawGroup || typeof rawGroup !== 'object') continue;
+    const memberIds = Array.isArray(rawGroup.memberIds) ? rawGroup.memberIds.filter((id: string) => typeof id === 'string' && byId.has(id)) : [];
+    if (memberIds.length < 2) continue;
+    if (memberIds.some((id: string) => removed.has(id) || consumed.has(id))) continue;
+    const canonicalId = typeof rawGroup.canonicalId === 'string' && memberIds.includes(rawGroup.canonicalId) ? rawGroup.canonicalId : memberIds[0];
+    const canonicalNode = byId.get(canonicalId);
+    if (!canonicalNode || removed.has(canonicalId)) continue;
+    for (const memberId of memberIds) {
+      if (memberId === canonicalId) continue;
+      const memberNode = byId.get(memberId);
+      if (!memberNode || removed.has(memberId)) continue;
+      if (!beliefValenceCompatible(canonicalNode.valence, memberNode.valence)) continue;
+      beliefMergeNodeInto(canonicalNode, memberNode);
+      removed.add(memberId);
+      aliasMap.set(memberId, canonicalId);
+    }
+    memberIds.forEach((id: string) => consumed.add(id));
+  }
+  const compacted = canonicalNodes.filter(n => !removed.has(n.id));
+  const compactedIds = new Set(compacted.map(n => n.id));
+  for (const [fromId, toId] of Array.from(aliasMap.entries())) {
+    if (compactedIds.has(toId)) continue;
+    if (compactedIds.has(fromId)) aliasMap.set(fromId, fromId);
+  }
+  return compacted;
+}
+
+const MAX_MERGE_NODES = 80;
+
+function beliefMergeGraphs(currentJson: string, proposalJson: string): MockBeliefGraph {
+  const base: MockBeliefGraph = currentJson ? beliefNormalizeGraph(JSON.parse(currentJson)) : beliefNormalizeGraph(null);
+  const addition = beliefNormalizeGraph(JSON.parse(proposalJson));
+  const now = new Date().toISOString();
+
+  const nodeByKey = new Map<string, MockBeliefNode>();
+  const nodeRankById = new Map<string, number>();
+  const aliasIdToCanonicalId = new Map<string, string>();
+  const usedIds = new Set<string>();
+  let rankCounter = 0;
+
+  const absorbNode = (node: MockBeliefNode) => {
+    const label = node.label.trim() || 'Belief';
+    const normalizedKey = label.trim().toLowerCase();
+    if (!normalizedKey) return;
+    const existing = nodeByKey.get(normalizedKey);
+    if (existing) {
+      const incomingIntensity = Math.max(0, Math.min(10, node.intensity));
+      if (incomingIntensity >= existing.intensity) { existing.label = label; existing.valence = node.valence; }
+      existing.intensity = Math.max(existing.intensity, incomingIntensity);
+      nodeRankById.set(existing.id, Math.max(nodeRankById.get(existing.id) ?? -1, rankCounter));
+      aliasIdToCanonicalId.set(node.id, existing.id);
+      rankCounter += 1;
+      return;
+    }
+    let canonicalId = node.id?.trim() ? node.id : `belief.${crypto.randomUUID()}`;
+    if (usedIds.has(canonicalId)) canonicalId = `belief.${crypto.randomUUID()}`;
+    usedIds.add(canonicalId);
+    const created = { ...node, id: canonicalId, label, intensity: Math.max(0, Math.min(10, node.intensity)) };
+    nodeByKey.set(normalizedKey, created);
+    nodeRankById.set(canonicalId, rankCounter);
+    aliasIdToCanonicalId.set(node.id, canonicalId);
+    rankCounter += 1;
+  };
+
+  base.nodes.forEach(absorbNode);
+  addition.nodes.forEach(absorbNode);
+
+  const scoredNodes = Array.from(nodeByKey.values())
+    .sort((a, b) => {
+      if (b.intensity !== a.intensity) return b.intensity - a.intensity;
+      const rr = (nodeRankById.get(b.id) ?? -1) - (nodeRankById.get(a.id) ?? -1);
+      if (rr !== 0) return rr;
+      return a.label.localeCompare(b.label);
+    })
+    .slice(0, MAX_MERGE_NODES);
+
+  const retainedIds = new Set(scoredNodes.map(n => n.id));
+  const nextNodes = scoredNodes.sort((a, b) => {
+    if (b.intensity !== a.intensity) return b.intensity - a.intensity;
+    return a.label.localeCompare(b.label);
+  });
+
+  const nextEdges: MockBeliefEdge[] = [];
+  const edgeKeys = new Set<string>();
+  const resolveId = (id: string) => aliasIdToCanonicalId.get(id) ?? id;
+  const pushEdge = (edge: MockBeliefEdge) => {
+    const from = resolveId(edge.from), to = resolveId(edge.to);
+    if (!retainedIds.has(from) || !retainedIds.has(to)) return;
+    const ne = { from, to, relation: edge.relation.trim() || 'related' };
+    if (ne.from === ne.to) return;
+    const key = beliefEdgeKey(ne);
+    if (edgeKeys.has(key)) return;
+    edgeKeys.add(key);
+    nextEdges.push(ne);
+  };
+  for (const edge of base.edges) pushEdge({ ...edge });
+  for (const edge of addition.edges) pushEdge({ ...edge });
+
+  return { nodes: nextNodes, edges: nextEdges, summary: addition.summary.trim() || base.summary, createdAt: base.createdAt || addition.createdAt || now, updatedAt: now };
+}
+
+function beliefRound1(v: number): number { return Math.round(v * 10) / 10; }
+function beliefClampConfidence(v: number): number { return Math.max(0, Math.min(1, v)); }
+
+function beliefEvaluateInvitationThreshold(graphJson: string, resilience: number, stressLoad: number) {
+  const graph: MockBeliefGraph = graphJson ? beliefNormalizeGraph(JSON.parse(graphJson)) : beliefNormalizeGraph(null);
+  const nodes = graph.nodes;
+  const negativeNodes = nodes.filter(n => n.valence === 'negative');
+  const highIntensity = negativeNodes.filter(n => n.intensity >= 7);
+  const severe = negativeNodes.filter(n => n.intensity >= 9);
+  const res = resilience >= 0 ? resilience : null;
+  const stress = stressLoad >= 0 ? stressLoad : null;
+  const avgNeg = negativeNodes.length > 0 ? beliefRound1(negativeNodes.reduce((s, n) => s + n.intensity, 0) / negativeNodes.length) : 0;
+  const rationale: string[] = [];
+  if (highIntensity.length >= 2) rationale.push(`${highIntensity.length} high-intensity negative beliefs are active in the graph.`);
+  if (negativeNodes.length >= 3 && avgNeg >= 6.5) rationale.push(`Negative belief density is elevated (${negativeNodes.length} beliefs averaging ${avgNeg}/10).`);
+  if (severe.length >= 1 && (stress ?? 0) >= 7) rationale.push('A severe negative belief is paired with a high stress signal.');
+  if (severe.length >= 1 && (res ?? 10) <= 4) rationale.push('A severe negative belief is paired with low emotional resilience.');
+  const triggeringBeliefs = [...highIntensity, ...severe]
+    .map(n => n.label.trim())
+    .filter((l, i, a) => l !== '' && a.indexOf(l) === i)
+    .slice(0, 4);
+  const uniqueKeys = rationale.map(r => r.toLowerCase());
+  const fingerprint = [uniqueKeys.join('|') || 'none', ...triggeringBeliefs.map(l => l.toLowerCase()), `stress:${stress ?? 'na'}`, `resilience:${res ?? 'na'}`].join('::');
+  const shouldInvite = rationale.length > 0;
+  const confidence = beliefClampConfidence(0.68 + Math.min(0.18, highIntensity.length * 0.06) + (stress !== null && stress >= 7 ? 0.08 : 0) + (res !== null && res <= 4 ? 0.08 : 0));
+  return {
+    shouldInvite,
+    summary: shouldInvite ? 'Agnes can help unpack this pattern before it hardens into the next session gap.' : 'Belief graph does not currently meet invitation thresholds.',
+    rationale,
+    fingerprint,
+    confidence,
+    triggeringBeliefs,
+    metrics: { totalNodes: nodes.length, negativeCount: negativeNodes.length, highIntensityNegativeCount: highIntensity.length, severeNegativeCount: severe.length, averageNegativeIntensity: avgNeg, resilience: res, stressLoad: stress },
+  };
+}
+
+export class BeliefGraphServiceJs {
+  normalizeGraph(graphJson: string): string {
+    const raw = graphJson ? JSON.parse(graphJson) : null;
+    return j(beliefNormalizeGraph(raw));
+  }
+
+  compactGraph(graphJson: string, maxNodes?: number): string {
+    const normalized = beliefNormalizeGraph(JSON.parse(graphJson));
+    const { canonicalNodes, aliasMap } = beliefDedupeByExactLabel(normalized.nodes);
+    const merged = beliefHeuristicSemanticMerge(canonicalNodes, aliasMap);
+    return j(beliefFinalizeCompacted(normalized, merged, aliasMap, maxNodes ?? 60));
+  }
+
+  compactGraphWithLlm(
+    graphJson: string,
+    maxNodes: number,
+    generateJsonFn: (requestJson: string, onResult: (json: string) => void, onError: (err: string) => void) => void,
+    onComplete: (resultJson: string) => void,
+    onError: (err: string) => void,
+  ): CancellableTask {
+    try {
+      const normalized = beliefNormalizeGraph(JSON.parse(graphJson));
+      const { canonicalNodes, aliasMap } = beliefDedupeByExactLabel(normalized.nodes);
+      const compactNodes = canonicalNodes.map(n => ({ id: n.id, label: n.label, valence: n.valence, intensity: n.intensity }));
+      const prompt = [
+        'Input beliefs (JSON):', JSON.stringify(compactNodes), '',
+        'Return ONLY JSON with this exact shape:', '{"groups":[{"canonicalId":"node-id","memberIds":["node-id"]}]}', '',
+        'Rules:', '- Group only beliefs with the same underlying intent.',
+        '- Never group opposite-intent beliefs (for example: "i am safe" vs "i am unsafe").',
+        '- Keep valence-compatible grouping only (same valence, or one neutral).',
+        '- Every memberId must be present in input. canonicalId must be one of memberIds.',
+      ].join('\n');
+      const requestJson = j({ prompt, systemPrompt: 'You are a strict JSON-only belief deduplication planner.', temperature: 0.1, maxTokens: 900 });
+      generateJsonFn(
+        requestJson,
+        (resultStr: string) => {
+          try {
+            const plan: LLMMergePlan = typeof resultStr === 'string' ? JSON.parse(resultStr) : resultStr;
+            let merged = beliefApplyLLMMerge(canonicalNodes, aliasMap, plan);
+            if (merged === canonicalNodes || merged.length === canonicalNodes.length) {
+              merged = beliefHeuristicSemanticMerge(canonicalNodes, aliasMap);
+            }
+            onComplete(j(beliefFinalizeCompacted(normalized, merged, aliasMap, maxNodes)));
+          } catch (e) {
+            onError(String(e));
+          }
+        },
+        (errMsg: string) => {
+          // Fall back to heuristic
+          const merged = beliefHeuristicSemanticMerge(canonicalNodes, aliasMap);
+          onComplete(j(beliefFinalizeCompacted(normalized, merged, aliasMap, maxNodes)));
+        },
+      );
+    } catch (e) {
+      onError(String(e));
+    }
+    return new CancellableTask();
+  }
+
+  mergeGraphs(currentJson: string, proposalJson: string): string {
+    return j(beliefMergeGraphs(currentJson, proposalJson));
+  }
+
+  evaluateInvitationThreshold(graphJson: string, resilience: number, stressLoad: number): string {
+    return j(beliefEvaluateInvitationThreshold(graphJson, resilience, stressLoad));
+  }
+
+  getTriggeringNodes(graphJson: string, triggeringBeliefsJson: string): string {
+    const graph: MockBeliefGraph = graphJson ? beliefNormalizeGraph(JSON.parse(graphJson)) : beliefNormalizeGraph(null);
+    const labels: string[] = JSON.parse(triggeringBeliefsJson);
+    const labelSet = new Set(labels.map(l => l.trim().toLowerCase()));
+    return j(graph.nodes.filter(n => labelSet.has(n.label.trim().toLowerCase())));
+  }
+}
 
 export class AgnesGravityEngineJs {
   compute(_stateJson: string) { return j({ gravity: 0, pull: 'neutral' }); }

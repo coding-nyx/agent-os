@@ -75,7 +75,7 @@ export interface LedgerAnalysisSummary {
   savingsProjections: SavingsProjection[];
 }
 
-const _svc = new (CrossVerificationServiceJs as any)();
+const _svc = new CrossVerificationServiceJs();
 
 export function categorizeTax(expense: BudgetLineItem): TaxCategory {
   return _svc.categorizeTax(JSON.stringify(expense)) as TaxCategory;

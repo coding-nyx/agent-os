@@ -16,7 +16,7 @@
  * @see skills/dynamic-field-system.md — "Three Conversation Scopes"
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAI } from '@/cortex-bridge/ai-context';
 import type { Message, MessageContent } from '@/lib/types';
 import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
@@ -29,6 +29,8 @@ import type { StreamChunk } from '@/lib/ai-adapters/engine-types';
 export type ConversationScope = 'general' | 'scoped' | 'field-crud';
 
 export interface UseScopedConversationOptions {
+  /** Module that owns this scoped conversation */
+  moduleId?: string;
   /** Conversation scope — determines persistence and action filtering rules */
   scope: ConversationScope;
   /** Actions the LLM is permitted to emit in this scope */
@@ -136,6 +138,7 @@ function filterActions(
 // ============================================================================
 
 export function useScopedConversation({
+  moduleId,
   scope,
   allowedActions,
   systemPrompt,
@@ -150,6 +153,11 @@ export function useScopedConversation({
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const clearMessages = useCallback(() => {
     // Abort any in-flight request
@@ -182,6 +190,7 @@ export function useScopedConversation({
 
       // Build ephemeral conversation context (no memory, no Firestore)
       const context: ConversationContext = {
+        moduleId,
         systemPrompt,
         memoryContext: [],
         summary: '',
@@ -220,14 +229,6 @@ export function useScopedConversation({
           scope,
           onActionParsed
         );
-
-        // Log which actions passed filtering
-        if (allowedParsedActions.length > 0) {
-          console.log(
-            `[useScopedConversation] ${allowedParsedActions.length} action(s) passed scope filter:`,
-            allowedParsedActions.map((a) => a.type)
-          );
-        }
 
         // Add assistant message
         const assistantMessage: Message = {

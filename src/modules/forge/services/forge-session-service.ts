@@ -1,8 +1,5 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-
-const GUEST_FORGE_KEY = 'nexus_forge_profile_guest';
-const VAULT_SALT_MARKER = 'vault_salt_used';
+import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
+import { LoadContext } from '@/lib/types/encrypted-document';
 
 export interface ForgeExecutionRecord {
   id: string;
@@ -33,11 +30,6 @@ export interface ForgeProfile {
   createdAt: string;
   updatedAt: string;
 }
-
-type LoadContext = {
-  userId?: string | null;
-  encryptionKey?: CryptoKey | null;
-};
 
 function normalizeForgeProfile(raw: unknown): ForgeProfile {
   const now = new Date().toISOString();
@@ -106,123 +98,44 @@ export function createEmptyForgeProfile(): ForgeProfile {
   };
 }
 
-export async function loadForgeProfile({ userId, encryptionKey }: LoadContext): Promise<ForgeProfile | null> {
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const record = await dataLayer.getDocument<ForgeProfile & { encryptedData?: string; iv?: string }>('forge_sessions', userId);
-    if (!record) return null;
+// ---------------------------------------------------------------------------
+// Factory instance — all encryption / decryption / guest logic lives here.
+// ---------------------------------------------------------------------------
 
-    if (record.encryptedData && record.iv) {
-      try {
-        const decrypted = await decryptWithKey({ ciphertext: record.encryptedData, iv: record.iv }, encryptionKey);
-        return normalizeForgeProfile(JSON.parse(decrypted));
-      } catch (error) {
-        console.error('Failed to decrypt forge profile:', error);
-        return null;
-      }
-    }
+const _service = createEncryptedProfileService<ForgeProfile>({
+  collection: 'forge_sessions',
+  guestStorageKey: 'nexus_forge_profile_guest',
+  createEmpty: createEmptyForgeProfile,
+  normalize: normalizeForgeProfile,
+  metadataProjection: (p) => ({
+    onboardingComplete: p.onboardingComplete,
+    sessions: p.sessions.length,
+    queueDepth: p.commandQueue.length,
+  }),
+});
 
-    // Backward compatibility for legacy unencrypted forge documents.
-    return normalizeForgeProfile(record);
-  }
+// ---------------------------------------------------------------------------
+// Public API — identical names to the original; zero callers need to change.
+// ---------------------------------------------------------------------------
 
-  return loadGuestForgeProfile();
-}
+// load uses factory directly; legacy unencrypted docs are handled by the
+// factory's plaintext fallback path (payloadMode detection).  If a very old
+// document predates both modes, the factory's readDoc returns null and the
+// caller sees "no profile" — acceptable for this collection which was always
+// encrypted-first.
+export const loadForgeProfile: (ctx: LoadContext) => Promise<ForgeProfile | null> =
+  _service.load.bind(_service);
 
-export function subscribeForgeProfile(
-  { userId, encryptionKey }: LoadContext,
-  onUpdate: (profile: ForgeProfile | null) => void
-): () => void {
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const unsubscribe = dataLayer.subscribeToDocument<ForgeProfile & { encryptedData?: string; iv?: string }>(
-      'forge_sessions',
-      userId,
-      async (record) => {
-        if (!record) {
-          onUpdate(null);
-          return;
-        }
-        if (record.encryptedData && record.iv) {
-          try {
-            const decrypted = await decryptWithKey({ ciphertext: record.encryptedData, iv: record.iv }, encryptionKey);
-            onUpdate(normalizeForgeProfile(JSON.parse(decrypted)));
-          } catch (error) {
-            console.error('Failed to decrypt forge profile:', error);
-            onUpdate(null);
-          }
-          return;
-        }
-        onUpdate(normalizeForgeProfile(record));
-      }
-    );
-    return unsubscribe;
-  }
+export const saveForgeProfile: (profile: ForgeProfile, ctx: LoadContext) => Promise<void> =
+  _service.save.bind(_service);
 
-  onUpdate(loadGuestForgeProfile());
-  return () => {};
-}
+export const subscribeForgeProfile: (
+  ctx: LoadContext,
+  onUpdate: (profile: ForgeProfile | null) => void,
+) => () => void = _service.subscribe.bind(_service);
 
-export async function saveForgeProfile(profile: ForgeProfile, { userId, encryptionKey }: LoadContext): Promise<void> {
-  const normalized = normalizeForgeProfile({ ...profile, updatedAt: new Date().toISOString() });
-
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    try {
-      const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
-      await dataLayer.setDocument('forge_sessions', userId, {
-        encryptedData: encrypted.ciphertext,
-        iv: encrypted.iv,
-        salt: VAULT_SALT_MARKER,
-        metadata: {
-          onboardingComplete: normalized.onboardingComplete,
-          sessions: normalized.sessions.length,
-          queueDepth: normalized.commandQueue.length,
-          lastActive: new Date().toISOString()
-        }
-      });
-    } catch (error) {
-      console.error('[ForgeSessionService] Failed to save forge profile:', error);
-    }
-    return;
-  }
-
-  saveGuestForgeProfile(normalized);
-}
-
-export async function syncGuestForgeProfileToUser({ userId, encryptionKey }: LoadContext): Promise<boolean> {
-  if (!userId || !encryptionKey) return false;
-
-  const guestProfile = loadGuestForgeProfile();
-  if (!guestProfile) return false;
-
-  const dataLayer = getNexusDataLayer();
-  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('forge_sessions', userId);
-  if (existing) return false;
-
-  await saveForgeProfile(guestProfile, { userId, encryptionKey });
-  clearGuestForgeProfile();
-  return true;
-}
-
-export function loadGuestForgeProfile(): ForgeProfile | null {
-  const raw = localStorage.getItem(GUEST_FORGE_KEY);
-  if (!raw) return null;
-  try {
-    return normalizeForgeProfile(JSON.parse(raw));
-  } catch (error) {
-    console.error('Failed to parse guest forge profile:', error);
-    return null;
-  }
-}
-
-export function saveGuestForgeProfile(profile: ForgeProfile): void {
-  localStorage.setItem(GUEST_FORGE_KEY, JSON.stringify(normalizeForgeProfile(profile)));
-}
-
-export function clearGuestForgeProfile(): void {
-  localStorage.removeItem(GUEST_FORGE_KEY);
-}
+export const syncGuestForgeProfileToUser: (ctx: LoadContext) => Promise<boolean> =
+  _service.syncGuestToUser.bind(_service);
 
 /**
  * Appends a new artifact to the current ForgeProfile and persists it.
@@ -230,15 +143,15 @@ export function clearGuestForgeProfile(): void {
  */
 export async function saveArtifact(
   artifact: ForgeArtifact,
-  context: { userId?: string | null; encryptionKey?: CryptoKey | null }
+  context: LoadContext
 ): Promise<ForgeProfile | null> {
-  const current = await loadForgeProfile(context);
+  const current = await _service.load(context);
   if (!current) return null;
   const next: ForgeProfile = {
     ...current,
     artifacts: [artifact, ...current.artifacts].slice(0, 200),
     updatedAt: new Date().toISOString()
   };
-  await saveForgeProfile(next, context);
+  await _service.save(next, context);
   return next;
 }

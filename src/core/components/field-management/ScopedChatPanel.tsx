@@ -57,6 +57,7 @@ Maintain a professional, high-fidelity tone. Be concise.
     streamingText,
     error
   } = useScopedConversation({
+    moduleId,
     scope: 'scoped',
     allowedActions,
     systemPrompt

@@ -172,7 +172,12 @@ describe('VaultProvider.initializeVault', () => {
       expect(screen.getByTestId('persistence-mode')).toHaveTextContent('SESSION');
     });
 
-    expect(sessionStorage.getItem('nexus_vault_session')).toBe('top-secret');
+    // The session password is now stored as an encrypted blob, not plaintext.
+    await waitFor(() => {
+      expect(sessionStorage.getItem('nexus_vault_session')).not.toBeNull();
+    });
+    // Verify it is NOT the plaintext password (security invariant).
+    expect(sessionStorage.getItem('nexus_vault_session')).not.toBe('top-secret');
     expect(sessionStorage.getItem('nexus_vault_session_ts')).not.toBeNull();
   });
 
@@ -196,7 +201,11 @@ describe('VaultProvider.initializeVault', () => {
       expect(screen.getByTestId('is-unlocked')).toHaveTextContent('true');
     });
 
-    expect(sessionStorage.getItem('nexus_vault_session')).toBe('top-secret');
+    // Session password is stored as encrypted blob (not plaintext).
+    await waitFor(() => {
+      expect(sessionStorage.getItem('nexus_vault_session')).not.toBeNull();
+    });
+    expect(sessionStorage.getItem('nexus_vault_session')).not.toBe('top-secret');
 
     await user.click(screen.getByRole('button', { name: 'Set Strict' }));
 

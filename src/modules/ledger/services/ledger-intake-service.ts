@@ -1,9 +1,7 @@
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
-
-const GUEST_LEDGER_KEY = 'nexus_ledger_profile_guest';
-const VAULT_SALT_MARKER = 'vault_salt_used';
+import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
+import { LoadContext } from '@/lib/types/encrypted-document';
 
 export type TaxCategory = 'essential' | 'deductible' | 'discretionary' | 'investment' | 'non-deductible' | 'partial' | 'unknown';
 
@@ -73,6 +71,8 @@ export interface Transaction {
   type: 'income' | 'expense';
   category: string;
   resonance_score?: number;
+  /** Whether this transaction aligns with the user's values (set by resonance feedback). */
+  resonanceFeedback?: boolean;
   isRecurring?: boolean;
   /** Links to a RecurringRule that generated this transaction. */
   recurringRuleId?: string;
@@ -579,14 +579,11 @@ export interface LedgerIntakeProfile {
   // ─── Currency Rates ──────────────────────────────────────────────────────────
   currencyRates?: CurrencyRate[];
   extensionValues?: Record<string, unknown>;
+  /** Per-category ROI coefficients computed from resonance feedback (category → aligned ratio). */
+  resonanceCoefficients?: Record<string, number>;
   createdAt: string;
   updatedAt: string;
 }
-
-type LoadContext = {
-  userId?: string | null;
-  encryptionKey?: CryptoKey | null;
-};
 
 function parseNumber(value: unknown, fallback = 0): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -993,130 +990,53 @@ export function createEmptyLedgerProfile(): LedgerIntakeProfile {
   };
 }
 
-export async function loadLedgerProfile({ userId, encryptionKey }: LoadContext): Promise<LedgerIntakeProfile | null> {
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>('ledger_profiles', userId);
-    if (!data) return null;
-    if (!data.encryptedData || !data.iv) return null;
-    try {
-      const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-      return normalizeLedgerProfile(JSON.parse(decrypted));
-    } catch (e) {
-      console.error('Failed to decrypt ledger profile:', e);
-      return null;
-    }
-  }
+// ---------------------------------------------------------------------------
+// Factory instance — all encryption / decryption / guest logic lives here.
+// ---------------------------------------------------------------------------
 
-  return loadGuestLedgerProfile();
-}
+const _service = createEncryptedProfileService<LedgerIntakeProfile>({
+  collection: 'ledger_profiles',
+  guestStorageKey: 'nexus_ledger_profile_guest',
+  createEmpty: createEmptyLedgerProfile,
+  normalize: normalizeLedgerProfile,
+  metadataProjection: (p) => ({
+    onboardingComplete: p.onboardingComplete,
+    activePlanId: p.activePlanId,
+    plannerBotState: p.plannerBotState,
+  }),
+});
 
-export function subscribeLedgerProfile(
-  { userId, encryptionKey }: LoadContext,
-  onUpdate: (profile: LedgerIntakeProfile | null) => void
-): () => void {
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const unsubscribe = dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
-      'ledger_profiles',
-      userId,
-      async (data) => {
-        if (!data) {
-          onUpdate(null);
-          return;
-        }
-        if (!data.encryptedData || !data.iv) {
-          onUpdate(null);
-          return;
-        }
-        try {
-          const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-          onUpdate(normalizeLedgerProfile(JSON.parse(decrypted)));
-        } catch (e) {
-          console.error('Failed to decrypt ledger profile:', e);
-          onUpdate(null);
-        }
-      }
-    );
-    return unsubscribe;
-  }
+// ---------------------------------------------------------------------------
+// Public API — identical names to the original; zero callers need to change.
+// ---------------------------------------------------------------------------
 
-  onUpdate(loadGuestLedgerProfile());
-  return () => {};
-}
+export const loadLedgerProfile: (ctx: LoadContext) => Promise<LedgerIntakeProfile | null> =
+  _service.load.bind(_service);
 
-export async function saveLedgerProfile(profile: LedgerIntakeProfile, { userId, encryptionKey }: LoadContext): Promise<void> {
-  const normalizedProfile = normalizeLedgerProfile(profile);
+export const subscribeLedgerProfile: (
+  ctx: LoadContext,
+  onUpdate: (profile: LedgerIntakeProfile | null) => void,
+) => () => void = _service.subscribe.bind(_service);
 
-  if (userId && encryptionKey) {
-    const dataLayer = getNexusDataLayer();
-    const encrypted = await encryptWithKey(JSON.stringify(normalizedProfile), encryptionKey);
-    try {
-      await dataLayer.setDocument('ledger_profiles', userId, {
-        encryptedData: encrypted.ciphertext,
-        iv: encrypted.iv,
-        salt: VAULT_SALT_MARKER,
-        metadata: {
-          onboardingComplete: normalizedProfile.onboardingComplete,
-          lastActive: new Date().toISOString(),
-          activePlanId: normalizedProfile.activePlanId,
-          plannerBotState: normalizedProfile.plannerBotState
-        }
-      });
-    } catch (error) {
-      console.error('[LedgerIntakeService] Failed to save ledger profile:', error);
-    }
-    try {
-      await syncAliveEntities(
-        dataLayer,
-        bootstrapAliveEntities({
-          ledgerFinancialGoals: normalizedProfile.financialGoals,
-          ledgerTransactions: normalizedProfile.transactions,
-        }),
-        { uid: userId, pruneMissingWithinIncomingPrefixes: true },
-      );
-    } catch (error) {
-      console.error('[LedgerIntakeService] Failed to sync alive entities:', error);
-    }
-    return;
-  }
+export async function saveLedgerProfile(profile: LedgerIntakeProfile, ctx: LoadContext): Promise<void> {
+  const normalized = normalizeLedgerProfile(profile);
+  await _service.save(normalized, ctx);
 
-  saveGuestLedgerProfile(normalizedProfile);
-}
-
-export async function syncGuestLedgerProfileToUser({ userId, encryptionKey }: LoadContext): Promise<boolean> {
-  if (!userId || !encryptionKey) return false;
-
-  const guestProfile = loadGuestLedgerProfile();
-  if (!guestProfile) return false;
-
-  const dataLayer = getNexusDataLayer();
-  const existing = await dataLayer.getDocument<{ encryptedData?: string }>('ledger_profiles', userId);
-  if (existing?.encryptedData) {
-    return false;
-  }
-
-  await saveLedgerProfile(guestProfile, { userId, encryptionKey });
-  clearGuestLedgerProfile();
-  return true;
-}
-
-export function loadGuestLedgerProfile(): LedgerIntakeProfile | null {
-  const raw = localStorage.getItem(GUEST_LEDGER_KEY);
-  if (!raw) return null;
+  if (!ctx.userId) return;
 
   try {
-    return normalizeLedgerProfile(JSON.parse(raw));
-  } catch (e) {
-    console.error('Failed to parse guest ledger profile:', e);
-    return null;
+    await syncAliveEntities(
+      getNexusDataLayer(),
+      bootstrapAliveEntities({
+        ledgerFinancialGoals: normalized.financialGoals,
+        ledgerTransactions: normalized.transactions,
+      }),
+      { uid: ctx.userId, pruneMissingWithinIncomingPrefixes: true },
+    );
+  } catch (error) {
+    console.error('[LedgerIntakeService] Failed to sync alive entities:', error);
   }
 }
 
-export function saveGuestLedgerProfile(profile: LedgerIntakeProfile) {
-  localStorage.setItem(GUEST_LEDGER_KEY, JSON.stringify(normalizeLedgerProfile(profile)));
-}
-
-export function clearGuestLedgerProfile() {
-  localStorage.removeItem(GUEST_LEDGER_KEY);
-}
+export const syncGuestLedgerProfileToUser: (ctx: LoadContext) => Promise<boolean> =
+  _service.syncGuestToUser.bind(_service);

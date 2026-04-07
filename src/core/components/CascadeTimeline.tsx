@@ -33,6 +33,7 @@ const DOMAIN_DOT_COLOR: Record<SpineEvent['domain'], string> = {
 
 const PRIORITY_BORDER: Record<SpineEvent['priority'], string> = {
   info: 'border-white/[0.12]',
+  warning: 'border-yellow-500/20',
   alert: 'border-amber-500/20',
   critical: 'border-rose-500/20'
 };

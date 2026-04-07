@@ -332,7 +332,7 @@ export class ModuleAIActionExecutionService {
           threadArtifacts.push(artifact);
         },
         sendMessage,
-        emitSpineEvent: (eventType: SpineEventType, data: Record<string, unknown>, options?: { domain?: string; priority?: 'info' | 'alert' | 'critical'; target?: string }) => Spine.emit({
+        emitSpineEvent: (eventType: SpineEventType, data: Record<string, unknown>, options?: { domain?: string; priority?: 'info' | 'warning' | 'alert' | 'critical'; target?: string }) => Spine.emit({
           type: eventType,
           source: moduleId,
           domain: (options?.domain ?? 'system') as SpineDomain,
@@ -340,7 +340,7 @@ export class ModuleAIActionExecutionService {
           data,
           cascadeDepth: 0,
           priority: options?.priority
-            ?? ((['info', 'alert', 'critical'] as const).includes(data.priority as SpineEventPriority)
+            ?? ((['info', 'warning', 'alert', 'critical'] as const).includes(data.priority as SpineEventPriority)
               ? (data.priority as SpineEventPriority)
               : 'info'),
         }),

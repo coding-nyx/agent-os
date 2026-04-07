@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { ActionHub, type ActionContext } from '@/lib/actions/action-hub';
 import { useAuth } from '@/lib/auth-context';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import type { RoutineProposal } from '@/lib/routines/routine-types';
 import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
 
@@ -62,7 +63,11 @@ export function useRoutineProposals(moduleId: string | 'any') {
             data,
           });
         },
-        updateGlobalSoul: async () => {},
+        updateGlobalSoul: async (patch) => {
+          if (user?.uid && !isGuest) {
+            await GlobalProjectionService.updateCrossFunctionalState(user.uid, patch);
+          }
+        },
         delegateToModule: () => {},
       };
       await ActionHub.execute(targetModuleId, 'confirm_routine', ctx);
@@ -93,7 +98,11 @@ export function useRoutineProposals(moduleId: string | 'any') {
             data,
           });
         },
-        updateGlobalSoul: async () => {},
+        updateGlobalSoul: async (patch) => {
+          if (user?.uid && !isGuest) {
+            await GlobalProjectionService.updateCrossFunctionalState(user.uid, patch);
+          }
+        },
         delegateToModule: () => {},
       };
       await ActionHub.execute(targetModuleId, 'dismiss_routine', ctx);

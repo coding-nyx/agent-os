@@ -79,8 +79,8 @@ export function getCredentialStore(
                 const updates: Record<string, unknown> = { [key]: encrypted };
                 await dataLayer.updateDocument(collectionPath, CREDENTIAL_DOC_ID, updates);
                 clearLegacyKey(key);
-              } catch {
-                // Migration failed — still return the key for this session.
+              } catch (migrationErr) {
+                NexusLogger.warn('CredentialStore', 'Encryption migration failed — using legacy key this session', migrationErr);
               }
               onComplete(legacyValue);
               return;

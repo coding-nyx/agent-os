@@ -4,7 +4,7 @@ import { ModuleMemoryEnvelope, SemanticFact, Message, UnifiedMemoryResult } from
 import { RagService } from './rag/rag-service';
 import { EmbeddingUtilsJs } from '@cortex-logic';
 
-const _utils = new (EmbeddingUtilsJs as any)();
+const _utils = new EmbeddingUtilsJs();
 
 function deduplicateMemoryResults(results: UnifiedMemoryResult[]): UnifiedMemoryResult[] {
   return JSON.parse(_utils.deduplicateTextResults(JSON.stringify(results), 0.6)) as UnifiedMemoryResult[];

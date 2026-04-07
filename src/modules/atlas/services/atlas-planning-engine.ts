@@ -92,7 +92,7 @@ export interface HistoricalPatterns {
 
 // ─── KMP bridge instance ──────────────────────────────────────────────────────
 
-const _engine = new (AtlasPlanningEngineJs as any)();
+const _engine = new AtlasPlanningEngineJs();
 
 // ─── Helper: convert plain-object adjacency maps to Map<string, string[]> ────
 

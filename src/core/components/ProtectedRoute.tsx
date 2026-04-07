@@ -31,7 +31,7 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
     // Vault gate — guests never get redirected here.
     // isHandshaking covers the SESSION auto-unlock window so we don't
     // flash-redirect when the vault is about to unlock automatically.
-    if (!isGuest && hasVault && !isUnlocked && !isHandshaking && location.pathname !== '/profile') {
+    if (!isGuest && hasVault && !isUnlocked && !isHandshaking) {
       navigate(`/vault-gate?returnTo=${encodeURIComponent(location.pathname)}`, { replace: true });
       return;
     }
@@ -54,7 +54,7 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
 
   // Null guard while vault-gate redirect is in progress (avoids momentary
   // flash of protected content before navigation completes).
-  if (!isGuest && hasVault && !isUnlocked && !isHandshaking && location.pathname !== '/profile') {
+  if (!isGuest && hasVault && !isUnlocked && !isHandshaking) {
     return null;
   }
 

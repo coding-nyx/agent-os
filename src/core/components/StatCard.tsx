@@ -36,7 +36,7 @@ export function StatCard({
   return (
     <SurfaceCard className={cn('p-4 md:p-5', className)}>
       <div className="flex items-start justify-between min-w-0 gap-2 mb-3">
-        <span className="text-[11px] uppercase tracking-[0.16em] text-white/50 font-semibold truncate leading-tight">
+        <span className="text-[11px] uppercase tracking-[0.16em] text-white/65 font-semibold truncate leading-tight">
           {isLocked ? 'SECURED' : label}
         </span>
         {!isLocked && delta && (
@@ -58,13 +58,13 @@ export function StatCard({
             <span
               className={cn(
                 'text-2xl md:text-3xl font-black tracking-tight text-white/95 tabular-nums truncate leading-none',
-                isDerived && 'text-white/45 blur-[0.3px]'
+                isDerived && 'text-white/60 blur-[0.3px]'
               )}
             >
               {value}
             </span>
             {suffix && (
-              <span className="text-[12px] text-white/50 shrink-0 font-medium">{suffix}</span>
+              <span className="text-[12px] text-white/65 shrink-0 font-medium">{suffix}</span>
             )}
           </div>
           {subLabel && <div className="mt-2">{subLabel}</div>}

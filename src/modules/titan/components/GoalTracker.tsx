@@ -416,8 +416,7 @@ function NewGoalModal({
     } finally {
       setSaving(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, directWriteMode, onDirectSave, onAnalyze, personalRecords, bodyWeightLog]);
+  }, [form, directWriteMode, onDirectSave, onAnalyze, personalRecords, bodyWeightLog, onClose]);
 
   const isValid = form.name.trim().length > 0 && parseFloat(form.targetValue) > 0;
 

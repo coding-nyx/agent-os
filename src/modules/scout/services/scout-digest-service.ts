@@ -73,15 +73,21 @@ async function decryptDigest(
   const json = await decryptWithKey({ ciphertext: encryptedData, iv }, key);
   const parsed = JSON.parse(json) as ScoutDigest;
 
-  const createdAt = (parsed as any).createdAt ?? (parsed as any).generatedAt ?? new Date().toISOString();
+  // The persisted JSON may contain additional fields beyond the ScoutDigest base type
+  // (e.g., createdAt, sourceCount, triggerSource, sections) added during generation.
+  const extra = parsed as unknown as Record<string, unknown>;
+  const createdAt = (typeof extra.createdAt === 'string' ? extra.createdAt : null)
+    ?? parsed.generatedAt
+    ?? new Date().toISOString();
   const nodeCount = parsed.summary?.totalNodes ?? 0;
-  const sourceCount = (parsed as any).sourceCount ?? 0;
-  const triggerSource = (parsed as any).triggerSource ?? parsed.generationType;
+  const sourceCount = typeof extra.sourceCount === 'number' ? extra.sourceCount : 0;
+  const triggerSource = (typeof extra.triggerSource === 'string' ? extra.triggerSource : null) ?? parsed.generationType;
 
   // The prompt currently produces `synthesizedContent` (newsletter Markdown) but the
   // export layer expects a "sections" object. Provide a minimal derived mapping
   // to keep export/UI layers type-safe and functional.
-  const sections = (parsed as any).sections ?? {
+  const rawSections = extra.sections as ScoutDigestDecrypted['sections'] | undefined;
+  const sections: ScoutDigestDecrypted['sections'] = rawSections ?? {
     executiveSummary: parsed.synthesizedContent ?? '',
     keyThemes: [],
     knowledgeGaps: [],
@@ -172,7 +178,7 @@ export async function generateDigest(
   if (!userId || !encryptionKey) return null;
 
   Spine.emit({
-    type: 'DIGEST_GENERATION_STARTED' as any,
+    type: 'DIGEST_GENERATION_STARTED',
     source: 'scout',
     domain: 'C',
     priority: 'info',
@@ -184,7 +190,7 @@ export async function generateDigest(
 
     // Initialize engine agent via adapter for one-off service call
     const openrouterKey = resolveOpenRouterKey();
-    const response = await generateJSONWithAgent<any>({
+    const response = await generateJSONWithAgent<Record<string, unknown>>({
       prompt,
       openrouterKey,
       systemPrompt: 'You are a professional research intelligence analyst. Respond with valid JSON matching the schema.',
@@ -194,16 +200,16 @@ export async function generateDigest(
     if (!response) throw new Error('Empty response from intelligence engine');
 
     // Robust parsing: handle if model wrapped the digest object
-    let rawDigest = response;
+    let rawDigest: Record<string, unknown> = response;
     if (response && typeof response === 'object' && !response.synthesizedContent && !response.topClaims) {
       const possibleDigest = response.digest || response.newsletter || response.report || response.data;
       if (possibleDigest && typeof possibleDigest === 'object') {
-        rawDigest = possibleDigest;
+        rawDigest = possibleDigest as Record<string, unknown>;
       } else {
         // Check if ANY value in the object looks like a digest (has synthesizedContent or topClaims)
         const values = Object.values(response);
-        const foundDigest = values.find(v => v && typeof v === 'object' && ((v as any).synthesizedContent || (v as any).topClaims));
-        if (foundDigest) rawDigest = foundDigest;
+        const foundDigest = values.find(v => v && typeof v === 'object' && ('synthesizedContent' in (v as object) || 'topClaims' in (v as object)));
+        if (foundDigest) rawDigest = foundDigest as Record<string, unknown>;
       }
     }
 
@@ -211,7 +217,7 @@ export async function generateDigest(
     const id = `digest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     const digest: ScoutDigest = {
-      ...rawDigest,
+      ...(rawDigest as unknown as ScoutDigest),
       id,
       userId,
       generatedAt: now,
@@ -245,7 +251,7 @@ export async function generateDigest(
     await saveDigest(decryptedDigest, { userId, encryptionKey });
 
     Spine.emit({
-      type: 'DIGEST_GENERATED' as any,
+      type: 'DIGEST_GENERATED',
       source: 'scout',
       domain: 'C',
       priority: 'info',
@@ -269,7 +275,7 @@ export async function generateDigest(
   } catch (error) {
     console.error('[ScoutDigestService] Failed to generate digest:', error);
     Spine.emit({
-      type: 'DIGEST_GENERATION_FAILED' as any,
+      type: 'DIGEST_GENERATION_FAILED',
       source: 'scout',
       domain: 'C',
       priority: 'alert',
@@ -280,16 +286,16 @@ export async function generateDigest(
 }
 
 export async function saveDigest(
-  digest: any,
+  digest: ScoutDigestDecrypted,
   { userId }: DigestContext,
 ): Promise<void> {
   if (!userId) return;
   const dataLayer = getNexusDataLayer();
   const col = digestsCollection(userId);
 
-  const existing = await dataLayer.listDocuments<any>(col);
+  const existing = await dataLayer.listDocuments<{ id: string; generatedAt?: string; createdAt?: string }>(col);
   if (existing.length >= MAX_DIGESTS) {
-    const sorted = [...existing].sort((a, b) => (a.generatedAt || a.createdAt).localeCompare(b.generatedAt || b.createdAt));
+    const sorted = [...existing].sort((a, b) => (a.generatedAt || a.createdAt || '').localeCompare(b.generatedAt || b.createdAt || ''));
     const toDelete = sorted.slice(0, existing.length - MAX_DIGESTS + 1);
     await Promise.all(toDelete.map((d) => dataLayer.deleteDocument(col, d.id)));
   }
@@ -303,7 +309,7 @@ export async function loadDigests(
   if (!userId || !encryptionKey) return [];
   const dataLayer = getNexusDataLayer();
   try {
-    const docs = await dataLayer.listDocuments<any>(digestsCollection(userId));
+    const docs = await dataLayer.listDocuments<{ id: string; encryptedData: string; iv: string }>(digestsCollection(userId));
     if (!docs || docs.length === 0) return [];
 
     const decrypted = await Promise.allSettled(

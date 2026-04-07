@@ -3,6 +3,7 @@ import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { ActionHub, type ActionContext } from '@/lib/actions/action-hub';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { useAuth } from '@/lib/auth-context';
+import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import type { ReminderProposal } from '@/lib/notifications/types';
 
 export interface ReminderProposalState {
@@ -47,7 +48,11 @@ export function useReminderProposals(moduleId: string | 'any') {
             data,
           });
         },
-        updateGlobalSoul: async () => {},
+        updateGlobalSoul: async (patch) => {
+          if (user?.uid && !isGuest) {
+            await GlobalProjectionService.updateCrossFunctionalState(user.uid, patch);
+          }
+        },
         delegateToModule: () => {},
       };
       await ActionHub.execute(targetModuleId, 'confirm_reminder', ctx);
@@ -78,7 +83,11 @@ export function useReminderProposals(moduleId: string | 'any') {
             data,
           });
         },
-        updateGlobalSoul: async () => {},
+        updateGlobalSoul: async (patch) => {
+          if (user?.uid && !isGuest) {
+            await GlobalProjectionService.updateCrossFunctionalState(user.uid, patch);
+          }
+        },
         delegateToModule: () => {},
       };
       await ActionHub.execute(targetModuleId, 'dismiss_reminder', ctx);

@@ -1,5 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@cortex-logic', async () => await import('@/test/__mocks__/cortex-logic-mock'));
+
 import { AgnesBeliefWorkflowPanel } from './AgnesBeliefWorkflowPanel';
 import { createBeliefSessionInvitationRuntime } from '../services/belief-trigger-service';
 

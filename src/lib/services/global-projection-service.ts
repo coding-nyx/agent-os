@@ -25,10 +25,13 @@ function computeOverallWellness(nsv: NeuralStateVector): number {
 function enqueueProjectionWrite(uid: string, fn: () => Promise<void>): Promise<void> {
   const prev = _projectionWriteQueues.get(uid) ?? Promise.resolve();
   // Chain the new write onto the tail of the queue.
-  // The `.catch(() => fn())` means: if prev rejected (or fn itself threw),
-  // attempt fn once more so a transient failure does not permanently block
-  // subsequent writes for this user.
-  const next = prev.then(fn).catch(() => fn());
+  // If prev rejected (or fn itself threw), log the failure and attempt fn
+  // once more so a transient failure does not permanently block subsequent
+  // writes for this user.
+  const next = prev.then(fn).catch((firstErr) => {
+    console.error('[GlobalProjectionService] NSV write failed, retrying once:', firstErr);
+    return fn();
+  });
   _projectionWriteQueues.set(uid, next);
   return next;
 }

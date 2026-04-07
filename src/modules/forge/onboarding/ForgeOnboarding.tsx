@@ -85,6 +85,7 @@ export function ForgeOnboarding({ initialProfile, initialBaseContext, onGlobalBa
       summary: 'Forge onboarding intake.',
       placeholder: 'Define execution environment, safety preferences, and output style...',
       buildContext: (state, history) => ({
+        moduleId: 'forge',
         systemPrompt: `${FORGE_ONBOARDING_PROMPT}
 [PREFILLED_BASE_CONTEXT]
 - Name: ${state.baseContext.name || 'Unknown'}
@@ -103,15 +104,23 @@ export function ForgeOnboarding({ initialProfile, initialBaseContext, onGlobalBa
           ['focus_environment', 'focus_safety', 'focus_reporting', 'focus_summary'].includes(a.type)
         );
         if (focusAction) {
-          if (focusAction.type === 'focus_environment') nextStep = 0;
-          if (focusAction.type === 'focus_safety') nextStep = 1;
-          if (focusAction.type === 'focus_reporting') nextStep = 2;
-          if (focusAction.type === 'focus_summary') nextStep = 3;
+          if (focusAction.type === 'focus_environment') nextStep = Math.max(nextStep, 0);
+          if (focusAction.type === 'focus_safety') nextStep = Math.max(nextStep, 1);
+          if (focusAction.type === 'focus_reporting') nextStep = Math.max(nextStep, 2);
+          if (focusAction.type === 'focus_summary') nextStep = Math.max(nextStep, 3);
         }
 
         const profileUpdates = response.actions.filter(a => a.type === 'update_forge_profile').map(a => a.payload as Partial<ForgeProfile>);
         for (const update of profileUpdates) {
-          nextProfile = { ...nextProfile, ...update, updatedAt: new Date().toISOString() };
+          // Per-field sanitization — only accept known onboarding fields
+          if (typeof update.summary === 'string' && update.summary.trim()) nextProfile.summary = update.summary.trim();
+          if (update.environment === 'local' || update.environment === 'cloud' || update.environment === 'hybrid') {
+            nextProfile.environment = update.environment;
+          }
+          if (update.safetyMode === 'strict' || update.safetyMode === 'balanced') {
+            nextProfile.safetyMode = update.safetyMode;
+          }
+          nextProfile.updatedAt = new Date().toISOString();
         }
 
         const baseContextUpdates = response.actions.filter(a => a.type === 'update_global_base_context').map(a => a.payload as Partial<GlobalBaseIntakeContext>);
@@ -120,8 +129,21 @@ export function ForgeOnboarding({ initialProfile, initialBaseContext, onGlobalBa
           if (typeof update.occupation === 'string' && update.occupation.trim()) nextBaseContext.occupation = update.occupation.trim();
         }
 
-        const completed = response.actions.some(a => a.type === 'complete_forge_onboarding');
-        if (completed) { nextProfile.onboardingComplete = true; nextProfile.updatedAt = new Date().toISOString(); nextStep = FORGE_STEPS.length - 1; }
+        let completed = response.actions.some(a => a.type === 'complete_forge_onboarding');
+        // Validate minimum required fields before accepting completion
+        if (completed) {
+          const hasSummary = typeof nextProfile.summary === 'string' && nextProfile.summary.trim().length > 0;
+          if (!hasSummary) {
+            completed = false;
+            return {
+              nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep },
+              nextStep,
+              completed: false,
+              assistantMessage: 'Before we finalize, I still need a summary of your environment and preferences.',
+            };
+          }
+          nextProfile.onboardingComplete = true; nextProfile.updatedAt = new Date().toISOString(); nextStep = FORGE_STEPS.length - 1;
+        }
 
         return { nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep }, nextStep, completed };
       }

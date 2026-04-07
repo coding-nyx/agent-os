@@ -1,7 +1,7 @@
 import { BlueprintEngineJs } from '@cortex-logic';
 import type { NeuralStateVector } from '@/lib/types';
 
-const _engine = new (BlueprintEngineJs as any)();
+const _engine = new BlueprintEngineJs();
 
 /**
  * Atlas BlueprintEngine

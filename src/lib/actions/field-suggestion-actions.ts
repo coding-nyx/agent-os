@@ -15,6 +15,7 @@
 import { ActionHub, ActionContext } from './action-hub';
 import { SchemaRegistry } from '@/lib/schema-registry';
 import { FieldDefinition, FieldType } from '@/lib/field-system/types';
+import type { ValidationRules, FieldMetadata } from '@/lib/field-system/types';
 import { createFieldDefinition } from '@/lib/field-system/field-system';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
@@ -273,18 +274,18 @@ async function generateFieldFromIdea(
 function parseFieldDefinitionFromPayload(payload: Record<string, unknown>): FieldDefinition {
   // If fieldDefinition is provided directly
   if (payload.fieldDefinition && typeof payload.fieldDefinition === 'object') {
-    const def = payload.fieldDefinition as any;
+    const def = payload.fieldDefinition as Record<string, unknown>;
     return createFieldDefinition({
-      id: def.id,
-      name: def.name,
+      id: def.id as string,
+      name: def.name as string,
       type: def.type as FieldType,
-      description: def.description,
-      required: def.required,
+      description: def.description as string | undefined,
+      required: def.required as boolean | undefined,
       defaultValue: def.defaultValue,
-      validation: def.validation,
-      metadata: def.metadata,
-      options: def.options,
-      properties: def.properties,
+      validation: def.validation as ValidationRules | undefined,
+      metadata: def.metadata as FieldMetadata | undefined,
+      options: def.options as Array<{ value: unknown; label: string }> | undefined,
+      properties: def.properties as Record<string, FieldDefinition> | undefined,
     });
   }
 
@@ -297,9 +298,9 @@ function parseFieldDefinitionFromPayload(payload: Record<string, unknown>): Fiel
       description: payload.description as string | undefined,
       required: payload.required as boolean | undefined,
       defaultValue: payload.defaultValue,
-      validation: payload.validation as any,
-      metadata: payload.metadata as any,
-      options: payload.options as any,
+      validation: payload.validation as ValidationRules | undefined,
+      metadata: payload.metadata as FieldMetadata | undefined,
+      options: payload.options as Array<{ value: unknown; label: string }> | undefined,
     });
   }
 

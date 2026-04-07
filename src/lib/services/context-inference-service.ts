@@ -16,7 +16,7 @@ import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { DataHint, HintVerificationResult } from '@/lib/types';
 import { EmbeddingUtilsJs } from '@cortex-logic';
 
-const _utils = new (EmbeddingUtilsJs as any)();
+const _utils = new EmbeddingUtilsJs();
 
 // ---------------------------------------------------------------------------
 // Constants

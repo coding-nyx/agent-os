@@ -143,8 +143,9 @@ export class SupabaseDataLayer implements NexusDataLayer {
     return toRecord<T>(data as { collection: string; id: string; data: Record<string, unknown> });
   }
 
-  async listDocuments<T>(collection: string): Promise<NexusRecord<T>[]> {
-    return this.query<T>({ collection });
+  async listDocuments<T>(collection: string, options?: { limit?: number }): Promise<NexusRecord<T>[]> {
+    const cap = options?.limit ?? 100;
+    return this.query<T>({ collection, ...(cap > 0 ? { limit: cap } : {}) });
   }
 
   async query<T>(nexusQuery: NexusQuery): Promise<NexusRecord<T>[]> {
@@ -304,7 +305,7 @@ export class SupabaseDataLayer implements NexusDataLayer {
     const refetch = () => {
       this.getDocument<T>(collection, id)
         .then((doc) => { if (active) listener(doc); })
-        .catch(() => {});
+        .catch((err) => { console.warn('[SupabaseDataLayer] subscribeToDocument refetch failed:', err); });
     };
 
     const startChannel = () => {

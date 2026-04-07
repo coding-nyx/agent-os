@@ -35,7 +35,7 @@ export type DailyCapacityEstimate = {
   dayOfWeek: number;
 };
 
-const _svc = new (AtlasBlueprintServiceJs as any)();
+const _svc = new AtlasBlueprintServiceJs();
 
 export function inferAtlasDocumentIngestionMode(confidence: number): AtlasIngestionMode {
   return _svc.inferIngestionMode(confidence) as AtlasIngestionMode;

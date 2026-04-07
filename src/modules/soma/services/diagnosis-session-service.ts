@@ -229,9 +229,7 @@ export async function startDiagnosisSession(
     // Record failure — do not rethrow without marking the session as errored.
     const message =
       uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
-    await updateSessionStatus(uid, sessionId, 'error', { parseError: message }).catch(() => {
-      /* best-effort — original error is still surfaced */
-    });
+    await updateSessionStatus(uid, sessionId, 'error', { parseError: message }).catch((e) => { NexusLogger.warn('DiagnosisSession', 'Best-effort status update failed', e); });
     throw uploadError;
   }
 }
@@ -375,9 +373,7 @@ export async function triggerParse(
     NexusLogger.error('[SomaDiagnosisParse]', parseError);
     await updateSessionStatus(uid, sessionId, 'error', {
       parseError: message.slice(0, 500), // truncate to avoid bloating Firestore
-    }).catch(() => {
-      /* best-effort status update — original error is still re-thrown */
-    });
+    }).catch((e) => { NexusLogger.warn('DiagnosisSession', 'Best-effort status update failed', e); });
     throw parseError;
   }
 }

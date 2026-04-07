@@ -245,6 +245,7 @@ export function TitanOnboarding({ onComplete, onGlobalBaseContextFinalize, initi
       buildContext: (state, history) => {
         const missing = getMissingSectionsFromAccumulator(state.accumulator);
         return {
+          moduleId: 'titan',
           systemPrompt: `${_titanPromptBuilder.buildOnboardingPrompt(
             state.privacyLevel || 'basic',
             state.baseContext?.name ?? null,

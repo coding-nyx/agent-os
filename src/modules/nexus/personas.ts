@@ -7,7 +7,7 @@
  */
 import { PersonaPromptCatalogJs } from '@cortex-logic';
 
-const _catalog = PersonaPromptCatalogJs ? new (PersonaPromptCatalogJs as any)() : null;
+const _catalog = PersonaPromptCatalogJs ? new PersonaPromptCatalogJs() : null;
 
 const FALLBACK_PERSONA = 'You are Nyx, the orchestrator intelligence. Respond helpfully.';
 const FALLBACK_ONBOARDING = 'You are Nyx Intake, the onboarding interface. Collect the user\'s preferred name and pronouns.';

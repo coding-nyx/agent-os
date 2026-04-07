@@ -15,6 +15,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useAI } from '@/cortex-bridge/ai-context';
 import { WebCrawlerService as WebSearchService, type WebCrawlerResponse as WebSearchResponse } from '@/lib/services/web-crawler-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
+import { NexusLogger } from '@/lib/nexus-logger';
 import type { ScoutKnowledgeNode } from '../services/scout-knowledge-service';
 import { queryKnowledgeNodes } from '../services/scout-knowledge-service';
 import type { AddSourceInput } from '../services/scout-sources-service';
@@ -496,7 +497,7 @@ Synthesize following the method in the system prompt. Respond with JSON:
           updateSession(sessionId, {
             status: 'complete',
             resultNodeId: finalResult.synthesisNode.id,
-          }, { userId }).catch(() => {/* non-fatal */});
+          }, { userId }).catch((e) => { NexusLogger.warn('DeepResearch', 'Non-fatal save failed'); });
         }
 
         Spine.publish({

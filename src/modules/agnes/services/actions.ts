@@ -6,8 +6,78 @@ import {
 } from './belief-graph-service';
 import { proposeBeliefGraphCandidate } from './belief-graph-workflow-service';
 import { loadAgnesProfile, saveAgnesProfile } from './agnes-profile-service';
-import type { SessionNote } from '@/lib/types';
+import type { SessionNote, NeuralStateVector } from '@/lib/types';
 import { Spine } from '@/lib/spine/spine-event-bus';
+
+// ── Action Payload Interfaces ───────────────────────────────────────────────
+
+interface BeliefGraphPayload {
+  mode?: 'apply' | 'propose';
+  nodes?: Array<{ label: string; valence?: 'positive' | 'negative' | 'neutral' }>;
+  summary?: string;
+  confidence?: number;
+}
+
+interface CrisisFlagPayload {
+  trigger?: string;
+  severity?: string;
+}
+
+interface ScorePayload {
+  score?: number;
+}
+
+interface MoodTrendPayload {
+  trend?: string;
+}
+
+interface TraumaMarkersPayload {
+  markers?: string[];
+}
+
+interface SyncVitalsPayload {
+  emotional?: Record<string, unknown>;
+}
+
+interface SessionNotePayload {
+  note?: string;
+  sessionId?: string;
+  formulationUpdate?: string;
+  unfinishedBusiness?: string;
+  homeworkSuggested?: string;
+  allianceQuality?: string;
+  noteId?: string;
+}
+
+interface SomaticModePayload {
+  somaticMode?: 'active' | 'passive' | 'off';
+}
+
+interface SessionMetricsPayload {
+  messageCount?: number;
+  avgResponseLength?: number;
+  silenceCount?: number;
+  stressLoad?: number;
+}
+
+interface EmergencyContactPayload {
+  name?: string;
+  relationship?: string;
+  phone?: string;
+}
+
+interface PsychiatricHistoryPayload {
+  hasInpatientHistory?: boolean;
+  mostRecentHospitalization?: string;
+  currentMedications?: string[];
+  diagnosedConditions?: string[];
+}
+
+/** Narrow a generic payload to a typed shape. The cast is safe because handlers
+ *  validate each field before use (typeof guards, Array.isArray, etc.). */
+function typed<T>(payload: Record<string, unknown>): T {
+  return payload as unknown as T;
+}
 
 let registered = false;
 
@@ -30,10 +100,11 @@ export function registerAgnesActions() {
     if (!userId || !encryptionKey) { return; }
     const graph = normalizeBeliefGraph(payload);
     if (graph.nodes.length === 0) { return; }
+    const p = typed<BeliefGraphPayload>(payload);
 
     // mode: 'apply' commits directly (for high autopilot levels or explicit user approval)
     // mode: 'propose' (default) routes through the proposal/review workflow
-    if ((payload as any)?.mode === 'apply') {
+    if (p.mode === 'apply') {
       const existing = await loadBeliefGraph({ userId, encryptionKey });
       const merged = existing
         ? { ...existing, nodes: [...existing.nodes, ...graph.nodes], edges: [...(existing.edges ?? []), ...(graph.edges ?? [])], updatedAt: new Date().toISOString() }
@@ -45,7 +116,7 @@ export function registerAgnesActions() {
 
     try {
       // Conflict detection: check if new belief's valence contradicts existing beliefs
-      const newNodes = (payload as any)?.nodes as Array<{ label: string; valence?: 'positive' | 'negative' | 'neutral' }> ?? [];
+      const newNodes = p.nodes ?? [];
       const existing = await loadBeliefGraph({ userId, encryptionKey });
       const profile = existing ? { beliefGraph: existing } : null;
       const existingNodes = profile?.beliefGraph?.nodes ?? [];
@@ -54,7 +125,7 @@ export function registerAgnesActions() {
         if (!newNode.valence || newNode.valence === 'neutral') continue;
         const oppositeValence = newNode.valence === 'positive' ? 'negative' : 'positive';
         const conflicting = existingNodes.find(
-          (e: any) => e.valence === oppositeValence &&
+          (e) => e.valence === oppositeValence &&
           e.label?.toLowerCase().includes(newNode.label?.toLowerCase().split(' ')[0])
         );
         if (conflicting) {
@@ -91,7 +162,7 @@ export function registerAgnesActions() {
     if (!current) { return; }
     const next = {
       ...current,
-      baseContext: { ...current.baseContext, ...(payload as any) },
+      baseContext: { ...current.baseContext, ...payload },
       updatedAt: new Date().toISOString()
     };
     await saveAgnesProfile(next, { userId, encryptionKey });
@@ -99,6 +170,7 @@ export function registerAgnesActions() {
   });
 
   ActionHub.register('agnes', 'crisis_flag', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
+    const p = typed<CrisisFlagPayload>(payload);
     // Reflect crisis state in NSV so cross-module reads see it
     if (persistencePolicy !== 'ephemeral') {
       await updateGlobalSoul({ emotional: { stressLoad: 10 } }).catch((e: unknown) => {
@@ -106,8 +178,8 @@ export function registerAgnesActions() {
       });
     }
     emitSpineEvent('CRISIS_DETECTED', {
-      trigger: (payload as any)?.trigger || 'unknown',
-      severity: (payload as any)?.severity || 'high',
+      trigger: p.trigger || 'unknown',
+      severity: p.severity || 'high',
       timestamp: new Date().toISOString()
     });
     // Also publish directly so cascade rules fire immediately
@@ -117,8 +189,8 @@ export function registerAgnesActions() {
       domain: 'E',
       priority: 'critical',
       data: {
-        trigger: (payload as any)?.trigger || 'unknown',
-        severity: (payload as any)?.severity || 'high',
+        trigger: p.trigger || 'unknown',
+        severity: p.severity || 'high',
         timestamp: new Date().toISOString()
       }
     });
@@ -129,7 +201,8 @@ export function registerAgnesActions() {
 
   // Emotional NSV actions — skip NSV writes and spine events for ephemeral (impromptu) sessions
   ActionHub.register('agnes', 'update_emotional_resilience', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
-    const score = typeof (payload as any)?.score === 'number' ? (payload as any).score : null;
+    const p = typed<ScorePayload>(payload);
+    const score = typeof p.score === 'number' ? p.score : null;
     if (score === null) { return; }
     if (persistencePolicy !== 'ephemeral') {
       await updateGlobalSoul({ emotional: { emotionalResilience: score } }).catch((e: unknown) => {
@@ -146,7 +219,8 @@ export function registerAgnesActions() {
   });
 
   ActionHub.register('agnes', 'update_stress_load', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
-    const score = typeof (payload as any)?.score === 'number' ? (payload as any).score : null;
+    const p = typed<ScorePayload>(payload);
+    const score = typeof p.score === 'number' ? p.score : null;
     if (score === null) { return; }
     if (persistencePolicy !== 'ephemeral') {
       await updateGlobalSoul({ emotional: { stressLoad: score } }).catch((e: unknown) => {
@@ -164,10 +238,11 @@ export function registerAgnesActions() {
   });
 
   ActionHub.register('agnes', 'update_mood_trend', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
-    const trend = (payload as any)?.trend as string | undefined;
+    const p = typed<MoodTrendPayload>(payload);
+    const trend = p.trend;
     if (!trend) { return; }
     if (persistencePolicy !== 'ephemeral') {
-      await updateGlobalSoul({ emotional: { moodTrend: trend as any } }).catch((e: unknown) => {
+      await updateGlobalSoul({ emotional: { moodTrend: trend } }).catch((e: unknown) => {
         console.error('[Agnes] NSV write failed (update_mood_trend):', e);
       });
     } else {
@@ -177,7 +252,8 @@ export function registerAgnesActions() {
   });
 
   ActionHub.register('agnes', 'update_trauma_markers', async ({ payload, persistencePolicy, updateGlobalSoul }) => {
-    const markers = Array.isArray((payload as any)?.markers) ? (payload as any).markers : [];
+    const p = typed<TraumaMarkersPayload>(payload);
+    const markers = Array.isArray(p.markers) ? p.markers : [];
     if (persistencePolicy !== 'ephemeral') {
       await updateGlobalSoul({ emotional: { traumaMarkers: markers } }).catch((e: unknown) => {
         console.error('[Agnes] NSV write failed (update_trauma_markers):', e);
@@ -188,10 +264,11 @@ export function registerAgnesActions() {
   });
 
   ActionHub.register('agnes', 'sync_vitals', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
-    const emotional = (payload as any)?.emotional as Record<string, unknown> | undefined;
+    const p = typed<SyncVitalsPayload>(payload);
+    const emotional = p.emotional;
     if (!emotional) { return; }
     if (persistencePolicy !== 'ephemeral') {
-      await updateGlobalSoul({ emotional: emotional as any }).catch((e: unknown) => {
+      await updateGlobalSoul({ emotional }).catch((e: unknown) => {
         console.error('[Agnes] NSV write failed (sync_vitals):', e);
       });
     }
@@ -207,20 +284,20 @@ export function registerAgnesActions() {
 
   ActionHub.register('agnes', 'agnes_create_session_note', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
     if (!userId || !encryptionKey) { pushAssistantMessage?.('I\'m keeping that with us right here for now.'); return; }
-    const note = typeof (payload as any)?.note === 'string' ? (payload as any).note.trim().slice(0, 2000) : '';
+    const p = typed<SessionNotePayload>(payload);
+    const note = typeof p.note === 'string' ? p.note.trim().slice(0, 2000) : '';
     if (!note) { return; }
     const profile = await loadAgnesProfile({ userId, encryptionKey });
     if (!profile) { pushAssistantMessage?.('I\'m keeping that with us right here for now.'); return; }
-    const p = payload as any;
     const newNote: SessionNote = {
       id: `snote_${crypto.randomUUID()}`,
       note,
       timestamp: new Date().toISOString(),
-      sessionId: typeof p?.sessionId === 'string' ? p.sessionId : undefined,
-      formulationUpdate: typeof p?.formulationUpdate === 'string' ? p.formulationUpdate.trim().slice(0, 500) : undefined,
-      unfinishedBusiness: typeof p?.unfinishedBusiness === 'string' ? p.unfinishedBusiness.trim().slice(0, 500) : undefined,
-      homeworkSuggested: typeof p?.homeworkSuggested === 'string' ? p.homeworkSuggested.trim().slice(0, 500) : undefined,
-      allianceQuality: ['building', 'testing', 'established', 'rupture_detected'].includes(p?.allianceQuality) ? p.allianceQuality : undefined,
+      sessionId: typeof p.sessionId === 'string' ? p.sessionId : undefined,
+      formulationUpdate: typeof p.formulationUpdate === 'string' ? p.formulationUpdate.trim().slice(0, 500) : undefined,
+      unfinishedBusiness: typeof p.unfinishedBusiness === 'string' ? p.unfinishedBusiness.trim().slice(0, 500) : undefined,
+      homeworkSuggested: typeof p.homeworkSuggested === 'string' ? p.homeworkSuggested.trim().slice(0, 500) : undefined,
+      allianceQuality: ['building', 'testing', 'established', 'rupture_detected'].includes(p.allianceQuality ?? '') ? p.allianceQuality as SessionNote['allianceQuality'] : undefined,
     };
     const next = {
       ...profile,
@@ -239,8 +316,9 @@ export function registerAgnesActions() {
 
   ActionHub.register('agnes', 'agnes_update_session_note', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
     if (!userId || !encryptionKey) { pushAssistantMessage?.('I\'m holding that update for you.'); return; }
-    const noteId = typeof (payload as any)?.noteId === 'string' ? (payload as any).noteId : null;
-    const newText = typeof (payload as any)?.note === 'string' ? (payload as any).note.trim().slice(0, 2000) : null;
+    const p = typed<SessionNotePayload>(payload);
+    const noteId = typeof p.noteId === 'string' ? p.noteId : null;
+    const newText = typeof p.note === 'string' ? p.note.trim().slice(0, 2000) : null;
     if (!noteId || !newText) { return; }
     const profile = await loadAgnesProfile({ userId, encryptionKey });
     if (!profile) { pushAssistantMessage?.('I\'m holding that update for you.'); return; }
@@ -255,7 +333,8 @@ export function registerAgnesActions() {
 
   ActionHub.register('agnes', 'agnes_delete_session_note', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
     if (!userId || !encryptionKey) { pushAssistantMessage?.('I\'ll take care of that once your vault is accessible again.'); return; }
-    const noteId = typeof (payload as any)?.noteId === 'string' ? (payload as any).noteId : null;
+    const p = typed<SessionNotePayload>(payload);
+    const noteId = typeof p.noteId === 'string' ? p.noteId : null;
     if (!noteId) { return; }
     const profile = await loadAgnesProfile({ userId, encryptionKey });
     if (!profile) { pushAssistantMessage?.('I\'ll take care of that once your vault is accessible again.'); return; }
@@ -269,8 +348,9 @@ export function registerAgnesActions() {
   ActionHub.register('agnes', 'agnes_set_somatic_mode', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
     if (!userId || !encryptionKey) { return; }
     const validModes = ['active', 'passive', 'off'] as const;
-    const mode = (payload as any)?.somaticMode;
-    if (!validModes.includes(mode)) { return; }
+    const p = typed<SomaticModePayload>(payload);
+    const mode = p.somaticMode;
+    if (!mode || !validModes.includes(mode)) { return; }
     const profile = await loadAgnesProfile({ userId, encryptionKey });
     if (!profile) { return; }
     const somaticEnabled = mode !== 'off';
@@ -300,11 +380,12 @@ export function registerAgnesActions() {
     // then use the last 2 session timestamps to form a minimal series.
     // Since SessionNote has no embedded scores, we use NSV as the live snapshot
     // and treat each session note as confirming a prior session occurred.
-    const nsv = getLatestNSV?.() as Record<string, any> | undefined;
-    const currentStress = typeof nsv?.emotional?.stressLoad === 'number' ? nsv.emotional.stressLoad
-      : typeof nsv?.stressLoad === 'number' ? nsv.stressLoad : null;
-    const currentResilience = typeof nsv?.emotional?.emotionalResilience === 'number' ? nsv.emotional.emotionalResilience
-      : typeof nsv?.emotionalResilience === 'number' ? nsv.emotionalResilience : null;
+    const nsv = getLatestNSV?.() as NeuralStateVector | undefined;
+    const emotional = nsv?.emotional;
+    const currentStress = typeof emotional?.stressLoad === 'number' ? emotional.stressLoad
+      : null;
+    const currentResilience = typeof emotional?.emotionalResilience === 'number' ? emotional.emotionalResilience
+      : null;
 
     // We need at least some emotional data to trend
     if (currentStress === null && currentResilience === null) { return; }
@@ -333,10 +414,11 @@ export function registerAgnesActions() {
   });
 
   ActionHub.register('agnes', 'predict_session_outcome', ({ payload, emitSpineEvent }) => {
-    const messageCount = typeof (payload as any)?.messageCount === 'number' ? (payload as any).messageCount as number : undefined;
-    const avgResponseLength = typeof (payload as any)?.avgResponseLength === 'number' ? (payload as any).avgResponseLength as number : undefined;
-    const silenceCount = typeof (payload as any)?.silenceCount === 'number' ? (payload as any).silenceCount as number : undefined;
-    const stressLoad = typeof (payload as any)?.stressLoad === 'number' ? (payload as any).stressLoad as number : undefined;
+    const p = typed<SessionMetricsPayload>(payload);
+    const messageCount = typeof p.messageCount === 'number' ? p.messageCount : undefined;
+    const avgResponseLength = typeof p.avgResponseLength === 'number' ? p.avgResponseLength : undefined;
+    const silenceCount = typeof p.silenceCount === 'number' ? p.silenceCount : undefined;
+    const stressLoad = typeof p.stressLoad === 'number' ? p.stressLoad : undefined;
 
     const risk = Math.min(1, (
       (silenceCount ?? 0) * 0.2 +
@@ -357,9 +439,10 @@ export function registerAgnesActions() {
 
   ActionHub.register('agnes', 'update_emergency_contact', async ({ userId, encryptionKey, payload, pushAssistantMessage, markProfileDirty }) => {
     if (!userId || !encryptionKey) { return; }
-    const name = typeof (payload as any)?.name === 'string' ? (payload as any).name.trim() : undefined;
-    const relationship = typeof (payload as any)?.relationship === 'string' ? (payload as any).relationship.trim() : undefined;
-    const phone = typeof (payload as any)?.phone === 'string' ? (payload as any).phone.trim() : undefined;
+    const p = typed<EmergencyContactPayload>(payload);
+    const name = typeof p.name === 'string' ? p.name.trim() : undefined;
+    const relationship = typeof p.relationship === 'string' ? p.relationship.trim() : undefined;
+    const phone = typeof p.phone === 'string' ? p.phone.trim() : undefined;
     const profile = await loadAgnesProfile({ userId, encryptionKey });
     if (!profile) { return; }
     const next = {
@@ -376,7 +459,7 @@ export function registerAgnesActions() {
     if (!userId || !encryptionKey) { return; }
     const profile = await loadAgnesProfile({ userId, encryptionKey });
     if (!profile) { return; }
-    const incoming = payload as any;
+    const incoming = typed<PsychiatricHistoryPayload>(payload);
     const existing = profile.psychiatricHistory ?? {};
     const next = {
       ...profile,

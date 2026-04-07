@@ -25,9 +25,13 @@ export function useTitanSomaSync(
   // Resolve the vault master key once on mount (or when getMasterKey changes).
   useEffect(() => {
     let cancelled = false;
-    getMasterKey().then((key) => {
-      if (!cancelled) setSomaEncryptionKey(key);
-    });
+    getMasterKey()
+      .then((key) => {
+        if (!cancelled) setSomaEncryptionKey(key);
+      })
+      .catch((e) => {
+        console.error('[useTitanSomaSync] getMasterKey failed:', e);
+      });
     return () => {
       cancelled = true;
     };

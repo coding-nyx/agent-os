@@ -102,7 +102,7 @@ async function pruneCollectionByTimestamp<T extends { id: string }>(input: {
   getTimestamp: (record: T) => string;
 }): Promise<void> {
   if (input.limit <= 0) return;
-  const docs = await input.dataLayer.listDocuments<T>(input.collection);
+  const docs = await input.dataLayer.listDocuments<T>(input.collection, { limit: 0 });
   if (docs.length <= input.limit) return;
 
   const staleDocs = sortByTimestampDesc(docs, input.getTimestamp).slice(input.limit);
@@ -323,7 +323,7 @@ export class OrchestrationPersistenceService {
     dataLayer: NexusDataLayer = getNexusDataLayer(),
   ): Promise<Array<NexusRecord<PersistedProposalRecord>>> {
     if (!uid) return [];
-    const docs = await dataLayer.listDocuments<PersistedProposalRecord>(this.getProposalCollectionPath(uid));
+    const docs = await dataLayer.listDocuments<PersistedProposalRecord>(this.getProposalCollectionPath(uid), { limit: 0 });
     const sorted = sortByTimestampDesc(docs, (record) => record.createdAt);
     return typeof options?.limit === 'number' ? sorted.slice(0, options.limit) : sorted;
   }
@@ -336,7 +336,7 @@ export class OrchestrationPersistenceService {
     dataLayer: NexusDataLayer = getNexusDataLayer(),
   ): Promise<Array<NexusRecord<PersistedExecutionRecord>>> {
     if (!uid) return [];
-    const docs = await dataLayer.listDocuments<PersistedExecutionRecord>(this.getExecutionCollectionPath(uid));
+    const docs = await dataLayer.listDocuments<PersistedExecutionRecord>(this.getExecutionCollectionPath(uid), { limit: 0 });
     const sorted = sortByTimestampDesc(docs, (record) => record.executedAt);
     return typeof options?.limit === 'number' ? sorted.slice(0, options.limit) : sorted;
   }
@@ -411,7 +411,7 @@ export class OrchestrationPersistenceService {
     dataLayer: NexusDataLayer = getNexusDataLayer(),
   ): Promise<Array<NexusRecord<PersistedExecutionFailureRecord>>> {
     if (!uid) return [];
-    const docs = await dataLayer.listDocuments<PersistedExecutionFailureRecord>(this.getExecutionFailureCollectionPath(uid));
+    const docs = await dataLayer.listDocuments<PersistedExecutionFailureRecord>(this.getExecutionFailureCollectionPath(uid), { limit: 0 });
     const filtered = docs.filter((record) => {
       if (options?.executionId && record.executionId !== options.executionId) return false;
       if (options?.proposalId && record.proposalId !== options.proposalId) return false;

@@ -1,5 +1,6 @@
 import { ActionHub } from '@/lib/actions/action-hub';
 import { Spine } from '@/lib/spine/spine-event-bus';
+import type { NeuralStateVector } from '@/lib/types';
 import {
   FinancialPlan,
   DocumentAnalysis,
@@ -836,7 +837,7 @@ export function registerLedgerActions() {
         `Spending anomalies detected in the last 7 days:\n\n${lines}\n\nThese categories are running significantly above your normal weekly pace.`
       );
 
-      emitSpineEvent('MODULE_STATE_UPDATED' as any, {
+      emitSpineEvent('MODULE_STATE_UPDATED', {
         spendingAnomalies: anomalies,
         source: 'ledger',
       });
@@ -849,7 +850,7 @@ export function registerLedgerActions() {
      * all three breach their thresholds simultaneously.
      */
     detect_financial_stress_cascade: async ({ payload, emitSpineEvent, pushAssistantMessage, getLatestNSV }) => {
-      const nsv = getLatestNSV?.() as any;
+      const nsv = getLatestNSV?.() as NeuralStateVector | undefined;
 
       const financialFriction: number = nsv?.resource?.financialFriction ?? 0;
       // stressLoad stored as 0-10, normalize to 0-1
@@ -860,7 +861,7 @@ export function registerLedgerActions() {
       const isCascade = financialFriction > 6 && stressLoad > 0.7 && cashFlowRunwayDays < 30;
       if (!isCascade) return;
 
-      emitSpineEvent('MODULE_STATE_UPDATED' as any, {
+      emitSpineEvent('MODULE_STATE_UPDATED', {
         cascadeDetected: true,
         financialFriction,
         stressLoad,
@@ -902,7 +903,7 @@ export function registerLedgerActions() {
       const updatedTransaction: Transaction = {
         ...transactions[txIndex],
       };
-      (updatedTransaction as any).resonanceFeedback = aligned;
+      updatedTransaction.resonanceFeedback = aligned;
 
       const updatedTransactions: Transaction[] = [
         ...transactions.slice(0, txIndex),
@@ -918,7 +919,7 @@ export function registerLedgerActions() {
 
       // Compute per-category ROI coefficients when enough feedback exists
       const feedbackTxns = updatedTransactions.filter(
-        (tx) => (tx as any).resonanceFeedback !== undefined,
+        (tx) => tx.resonanceFeedback !== undefined,
       );
       const totalFeedback = feedbackTxns.length;
 
@@ -929,13 +930,13 @@ export function registerLedgerActions() {
           const cat = tx.category ?? 'Other';
           if (!categoryStats[cat]) categoryStats[cat] = { aligned: 0, total: 0 };
           categoryStats[cat].total += 1;
-          if ((tx as any).resonanceFeedback === true) categoryStats[cat].aligned += 1;
+          if (tx.resonanceFeedback === true) categoryStats[cat].aligned += 1;
         }
         const coefficients: Record<string, number> = {};
         for (const [cat, stats] of Object.entries(categoryStats)) {
           coefficients[cat] = stats.total > 0 ? stats.aligned / stats.total : 0;
         }
-        (next as any).resonanceCoefficients = coefficients;
+        next.resonanceCoefficients = coefficients;
       }
 
       await persistProfile(next, userId ?? null, encryptionKey ?? null, profileCache);
@@ -964,7 +965,7 @@ export function registerLedgerActions() {
       if (!profile) return;
 
       const coefficients: Record<string, number> =
-        (profile as any).resonanceCoefficients ?? {};
+        profile.resonanceCoefficients ?? {};
 
       if (Object.keys(coefficients).length === 0) {
         pushAssistantMessage?.(

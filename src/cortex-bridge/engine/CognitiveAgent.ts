@@ -119,7 +119,7 @@ export class CognitiveAgent {
       };
 
       const task: CancellableTask = this.kmpEngine.chatWithContext(
-        'agnes',
+        context.moduleId ?? 'nexus',
         messageText,
         historyJson,
         context.systemPrompt,

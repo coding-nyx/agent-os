@@ -31,7 +31,7 @@ export const SemanticMemoryService = {
 
     try {
       const dataLayer = getNexusDataLayer();
-      const facts = await dataLayer.listDocuments<Omit<SemanticFact, 'id'>>(`semantic_memory/${uid}/facts`);
+      const facts = await dataLayer.listDocuments<Omit<SemanticFact, 'id'>>(`semantic_memory/${uid}/facts`, { limit: 0 });
 
       return facts
         .filter((fact) => moduleIds.includes(fact.moduleId))

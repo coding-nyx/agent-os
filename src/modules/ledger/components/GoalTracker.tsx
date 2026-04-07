@@ -124,12 +124,12 @@ export function GoalTracker({
     onCreate: (form) => {
       onAddGoal({
         name: form.name!,
-        type: (form.type as any) || 'other',
+        type: (form.type as FinancialGoal['type']) || 'other',
         targetAmount: form.targetAmount!,
         currentAmount: form.currentAmount || 0,
         targetDate: form.targetDate,
         monthlyContribution: form.monthlyContribution || 0,
-        priority: (form.priority as any) || 'medium',
+        priority: (form.priority as FinancialGoal['priority']) || 'medium',
         notes: form.notes,
         milestones: form.milestones
       });
@@ -137,12 +137,12 @@ export function GoalTracker({
     onUpdate: (id, form) => {
       onUpdateGoal(id, {
         name: form.name,
-        type: form.type as any,
+        type: form.type as FinancialGoal['type'],
         targetAmount: form.targetAmount,
         currentAmount: form.currentAmount,
         targetDate: form.targetDate,
         monthlyContribution: form.monthlyContribution,
-        priority: form.priority as any,
+        priority: form.priority as FinancialGoal['priority'],
         notes: form.notes,
         milestones: form.milestones
       });
@@ -407,7 +407,7 @@ export function GoalTracker({
               <NeuralSelectMenu
                 options={GOAL_TYPES}
                 value={formData.type || 'savings'}
-                onChange={(val) => setField('type', val as any)}
+                onChange={(val) => setField('type', val as FinancialGoal['type'])}
               />
             </div>
           </div>

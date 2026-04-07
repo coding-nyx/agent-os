@@ -111,7 +111,7 @@ export function useModuleHealth(): UseModuleHealthReturn {
 
   const nsv = (globalSoul?.crossFunctionalState ?? null) as Record<string, unknown> | null;
 
-  const fetchEnvelopes = useCallback(async () => {
+  const fetchEnvelopes = useCallback(async (signal?: { cancelled: boolean }) => {
     if (!user?.uid) {
       setIsLoading(false);
       return;
@@ -128,18 +128,22 @@ export function useModuleHealth(): UseModuleHealthReturn {
           }
         })
       );
+      if (signal?.cancelled) return;
       const map: Record<string, ModuleMemoryEnvelope | null> = {};
       results.forEach(([id, env]) => { map[id] = env; });
       setEnvelopes(map);
-    } catch {
-      // Silent fail — show neutral status
+    } catch (err) {
+      if (signal?.cancelled) return;
+      console.warn('[useModuleHealth] Health check failed:', err);
     } finally {
-      setIsLoading(false);
+      if (!signal?.cancelled) setIsLoading(false);
     }
   }, [user?.uid]);
 
   useEffect(() => {
-    fetchEnvelopes();
+    const signal = { cancelled: false };
+    fetchEnvelopes(signal);
+    return () => { signal.cancelled = true; };
   }, [fetchEnvelopes, refreshCounter]);
 
   // Refresh on key spine events

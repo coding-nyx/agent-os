@@ -24,6 +24,7 @@ import { Sparkles, X, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import { useFocusTrap } from '@/lib/hooks/use-focus-trap';
 import { NexusChat } from './NexusChat';
 import type { ModuleTheme, ModuleId } from '@/lib/module-manifest';
 import type { AuthMode } from './UnifiedAuthModal';
@@ -245,6 +246,12 @@ export const CollapsibleAIPanel = forwardRef<CollapsibleAIPanelRef, CollapsibleA
 
     const theme = themeFor(themeColor);
 
+    const closePanel = useCallback(() => setIsOpen(false), []);
+    const focusTrapRef = useFocusTrap<HTMLElement>({
+      active: isOpen,
+      onEscape: closePanel,
+    });
+
     // ── Animation variants ────────────────────────────────────────────────────
     const panelVariants = {
       hidden: {
@@ -332,7 +339,11 @@ export const CollapsibleAIPanel = forwardRef<CollapsibleAIPanelRef, CollapsibleA
               )}
 
               <motion.aside
+                ref={focusTrapRef}
                 key="ai-panel"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${persona} AI assistant`}
                 variants={reducedMotion ? undefined : panelVariants}
                 initial="hidden"
                 animate="visible"

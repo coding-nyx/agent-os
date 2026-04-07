@@ -1,4 +1,5 @@
 import { ActionHub } from '@/lib/actions/action-hub';
+import { NexusLogger } from '@/lib/nexus-logger';
 import {
   loadScoutProfile,
   saveScoutProfile,
@@ -9,13 +10,14 @@ import {
   deleteKnowledgeNode,
 } from './scout-knowledge-service';
 import { ScoutWebSearchService } from './scout-web-search-service';
-import { addSource, loadSources, normalizeUrl, updateSource } from './scout-sources-service';
+import { addSource, loadSources, normalizeUrl, updateSource, type SourceEntryDecrypted } from './scout-sources-service';
 import { createSession, updateSession, getSession, loadSessions } from './scout-session-service';
 import { generateDigest } from './scout-digest-service';
 import { ScoutQueryService } from './scout-query-service';
 import { generateJSONWithAgent } from '@/lib/ai-adapters/json-generation-agent';
 import { SourceEntry } from '../types';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
+import type { WebCrawlerResult, WebCrawlerResponse } from '@/lib/services/web-crawler-service';
 import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
 
 let registered = false;
@@ -146,8 +148,8 @@ export function registerScoutActions() {
       const sources = Array.isArray(payload?.sources) ? payload.sources : [];
       const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : undefined;
 
-      const addedSources: SourceEntry[] = [];
-      const addPromises = new Map<string, Promise<any>>();
+      const addedSources: SourceEntryDecrypted[] = [];
+      const addPromises = new Map<string, Promise<SourceEntryDecrypted | null>>();
 
       for (const s of sources) {
         if (typeof s?.url === 'string') {
@@ -168,7 +170,7 @@ export function registerScoutActions() {
 
       const results = await Promise.all(addPromises.values());
       for (const added of results) {
-        if (added) addedSources.push(added as any);
+        if (added) addedSources.push(added);
       }
 
       if (sources.length > 0) {
@@ -655,7 +657,7 @@ export function registerScoutActions() {
       };
 
       emitSpineEvent(
-        'MODULE_STATE_UPDATED' as any,
+        'MODULE_STATE_UPDATED',
         { researchSnapshot: snapshot, source: 'scout' },
         { domain: 'C', priority: 'info' },
       );
@@ -771,7 +773,7 @@ export function registerScoutActions() {
       );
 
       emitSpineEvent(
-        'MODULE_STATE_UPDATED' as any,
+        'MODULE_STATE_UPDATED',
         { triangulationResult: { claim, totalEvidence, supportingCount, consensusScore }, source: 'scout' },
         { domain: 'C', priority: 'info' },
       );
@@ -846,7 +848,7 @@ export function registerScoutActions() {
       );
 
       emitSpineEvent(
-        'MODULE_STATE_UPDATED' as any,
+        'MODULE_STATE_UPDATED',
         { contradictionsFound: contradictions.length, source: 'scout' },
         { domain: 'C', priority: 'info' },
       );
@@ -902,7 +904,7 @@ export function registerScoutActions() {
       );
 
       emitSpineEvent(
-        'MODULE_STATE_UPDATED' as any,
+        'MODULE_STATE_UPDATED',
         { crossSessionPatterns: recurringWords, source: 'scout' },
         { domain: 'C', priority: 'info' },
       );
@@ -922,7 +924,7 @@ export function registerScoutActions() {
       if (!query) return;
 
       emitSpineEvent(
-        'RESEARCH_PROPOSED' as any,
+        'RESEARCH_PROPOSED',
         { query, reason, mode },
         { domain: 'C', priority: 'info' }
       );
@@ -948,7 +950,14 @@ export function registerScoutActions() {
 
       const openrouterKey = resolveOpenRouterKey();
 
-      const analysis = await generateJSONWithAgent({
+      const analysis = await generateJSONWithAgent<{
+        covered?: string[];
+        gaps?: string[];
+        targetedQueries?: string[];
+        hypothesis?: string;
+        sourceStrategy?: string;
+        confidence?: number;
+      }>({
         prompt: `Research topic: "${topic}"
 KB has ${nodes.length} related findings:
 ${nodes.map((n: any) => `- ${n.claim} (confidence: ${n.confidence.toFixed(2)}, status: ${n.status})`).join('\n') || '(none)'}
@@ -970,9 +979,9 @@ Return JSON: {
 
       pushAssistantMessage?.(
         `**Gap Analysis for "${topic}"**\n\n` +
-        `**Already covered:** ${((analysis as any).covered || []).slice(0, 3).join(' · ') || 'Nothing yet'}\n` +
-        `**Gaps identified:** ${((analysis as any).gaps || []).slice(0, 3).join(' · ') || 'None found'}\n` +
-        `**Working hypothesis:** ${(analysis as any).hypothesis || 'Insufficient data for a hypothesis.'}`
+        `**Already covered:** ${(analysis.covered || []).slice(0, 3).join(' · ') || 'Nothing yet'}\n` +
+        `**Gaps identified:** ${(analysis.gaps || []).slice(0, 3).join(' · ') || 'None found'}\n` +
+        `**Working hypothesis:** ${analysis.hypothesis || 'Insufficient data for a hypothesis.'}`
       );
     },
 
@@ -999,7 +1008,7 @@ Return JSON: {
       });
 
       const seen = new Set<string>();
-      const merged = batchResults.flatMap((r: any) => r.results).filter((r: any) => {
+      const merged: WebCrawlerResult[] = batchResults.flatMap((r: WebCrawlerResponse) => r.results).filter((r: WebCrawlerResult) => {
         try {
           const key = r.url.replace(/[?#].*$/, '');
           if (seen.has(key)) return false;
@@ -1010,8 +1019,8 @@ Return JSON: {
         }
       });
 
-      const formatted = (merged as any[]).slice(0, 8)
-        .map((r: any) => {
+      const formatted = merged.slice(0, 8)
+        .map((r: WebCrawlerResult) => {
           try {
             const domain = new URL(r.url).hostname;
             return `**${r.title}** (${domain})\n${r.content?.slice(0, 400) ?? ''}`;
@@ -1023,17 +1032,17 @@ Return JSON: {
 
       // Background auto-index top 3 into KB
       if (userId && encryptionKey) {
-        const topResults = (merged as any[]).slice(0, 3).map((r: any) => ({
+        const topResults = merged.slice(0, 3).map((r: WebCrawlerResult) => ({
           url: r.url,
           title: r.title,
           snippet: r.content?.slice(0, 300),
           discoveredVia: 'search' as const,
         }));
         Promise.allSettled(
-          topResults.map((src: any) =>
+          topResults.map((src) =>
             addSource(src, { userId, encryptionKey })
           )
-        ).catch(() => {});
+        ).catch((e) => { NexusLogger.warn('ScoutActions', 'Source indexing failed', e); });
       }
 
       pushAssistantMessage?.(`**Search Results (${merged.length} unique sources):**\n\n${formatted}`);

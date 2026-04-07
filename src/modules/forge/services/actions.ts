@@ -131,62 +131,9 @@ export function registerForgeActions() {
       }
     },
 
-    nexus_link_command: async ({ userId, payload, encryptionKey }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
-      if (!profile) return;
-      const command = typeof payload?.command === 'string' ? payload.command : 'command';
-      const session: ForgeExecutionRecord = {
-        id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
-        command,
-        result: 'error',
-        outputSummary: 'Local daemon disabled. Use cloud execution.',
-        errorLog: ['Local daemon disabled. Use cloud execution.'],
-        createdAt: new Date().toISOString()
-      };
-      const next: ForgeProfile = {
-        ...profile,
-        sessions: [session, ...profile.sessions].slice(0, 300)
-      };
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
-    },
-
-    read_file: async ({ userId, payload, encryptionKey }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
-      if (!profile) return;
-      const command = `read_file:${typeof payload?.path === 'string' ? payload.path : 'unknown_path'}`;
-      const session: ForgeExecutionRecord = {
-        id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
-        command,
-        result: 'error',
-        outputSummary: 'Direct file reading is disabled in this environment.',
-        errorLog: ['Direct file reading is disabled in this environment. Use code execution instead.'],
-        createdAt: new Date().toISOString()
-      };
-      const next: ForgeProfile = {
-        ...profile,
-        sessions: [session, ...profile.sessions].slice(0, 300)
-      };
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
-    },
-
-    write_file: async ({ userId, payload, encryptionKey }) => {
-      const profile = await loadProfile(userId ?? null, encryptionKey ?? null);
-      if (!profile) return;
-      const command = `write_file:${typeof payload?.path === 'string' ? payload.path : 'unknown_path'}`;
-      const session: ForgeExecutionRecord = {
-        id: typeof payload?.id === 'string' ? payload.id : crypto.randomUUID(),
-        command,
-        result: 'error',
-        outputSummary: 'Direct file writing is disabled in this environment.',
-        errorLog: ['Direct file writing is disabled in this environment. Use code execution instead.'],
-        createdAt: new Date().toISOString()
-      };
-      const next: ForgeProfile = {
-        ...profile,
-        sessions: [session, ...profile.sessions].slice(0, 300)
-      };
-      await persistProfile(next, userId ?? null, encryptionKey ?? null);
-    },
+    // NOTE: nexus_link_command, read_file, write_file stubs removed.
+    // Forge is UI-only — local daemon (NexusLink) is not implemented.
+    // Use cloud execution (execute_code) instead.
 
     // ── COMMS ACTIONS ─────────────────────────────────────────────────────────
 

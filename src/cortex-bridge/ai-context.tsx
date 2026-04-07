@@ -74,6 +74,9 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
         const credentialStore = getCredentialStore(userId ?? null, encryptionKey ?? null);
 
         // Legacy key resolution (fallback when credential store unavailable or for env vars).
+        // SECURITY: These localStorage reads are a legacy path. Keys stored here are
+        // vulnerable to XSS exfiltration. The credential store path above encrypts
+        // keys in Firestore and auto-migrates localStorage keys on first read.
         const openrouterKey = resolveOpenRouterKey();
         const grokKey = localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY;
         const googleKey = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY;
@@ -134,19 +137,28 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
   }, [guestMode, agent]);
 
   useEffect(() => {
-    if (!agent) return;
+    // Skip while the initial mount effect is still in-flight.
+    if (!initRef.current) return;
+
     const readConfig = () => ({
       model: localStorage.getItem('preferred_model'),
       provider: localStorage.getItem('nexus_debug_provider'),
       guest: !!guestMode,
       hasCredentialStore: !!getCredentialStore(userId ?? null, encryptionKey ?? null),
     });
-    lastConfigRef.current = readConfig();
 
-    const reinitIfChanged = async () => {
+    // When agent is null (initial init failed or timed out) we still need to
+    // attempt initialization with the updated credentials.  The `forceInit`
+    // flag skips the deduplication check so we always try at least once.
+    const forceInit = !agent;
+    if (!forceInit) {
+      lastConfigRef.current = readConfig();
+    }
+
+    const reinitIfChanged = async (force = false) => {
       const next = readConfig();
       const prev = lastConfigRef.current;
-      if (prev && prev.model === next.model && prev.provider === next.provider && prev.guest === next.guest && prev.hasCredentialStore === next.hasCredentialStore) return;
+      if (!force && prev && prev.model === next.model && prev.provider === next.provider && prev.guest === next.guest && prev.hasCredentialStore === next.hasCredentialStore) return;
       if (reinitRef.current) return;
       reinitRef.current = true;
       lastConfigRef.current = next;
@@ -184,6 +196,7 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
         setRuntimeModelId(config.freeModelsOnly ? 'google/gemini-2.0-flash:free' : (config.preferredModelId ?? null));
         setRuntimeProvider(credentialStore ? (safePreferredProvider ?? 'openrouter') : deriveProvider(config));
         setInitFailed(false);
+        setIsInitialized(true);
       } catch (e) {
         console.warn('AIProvider: re-init failed', e);
         setInitFailed(true);
@@ -191,6 +204,11 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
         reinitRef.current = false;
       }
     };
+
+    // If initial init failed and credentials have arrived, retry immediately.
+    if (forceInit) {
+      void reinitIfChanged(true);
+    }
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'preferred_model' || e.key === 'nexus_debug_provider') {

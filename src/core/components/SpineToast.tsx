@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Bell, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,19 +47,39 @@ export function SpineToastProvider() {
   const reducedMotion = useReducedMotion();
   const moduleNames = globalSoul?.displayNames ?? {};
 
-  // Auto-dismiss logic moved to NotificationContext or handled here by calling dismissToast
+  // Auto-dismiss: track per-toast timers so that adding/removing a toast does
+  // not reset the countdown for unrelated toasts.
+  const activeTimers = useRef(new Map<string, number>());
   useEffect(() => {
-    if (toasts.length === 0) return;
-
-    const timers = toasts.map(toast => {
+    const timers = activeTimers.current;
+    // Create timers for new toasts that don't already have one.
+    for (const toast of toasts) {
+      if (timers.has(toast.id)) continue;
       const config = PRIORITY_CONFIG[toast.priority] || PRIORITY_CONFIG.info;
-      return window.setTimeout(() => {
+      const timer = window.setTimeout(() => {
+        timers.delete(toast.id);
         dismissToast(toast.id);
       }, config.duration);
-    });
-
-    return () => timers.forEach(t => window.clearTimeout(t));
+      timers.set(toast.id, timer);
+    }
+    // Clean up timers for toasts that have been removed externally.
+    const currentIds = new Set(toasts.map((t) => t.id));
+    for (const [id, timer] of timers) {
+      if (!currentIds.has(id)) {
+        window.clearTimeout(timer);
+        timers.delete(id);
+      }
+    }
   }, [toasts, dismissToast]);
+
+  // Clear all timers on unmount.
+  useEffect(() => {
+    const timers = activeTimers.current;
+    return () => {
+      for (const timer of timers.values()) window.clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
 
   if (toasts.length === 0) return null;
 

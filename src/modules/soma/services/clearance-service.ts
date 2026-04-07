@@ -4,7 +4,7 @@ import type { SomaHealthSnapshot } from '@/modules/soma/types';
 
 type ClearanceSource = Pick<TitanProfile, 'knownConditions' | 'medications' | 'clearances'> | SomaHealthSnapshot;
 
-const _evaluator = new (MedicalClearanceEvaluatorJs as any)();
+const _evaluator = new MedicalClearanceEvaluatorJs();
 
 export class ClearanceService {
   static evaluate(profile: ClearanceSource, activity: string): ClearanceRecord {

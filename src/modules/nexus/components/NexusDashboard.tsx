@@ -453,6 +453,7 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
     }
     const llmPrimary = async (prompt: string) => {
       const { response } = await sendMessage(prompt, {
+        moduleId: 'nexus',
         systemPrompt: 'You are a neutral document analyst. Follow the instructions exactly. Do NOT emit action tags.',
         memoryContext: [],
         summary: 'Nexus document analysis.',
@@ -463,6 +464,7 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
 
     const llmFallback = async (prompt: string) => {
       const { response } = await sendMessage(prompt, {
+        moduleId: 'nexus',
         systemPrompt: 'Return a concise summary and key points. No action tags.',
         memoryContext: [],
         summary: 'Nexus document fallback.',
@@ -529,6 +531,27 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
     }
     return '';
   })();
+
+  // Memoize the thread-filtered ai object passed to NexusChat to avoid
+  // breaking its React.memo on every render.
+  const threadFilteredMessages = useMemo(
+    () => ai.messages.filter((m) => {
+      if (m.threadId) return m.threadId === currentThreadId;
+      return currentThreadId === 'nexus.dashboard';
+    }),
+    [ai.messages, currentThreadId],
+  );
+
+  const nexusChatAi = useMemo(
+    () => ({
+      ...ai,
+      messages: threadFilteredMessages,
+      setMessages: threadAwareSetMessages,
+      handleSendMessage: handleSendWithRouting,
+      isProcessing: ai.isProcessing || isNexusBusy,
+    }),
+    [ai, threadFilteredMessages, threadAwareSetMessages, handleSendWithRouting, isNexusBusy],
+  );
 
   const masterThreadSnapshot = useMemo(() => {
     return MasterThreadService.createNexusShellSnapshot({
@@ -807,18 +830,7 @@ export function NexusDashboard({ ai, agentName, surfaceMode = 'chat' }: NexusDas
       <div className="flex-1 min-h-0 flex flex-col relative pt-2">
         <ClarificationHintBanner hint={clarificationHint} onDismiss={dismissClarificationHint} />
         <NexusChat
-          ai={{
-            ...ai,
-            messages: ai.messages.filter((m) => {
-              if (m.threadId) return m.threadId === currentThreadId;
-              return currentThreadId === 'nexus.dashboard';
-            }),
-            // Thread-aware edit/retry: maps filtered-view truncation back to
-            // the full unfiltered history, preserving messages from other threads.
-            setMessages: threadAwareSetMessages,
-            handleSendMessage: handleSendWithRouting,
-            isProcessing: ai.isProcessing || isNexusBusy,
-          }}
+          ai={nexusChatAi}
           agentName={agentName}
           themeColor="cyan"
           placeholder="Message Nexus…"

@@ -18,6 +18,7 @@ import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import type { NexusDataLayer } from '@/lib/data-layer/index';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { decryptWithKey } from '@/lib/encryption';
+import { NexusLogger } from '@/lib/nexus-logger';
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -131,9 +132,7 @@ export async function exportUserData(
   try {
     const soulDoc = await dataLayer.getDocument('global_souls', userId);
     if (soulDoc !== null) globalSoul = soulDoc;
-  } catch {
-    // Non-fatal — omit section
-  }
+  } catch (e) { NexusLogger.warn('DataExport', 'Section export failed', e); }
 
   // ── Spine events (last 100, newest first) ─────────────────────────────────
   let spineEvents: unknown[] | undefined = undefined;
@@ -144,9 +143,7 @@ export async function exportUserData(
       limit: 100,
     });
     spineEvents = events;
-  } catch {
-    // Non-fatal — omit section
-  }
+  } catch (e) { NexusLogger.warn('DataExport', 'Section export failed', e); }
 
   return {
     exportedAt: new Date().toISOString(),
@@ -281,9 +278,7 @@ export async function exportAllData(
           if (hasEncryptedPayload(doc)) hasVaultDoc = true;
         }
         // null result → leave key absent (sparse export)
-      } catch {
-        // Non-fatal — absent key signals fetch failure to importer
-      }
+      } catch (e) { NexusLogger.warn('DataExport', 'Section omitted from export'); }
     }),
   );
 
@@ -292,9 +287,7 @@ export async function exportAllData(
   try {
     const soulDoc = await dataLayer.getDocument('global_souls', userId);
     if (soulDoc !== null) globalSoul = soulDoc;
-  } catch {
-    // Non-fatal
-  }
+  } catch (e) { NexusLogger.warn('DataExport', 'Section omitted from export'); }
 
   return {
     version: '2.0',

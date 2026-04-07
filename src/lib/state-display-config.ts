@@ -79,6 +79,7 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   BURNOUT_WARNING: 'Burnout risk detected',
   CLEARANCE_DENIED: 'Activity clearance denied',
   CLEARANCE_GRANTED: 'Activity cleared',
+  CLEARANCE_REQUESTED: 'Activity clearance requested',
   COGNITIVE_OVERLOAD: 'Cognitive overload detected',
   SECURITY_POLICY_UPDATED: 'Security settings updated',
   FINANCIAL_STRESS: 'Financial stress flagged',
@@ -256,6 +257,30 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   GOAL_VELOCITY_ALERT: 'Goal velocity alert',
   CLAIM_CONTRADICTION_DETECTED: 'Claim contradiction detected',
   CRISIS_RECOVERY_INITIATED: 'Crisis recovery initiated',
+  SYSTEM_HEALTH_CHECK: 'System health check',
+  SOUL_STALE: 'Soul state stale',
+  // Module state & neural communication events
+  MODULE_STATE_UPDATED: 'Module state updated',
+  NEURAL_TRANSMISSION_SENT: 'Neural transmission sent',
+  NEURAL_RESONANCE_RECEIVED: 'Neural resonance received',
+  NEURAL_PROCESSING_STARTED: 'Neural processing started',
+  RESEARCH_PROPOSED: 'Research proposed',
+  // Ledger domain events
+  ACCOUNT_CREATED: 'Account created',
+  CREDIT_SCORE_ADDED: 'Credit score added',
+  INSURANCE_POLICY_CREATED: 'Insurance policy created',
+  INVESTMENT_ADDED: 'Investment added',
+  NET_WORTH_SNAPSHOT: 'Net worth snapshot',
+  PORTFOLIO_SNAPSHOT: 'Portfolio snapshot',
+  RECURRING_POSTED: 'Recurring transaction posted',
+  RECURRING_RULE_CREATED: 'Recurring rule created',
+  RETIREMENT_PLAN_CREATED: 'Retirement plan created',
+  SUBSCRIPTION_CANCELLED: 'Subscription cancelled',
+  SUBSCRIPTION_CREATED: 'Subscription created',
+  TAX_SUMMARY_GENERATED: 'Tax summary generated',
+  TRANSFER_COMPLETED: 'Transfer completed',
+  // Cross-module stress signals
+  STRESS_SPIKE: 'Stress spike detected',
 };
 
 // ---------------------------------------------------------------------------

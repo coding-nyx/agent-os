@@ -1,3 +1,5 @@
+import { NexusLogger } from '@/lib/nexus-logger';
+
 /**
  * BridgeService — Headless Spine subscriber / FCM push-notification daemon.
  *
@@ -33,8 +35,9 @@ let fcmUnavailableLogged = false;
 // those are Firebase config errors (invalid VAPID key, token-subscribe-failed, etc.)
 // that must surface as real errors so they can be diagnosed.
 function isPushServiceError(err: unknown): boolean {
-  const name = String((err as any)?.name || '').toLowerCase();
-  const message = String((err as any)?.message || '').toLowerCase();
+  const errObj = err as { name?: string; message?: string } | null;
+  const name = String(errObj?.name || '').toLowerCase();
+  const message = String(errObj?.message || '').toLowerCase();
 
   return (
     name === 'aborterror' ||
@@ -79,8 +82,6 @@ class BridgeServiceClass {
     this.started = true;
 
     this.initPromise = (async () => {
-      console.log('[Bridge] Starting for user:', userId);
-
       // 1. Register service worker
       await this.registerServiceWorker();
 
@@ -142,7 +143,6 @@ class BridgeServiceClass {
     this.userId = null;
     this.started = false;
     this.initPromise = null;
-    console.log('[Bridge] Stopped.');
   }
 
   // -------------------------------------------------------------------------
@@ -159,8 +159,7 @@ class BridgeServiceClass {
         this.swRegistration = existing;
         // Trigger a background update check so a stale SW (e.g. cached with wrong
         // Firebase config) gets replaced without requiring manual unregistration.
-        void existing.update().catch(() => {});
-        console.log('[Bridge] Using existing service worker (update check triggered)');
+        void existing.update().catch((e) => { NexusLogger.warn('BridgeService', `SW update failed: ${e}`); });
         return;
       }
 
@@ -168,7 +167,6 @@ class BridgeServiceClass {
         FCM_SW_PATH,
         { scope: '/' }
       );
-      console.log('[Bridge] Service worker registered');
     } catch (err) {
       console.error('[Bridge] SW registration failed:', err);
     }
@@ -212,11 +210,8 @@ class BridgeServiceClass {
         return;
       }
 
-      console.log('[Bridge] FCM token obtained:', token.slice(0, 20) + '…');
-
       if (this.userId) {
         await this.persistFCMToken(token);
-        console.log('[Bridge] FCM token persisted to bridge_config.');
       }
 
       // Cleanup old listener if any
@@ -242,12 +237,11 @@ class BridgeServiceClass {
       // Handle FCM messages
       if (this.fcmUnsubscribe) this.fcmUnsubscribe();
       this.fcmUnsubscribe = onMessage(messaging, (payload) => {
-        console.log('[Bridge] FCM message received:', payload);
         // Show OS notification for all foreground/hidden-tab FCM messages.
         // (True background/closed-app messages are handled by the SW's onBackgroundMessage.)
         const title = payload.notification?.title ?? 'Nexus Alert';
         const body = payload.notification?.body ?? '';
-        this.showNativeNotification(title, body, (payload.data as any) ?? {});
+        this.showNativeNotification(title, body, (payload.data as Record<string, string> | undefined) ?? {});
       });
 
     } catch (err) {
@@ -257,8 +251,9 @@ class BridgeServiceClass {
           fcmUnavailableLogged = true;
         }
       } else {
-        const code = (err as any)?.code ?? '';
-        const message = (err as any)?.message ?? '';
+        const errObj = err as { code?: string; message?: string } | null;
+        const code = errObj?.code ?? '';
+        const message = errObj?.message ?? '';
         console.error(`[Bridge] FCM init failed — code: ${code}, message: ${message}`, err);
       }
     }
@@ -282,11 +277,20 @@ class BridgeServiceClass {
     const worker = registration.installing ?? registration.waiting;
     if (worker) {
       await new Promise<void>((resolve) => {
+        // Timeout guard: resolve after 10s to prevent indefinite hang
+        // if the service worker never reaches 'activated' or 'redundant'.
+        const timeout = setTimeout(() => {
+          worker.removeEventListener('statechange', handler);
+          resolve();
+        }, 10_000);
+
         const handler = () => {
           if (worker.state === 'activated') {
+            clearTimeout(timeout);
             worker.removeEventListener('statechange', handler);
             resolve();
           } else if (worker.state === 'redundant') {
+            clearTimeout(timeout);
             worker.removeEventListener('statechange', handler);
             resolve(); // Still resolve to let the flow continue
           }
@@ -380,7 +384,7 @@ class BridgeServiceClass {
         data,
         tag: data['type'] || 'nexus-alert',
         renotify: true,
-      } as any);
+      } as NotificationOptions);
     } else {
       new Notification(title, { body, icon: NOTIFICATION_ICON });
     }

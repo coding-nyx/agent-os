@@ -94,11 +94,9 @@ export function createActionHubCallbacks(
     setDocument: (collection, id, dataJson, onComplete, onError) => {
       try {
         const data = parseJsonObject(dataJson);
-        console.log(`[TS Bridge] setDocument: collection=${collection}, id=${id}, keys=${Object.keys(data).join(',')}`);
         dataLayer
           .setDocument(collection, id, data)
           .then(() => {
-            console.log(`[TS Bridge] setDocument success: collection=${collection}, id=${id}`);
             onComplete();
           })
           .catch((err) => {
@@ -114,11 +112,9 @@ export function createActionHubCallbacks(
     updateDocument: (collection, id, updatesJson, onComplete, onError) => {
       try {
         const updates = parseJsonObject(updatesJson);
-        console.log(`[TS Bridge] updateDocument: collection=${collection}, id=${id}, keys=${Object.keys(updates).join(',')}`);
         dataLayer
           .updateDocument(collection, id, updates)
           .then(() => {
-            console.log(`[TS Bridge] updateDocument success: collection=${collection}, id=${id}`);
             onComplete();
           })
           .catch((err) => {

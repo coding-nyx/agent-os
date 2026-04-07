@@ -212,7 +212,13 @@ function FieldCard({
         !isSelected && 'hover:border-white/20',
       )}
     >
-      <div className="flex flex-col gap-2" onClick={!isEditing ? onSelect : undefined}>
+      <div
+        className="flex flex-col gap-2"
+        role="button"
+        tabIndex={0}
+        onClick={!isEditing ? onSelect : undefined}
+        onKeyDown={!isEditing ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect?.(); } } : undefined}
+      >
         {/* Header: type icon + name + action buttons */}
         <div className="flex items-start justify-between gap-1">
           <div className="flex items-center gap-1.5 min-w-0">

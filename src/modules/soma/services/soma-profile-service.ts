@@ -1,30 +1,27 @@
 // --- Soma Profile Service (Sovereign Data Layer — Path C+ Phase 1) ---
 //
 // Owns the `soma_profiles` Firestore collection with full E2EE.
-// Mirrors the patterns established in titan-profile-service.ts.
+// Uses createEncryptedProfileService factory for the encryption/guest boilerplate.
 
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
+import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
+import { LoadContext } from '@/lib/types/encrypted-document';
 import type { SomaProfile, VitalReading } from '@/lib/types';
 
 const COLLECTION = 'soma_profiles';
-const VAULT_SALT_MARKER = 'vault_salt_used';
-const GUEST_SOMA_KEY = 'nexus_soma_profile_guest';
-
-type SomaLoadContext = {
-  userId?: string | null;
-  encryptionKey?: CryptoKey | null;
-};
 
 /**
  * Returns a blank SomaProfile with safe defaults.
+ * `userId` is optional — the factory calls this with zero args; direct callers
+ * may still pass a userId to pre-populate the identity fields.
  */
-export function createEmptySomaProfile(userId: string): SomaProfile {
+export function createEmptySomaProfile(userId?: string): SomaProfile {
+  const id = userId ?? 'unknown';
   const now = new Date().toISOString();
   return {
-    id: userId,
-    userId,
+    id,
+    userId: id,
     knownConditions: [],
     medications: [],
     allergies: [],
@@ -40,11 +37,33 @@ export function createEmptySomaProfile(userId: string): SomaProfile {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Normalisation — internal single-arg variant for the factory + exported
+// two-arg variant for callers that supply userId explicitly.
+// ---------------------------------------------------------------------------
+
+/**
+ * Internal single-arg normalizer consumed by the factory.
+ * Extracts `userId` from the raw payload (always present in persisted data).
+ */
+function _normalizeInternal(raw: unknown): SomaProfile {
+  if (!raw || typeof raw !== 'object') return createEmptySomaProfile();
+  const obj = raw as Record<string, unknown>;
+  const userId = typeof obj.userId === 'string' ? obj.userId : 'unknown';
+  return _doNormalize(userId, raw);
+}
+
 /**
  * Normalises raw (decrypted) JSON into a fully-populated SomaProfile.
  * Ensures every array field is safe and bounded to prevent runaway storage.
+ *
+ * Exported so `soma-data-service.ts` can call with an explicit userId.
  */
 export function normalizeSomaProfile(userId: string, raw: unknown): SomaProfile {
+  return _doNormalize(userId, raw);
+}
+
+function _doNormalize(userId: string, raw: unknown): SomaProfile {
   const base = createEmptySomaProfile(userId);
   if (!raw || typeof raw !== 'object') return base;
   const data = raw as Partial<SomaProfile>;
@@ -88,128 +107,106 @@ export function normalizeSomaProfile(userId: string, raw: unknown): SomaProfile 
 }
 
 // ---------------------------------------------------------------------------
-// Guest localStorage helpers
+// Factory instance — all encryption / decryption / guest logic lives here.
 // ---------------------------------------------------------------------------
 
-/**
- * Reads the guest SomaProfile from localStorage.
- * Returns `null` when no guest data exists or parsing fails.
- */
-export function loadGuestSomaProfile(): SomaProfile | null {
-  const raw = localStorage.getItem(GUEST_SOMA_KEY);
-  if (!raw) return null;
+const _service = createEncryptedProfileService<SomaProfile>({
+  collection: COLLECTION,
+  guestStorageKey: 'nexus_soma_profile_guest',
+  createEmpty: createEmptySomaProfile,
+  normalize: _normalizeInternal,
+  metadataProjection: (p) => ({
+    medicalOnboardingComplete: Boolean(p.medicalOnboardingComplete),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+export const loadSomaProfile: (ctx: LoadContext) => Promise<SomaProfile | null> =
+  _service.load.bind(_service);
+
+export const subscribeSomaProfile: (
+  ctx: LoadContext,
+  onUpdate: (profile: SomaProfile | null) => void,
+) => () => void = _service.subscribe.bind(_service);
+
+// Guest helpers — re-exported for callers that reference them directly.
+export const loadGuestSomaProfile: () => SomaProfile | null =
+  _service.loadGuest.bind(_service);
+
+export const saveGuestSomaProfile: (profile: SomaProfile) => void =
+  _service.saveGuest.bind(_service);
+
+export const clearGuestSomaProfile: () => void =
+  _service.clearGuest.bind(_service);
+
+// ---------------------------------------------------------------------------
+// Custom save — alive entity sync + re-throw on error
+// ---------------------------------------------------------------------------
+
+export async function saveSomaProfile(
+  profile: SomaProfile,
+  ctx: LoadContext,
+): Promise<void> {
+  const normalized = _normalizeInternal({ ...profile, updatedAt: new Date().toISOString() });
+
+  // Delegate encryption + Firestore write (or guest localStorage) to factory.
+  await _service.save(normalized, ctx);
+
+  // Alive entity sync — only for authenticated users.
+  if (!ctx.userId) return;
+
   try {
-    const parsed = JSON.parse(raw) as unknown;
-    return normalizeSomaProfile('guest', parsed);
-  } catch (e) {
-    console.error('[SomaProfileService] Failed to parse guest soma profile:', e);
-    return null;
+    await syncAliveEntities(
+      getNexusDataLayer(),
+      bootstrapAliveEntities({
+        vitalReadings: normalized.vitalReadings,
+        physicalAssessments: normalized.physicalAssessments,
+      }),
+      { uid: ctx.userId },
+    );
+  } catch (error) {
+    console.error('[SomaProfileService] Failed to sync alive entities:', error);
   }
 }
 
-/**
- * Persists a SomaProfile to localStorage for guest sessions.
- */
-export function saveGuestSomaProfile(profile: SomaProfile): void {
-  const normalized = normalizeSomaProfile(profile.userId ?? 'guest', profile);
-  localStorage.setItem(GUEST_SOMA_KEY, JSON.stringify(normalized));
-}
-
-/**
- * Removes the guest SomaProfile from localStorage.
- */
-export function clearGuestSomaProfile(): void {
-  localStorage.removeItem(GUEST_SOMA_KEY);
-}
-
 // ---------------------------------------------------------------------------
-// Non-destructive merge helpers
+// Non-destructive merge helpers (used by syncGuestSomaProfileToUser)
 // ---------------------------------------------------------------------------
 
-/**
- * Deduplicates an array of objects by a string key field, favouring items
- * that appear later in the array (existing data is appended last, so
- * existing wins on collision).
- *
- * Time complexity: O(n) where n = combined array length.
- */
 function deduplicateById<T extends { id: string }>(items: T[]): T[] {
   const seen = new Map<string, T>();
   for (const item of items) seen.set(item.id, item);
   return Array.from(seen.values());
 }
 
-/**
- * Deduplicates VitalReadings by timestamp, favouring existing readings
- * on collision (existing items appended last).
- *
- * Time complexity: O(n).
- */
 function deduplicateVitalReadings(readings: VitalReading[]): VitalReading[] {
   const seen = new Map<number, VitalReading>();
   for (const r of readings) seen.set(r.timestamp, r);
   return Array.from(seen.values());
 }
 
-/**
- * Returns `value` when it is a non-empty string, otherwise `fallback`.
- */
 function pickString(value: string | undefined | null, fallback: string | undefined | null): string | undefined {
   if (typeof value === 'string' && value.trim() !== '') return value;
   return fallback ?? undefined;
 }
 
-/**
- * Returns `value` when it is a finite number, otherwise `fallback`.
- */
 function pickNumber(value: number | undefined | null, fallback: number | undefined | null): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   return fallback ?? undefined;
 }
 
-/**
- * Merges `guest` data into `existing` using non-destructive semantics:
- * - Scalars: existing value wins; guest fills in only when existing is absent.
- * - String arrays (knownConditions, medications, allergies): union, deduped.
- * - Object arrays (biomarkers, labSummaries, clearances, medicalImageAnalyses):
- *   guest entries prepended, existing entries appended; dedup by `id`; existing wins.
- * - vitalReadings: guest prepended, existing appended; dedup by `timestamp`; capped at 500.
- * - medicalOnboardingComplete: existing wins; guest fills only when existing is falsy.
- * - createdAt: earliest timestamp wins.
- *
- * Time complexity: O(n) where n = total items across all arrays.
- */
 function mergeGuestIntoExisting(guest: SomaProfile, existing: SomaProfile): SomaProfile {
-  // String arrays — union, existing wins on duplicate
   const mergeStringArray = (g: string[], e: string[]): string[] =>
     Array.from(new Set([...g, ...e]));
 
-  // Object arrays with id — guest first so existing items overwrite on same id
-  const mergedBiomarkers = deduplicateById([
-    ...guest.biomarkers,
-    ...existing.biomarkers,
-  ]).slice(0, 200);
-
-  const mergedLabSummaries = deduplicateById([
-    ...guest.labSummaries,
-    ...existing.labSummaries,
-  ]).slice(0, 50);
-
-  const mergedClearances = deduplicateById([
-    ...guest.clearances,
-    ...existing.clearances,
-  ]).slice(0, 100);
-
-  const mergedImageAnalyses = deduplicateById([
-    ...guest.medicalImageAnalyses,
-    ...existing.medicalImageAnalyses,
-  ]).slice(0, 100);
-
-  // VitalReadings — dedup by timestamp, existing wins on collision, capped at 500
-  const mergedVitals = deduplicateVitalReadings([
-    ...(guest.vitalReadings ?? []),
-    ...(existing.vitalReadings ?? []),
-  ]).slice(-500);
+  const mergedBiomarkers = deduplicateById([...guest.biomarkers, ...existing.biomarkers]).slice(0, 200);
+  const mergedLabSummaries = deduplicateById([...guest.labSummaries, ...existing.labSummaries]).slice(0, 50);
+  const mergedClearances = deduplicateById([...guest.clearances, ...existing.clearances]).slice(0, 100);
+  const mergedImageAnalyses = deduplicateById([...guest.medicalImageAnalyses, ...existing.medicalImageAnalyses]).slice(0, 100);
+  const mergedVitals = deduplicateVitalReadings([...(guest.vitalReadings ?? []), ...(existing.vitalReadings ?? [])]).slice(-500);
 
   return {
     id: existing.id,
@@ -222,10 +219,8 @@ function mergeGuestIntoExisting(guest: SomaProfile, existing: SomaProfile): Soma
     clearances: mergedClearances,
     medicalImageAnalyses: mergedImageAnalyses,
     vitalReadings: mergedVitals,
-    // Scalars: existing wins; guest fills gaps
     medicalSummary: pickString(existing.medicalSummary, guest.medicalSummary) ?? '',
     medicalOnboardingComplete: existing.medicalOnboardingComplete || guest.medicalOnboardingComplete,
-    // Flat vital scalars — existing wins
     restingHeartRate: pickNumber(existing.restingHeartRate, guest.restingHeartRate),
     bloodPressure: pickString(existing.bloodPressure, guest.bloodPressure),
     temperature: pickNumber(existing.temperature, guest.temperature),
@@ -250,26 +245,16 @@ function mergeGuestIntoExisting(guest: SomaProfile, existing: SomaProfile): Soma
     nextCheckup: pickString(existing.nextCheckup, guest.nextCheckup),
     clearanceStatus: existing.clearanceStatus ?? guest.clearanceStatus,
     readinessScore: pickNumber(existing.readinessScore, guest.readinessScore),
-    // Timestamps
     createdAt: existing.createdAt < guest.createdAt ? existing.createdAt : guest.createdAt,
     updatedAt: new Date().toISOString(),
   };
 }
 
 // ---------------------------------------------------------------------------
-// Guest sync
+// Custom guest sync — non-destructive merge (differs from factory's simple
+// overwrite).
 // ---------------------------------------------------------------------------
 
-/**
- * Syncs guest localStorage data into the authenticated user's Firestore profile.
- *
- * Merge strategy (non-destructive):
- * - When no Firestore document exists: guest profile is written as-is.
- * - When a Firestore document already exists: guest data fills in gaps only.
- *   Existing scalar values are preserved; arrays are union-merged and capped.
- *
- * @returns `true` on a successful sync, `false` when no guest data is found or on error.
- */
 export async function syncGuestSomaProfileToUser({
   userId,
   encryptionKey,
@@ -280,37 +265,24 @@ export async function syncGuestSomaProfileToUser({
   if (!userId || !encryptionKey) return false;
 
   try {
-    const guestProfile = loadGuestSomaProfile();
+    const guestProfile = _service.loadGuest();
     if (!guestProfile) return false;
 
-    const dataLayer = getNexusDataLayer();
-    const rawDoc = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>(
-      COLLECTION,
-      userId,
-    );
+    // Attempt to load existing profile via factory.
+    const existing = await _service.load({ userId, encryptionKey });
 
     let profileToSave: SomaProfile;
 
-    if (rawDoc?.encryptedData && rawDoc?.iv) {
-      // Existing Firestore data: decrypt and do a non-destructive merge.
-      try {
-        const decrypted = await decryptWithKey(
-          { ciphertext: rawDoc.encryptedData, iv: rawDoc.iv },
-          encryptionKey,
-        );
-        const existing = normalizeSomaProfile(userId, JSON.parse(decrypted));
-        profileToSave = mergeGuestIntoExisting(guestProfile, existing);
-      } catch (decryptErr) {
-        console.error('[SomaProfileService] syncGuestSomaProfileToUser: failed to decrypt existing profile, skipping merge:', decryptErr);
-        return false;
-      }
+    if (existing) {
+      // Non-destructive merge: guest fills gaps, existing wins on collision.
+      profileToSave = mergeGuestIntoExisting(guestProfile, existing);
     } else {
-      // No existing Firestore document: promote guest profile directly.
-      profileToSave = normalizeSomaProfile(userId, { ...guestProfile, id: userId, userId });
+      // No existing profile: promote guest directly.
+      profileToSave = _normalizeInternal({ ...guestProfile, id: userId, userId });
     }
 
     await saveSomaProfile(profileToSave, { userId, encryptionKey });
-    clearGuestSomaProfile();
+    _service.clearGuest();
     return true;
   } catch (e) {
     console.error('[SomaProfileService] syncGuestSomaProfileToUser failed:', e);
@@ -318,128 +290,10 @@ export async function syncGuestSomaProfileToUser({
   }
 }
 
-/**
- * Loads and decrypts a SomaProfile from Firestore.
- * Falls back to localStorage guest data when no authenticated user is present.
- * Returns `null` when the document doesn't exist or decryption fails.
- */
-export async function loadSomaProfile(
-  { userId, encryptionKey }: SomaLoadContext,
-): Promise<SomaProfile | null> {
-  if (!userId || !encryptionKey) return loadGuestSomaProfile();
+// ---------------------------------------------------------------------------
+// Convenience functions
+// ---------------------------------------------------------------------------
 
-  const dataLayer = getNexusDataLayer();
-  const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>(COLLECTION, userId);
-  if (!data) return null;
-  if (!data?.encryptedData || !data?.iv) return null;
-
-  try {
-    const decrypted = await decryptWithKey(
-      { ciphertext: data.encryptedData as string, iv: data.iv as string },
-      encryptionKey,
-    );
-    return normalizeSomaProfile(userId, JSON.parse(decrypted));
-  } catch (e) {
-    console.error('[SomaProfileService] Failed to decrypt soma profile:', e);
-    return null;
-  }
-}
-
-/**
- * Encrypts and persists a SomaProfile to Firestore.
- * Falls back to localStorage guest storage when no authenticated user is present.
- * Uses merge semantics so metadata can coexist with the encrypted blob.
- */
-export async function saveSomaProfile(
-  profile: SomaProfile,
-  { userId, encryptionKey }: SomaLoadContext,
-): Promise<void> {
-  if (!userId || !encryptionKey) {
-    saveGuestSomaProfile(profile);
-    return;
-  }
-
-  const dataLayer = getNexusDataLayer();
-  const normalized = normalizeSomaProfile(userId, { ...profile, updatedAt: new Date().toISOString() });
-
-  const serialised = JSON.stringify(normalized);
-
-  const encrypted = await encryptWithKey(serialised, encryptionKey);
-
-  try {
-    await dataLayer.setDocument(COLLECTION, userId, {
-      encryptedData: encrypted.ciphertext,
-      iv: encrypted.iv,
-      salt: VAULT_SALT_MARKER,
-      metadata: {
-        medicalOnboardingComplete: Boolean(profile.medicalOnboardingComplete),
-        lastActive: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    console.error('[SomaProfileService] Failed to save soma profile:', error);
-    throw error; // Re-throw so callers know the save failed
-  }
-
-  try {
-    await syncAliveEntities(
-      dataLayer,
-      bootstrapAliveEntities({
-        vitalReadings: normalized.vitalReadings,
-        physicalAssessments: normalized.physicalAssessments,
-      }),
-      { uid: userId },
-    );
-  } catch (error) {
-    console.error('[SomaProfileService] Failed to sync alive entities:', error);
-  }
-}
-
-/**
- * Subscribes to real-time SomaProfile updates (mirrors subscribeTitanProfile pattern).
- * Falls back to a one-shot guest localStorage read when no authenticated user is present.
- * Returns an unsubscribe function.
- */
-export function subscribeSomaProfile(
-  { userId, encryptionKey }: SomaLoadContext,
-  onUpdate: (profile: SomaProfile | null) => void,
-): () => void {
-  if (!userId || !encryptionKey) {
-    onUpdate(loadGuestSomaProfile());
-    return () => {};
-  }
-
-  const dataLayer = getNexusDataLayer();
-  return dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
-    COLLECTION,
-    userId,
-    async (data) => {
-      if (!data) { onUpdate(null); return; }
-      if (!data?.encryptedData || !data?.iv) { onUpdate(null); return; }
-      try {
-        const decrypted = await decryptWithKey(
-          { ciphertext: data.encryptedData as string, iv: data.iv as string },
-          encryptionKey,
-        );
-        onUpdate(normalizeSomaProfile(userId, JSON.parse(decrypted)));
-      } catch (e) {
-        console.error('[SomaProfileService] Failed to decrypt soma profile:', e);
-        onUpdate(null);
-      }
-    }
-  );
-}
-
-/**
- * Appends a new VitalReading to the user's SomaProfile.
- * Loads the current profile, merges the new reading, and persists (E2EE).
- *
- * Time complexity: O(n) where n = existing readings (capped at 500).
- *
- * @param userId        - Authenticated user ID
- * @param fields        - Vital metric fields to record (timestamp is auto-set)
- * @param encryptionKey - Vault key for E2EE encrypt/decrypt
- */
 export async function addVitalReading(
   userId: string,
   fields: Omit<VitalReading, 'timestamp'>,
@@ -447,7 +301,7 @@ export async function addVitalReading(
 ): Promise<void> {
   if (!userId || !encryptionKey) return;
 
-  const current = await loadSomaProfile({ userId, encryptionKey });
+  const current = await _service.load({ userId, encryptionKey });
   const base = current ?? createEmptySomaProfile(userId);
 
   const newReading: VitalReading = { timestamp: Date.now(), ...fields };
@@ -461,14 +315,6 @@ export async function addVitalReading(
   );
 }
 
-/**
- * Appends a new PhysicalAssessment to the user's SomaProfile.
- * Loads the current profile, merges the new assessment, and persists (E2EE).
- *
- * @param userId        - Authenticated user ID
- * @param fields        - Assessment metric fields to record (timestamp is auto-set)
- * @param encryptionKey - Vault key for E2EE encrypt/decrypt
- */
 export async function addPhysicalAssessment(
   userId: string,
   fields: Omit<import('@/lib/types').PhysicalAssessment, 'timestamp'>,
@@ -476,7 +322,7 @@ export async function addPhysicalAssessment(
 ): Promise<void> {
   if (!userId || !encryptionKey) return;
 
-  const current = await loadSomaProfile({ userId, encryptionKey });
+  const current = await _service.load({ userId, encryptionKey });
   const base = current ?? createEmptySomaProfile(userId);
 
   const newAssessment: import('@/lib/types').PhysicalAssessment = { timestamp: Date.now(), ...fields };

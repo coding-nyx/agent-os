@@ -127,9 +127,6 @@ export async function extractTextWithVision(
   const resolvedModel = resolveVisionModel(modelId);
 
   try {
-    console.log('[VisionAnalysis] extractTextWithVision called with model:', resolvedModel);
-    console.log('[VisionAnalysis] Prompt:', DOCUMENT_OCR_PROMPT.trim());
-    
     const text = await analyzeImageWithVisionAgent({
       imageDataUrl,
       prompt: DOCUMENT_OCR_PROMPT,
@@ -139,9 +136,6 @@ export async function extractTextWithVision(
       format: 'text',
     });
     
-    console.log('[VisionAnalysis] Raw agent response length:', text.length);
-    console.log('[VisionAnalysis] Raw agent response preview:', text.slice(0, 200));
-
     const cleaned = stripActionTagsAndMarkdown(text);
     if (!cleaned || cleaned.trim().length === 0) {
       throw new Error('Vision OCR returned an empty response.');

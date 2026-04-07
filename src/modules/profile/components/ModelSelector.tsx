@@ -100,8 +100,11 @@ export function ModelSelector() {
       localStorage.getItem('VITE_GOOGLE_API_KEY') ||
       (import.meta.env.VITE_GOOGLE_API_KEY as string | undefined);
     if (!apiKey) return;
+    // Use header-based auth instead of URL query param to avoid key
+    // exposure in browser history, server access logs, and Referer headers.
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      'https://generativelanguage.googleapis.com/v1beta/models',
+      { headers: { 'x-goog-api-key': apiKey } },
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
@@ -187,7 +190,7 @@ export function ModelSelector() {
     if (user?.uid) {
       CoreProfileService.updateProfile(user.uid, {
         aiPreferences: { preferredProvider: p, preferredModel: p !== 'openrouter' ? nextModel : selectedModel },
-      }).catch(() => {});
+      }).catch((e) => { console.warn('ModelSelector: profile save failed', e); });
     }
   }, [user?.uid, selectedModel]);
 
@@ -201,7 +204,7 @@ export function ModelSelector() {
     if (user?.uid) {
       CoreProfileService.updateProfile(user.uid, {
         aiPreferences: { preferredModel: id, preferredProvider: provider },
-      }).catch(() => {});
+      }).catch((e) => { console.warn('ModelSelector: profile save failed', e); });
     }
   }, [user?.uid, provider]);
 

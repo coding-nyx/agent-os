@@ -1,7 +1,7 @@
 import { CrossVerificationServiceJs } from '@cortex-logic';
 import type { LedgerIntakeProfile } from './ledger-intake-service';
 
-const _svc = new (CrossVerificationServiceJs as any)();
+const _svc = new CrossVerificationServiceJs();
 
 /**
  * Compute financial friction (0–1) for the given profile.

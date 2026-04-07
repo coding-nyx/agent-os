@@ -7,6 +7,57 @@ import { useDataLayer } from './data-layer/provider';
 import { CoreProfileService } from './services/core-profile-service';
 import { SoulTerminationService } from './services/soul-termination-service';
 
+// ── Ephemeral session encryption ────────────────────────────────────────────
+// Instead of storing the vault password in plaintext in sessionStorage, we
+// encrypt it with a per-page-load AES-GCM key held only in a module-scoped
+// variable. On hard refresh the key is lost and auto-unlock gracefully fails
+// (user re-enters password). On SPA navigation the key persists in memory.
+let _sessionEphemeralKey: CryptoKey | null = null;
+
+async function getOrCreateSessionEphemeralKey(): Promise<CryptoKey> {
+  if (_sessionEphemeralKey) return _sessionEphemeralKey;
+  _sessionEphemeralKey = await window.crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+  return _sessionEphemeralKey;
+}
+
+async function encryptSessionPassword(password: string): Promise<string> {
+  const key = await getOrCreateSessionEphemeralKey();
+  const enc = new TextEncoder();
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await window.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv } as AesGcmParams,
+    key,
+    enc.encode(password),
+  );
+  // Pack as "<base64(iv)>.<base64(ciphertext)>"
+  const ivB64 = window.btoa(String.fromCharCode(...iv));
+  const ctB64 = window.btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
+  return `${ivB64}.${ctB64}`;
+}
+
+async function decryptSessionPassword(blob: string): Promise<string | null> {
+  if (!_sessionEphemeralKey) return null; // key lost (hard refresh)
+  const [ivB64, ctB64] = blob.split('.');
+  if (!ivB64 || !ctB64) return null;
+  try {
+    const iv = Uint8Array.from(window.atob(ivB64), c => c.charCodeAt(0));
+    const ct = Uint8Array.from(window.atob(ctB64), c => c.charCodeAt(0));
+    const plainBuf = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv } as AesGcmParams,
+      _sessionEphemeralKey,
+      ct,
+    );
+    return new TextDecoder().decode(plainBuf);
+  } catch {
+    return null; // tampered or wrong key
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export type VaultPersistenceMode = 'STRICT' | 'SESSION' | 'GRACE';
 
 interface VaultContextType {
@@ -26,7 +77,7 @@ interface VaultContextType {
   checkModuleVault: (collectionName: string) => Promise<boolean>;
   isModuleAccessible: (moduleId: ModuleId) => boolean;
   setSessionPassword: (password: string) => void;
-  getSessionPassword: () => string | null;
+  getSessionPassword: () => Promise<string | null>;
   /** true when vault exists, is locked, and no auto-unlock is in progress */
   isVaultGateVisible: boolean;
   vaultSetupNudgeSeen: boolean;
@@ -91,8 +142,17 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
 
   const writeRetainedSessionPassword = useCallback((pwd: string) => {
     sessionPasswordRef.current = pwd;
-    sessionStorage.setItem(SESSION_PWD_KEY, pwd);
-    sessionStorage.setItem(SESSION_TS_KEY, String(Date.now()));
+    // Encrypt the password with the ephemeral in-memory key before persisting.
+    // On hard refresh the ephemeral key is lost and the blob becomes undecryptable,
+    // gracefully falling back to manual unlock.
+    encryptSessionPassword(pwd).then((blob) => {
+      sessionStorage.setItem(SESSION_PWD_KEY, blob);
+      sessionStorage.setItem(SESSION_TS_KEY, String(Date.now()));
+    }).catch(() => {
+      // If encryption fails (e.g. no crypto.subtle), don't store anything.
+      sessionStorage.removeItem(SESSION_PWD_KEY);
+      sessionStorage.removeItem(SESSION_TS_KEY);
+    });
   }, []);
 
   const setPersistenceMode = useCallback((mode: VaultPersistenceMode) => {
@@ -129,9 +189,18 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     }
   }, [persistenceMode, writeRetainedSessionPassword]);
 
-  const getSessionPassword = useCallback(() => {
-      const pwd = sessionStorage.getItem(SESSION_PWD_KEY);
-      if (!pwd) return null;
+  const getSessionPassword = useCallback(async (): Promise<string | null> => {
+      const blob = sessionStorage.getItem(SESSION_PWD_KEY);
+      if (!blob) return null;
+
+      // Decrypt the stored blob using the ephemeral in-memory key.
+      // Returns null on hard refresh (key lost) or tampering.
+      const pwd = await decryptSessionPassword(blob);
+      if (!pwd) {
+        clearSessionPassword();
+        return null;
+      }
+
       sessionPasswordRef.current = pwd;
       const ttlMs = getSessionTtlMs();
       if (ttlMs <= 0) return pwd;
@@ -262,23 +331,30 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading || authLoading) return;
 
-    const pwd = getSessionPassword();
-
     if (isUnlocked || !hasVault) { setIsHandshaking(false); return; }
     if (persistenceMode === 'STRICT') { setIsHandshaking(false); return; }
-    if (!pwd || !user) { setIsHandshaking(false); return; }
+    if (!user) { setIsHandshaking(false); return; }
     if (unlockInProgressRef.current) return;
 
-    unlockVaultRef.current(pwd)
-      .catch((e: unknown) => {
-        const isWrongPassword = e instanceof Error && e.message === 'Invalid Vault Password.';
-        if (isWrongPassword) {
-          clearSessionPassword();
-        }
-        setIsHandshaking(false);
-      });
+    let cancelled = false;
+
+    getSessionPassword().then((pwd) => {
+      if (cancelled) return;
+      if (!pwd) { setIsHandshaking(false); return; }
+
+      unlockVaultRef.current(pwd)
+        .catch((e: unknown) => {
+          if (cancelled) return;
+          const isWrongPassword = e instanceof Error && e.message === 'Invalid Vault Password.';
+          if (isWrongPassword) {
+            clearSessionPassword();
+          }
+          setIsHandshaking(false);
+        });
+    });
 
     return () => {
+      cancelled = true;
       // Reset the in-progress flag on cleanup so React Strict Mode's
       // double-invocation (mount → unmount → remount) doesn't permanently
       // block auto-unlock on the second mount.
@@ -471,7 +547,7 @@ const VAULT_LOADING_FALLBACK: VaultContextType = {
   checkModuleVault: async () => false,
   isModuleAccessible: () => true,
   setSessionPassword: () => {},
-  getSessionPassword: () => null,
+  getSessionPassword: async () => null,
   isVaultGateVisible: false,
   vaultSetupNudgeSeen: false,
   dismissVaultSetupNudge: () => {},

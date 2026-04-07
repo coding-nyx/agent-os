@@ -8,6 +8,7 @@
 import { NexusSynthesisServiceJs } from '@cortex-logic';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { ModuleId } from '@/lib/module-manifest';
+import type { SpineEventType, SpineEventPriority } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,11 +33,12 @@ const kmpSynthesis = new NexusSynthesisServiceJs(
   (type: string, dataJson: string) => {
     try {
       const data = JSON.parse(dataJson) as Record<string, unknown>;
+      const priority: SpineEventPriority = type === 'CRISIS_MODE' ? 'critical' : (type === 'CONFLICT_DETECTED' ? 'alert' : 'info');
       Spine.emit({
-        type: type as any,
+        type: type as SpineEventType,
         source: 'nexus-synthesis',
-        domain: 'system' as any,
-        priority: type === 'CRISIS_MODE' ? 'critical' as any : (type === 'CONFLICT_DETECTED' ? 'alert' as any : 'info' as any),
+        domain: 'system',
+        priority,
         data,
       });
     } catch {

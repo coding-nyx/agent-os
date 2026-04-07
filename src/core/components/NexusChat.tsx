@@ -182,7 +182,7 @@ export const NexusChat = React.memo(function NexusChat({
             const latestMessage = messages[messages.length - 1];
             if (latestMessage.role === 'user') {
                  Spine.publish({
-                     type: 'NEURAL_TRANSMISSION_SENT' as any,
+                     type: 'NEURAL_TRANSMISSION_SENT',
                      domain: 'system',
                      source: moduleId || 'nexus',
                      priority: 'info',
@@ -194,7 +194,7 @@ export const NexusChat = React.memo(function NexusChat({
                     : latestMessage.content.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
                  const { publicText } = stripInternalTags(contentStr);
                  Spine.publish({
-                     type: 'NEURAL_RESONANCE_RECEIVED' as any,
+                     type: 'NEURAL_RESONANCE_RECEIVED',
                      domain: moduleId === 'agnes' ? 'E' : moduleId === 'titan' ? 'B' : moduleId === 'atlas' ? 'C' : 'system',
                      source: moduleId || 'nexus',
                      priority: 'info',
@@ -212,7 +212,7 @@ export const NexusChat = React.memo(function NexusChat({
         if (isProcessing && !prevIsProcessing.current) {
             // Started processing
             Spine.publish({
-                 type: 'NEURAL_PROCESSING_STARTED' as any,
+                 type: 'NEURAL_PROCESSING_STARTED',
                  domain: moduleId === 'agnes' ? 'E' : moduleId === 'titan' ? 'B' : moduleId === 'atlas' ? 'C' : 'system',
                  source: moduleId || 'nexus',
                  priority: 'info',

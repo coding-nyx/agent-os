@@ -115,7 +115,15 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     try {
       await GlobalProjectionService.updateCrossFunctionalState(user.uid, updates, dataLayer);
     } catch (e) {
-      console.error("Failed to update Cross Functional State:", e);
+      console.error("[GlobalSoul] Failed to update Cross Functional State:", e);
+      Spine.emit({
+        type: 'SOUL_STALE',
+        source: 'nexus',
+        domain: 'system',
+        data: { reason: 'nsv_write_failed', error: e instanceof Error ? e.message : String(e) },
+        cascadeDepth: 0,
+        priority: 'warning',
+      });
     }
   }, [user, dataLayer]);
 
@@ -261,7 +269,7 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
     // the subscription missed an update or the user has been on the same page
     // for an extended session without a write triggering the subscription.
     if (Date.now() - lastNsvRefreshTimeRef.current > 30_000) {
-      refreshGlobalSoul().catch(() => {});
+      refreshGlobalSoul().catch((err) => { console.warn('[GlobalSoul] Background NSV refresh failed:', err); });
     }
 
     const state = soul.crossFunctionalState;

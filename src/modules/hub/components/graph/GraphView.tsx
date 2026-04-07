@@ -24,7 +24,7 @@ function useIsMobile(breakpoint = 1024) {
 }
 
 const NodeCard = React.memo(function NodeCard({
-  node, stat, canEnter, isHovered, onClick, onMouseEnter, onMouseLeave, isMobile
+  node, stat, canEnter, isHovered, onModuleNavigate, setHoveredNodeId, isMobile
 }: NodeCardProps & { isMobile: boolean }) {
   const Icon = node.icon;
   const title = node.title;
@@ -32,11 +32,15 @@ const NodeCard = React.memo(function NodeCard({
   const isPlugin = !CORE_MODULES.includes(node.id);
   const [showTooltip, setShowTooltip] = useState(false);
 
+  const handleClick = useCallback(() => onModuleNavigate(node.id, node.route), [onModuleNavigate, node.id, node.route]);
+  const handleMouseEnter = useCallback(() => { setHoveredNodeId(node.id); setShowTooltip(true); }, [setHoveredNodeId, node.id]);
+  const handleMouseLeave = useCallback(() => { setHoveredNodeId(null); setShowTooltip(false); }, [setHoveredNodeId]);
+
   return (
     <motion.button
-      onClick={onClick}
-      onMouseEnter={() => { onMouseEnter(); setShowTooltip(true); }}
-      onMouseLeave={() => { onMouseLeave(); setShowTooltip(false); }}
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: isMobile ? (isHovered ? 1.15 : 1) : (isPlugin ? 0.85 : 1) }}
       whileHover={{ y: -2, scale: isMobile ? 1.2 : (isPlugin ? 0.9 : 1.02), transition: { duration: 0.2 } }}
@@ -149,7 +153,7 @@ interface GraphViewProps {
   setHoveredNodeId: (id: string | null) => void;
 }
 
-export function GraphView({
+export const GraphView = React.memo(function GraphView({
   orchestratorNodes, moduleStats, moduleAccess, hoveredNodeId, edgeIntensity,
   onModuleNavigate, setHoveredNodeId
 }: GraphViewProps) {
@@ -309,12 +313,11 @@ export function GraphView({
             canEnter={moduleAccess[node.id]}
             isHovered={hoveredNodeId === node.id}
             isMobile={isMobile}
-            onClick={() => onModuleNavigate(node.id, node.route)}
-            onMouseEnter={() => setHoveredNodeId(node.id)}
-            onMouseLeave={() => setHoveredNodeId(null)}
+            onModuleNavigate={onModuleNavigate}
+            setHoveredNodeId={setHoveredNodeId}
           />
         ))}
       </div>
     </motion.div>
   );
-}
+});

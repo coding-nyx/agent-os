@@ -15,6 +15,8 @@ interface NeuralPicklistProps {
   onChange: (values: string[]) => void;
   maxSelections?: number;
   searchable?: boolean;
+  /** Accessible label for the list (defaults to "Options") */
+  'aria-label'?: string;
   className?: string;
 }
 
@@ -24,6 +26,7 @@ export function NeuralPicklist({
   onChange,
   maxSelections,
   searchable = false,
+  'aria-label': ariaLabel,
   className,
 }: NeuralPicklistProps) {
   const [query, setQuery] = useState('');
@@ -49,17 +52,18 @@ export function NeuralPicklist({
     <div className={cn('rounded-xl border border-white/[0.09] bg-white/[0.045] overflow-hidden', className)}>
       {searchable && (
         <div className="relative border-b border-white/[0.09]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" aria-hidden="true" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search..."
+            aria-label={`Search ${ariaLabel ?? 'options'}`}
             className="w-full bg-transparent pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none"
           />
         </div>
       )}
-      <div className="divide-y divide-white/5">
+      <div className="divide-y divide-white/5" role="listbox" aria-label={ariaLabel ?? 'Options'} aria-multiselectable="true">
         {filtered.map((option) => {
           const selected = value.includes(option.value);
           const atMax = maxSelections !== undefined && value.length >= maxSelections && !selected;
@@ -68,6 +72,8 @@ export function NeuralPicklist({
             <button
               key={option.value}
               type="button"
+              role="option"
+              aria-selected={selected}
               disabled={atMax}
               onClick={() => toggle(option.value)}
               className={cn(

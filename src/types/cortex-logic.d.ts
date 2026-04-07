@@ -456,6 +456,47 @@ declare module '@cortex-logic' {
     buildNSVUpdatePayload(patchJson: string, timestamp: string): string;
   }
 
+  // ─── BeliefGraphService ──────────────────────────────────────────────────────
+
+  /**
+   * JS/TS facade for belief-graph domain operations.
+   * Wraps BeliefGraphCompactionService (normalize, compact, merge) and
+   * BeliefTriggerEvaluator (threshold evaluation, triggering-node lookup).
+   * All belief graphs cross the boundary as JSON strings.
+   */
+  export class BeliefGraphServiceJs {
+    /** Normalize a belief graph: clamp intensity, trim labels, default missing fields. */
+    normalizeGraph(graphJson: string): string;
+    /** Compact a belief graph using exact-label dedup + heuristic semantic merge (synchronous). */
+    compactGraph(graphJson: string, maxNodes?: number): string;
+    /**
+     * Compact with optional LLM-assisted semantic merge (async).
+     * @param generateJsonFn TS callback: `(requestJson, onResult, onError) => void`.
+     */
+    compactGraphWithLlm(
+      graphJson: string,
+      maxNodes: number,
+      generateJsonFn: (requestJson: string, onResult: (json: string) => void, onError: (err: string) => void) => void,
+      onComplete: (graphJson: string) => void,
+      onError: (err: string) => void,
+    ): CancellableTask;
+    /** Merge two belief graphs (existing + proposal) with exact-label dedup. Capped to 80 nodes. */
+    mergeGraphs(currentGraphJson: string, proposalGraphJson: string): string;
+    /**
+     * Evaluate whether the belief graph crosses the Agnes session invitation threshold.
+     * @param emotionalResilience Resilience score (0–10), or -1 if unknown.
+     * @param stressLoad Stress score (0–10), or -1 if unknown.
+     * @returns JSON-encoded InvitationDecision.
+     */
+    evaluateInvitationThreshold(graphJson: string, emotionalResilience?: number, stressLoad?: number): string;
+    /**
+     * Filter a belief graph to the nodes that triggered the invitation.
+     * @param triggeringBeliefsJson JSON array of label strings.
+     * @returns JSON array of matching BeliefNode objects.
+     */
+    getTriggeringNodes(graphJson: string, triggeringBeliefsJson: string): string;
+  }
+
   // ─── AgnesGravityEngine ──────────────────────────────────────────────────────
 
   export class AgnesGravityEngineJs {

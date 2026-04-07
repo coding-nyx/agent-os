@@ -16,6 +16,7 @@ import {
   type WebCrawlerResponse as ScoutWebSearchResponse,
 } from '@/lib/services/web-crawler-service';
 import { addKnowledgeNode } from './scout-knowledge-service';
+import { NexusLogger } from '@/lib/nexus-logger';
 
 export type { ScoutWebResult, ScoutWebSearchResponse };
 
@@ -69,7 +70,7 @@ export const ScoutWebSearchService = {
             context,
           )
         ),
-      ).catch(() => {}); // suppress unhandled rejection warning
+      ).catch((e) => { NexusLogger.warn('ScoutWebSearch', 'Batch indexing failed', e); });
     }
 
     return response;

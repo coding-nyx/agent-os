@@ -9,12 +9,13 @@
 
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
+import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
+import { LoadContext } from '@/lib/types/encrypted-document';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { EmbeddingService, cosineSimilarity } from '@/lib/services/embedding-service';
 import { EmbeddingUtilsJs } from '@cortex-logic';
 
-const _embUtils = new (EmbeddingUtilsJs as any)();
+const _embUtils = new EmbeddingUtilsJs();
 import { ScoutKnowledgeNode as ScoutKnowledgeNodeBase } from '../types';
 
 export interface ScoutKnowledgeNode extends ScoutKnowledgeNodeBase {
@@ -53,13 +54,32 @@ export interface ScoutProfile {
   newsBriefs?: ScoutNewsBrief[];
 }
 
-type LoadContext = {
-  userId?: string | null;
-  encryptionKey?: CryptoKey | null;
-};
-
 function nodesCollection(userId: string): string {
   return `scout_knowledge/${userId}/nodes`;
+}
+
+function normalizeScoutProfile(raw: unknown): ScoutProfile {
+  const base = createEmptyScoutProfile();
+  if (!raw || typeof raw !== 'object') return base;
+  const candidate = raw as Record<string, unknown>;
+
+  return {
+    onboardingComplete: candidate.onboardingComplete === true,
+    researchFocus: Array.isArray(candidate.researchFocus)
+      ? candidate.researchFocus.filter((s): s is string => typeof s === 'string')
+      : [],
+    interests: Array.isArray(candidate.interests)
+      ? (candidate.interests as InterestNode[]).filter(
+          (n): n is InterestNode => n !== null && typeof n === 'object' && typeof n.id === 'string',
+        )
+      : [],
+    summary: typeof candidate.summary === 'string' ? candidate.summary : '',
+    createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : base.createdAt,
+    updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : base.updatedAt,
+    knowledgeNodes: Array.isArray(candidate.knowledgeNodes) ? candidate.knowledgeNodes : undefined,
+    verificationQueue: Array.isArray(candidate.verificationQueue) ? candidate.verificationQueue : undefined,
+    newsBriefs: Array.isArray(candidate.newsBriefs) ? candidate.newsBriefs : undefined,
+  };
 }
 
 export function createEmptyScoutProfile(): ScoutProfile {
@@ -82,7 +102,7 @@ export async function loadScoutProfile({ userId, encryptionKey }: LoadContext): 
 
   try {
     const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-    return JSON.parse(decrypted);
+    return normalizeScoutProfile(JSON.parse(decrypted));
   } catch (error) {
     console.error('Failed to decrypt scout profile:', error);
     return createEmptyScoutProfile();
@@ -223,7 +243,7 @@ export async function loadKnowledgeNodes({ userId, encryptionKey }: LoadContext)
   if (!userId || !encryptionKey) return [];
   const dataLayer = getNexusDataLayer();
   try {
-    const docs = await dataLayer.listDocuments<{ encryptedData: string; iv: string }>(nodesCollection(userId));
+    const docs = await dataLayer.listDocuments<{ encryptedData: string; iv: string }>(nodesCollection(userId), { limit: 0 });
     const decrypted = await Promise.allSettled(
       docs.map(async (d) => {
         const json = await decryptWithKey({ ciphertext: d.encryptedData, iv: d.iv }, encryptionKey);
@@ -241,7 +261,8 @@ export async function loadKnowledgeNodes({ userId, encryptionKey }: LoadContext)
       .filter((r): r is PromiseFulfilledResult<ScoutKnowledgeNode> => r.status === 'fulfilled')
       .map(r => r.value)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  } catch {
+  } catch (err) {
+    console.warn('[ScoutKnowledgeService] Failed to load knowledge nodes:', err);
     return [];
   }
 }
@@ -288,41 +309,47 @@ export async function deleteKnowledgeNode(id: string, { userId }: LoadContext): 
 }
 
 // ---------------------------------------------------------------------------
+// Factory instance — used for guest localStorage helpers.
+// ---------------------------------------------------------------------------
+
+const _service = createEncryptedProfileService<ScoutProfile>({
+  collection: 'scout_knowledge',
+  guestStorageKey: 'nexus_guest_scout_profile',
+  createEmpty: createEmptyScoutProfile,
+  normalize: normalizeScoutProfile,
+  metadataProjection: (p) => ({
+    onboardingComplete: p.onboardingComplete,
+  }),
+});
+
+// ---------------------------------------------------------------------------
 // Guest / Subscription API
 // ---------------------------------------------------------------------------
 
-const GUEST_SCOUT_KEY = 'nexus_guest_scout_profile';
-
 export function loadGuestScoutProfile(): ScoutProfile {
-  const stored = localStorage.getItem(GUEST_SCOUT_KEY);
-  if (!stored) return createEmptyScoutProfile();
-  try {
-    return JSON.parse(stored);
-  } catch {
-    return createEmptyScoutProfile();
-  }
+  return _service.loadGuest() ?? createEmptyScoutProfile();
 }
 
 export function saveGuestScoutProfile(profile: ScoutProfile): void {
-  localStorage.setItem(GUEST_SCOUT_KEY, JSON.stringify(profile));
+  _service.saveGuest(profile);
 }
 
 export function clearGuestScoutProfile(): void {
-  localStorage.removeItem(GUEST_SCOUT_KEY);
+  _service.clearGuest();
 }
 
 export async function syncGuestScoutProfileToUser(
   { userId, encryptionKey }: LoadContext = {},
 ): Promise<boolean> {
   if (!userId || !encryptionKey) return false;
-  if (!localStorage.getItem(GUEST_SCOUT_KEY)) return false;
+  const guestProfile = _service.loadGuest();
+  if (!guestProfile) return false;
 
-  const guestProfile = loadGuestScoutProfile();
   const existing = await loadScoutProfile({ userId, encryptionKey });
   if (existing?.onboardingComplete) return false;
 
   await saveScoutProfile(guestProfile, { userId, encryptionKey });
-  clearGuestScoutProfile();
+  _service.clearGuest();
   return true;
 }
 
@@ -344,11 +371,12 @@ export function subscribeScoutProfile(
     }
     try {
       const decrypted = await decryptWithKey({ ciphertext: data.encryptedData, iv: data.iv }, encryptionKey);
-      const nextProfile: ScoutProfile = JSON.parse(decrypted);
+      const nextProfile = normalizeScoutProfile(JSON.parse(decrypted));
       if (nextProfile.updatedAt === lastUpdatedAt) return;
       lastUpdatedAt = nextProfile.updatedAt;
       onUpdate(nextProfile);
-    } catch {
+    } catch (err) {
+      console.warn('[ScoutKnowledgeService] Profile decryption failed in subscription:', err);
       onUpdate(createEmptyScoutProfile());
     }
   });

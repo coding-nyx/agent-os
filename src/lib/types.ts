@@ -243,6 +243,7 @@ export type SpineEventType =
   | 'CLEARANCE_DENIED'
   /** @deprecated Sunset after 90 days — use BLOCK_HIGH_INTENSITY instead */
   | 'CLEARANCE_GRANTED'
+  | 'CLEARANCE_REQUESTED'
   | 'COGNITIVE_OVERLOAD'
   | 'SECURITY_POLICY_UPDATED'
   | 'FINANCIAL_STRESS'
@@ -445,10 +446,35 @@ export type SpineEventType =
   | 'EMOTIONAL_TRAJECTORY_DETECTED'
   | 'GOAL_VELOCITY_ALERT'
   | 'CLAIM_CONTRADICTION_DETECTED'
-  | 'CRISIS_RECOVERY_INITIATED';
+  | 'CRISIS_RECOVERY_INITIATED'
+  // System health / soul integrity events (Batch 1+2)
+  | 'SYSTEM_HEALTH_CHECK'
+  | 'SOUL_STALE'
+  // Module state & neural communication events
+  | 'MODULE_STATE_UPDATED'
+  | 'NEURAL_TRANSMISSION_SENT'
+  | 'NEURAL_RESONANCE_RECEIVED'
+  | 'NEURAL_PROCESSING_STARTED'
+  | 'RESEARCH_PROPOSED'
+  // Ledger domain events
+  | 'ACCOUNT_CREATED'
+  | 'CREDIT_SCORE_ADDED'
+  | 'INSURANCE_POLICY_CREATED'
+  | 'INVESTMENT_ADDED'
+  | 'NET_WORTH_SNAPSHOT'
+  | 'PORTFOLIO_SNAPSHOT'
+  | 'RECURRING_POSTED'
+  | 'RECURRING_RULE_CREATED'
+  | 'RETIREMENT_PLAN_CREATED'
+  | 'SUBSCRIPTION_CANCELLED'
+  | 'SUBSCRIPTION_CREATED'
+  | 'TAX_SUMMARY_GENERATED'
+  | 'TRANSFER_COMPLETED'
+  // Cross-module stress signals
+  | 'STRESS_SPIKE';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
-export type SpineEventPriority = 'info' | 'alert' | 'critical';
+export type SpineEventPriority = 'info' | 'warning' | 'alert' | 'critical';
 
 export interface SpineEventPayload {
   type: SpineEventType;
@@ -567,6 +593,8 @@ export interface ActiveSessionState {
   threadTitle?: string;
   contextPolicy?: ContextPolicy;
   docIds?: string[];
+  /** Opaque nonce set by the writing tab — used to suppress subscription echoes deterministically. */
+  _writeNonce?: string;
 }
 
 export type ContextPolicy = 'doc-only' | 'prompted' | 'base-context';

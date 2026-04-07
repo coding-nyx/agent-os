@@ -7,7 +7,7 @@
  */
 import { PersonaPromptCatalogJs } from '@cortex-logic';
 
-const _catalog = PersonaPromptCatalogJs ? new (PersonaPromptCatalogJs as any)() : null;
+const _catalog = PersonaPromptCatalogJs ? new PersonaPromptCatalogJs() : null;
 
 const FALLBACK_PERSONA = 'You are AGNES, a high-fidelity AI psychotherapist. Respond with clinical depth and compassion.';
 const FALLBACK_ONBOARDING = 'You are AGNES in Intake Protocol mode. Gather the user\'s background, struggles, and goals through warm, conversational questioning.';

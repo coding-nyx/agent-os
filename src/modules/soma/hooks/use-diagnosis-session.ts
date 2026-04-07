@@ -91,7 +91,12 @@ export function useDiagnosisSession({
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
   useEffect(() => {
     if (isUnlocked) {
-      getMasterKey().then(setEncryptionKey);
+      getMasterKey()
+        .then(setEncryptionKey)
+        .catch((e) => {
+          console.error('[useDiagnosisSession] getMasterKey failed:', e);
+          setEncryptionKey(null);
+        });
     } else {
       setEncryptionKey(null);
     }

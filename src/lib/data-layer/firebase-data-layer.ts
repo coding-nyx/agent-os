@@ -181,7 +181,12 @@ export class FirebaseDataLayer implements NexusDataLayer {
     return this.map<T>(snap);
   }
 
-  async listDocuments<T>(collectionName: string): Promise<NexusRecord<T>[]> {
+  async listDocuments<T>(collectionName: string, options?: { limit?: number }): Promise<NexusRecord<T>[]> {
+    const cap = options?.limit ?? 100;
+    if (cap > 0) {
+      const snap = await getDocs(fbQuery(collection(this.db, collectionName), fbLimit(cap)));
+      return snap.docs.map((d) => this.map<T>(d)!).filter(Boolean);
+    }
     const snap = await getDocs(collection(this.db, collectionName));
     return snap.docs.map((d) => this.map<T>(d)!).filter(Boolean);
   }

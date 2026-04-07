@@ -19,6 +19,23 @@ import { cn } from '@/lib/utils';
 import type { VaultPersistenceMode } from '@/lib/vault-context';
 import { NeuralModal } from '@/core/components/NeuralModal';
 
+/**
+ * Validates a `returnTo` path to prevent open-redirect attacks.
+ * - Must start with `/` (relative path only)
+ * - Must NOT start with `//` (protocol-relative URL)
+ * - Must NOT contain backslash (some browsers normalise `\/` → `//`)
+ */
+function safeReturnTo(raw: string | null): string {
+  const fallback = '/nexus';
+  if (!raw) return fallback;
+  // Strip leading whitespace that could bypass checks
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('/')) return fallback;
+  if (trimmed.startsWith('//')) return fallback;
+  if (trimmed.includes('\\')) return fallback;
+  return trimmed;
+}
+
 export function AppVaultGate() {
   const { unlockVault, isHandshaking, persistenceMode, setPersistenceMode, destroyVault, hasVault } = useVault();
   const [password, setPassword] = useState('');
@@ -31,7 +48,7 @@ export function AppVaultGate() {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/nexus';
+  const returnTo = safeReturnTo(searchParams.get('returnTo'));
 
   const handleUnlock = async () => {
     if (!password.trim() || isHandshaking) return;

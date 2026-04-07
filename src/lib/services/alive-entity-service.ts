@@ -3,7 +3,7 @@ import type { AliveEntity, AliveEntityRuntimeContext, AliveEntityRuntimeReferenc
 import type { ModuleId } from '@/lib/module-manifest';
 import { AliveEntityUtilsJs } from '@cortex-logic';
 
-const _aliveUtils = new (AliveEntityUtilsJs as any)();
+const _aliveUtils = new AliveEntityUtilsJs();
 import type { SleepEntry, WorkoutSession, AtlasGoal, AtlasHabit, JournalEntry, PhysicalAssessment, VitalReading } from '@/lib/types';
 import type {
   FinancialGoal as LedgerFinancialGoal,
@@ -447,7 +447,7 @@ export async function listAliveEntities(
 ): Promise<Array<NexusRecord<AliveEntity>>> {
   const collection = resolveAliveEntityCollectionPath(options);
   if (!sourceModule) {
-    return dataLayer.listDocuments<AliveEntity>(collection);
+    return dataLayer.listDocuments<AliveEntity>(collection, { limit: 0 });
   }
 
   return dataLayer.query<AliveEntity>({
@@ -482,7 +482,7 @@ export async function syncAliveEntities(
   if (options?.pruneMissingWithinIncomingPrefixes) {
     const incomingIds = new Set(normalized.map((entity) => entity.id));
     const incomingPrefixes = new Set(normalized.map((entity) => getAliveEntityPrefix(entity.id)));
-    const existing = await dataLayer.listDocuments<AliveEntity>(collection);
+    const existing = await dataLayer.listDocuments<AliveEntity>(collection, { limit: 0 });
     const stale = existing.filter(
       (entity) => incomingPrefixes.has(getAliveEntityPrefix(entity.id)) && !incomingIds.has(entity.id),
     );

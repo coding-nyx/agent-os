@@ -1,5 +1,11 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, Firestore, initializeFirestore } from "firebase/firestore";
+import {
+  getFirestore,
+  Firestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 import { getStorage, FirebaseStorage } from "firebase/storage";
 
@@ -34,7 +40,10 @@ export function getFirebase() {
       db = isFirstInit
         ? initializeFirestore(app, {
             experimentalAutoDetectLongPolling: true,
-            ignoreUndefinedProperties: true
+            ignoreUndefinedProperties: true,
+            localCache: persistentLocalCache({
+              tabManager: persistentMultipleTabManager(),
+            }),
           })
         : getFirestore(app);
       console.log("[Firebase] Firestore initialized:", !!db);
@@ -51,32 +60,4 @@ export function getFirebase() {
   return { app, db, auth, storage };
 }
 
-/**
- * Ensures that the Firebase Auth token is fully propagated before proceeding.
- * This prevents "Missing or insufficient permissions" errors when querying Firestore immediately after login.
- */
-export async function ensureAuthReady(): Promise<void> {
-  const { auth } = getFirebase();
-  if (!auth) return;
 
-  if (auth.currentUser) {
-    try {
-      await auth.currentUser.getIdToken();
-    } catch (e) {
-      console.warn("Failed to get ID token", e);
-    }
-    return;
-  }
-
-  return new Promise((resolve) => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      unsubscribe();
-      if (user) {
-        try {
-          await user.getIdToken();
-        } catch (e) { console.warn('Failed to fetch app check token:', e); }
-      }
-      resolve();
-    });
-  });
-}

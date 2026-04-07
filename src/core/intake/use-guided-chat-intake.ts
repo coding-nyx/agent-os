@@ -86,7 +86,8 @@ export function useGuidedChatIntake<TState>({ spec, onComplete }: UseGuidedChatI
       setState(nextState);
 
       if (typeof result.nextStep === 'number') {
-        setStepIndex(result.nextStep);
+        // Safety: never allow step regression — only move forward
+        setStepIndex(prev => Math.max(prev, result.nextStep!));
       }
 
       const assistantMessage = result.assistantMessage ?? response.publicText;

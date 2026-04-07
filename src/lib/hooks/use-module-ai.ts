@@ -359,10 +359,10 @@ export function useModuleAI({
   const abortControllerRef = useRef<AbortController | null>(null);
   const pendingApprovalsRef = useRef<Map<string, DeferredApproval>>(new Map());
   const mountedRef = useRef(true);
-  // Timestamp of the last local flushActiveSession write. Used to suppress
-  // subscription echoes — when the listener fires within a short window after
-  // our own write, we know it's an echo and skip setMessages().
-  const lastLocalWriteTimestampRef = useRef(0);
+  // Nonce of the last local flushActiveSession write. Used to suppress
+  // subscription echoes deterministically — when the incoming session's
+  // _writeNonce matches our ref, we know it's our own echo and skip setMessages().
+  const lastWriteNonceRef = useRef<string | null>(null);
   // RAF batching: buffer deltas and flush to React state once per animation frame
   const pendingStreamTextRef = useRef('');
   const pendingAIStateRef = useRef<{ isThinking: boolean; isActing: boolean; currentActionType: string | null }>({ isThinking: false, isActing: false, currentActionType: null });
@@ -427,7 +427,7 @@ export function useModuleAI({
     prewarmedMemoryRef.current = null;
     retrieveMemoryContext(seedQuery).then((ctx) => {
       prewarmedMemoryRef.current = ctx;
-    }).catch(() => { /* non-critical — handleSendMessage will fetch on miss */ });
+    }).catch((e) => { NexusLogger.warn('ModuleAI', 'Memory prewarm failed (non-critical)'); });
   }, [resolvedContextPolicy, isGuest, user, retrieveMemoryContext]);
 
   // Background session summary refresh.
@@ -453,6 +453,7 @@ export function useModuleAI({
       const { response } = await sendMessage(
         `Summarize the following conversation excerpt in 4–6 sentences. Preserve all key topics, decisions, emotional context, and any commitments or disclosures made. This summary will be given to an AI to prevent it from contradicting or forgetting earlier context. Do not include any XML tags, action tags, or technical markup — plain prose only.\n\n${transcript}`,
         {
+          moduleId,
           systemPrompt: 'You are a conversation archivist. Output only the summary — plain prose, no bullet points, no preamble.',
           memoryContext: [],
           summary: '',
@@ -519,7 +520,7 @@ export function useModuleAI({
       setIsHydrating(false);
     } else if (user && !isGuest) {
       unsubscribe = ModuleMemoryService.subscribeActiveSession(user.uid, moduleId, activeSessionId, (session) => {
-        if (!mounted) return;
+        if (!mounted || !mountedRef.current) return;
         // Skip subscription echoes entirely while the agent is actively processing.
         // During agent flow, all message state is managed locally via setMessages —
         // remote echoes can only cause duplicates or state thrashing.
@@ -531,19 +532,16 @@ export function useModuleAI({
           const signature = `${session.lastMessageAt}:${session.history.length}`;
           if (signature !== lastRemoteSignatureRef.current) {
             lastRemoteSignatureRef.current = signature;
-            // RC-1 fix: skip echoes of our own writes. The ChunkedSessionStore
-            // subscription fires asynchronously after our flushActiveSession write.
-            // If the listener fires within 3s of our last write AND the message
-            // count matches, it's almost certainly an echo — skip setMessages()
-            // to avoid a mid-conversation rerender.
-            const msSinceOwnWrite = Date.now() - lastLocalWriteTimestampRef.current;
-            const currentMsgs = messagesRef.current;
-            const isLikelyEcho = msSinceOwnWrite < 3000 && session.history.length <= currentMsgs.length;
-            if (isLikelyEcho) {
+            // RC-1 fix: skip echoes of our own writes. When we flush to Firestore
+            // we store a _writeNonce in the session document and in lastWriteNonceRef.
+            // If the incoming snapshot carries the same nonce, it's our own echo.
+            const isOwnEcho = session._writeNonce != null && session._writeNonce === lastWriteNonceRef.current;
+            if (isOwnEcho) {
               setIsHydrating(false);
               return;
             }
             const remoteLen = session.history.length;
+            const currentMsgs = messagesRef.current;
             const localLen = currentMsgs.length;
             const lastRemoteContent = session.history[remoteLen - 1]?.content;
             const lastLocalContent = currentMsgs[localLen - 1]?.content;
@@ -628,7 +626,8 @@ export function useModuleAI({
     if (shouldSaveRemote && user) {
       const lastMessageAt = new Date().toISOString();
       lastRemoteSignatureRef.current = `${lastMessageAt}:${currentMessages.length}`;
-      lastLocalWriteTimestampRef.current = Date.now();
+      const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      lastWriteNonceRef.current = nonce;
       ModuleMemoryService.saveActiveSession(user.uid, {
         sessionId: activeSessionId,
         moduleId,
@@ -637,7 +636,8 @@ export function useModuleAI({
         history: persistableMessages,
         tokenCount: 0,
         isGuestTrial: false,
-        contextPolicy: resolvedContextPolicy
+        contextPolicy: resolvedContextPolicy,
+        _writeNonce: nonce
       })
         .catch((e) => console.error('Failed to save active session:', e));
     }
@@ -1093,6 +1093,7 @@ export function useModuleAI({
         const { response } = await streamMessage(
           content,
           resolvedEnhanceContextRef.current({
+            moduleId,
             systemPrompt: systemPromptWithSummary,
             memoryContext: memoryContextFacts,
             summary: memoryStatus === 'vault_blocked'
@@ -1475,7 +1476,7 @@ export function useModuleAI({
 
         // Background: refresh session summary if history has overflowed the window.
         // Runs entirely off the critical path — TTFT is not affected.
-        refreshSessionSummaryIfNeeded(localHistory).catch(() => {});
+        refreshSessionSummaryIfNeeded(localHistory).catch((e) => { NexusLogger.warn('ModuleAI', 'Session summary refresh failed'); });
         
         clearPendingRequest();
 
@@ -1494,6 +1495,8 @@ export function useModuleAI({
               saveTimerRef.current = null;
             }
             lastRemoteSignatureRef.current = `${metadata.trigger}:${lastMessageAt}:${trimmedHistory.length}`;
+            const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            lastWriteNonceRef.current = nonce;
             ModuleMemoryService.saveActiveSession(user.uid, {
               sessionId: activeSessionId,
               moduleId,
@@ -1502,7 +1505,8 @@ export function useModuleAI({
               history: trimmedHistory,
               tokenCount: 0,
               isGuestTrial: false,
-              contextPolicy: resolvedContextPolicy
+              contextPolicy: resolvedContextPolicy,
+              _writeNonce: nonce
             })
               .catch((e) => console.error('Failed to save trimmed session:', e));
           }
@@ -1690,6 +1694,7 @@ export function useModuleAI({
       const { response } = await sendMessage(
         'Summarize this session in 2 supportive sentences focusing on key takeaways or health indicators. Do not include any XML tags, action tags, or technical markup — plain prose only.',
         resolvedEnhanceContextRef.current({
+          moduleId,
           systemPrompt: 'You are an analytical supervisor. Respond with plain prose only — no XML, no action tags, no angle brackets.',
           memoryContext: [],
           summary: 'Summarizing.',

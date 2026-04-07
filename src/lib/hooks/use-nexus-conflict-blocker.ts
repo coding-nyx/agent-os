@@ -49,8 +49,8 @@ export function useNexusConflictBlocker() {
       sync();
     };
 
-    const unsubDetected = Spine.on('CONFLICT_DETECTED' as any, handleDetected as any);
-    const unsubResolved = Spine.on('CONFLICT_RESOLVED' as any, handleResolved as any);
+    const unsubDetected = Spine.on('CONFLICT_DETECTED', handleDetected as any);
+    const unsubResolved = Spine.on('CONFLICT_RESOLVED', handleResolved as any);
 
     return () => {
       try {

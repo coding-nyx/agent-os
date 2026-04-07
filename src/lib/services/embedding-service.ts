@@ -4,7 +4,7 @@ import { EmbeddingUtilsJs } from '@cortex-logic';
 const EMBEDDING_MODEL = 'gemini-embedding-001';
 const EMBEDDING_DIMENSION = 256;
 
-const _utils = new (EmbeddingUtilsJs as any)();
+const _utils = new EmbeddingUtilsJs();
 
 function hashToken(token: string): number {
   let hash = 0;

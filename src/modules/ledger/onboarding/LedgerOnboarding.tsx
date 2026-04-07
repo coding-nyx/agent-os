@@ -85,11 +85,14 @@ export function LedgerOnboarding({ initialProfile, initialBaseContext, onGlobalB
   // Express complete — maps canonical field IDs to LedgerIntakeProfile
   const handleExpressComplete = useCallback(async (values: Record<string, unknown>) => {
     const now = new Date().toISOString();
+    const income = Number(values.monthly_income ?? 0);
+    const currency = String(values.currency ?? 'USD').trim().toUpperCase();
+    if (income <= 0 || !currency) return; // Require income and currency
     const profile: LedgerIntakeProfile = {
       ...createEmptyLedgerProfile(),
       onboardingComplete: true,
-      currency: String(values.currency ?? 'USD').trim().toUpperCase(),
-      monthlyIncome: Number(values.monthly_income ?? 0),
+      currency,
+      monthlyIncome: income,
       fixedExpenses: parseLineItems(String(values.fixed_expenses ?? '')),
       variableExpenses: parseLineItems(String(values.variable_expenses ?? '')),
       debtItems: parseLineItems(String(values.debts ?? '')).map((e, i) => ({
@@ -122,6 +125,7 @@ export function LedgerOnboarding({ initialProfile, initialBaseContext, onGlobalB
       summary: 'Ledger finance onboarding intake.',
       placeholder: 'Share your financial baseline...',
       buildContext: (state, history) => ({
+        moduleId: 'ledger',
         systemPrompt: `${LEDGER_ONBOARDING_PROMPT}
 [PREFILLED_BASE_CONTEXT]
 - Name: ${state.baseContext.name || 'Unknown'}
@@ -143,17 +147,28 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
           ['focus_income', 'focus_expenses', 'focus_debt_goals', 'focus_plan_horizon'].includes(a.type)
         );
         if (focusAction) {
-          if (focusAction.type === 'focus_income') nextStep = 0;
-          if (focusAction.type === 'focus_expenses') nextStep = 1;
-          if (focusAction.type === 'focus_debt_goals') nextStep = 2;
-          if (focusAction.type === 'focus_plan_horizon') nextStep = 3;
+          if (focusAction.type === 'focus_income') nextStep = Math.max(nextStep, 0);
+          if (focusAction.type === 'focus_expenses') nextStep = Math.max(nextStep, 1);
+          if (focusAction.type === 'focus_debt_goals') nextStep = Math.max(nextStep, 2);
+          if (focusAction.type === 'focus_plan_horizon') nextStep = Math.max(nextStep, 3);
         }
 
         const updatePayloads = response.actions
           .filter(a => a.type === 'update_ledger_profile')
           .map(a => a.payload as Partial<LedgerIntakeProfile>);
         for (const parsed of updatePayloads) {
-          nextProfile = { ...nextProfile, ...parsed, updatedAt: new Date().toISOString() };
+          // Per-field sanitization — only accept known onboarding fields
+          if (typeof parsed.summary === 'string' && parsed.summary.trim()) nextProfile.summary = parsed.summary.trim();
+          if (typeof parsed.currency === 'string' && parsed.currency.trim()) nextProfile.currency = parsed.currency.trim().toUpperCase().slice(0, 3);
+          if (typeof parsed.monthlyIncome === 'number' && Number.isFinite(parsed.monthlyIncome) && parsed.monthlyIncome >= 0) nextProfile.monthlyIncome = parsed.monthlyIncome;
+          if (Array.isArray(parsed.fixedExpenses)) nextProfile.fixedExpenses = parsed.fixedExpenses.slice(0, 50);
+          if (Array.isArray(parsed.variableExpenses)) nextProfile.variableExpenses = parsed.variableExpenses.slice(0, 50);
+          if (Array.isArray(parsed.debtItems)) nextProfile.debtItems = parsed.debtItems.slice(0, 50);
+          if (Array.isArray(parsed.savingsGoals)) nextProfile.savingsGoals = parsed.savingsGoals.slice(0, 20);
+          if (parsed.planningHorizon === 'monthly' || parsed.planningHorizon === 'quarterly' || parsed.planningHorizon === 'yearly') {
+            nextProfile.planningHorizon = parsed.planningHorizon;
+          }
+          nextProfile.updatedAt = new Date().toISOString();
         }
 
         const baseContextUpdates = response.actions
@@ -168,8 +183,23 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
           }
         }
 
-        const completed = response.actions.some(a => a.type === 'complete_ledger_onboarding');
+        let completed = response.actions.some(a => a.type === 'complete_ledger_onboarding');
+        // Validate minimum required fields before accepting completion
         if (completed) {
+          const hasIncome = typeof nextProfile.monthlyIncome === 'number' && nextProfile.monthlyIncome > 0;
+          const hasCurrency = typeof nextProfile.currency === 'string' && nextProfile.currency.trim().length > 0;
+          if (!hasIncome || !hasCurrency) {
+            completed = false;
+            return {
+              nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep },
+              nextStep,
+              completed: false,
+              assistantMessage: 'Before we finalize, I still need ' +
+                (!hasIncome ? 'your monthly income' : '') +
+                (!hasIncome && !hasCurrency ? ' and ' : '') +
+                (!hasCurrency ? 'your preferred currency' : '') + '.',
+            };
+          }
           nextProfile.onboardingComplete = true;
           nextProfile.updatedAt = new Date().toISOString();
           nextStep = 3;

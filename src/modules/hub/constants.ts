@@ -76,13 +76,13 @@ export interface NodeCardProps {
     color: string;
     description: string;
     title: string;
+    route: string;
   };
   stat?: ModuleStat;
   canEnter: boolean;
   isHovered: boolean;
-  onClick: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
+  onModuleNavigate: (moduleId: string, route: string) => void;
+  setHoveredNodeId: (id: string | null) => void;
 }
 
 export interface ReactiveGaugeProps {

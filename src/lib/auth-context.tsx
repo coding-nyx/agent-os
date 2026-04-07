@@ -71,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       if (currentUser) {
         setIsGuest(false);
+        sessionStorage.removeItem(GUEST_SESSION_KEY);
         setLoading(true);
         NexusHandoffService.init(currentUser.uid);
       } else {
@@ -160,14 +161,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     CognitiveAgent.clearCredentials();
     invalidateCredentialStore();
 
-    await authService.logout();
+    // Attempt Firebase sign-out, but always proceed with local cleanup.
+    try {
+      await authService.logout();
+    } catch (e) {
+      console.error('[Auth] Firebase signOut failed — proceeding with local cleanup:', e);
+    }
+
     setUser(null);
     setProfile(null);
     setIsGuest(false);
     sessionStorage.removeItem(GUEST_SESSION_KEY);
     sessionStorage.removeItem('nexus_vault_session');
+    // Clear all nexus-prefixed keys AND legacy credential keys that are
+    // not nexus-prefixed (e.g., VITE_OPENROUTER_API_KEY).
+    const legacyCredentialKeys = [
+      'VITE_OPENROUTER_API_KEY', 'openrouter_api_key', 'OPENROUTER_API_KEY',
+      'VITE_GOOGLE_API_KEY', 'VITE_GROK_API_KEY',
+    ];
+    const legacySet = new Set(legacyCredentialKeys);
     Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('nexus_') || key.includes('integrity')) {
+        if (key.startsWith('nexus_') || key.includes('integrity') || legacySet.has(key)) {
             localStorage.removeItem(key);
         }
     });

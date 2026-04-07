@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldPlus, X } from 'lucide-react';
 import { useVault } from '@/lib/vault-context';
+import { useFocusTrap } from '@/lib/hooks/use-focus-trap';
 import { NeuralButton } from './NeuralButton';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -83,6 +84,11 @@ export function VaultSetupNudge({ onClose }: VaultSetupNudgeProps) {
     onClose();
   }, [dismissVaultSetupNudge, onClose]);
 
+  const trapRef = useFocusTrap<HTMLDivElement>({
+    active: true,
+    onEscape: handleDismiss,
+  });
+
   return (
     <>
       {/* ── Backdrop ─────────────────────────────────────────────────────── */}
@@ -100,6 +106,7 @@ export function VaultSetupNudge({ onClose }: VaultSetupNudgeProps) {
 
       {/* ── Card ─────────────────────────────────────────────────────────── */}
       <motion.div
+        ref={trapRef}
         key="vault-nudge-card"
         role="dialog"
         aria-modal="true"

@@ -67,11 +67,12 @@ export function ScoutOnboarding({ initialProfile, initialBaseContext, onGlobalBa
   const handleExpressComplete = useCallback(async (values: Record<string, unknown>) => {
     const now = new Date().toISOString();
     const domains = Array.isArray(values.research_domains) ? values.research_domains as string[] : [];
+    if (domains.length === 0) return; // Require at least one research domain
     onComplete({
       ...createEmptyScoutProfile(),
       onboardingComplete: true,
       researchFocus: domains,
-      summary: `Domains: ${domains.join(', ') || 'general'}. Evidence: ${values.evidence_quality ?? 'balanced'}. Format: ${values.output_format ?? 'summary'}.`,
+      summary: `Domains: ${domains.join(', ')}. Evidence: ${values.evidence_quality ?? 'balanced'}. Format: ${values.output_format ?? 'summary'}.`,
       createdAt: now,
       updatedAt: now,
     });
@@ -86,6 +87,7 @@ export function ScoutOnboarding({ initialProfile, initialBaseContext, onGlobalBa
       summary: 'Scout onboarding intake.',
       placeholder: 'Share topics, claims, and evidence standards...',
       buildContext: (state, history) => ({
+        moduleId: 'scout',
         systemPrompt: `${SCOUT_ONBOARDING_PROMPT}
 [PREFILLED_BASE_CONTEXT]
 - Name: ${state.baseContext.name || 'Unknown'}
@@ -102,7 +104,18 @@ export function ScoutOnboarding({ initialProfile, initialBaseContext, onGlobalBa
 
         const profileUpdates = response.actions.filter(a => a.type === 'update_scout_profile').map(a => a.payload as Partial<ScoutProfile>);
         for (const update of profileUpdates) {
-          nextProfile = { ...nextProfile, ...update, updatedAt: new Date().toISOString() };
+          // Per-field sanitization — only accept known onboarding fields
+          if (typeof update.summary === 'string' && update.summary.trim()) nextProfile.summary = update.summary.trim();
+          if (Array.isArray(update.researchFocus)) {
+            nextProfile.researchFocus = (update.researchFocus as unknown[])
+              .filter((f): f is string => typeof f === 'string' && f.trim().length > 0)
+              .map(f => f.trim())
+              .slice(0, 20);
+          }
+          if (Array.isArray(update.interests)) {
+            nextProfile.interests = update.interests.slice(0, 50);
+          }
+          nextProfile.updatedAt = new Date().toISOString();
         }
 
         const baseContextUpdates = response.actions.filter(a => a.type === 'update_global_base_context').map(a => a.payload as Partial<GlobalBaseIntakeContext>);
@@ -115,14 +128,31 @@ export function ScoutOnboarding({ initialProfile, initialBaseContext, onGlobalBa
           ['focus_research_focus', 'focus_evidence_quality', 'focus_output_shape', 'focus_baseline_summary'].includes(a.type)
         );
         if (focusAction) {
-          if (focusAction.type === 'focus_research_focus') nextStep = 0;
-          if (focusAction.type === 'focus_evidence_quality') nextStep = 1;
-          if (focusAction.type === 'focus_output_shape') nextStep = 2;
-          if (focusAction.type === 'focus_baseline_summary') nextStep = 3;
+          if (focusAction.type === 'focus_research_focus') nextStep = Math.max(nextStep, 0);
+          if (focusAction.type === 'focus_evidence_quality') nextStep = Math.max(nextStep, 1);
+          if (focusAction.type === 'focus_output_shape') nextStep = Math.max(nextStep, 2);
+          if (focusAction.type === 'focus_baseline_summary') nextStep = Math.max(nextStep, 3);
         }
 
-        const completed = response.actions.some(a => a.type === 'complete_scout_onboarding');
-        if (completed) { nextProfile.onboardingComplete = true; nextProfile.updatedAt = new Date().toISOString(); nextStep = SCOUT_STEPS.length - 1; }
+        let completed = response.actions.some(a => a.type === 'complete_scout_onboarding');
+        // Validate minimum required fields before accepting completion
+        if (completed) {
+          const hasFocus = (nextProfile.researchFocus?.length ?? 0) >= 1;
+          const hasSummary = typeof nextProfile.summary === 'string' && nextProfile.summary.trim().length > 0;
+          if (!hasFocus || !hasSummary) {
+            completed = false;
+            return {
+              nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep },
+              nextStep,
+              completed: false,
+              assistantMessage: 'Before we finalize, I still need ' +
+                (!hasFocus ? 'at least one research focus area' : '') +
+                (!hasFocus && !hasSummary ? ' and ' : '') +
+                (!hasSummary ? 'a baseline summary' : '') + '.',
+            };
+          }
+          nextProfile.onboardingComplete = true; nextProfile.updatedAt = new Date().toISOString(); nextStep = SCOUT_STEPS.length - 1;
+        }
 
         return { nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep }, nextStep, completed };
       }
