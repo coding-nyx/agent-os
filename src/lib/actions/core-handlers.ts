@@ -1121,32 +1121,32 @@ export function registerCoreActions() {
       target[field] = value;
     };
 
-    setIfStale(biological, 'cnsFatigue', bio?.cnsFatigue ?? payload.cnsFatigue, 'biological.cnsFatigue');
-    setIfStale(biological, 'sleepQuality', bio?.sleepQuality ?? payload.sleepQuality, 'biological.sleepQuality');
-    setIfStale(biological, 'recoveryScore', bio?.recoveryScore, 'biological.recoveryScore');
-    setIfStale(biological, 'hormonalContext', bio?.hormonalContext ?? payload.hormonalContext, 'biological.hormonalContext');
+    setIfStale(biological, 'cnsFatigue', safeNumber(bio?.cnsFatigue ?? payload.cnsFatigue), 'biological.cnsFatigue');
+    setIfStale(biological, 'sleepQuality', safeNumber(bio?.sleepQuality ?? payload.sleepQuality), 'biological.sleepQuality');
+    setIfStale(biological, 'recoveryScore', safeNumber(bio?.recoveryScore), 'biological.recoveryScore');
+    setIfStale(biological, 'hormonalContext', safeString(bio?.hormonalContext ?? payload.hormonalContext), 'biological.hormonalContext');
 
-    setIfStale(emotional, 'emotionalResilience', emo?.emotionalResilience ?? payload.emotionalResilience, 'emotional.emotionalResilience');
-    setIfStale(emotional, 'stressLoad', emo?.stressLoad, 'emotional.stressLoad');
-    setIfStale(emotional, 'moodTrend', emo?.moodTrend, 'emotional.moodTrend');
+    setIfStale(emotional, 'emotionalResilience', safeNumber(emo?.emotionalResilience ?? payload.emotionalResilience), 'emotional.emotionalResilience');
+    setIfStale(emotional, 'stressLoad', safeNumber(emo?.stressLoad), 'emotional.stressLoad');
+    setIfStale(emotional, 'moodTrend', safeString(emo?.moodTrend), 'emotional.moodTrend');
     const traumaMarkers = safeStringArray(emo?.traumaMarkers ?? payload.traumaMarkers);
     if (traumaMarkers !== undefined && isStale('emotional.traumaMarkers')) {
       emotional.traumaMarkers = traumaMarkers;
     }
 
-    setIfStale(cognitive, 'energyBudget', cog?.energyBudget, 'cognitive.energyBudget');
-    setIfStale(cognitive, 'focusScore', cog?.focusScore, 'cognitive.focusScore');
-    setIfStale(cognitive, 'activeLoad', cog?.activeLoad, 'cognitive.activeLoad');
-    setIfStale(cognitive, 'researchLoad', cog?.researchLoad, 'cognitive.researchLoad');
-    setIfStale(cognitive, 'planningLoad', cog?.planningLoad, 'cognitive.planningLoad');
-    setIfStale(cognitive, 'taskCompletionRate', cog?.taskCompletionRate, 'cognitive.taskCompletionRate');
-    setIfStale(cognitive, 'interestDiversity', cog?.interestDiversity, 'cognitive.interestDiversity');
+    setIfStale(cognitive, 'energyBudget', safeNumber(cog?.energyBudget), 'cognitive.energyBudget');
+    setIfStale(cognitive, 'focusScore', safeNumber(cog?.focusScore), 'cognitive.focusScore');
+    setIfStale(cognitive, 'activeLoad', safeNumber(cog?.activeLoad), 'cognitive.activeLoad');
+    setIfStale(cognitive, 'researchLoad', safeNumber(cog?.researchLoad), 'cognitive.researchLoad');
+    setIfStale(cognitive, 'planningLoad', safeNumber(cog?.planningLoad), 'cognitive.planningLoad');
+    setIfStale(cognitive, 'taskCompletionRate', safeNumber(cog?.taskCompletionRate), 'cognitive.taskCompletionRate');
+    setIfStale(cognitive, 'interestDiversity', safeNumber(cog?.interestDiversity), 'cognitive.interestDiversity');
 
-    setIfStale(planning, 'streakHealth', pln?.streakHealth, 'planning.streakHealth');
-    setIfStale(planning, 'deadlinePressure', pln?.deadlinePressure, 'planning.deadlinePressure');
+    setIfStale(planning, 'streakHealth', safeNumber(pln?.streakHealth), 'planning.streakHealth');
+    setIfStale(planning, 'deadlinePressure', safeNumber(pln?.deadlinePressure), 'planning.deadlinePressure');
 
-    setIfStale(resource, 'financialFriction', res?.financialFriction, 'resource.financialFriction');
-    setIfStale(resource, 'resonanceROI', res?.resonanceROI, 'resource.resonanceROI');
+    setIfStale(resource, 'financialFriction', safeNumber(res?.financialFriction), 'resource.financialFriction');
+    setIfStale(resource, 'resonanceROI', safeNumber(res?.resonanceROI), 'resource.resonanceROI');
 
     const compactedPatch: NeuralStateVectorPatch = {
       ...(Object.keys(biological).length ? { biological: biological as NeuralStateVectorPatch['biological'] } : {}),

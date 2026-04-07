@@ -360,9 +360,9 @@ function App() {
       <DataLayerProvider>
         <Router>
           <AuthProvider>
-            <AIWrapper>
-              <NotificationProvider>
-                <VaultProvider>
+            <VaultProvider>
+              <AIWrapper>
+                <NotificationProvider>
                   <GlobalSoulProvider>
                     <AppErrorBoundary>
                       <AIRuntimeGate>
@@ -370,9 +370,9 @@ function App() {
                       </AIRuntimeGate>
                     </AppErrorBoundary>
                   </GlobalSoulProvider>
-                </VaultProvider>
-              </NotificationProvider>
-            </AIWrapper>
+                </NotificationProvider>
+              </AIWrapper>
+            </VaultProvider>
           </AuthProvider>
         </Router>
       </DataLayerProvider>
