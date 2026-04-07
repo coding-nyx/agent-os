@@ -23,6 +23,18 @@ import type { ResearchSession } from '../types';
 import type { AddSourceInput, SourceEntryDecrypted } from '../services/scout-sources-service';
 
 // ---------------------------------------------------------------------------
+// Security: strip bracket-tag delimiters that could inject prompt structure
+// ---------------------------------------------------------------------------
+
+/** Remove structural markers ([TAG], <action>, <tool_call> etc.) from user input. */
+function sanitizeUserInput(text: string): string {
+  return text
+    .replace(/\[([A-Z_]{3,})\]/g, '($1)')        // [MASTER_FLOW_INSTRUCTION] → (MASTER_FLOW_INSTRUCTION)
+    .replace(/<(action|thought|tool_call)\b[^>]*>/gi, '')  // strip injection tags
+    .replace(/<\/(action|thought|tool_call)>/gi, '');
+}
+
+// ---------------------------------------------------------------------------
 // Params & Return types
 // ---------------------------------------------------------------------------
 
@@ -67,6 +79,7 @@ export function useScoutPromptBuilder({
           source: 'scout',
           domain: 'C',
           data: {
+            userId,
             query: rawUserText,
             reason: `We've covered ${topicState.topicKey} across several exchanges — this looks like a research session candidate.`,
             mode: 'deep',
@@ -89,7 +102,7 @@ export function useScoutPromptBuilder({
           'Do not emit web_search or expanded_web_search for this turn.',
           'Do not append a source list unless explicitly requested by the user.',
           '[USER_QUERY]',
-          rawUserText,
+          sanitizeUserInput(rawUserText),
         ].join('\n\n');
       }
 
@@ -108,10 +121,10 @@ export function useScoutPromptBuilder({
           : 'Do not add an explicit source list unless user requests citations.',
         digest,
         '[USER_QUERY]',
-        rawUserText,
+        sanitizeUserInput(rawUserText),
       ].join('\n\n');
     },
-    [],
+    [userId],
   );
 
   // -----------------------------------------------------------------------
@@ -135,7 +148,7 @@ export function useScoutPromptBuilder({
           'Keep response concise and context-aware.',
           'Do not emit web_search or expanded_web_search for this turn.',
           '[USER_QUERY]',
-          rawUserText,
+          sanitizeUserInput(rawUserText),
         ].join('\n\n');
       }
 
@@ -170,7 +183,7 @@ export function useScoutPromptBuilder({
           '[SESSION_CONTEXT_HITS]',
           hitLines,
           '[USER_QUERY]',
-          rawUserText,
+          sanitizeUserInput(rawUserText),
         ].join('\n\n');
       }
 
@@ -222,7 +235,7 @@ export function useScoutPromptBuilder({
         `[ACTIVE_SESSION_TOPIC] ${activeSession.topic}`,
         digest,
         '[USER_QUERY]',
-        rawUserText,
+        sanitizeUserInput(rawUserText),
       ].join('\n\n');
     },
     [activeSession, addSourceFn, encryptionKey, updateSessionFn, userId],
