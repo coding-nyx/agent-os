@@ -1,5 +1,4 @@
-import type { SpineEventType } from '@/lib/types';
-import type { StatusTone } from '@/modules/hub/constants';
+import type { SpineEventType, StatusTone } from '@/lib/types';
 import type { NSVMetricPath } from '@/lib/services/nsv-ownership';
 import {
   Heart,
@@ -281,6 +280,13 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   TRANSFER_COMPLETED: 'Transfer completed',
   // Cross-module stress signals
   STRESS_SPIKE: 'Stress spike detected',
+  // Hub UI events
+  CASCADE_TIMELINE_REQUESTED: 'Cascade timeline opened',
+  // Forge events
+  FORGE_EXECUTION_STARTED: 'Code execution started',
+  FORGE_EXECUTION_COMPLETED: 'Code execution completed',
+  FORGE_EXECUTION_FAILED: 'Code execution failed',
+  FORGE_ARTIFACT_CREATED: 'Forge artifact created',
 };
 
 // ---------------------------------------------------------------------------

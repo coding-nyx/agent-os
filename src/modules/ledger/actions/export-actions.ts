@@ -22,7 +22,7 @@ async function handleExportTransactionsCsv(context: ActionContext): Promise<void
   };
   runExport(profile, opts);
   await spineEventService.logLedgerEvent({
-    type: 'TRANSACTION_CREATED' as LedgerSpineEventType,
+    type: 'EXPORT_REQUESTED' as LedgerSpineEventType,
     domain: 'R' as const,
     source: 'export:transactions_csv',
     data: { fromDate: opts.fromDate, toDate: opts.toDate },
@@ -39,7 +39,7 @@ async function handleExportTaxSummary(context: ActionContext): Promise<void> {
   const taxYear = typeof payload.taxYear === 'number' ? payload.taxYear : new Date().getFullYear();
   runExport(profile, { type: 'tax_summary_json', taxYear });
   await spineEventService.logLedgerEvent({
-    type: 'TRANSACTION_CREATED' as LedgerSpineEventType,
+    type: 'EXPORT_REQUESTED' as LedgerSpineEventType,
     domain: 'R' as const,
     source: 'export:tax_summary',
     data: { taxYear },
@@ -55,7 +55,7 @@ async function handleExportNetWorthReport(context: ActionContext): Promise<void>
 
   runExport(profile, { type: 'net_worth_json' });
   await spineEventService.logLedgerEvent({
-    type: 'TRANSACTION_CREATED' as LedgerSpineEventType,
+    type: 'EXPORT_REQUESTED' as LedgerSpineEventType,
     domain: 'R' as const,
     source: 'export:net_worth',
     data: {},

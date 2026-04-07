@@ -1,4 +1,5 @@
-export type StatusTone = 'good' | 'warn' | 'bad' | 'neutral';
+export type { StatusTone } from '@/lib/types';
+import type { StatusTone } from '@/lib/types';
 
 export const CORE_MODULES = ['agnes', 'titan', 'soma', 'ledger', 'atlas'];
 

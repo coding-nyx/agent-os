@@ -15,7 +15,7 @@ import {
 import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
 import { useNsvTrends } from '../hooks/useNsvTrends';
 import { GlassCard } from '@/core/components/GlassCard';
-import type { StatusTone } from '@/modules/hub/constants';
+import type { StatusTone } from '@/lib/types';
 
 const TONE_ACCENT: Record<StatusTone, string> = {
   good: 'border-emerald-500/30 bg-emerald-500/5',

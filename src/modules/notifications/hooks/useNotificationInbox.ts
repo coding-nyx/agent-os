@@ -6,7 +6,7 @@
  * and the derived filtered list.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { AuthUser } from '@/lib/services/auth-service';
 import { useDataLayer } from '@/lib/data-layer/provider';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +15,11 @@ import { ReminderOutcomeService } from '@/lib/notifications/reminder-outcome-ser
 import {
   isSnoozed,
   QuietHoursConfig,
+  loadQuietHoursConfig,
+  saveQuietHoursConfig,
   createDefaultQuietHours,
+  persistSnooze,
+  clearSnooze,
 } from '../services/notification-service';
 
 type FilterMode = 'all' | 'unread' | 'critical';
@@ -44,11 +48,54 @@ export function useNotificationInbox({ user }: UseNotificationInboxParams) {
   // ── Bulk selection ──────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // ── Snooze ──────────────────────────────────────────────────────────────
-  const [snoozedMap, setSnoozedMap] = useState<Record<string, string>>({}); // id → snoozedUntil ISO
+  // ── Snooze (derived from InboxRecord.snoozedUntil, persisted to Firestore)
+  const snoozedMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const item of items) {
+      if (item.snoozedUntil && isSnoozed(item.snoozedUntil)) {
+        map[item.id] = item.snoozedUntil;
+      }
+    }
+    return map;
+  }, [items]);
 
-  // ── Quiet hours ─────────────────────────────────────────────────────────
-  const [quietHours, setQuietHours] = useState<QuietHoursConfig>(createDefaultQuietHours());
+  // ── Quiet hours (persisted to Firestore) ────────────────────────────────
+  const [quietHours, setQuietHoursLocal] = useState<QuietHoursConfig>(createDefaultQuietHours());
+  const [quietHoursLoaded, setQuietHoursLoaded] = useState(false);
+
+  // Load persisted quiet hours on mount
+  useEffect(() => {
+    if (!user) {
+      setQuietHoursLocal(createDefaultQuietHours());
+      setQuietHoursLoaded(false);
+      return;
+    }
+    loadQuietHoursConfig(dataLayer, user.uid)
+      .then((config) => {
+        setQuietHoursLocal(config);
+        setQuietHoursLoaded(true);
+      })
+      .catch(() => {
+        setQuietHoursLocal(createDefaultQuietHours());
+        setQuietHoursLoaded(true);
+      });
+  }, [dataLayer, user]);
+
+  // Wrap setQuietHours to auto-persist to Firestore
+  const setQuietHours = useCallback(
+    (updater: QuietHoursConfig | ((prev: QuietHoursConfig) => QuietHoursConfig)) => {
+      setQuietHoursLocal((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        if (user) {
+          saveQuietHoursConfig(dataLayer, user.uid, next).catch((err) => {
+            console.warn('[useNotificationInbox] Failed to save quiet hours:', err);
+          });
+        }
+        return next;
+      });
+    },
+    [dataLayer, user],
+  );
 
   // ── AI toggle ───────────────────────────────────────────────────────────
   const [showAI, setShowAI] = useState(false);
@@ -91,11 +138,11 @@ export function useNotificationInbox({ user }: UseNotificationInboxParams) {
 
   const filtered = useMemo(() =>
     items.filter((item) => {
-      if (isSnoozed(snoozedMap[item.id])) return false;
+      if (isSnoozed(item.snoozedUntil ?? undefined)) return false;
       if (filter === 'unread') return !item.read;
       if (filter === 'critical') return item.priority === 'critical' || item.priority === 'alert';
       return true;
-    }), [items, snoozedMap, filter],
+    }), [items, filter],
   );
 
   // ── Bulk action handlers ────────────────────────────────────────────────
@@ -138,14 +185,20 @@ export function useNotificationInbox({ user }: UseNotificationInboxParams) {
     setSelectedIds(new Set());
   }, [dataLayer, items, selectedIds, user]);
 
-  // ── Snooze handlers ─────────────────────────────────────────────────────
+  // ── Snooze handlers (persist to Firestore → subscription updates items → useMemo recomputes)
   const handleSnooze = useCallback((id: string, snoozedUntil: string) => {
-    setSnoozedMap((prev) => ({ ...prev, [id]: snoozedUntil }));
-  }, []);
+    if (!user) return;
+    persistSnooze(dataLayer, user.uid, id, snoozedUntil).catch((err) => {
+      console.warn('[useNotificationInbox] Failed to persist snooze:', err);
+    });
+  }, [dataLayer, user]);
 
   const handleUnsnooze = useCallback((id: string) => {
-    setSnoozedMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
-  }, []);
+    if (!user) return;
+    clearSnooze(dataLayer, user.uid, id).catch((err) => {
+      console.warn('[useNotificationInbox] Failed to clear snooze:', err);
+    });
+  }, [dataLayer, user]);
 
   return {
     // Inbox data

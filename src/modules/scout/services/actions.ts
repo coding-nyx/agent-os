@@ -335,7 +335,7 @@ export function registerScoutActions() {
      * Deep research specialized trigger.
      */
     start_deep_research: async (context) => {
-      const { payload, pushAssistantMessage, emitSpineEvent } = context;
+      const { userId, payload, pushAssistantMessage, emitSpineEvent } = context;
       const query = typeof payload?.query === 'string' ? payload.query : '';
       
       if (!query) {
@@ -346,12 +346,12 @@ export function registerScoutActions() {
       // In v2, this opens the specialized DeepResearchPanel via Spine event
       emitSpineEvent(
         'DEEP_RESEARCH_REQUESTED',
-        { query },
+        { userId, query },
         { domain: 'C', priority: 'info' }
       );
       emitSpineEvent(
         'DEEP_RESEARCH_STARTED',
-        { query },
+        { userId, query },
         { domain: 'C', priority: 'info' }
       );
       
@@ -504,7 +504,9 @@ export function registerScoutActions() {
         pushAssistantMessage?.('Session ID required.');
         return;
       }
-      await updateSession(sessionId, { status: 'archived' }, { userId: userId ?? null });
+      // Set both fields: `status` (enum) and `archived` (boolean) for consistency.
+      // UI filters check `archived` boolean; the status enum is for workflow state.
+      await updateSession(sessionId, { status: 'archived', archived: true }, { userId: userId ?? null });
       pushAssistantMessage?.('Session archived.');
     },
 

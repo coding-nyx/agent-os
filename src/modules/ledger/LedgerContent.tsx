@@ -125,9 +125,6 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
   const isLocked = !isModuleAccessible('ledger');
   const { sendMessage, analyzeImage } = useAI();
 
-  // Cross-verification: coherence checks + NSV sync + Spine events
-  const { coherenceReport } = useLedgerCrossVerify(profile);
-
   const agentAlias = globalSoul?.displayNames?.ledger || 'Ledger';
   const plannerBootstrappedRef = useRef(false);
   const [activeTab, setActiveTab] = useState<LedgerTab>('overview');
@@ -158,6 +155,9 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
        console.error('Failed to save ledger profile:', saveError);
      });
   }, [user?.uid, encryptionKey]);
+
+  // Cross-verification: coherence checks + NSV sync + Spine events
+  const { coherenceReport } = useLedgerCrossVerify(profile, persistUpdate);
 
   // ─── Domain hooks ─────────────────────────────────────────────────────────
   const txActions = useLedgerTransactions(profile, persistUpdate);

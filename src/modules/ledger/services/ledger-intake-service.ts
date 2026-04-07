@@ -581,6 +581,11 @@ export interface LedgerIntakeProfile {
   extensionValues?: Record<string, unknown>;
   /** Per-category ROI coefficients computed from resonance feedback (category → aligned ratio). */
   resonanceCoefficients?: Record<string, number>;
+  // ─── Financial Streak (cross-verification) ─────────────────────────────────
+  /** Consecutive verification cycles with positive net cashflow. */
+  financialStreakCount?: number;
+  /** Last milestone value emitted (prevents duplicate milestone events). */
+  financialStreakLastMilestone?: number;
   createdAt: string;
   updatedAt: string;
 }

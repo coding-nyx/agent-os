@@ -11,6 +11,7 @@ export function extractScoutData(
   actionType: string,
   payload: Record<string, unknown>,
   current: ExtractedDataBag,
+  context?: { userId?: string },
 ): ExtractedDataBag {
   const now = new Date().toISOString();
 
@@ -34,6 +35,7 @@ export function extractScoutData(
         domain: 'C',
         priority: 'info',
         data: {
+          userId: context?.userId,
           node: {
             id: item.id,
             claim: finding,

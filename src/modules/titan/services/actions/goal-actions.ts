@@ -93,6 +93,7 @@ export const goalHandlers: Record<string, ActionHandler> = {
       metric,
       targetValue,
       currentValue,
+      startValue: currentValue,
       unit,
       exerciseName,
       deadline,

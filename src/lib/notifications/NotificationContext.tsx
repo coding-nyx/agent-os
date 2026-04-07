@@ -6,6 +6,13 @@ import type { NotificationAction, NotificationPriority } from '@/lib/notificatio
 import { ActionRegistry } from './action-registry';
 import { ReminderOutcomeService } from './reminder-outcome-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
+import {
+  isSnoozed,
+  shouldSuppressNotification,
+  loadQuietHoursConfig,
+  createDefaultQuietHours,
+  type QuietHoursConfig,
+} from '@/modules/notifications/services/notification-service';
 
 // Module-level set — persists across NotificationProvider remounts (e.g. navigation).
 // Cleared only when the user changes so the next session starts fresh.
@@ -22,6 +29,8 @@ export interface InboxRecord {
   data?: Record<string, any>;
   action?: NotificationAction;
   read: boolean;
+  /** ISO string. When set and in the future, the notification is snoozed. */
+  snoozedUntil?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +46,8 @@ interface NotificationContextValue {
   loading: boolean;
   /** Set when the Firestore inbox subscription encounters an error. */
   error: Error | null;
+  /** Current quiet hours config (persisted to Firestore). */
+  quietHoursConfig: QuietHoursConfig;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   dismissToast: (id: string) => void;
@@ -55,6 +66,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [toasts, setToasts] = useState<NotificationToast[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [quietHoursConfig, setQuietHoursConfig] = useState<QuietHoursConfig>(createDefaultQuietHours);
+
+  // Load persisted quiet hours config on user change
+  useEffect(() => {
+    if (!user) {
+      setQuietHoursConfig(createDefaultQuietHours());
+      return;
+    }
+    loadQuietHoursConfig(dataLayer, user.uid)
+      .then(setQuietHoursConfig)
+      .catch(() => setQuietHoursConfig(createDefaultQuietHours()));
+  }, [user, dataLayer]);
+
+  // Keep a ref so the toast effect always reads the latest config without
+  // triggering re-runs of the entire inbox subscription effect.
+  const quietHoursRef = useRef(quietHoursConfig);
+  quietHoursRef.current = quietHoursConfig;
 
   // Tracks notification IDs that have already been toasted in this session.
   // Module-level set (not a ref) so it survives provider remounts on navigation.
@@ -144,7 +172,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // initial page load (which are old) are never suppressed if 30 seconds pass
   // between loads. The Set approach is deterministic: each ID is toasted once.
   useEffect(() => {
-    const freshItems = inbox.filter(r => !r.read && !toastedIds.current.has(r.id));
+    const freshItems = inbox.filter(r =>
+      !r.read &&
+      !toastedIds.current.has(r.id) &&
+      !isSnoozed(r.snoozedUntil ?? undefined) &&
+      !shouldSuppressNotification(r, quietHoursRef.current),
+    );
     if (freshItems.length === 0) return;
 
     // Mark as toasted before updating state to prevent double-fire if the
@@ -210,11 +243,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     toasts,
     loading,
     error,
+    quietHoursConfig,
     markAsRead,
     markAllAsRead,
     dismissToast,
     performAction,
-  }), [inbox, unreadCount, toasts, loading, error, markAsRead, markAllAsRead, dismissToast, performAction]);
+  }), [inbox, unreadCount, toasts, loading, error, quietHoursConfig, markAsRead, markAllAsRead, dismissToast, performAction]);
 
   return (
     <NotificationContext.Provider value={value}>

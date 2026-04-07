@@ -14,6 +14,7 @@ import type { TitanProfile, BiomarkerRecord, Routine, Exercise } from '@/lib/typ
 import type { BeliefGraph, BeliefNode, BeliefEdge } from '@/modules/agnes/services/belief-graph-service';
 import { loadTitanProfile, saveTitanProfile } from '@/modules/titan/services/titan-profile-service';
 import { loadSomaProfile, saveSomaProfile } from '@/modules/soma/services/soma-profile-service';
+import { SomaDataService } from '@/modules/soma/services/soma-data-service';
 import type { SomaProfile } from '@/modules/soma/types';
 import { loadLedgerProfile, saveLedgerProfile, type LedgerIntakeProfile } from '@/modules/ledger/services/ledger-intake-service';
 import { proposeBeliefGraphCandidate } from '@/modules/agnes/services/belief-graph-workflow-service';
@@ -199,6 +200,7 @@ If a field is not found, use an empty array or omit it.`
     // Save profile
     if (encryptionKey) {
       await saveSomaProfile(updatedSomaProfile, { userId, encryptionKey });
+      SomaDataService.invalidateCache(userId);
     }
 
     // Report results
@@ -927,6 +929,7 @@ Confidence: 0.0-1.0`
 
     if (encryptionKey) {
       await saveSomaProfile(updatedSomaProfile, { userId, encryptionKey });
+      SomaDataService.invalidateCache(userId);
     }
 
     const confidence = typeof extractedData.confidence === 'number'

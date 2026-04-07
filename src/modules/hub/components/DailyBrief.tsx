@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
 import { NeuralButton } from '@/core/components/NeuralButton';
+import { Spine } from '@/lib/spine/spine-event-bus';
 import { useNsvTrends } from '@/modules/nexus/hooks/useNsvTrends';
 import {
   DOMAIN_PILLARS,
@@ -14,7 +15,7 @@ import {
   computePillarState,
   generateBriefSentence
 } from '@/lib/state-display-config';
-import type { StatusTone } from '../constants';
+import type { StatusTone } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
 // Pillar Card — one per domain (Body, Mind, Heart, Flow)
@@ -110,10 +111,12 @@ interface CascadeEvent {
 
 function CascadeAlertBanner({
   events,
-  moduleNames
+  moduleNames,
+  onViewTimeline
 }: {
   events: CascadeEvent[];
   moduleNames: Record<string, string>;
+  onViewTimeline?: () => void;
 }) {
   if (events.length === 0) return null;
 
@@ -150,6 +153,7 @@ function CascadeAlertBanner({
           size="sm"
           className="mt-2 text-[11px] font-black uppercase tracking-[0.2em] text-violet-400 hover:text-violet-300"
           aria-label="View cascade timeline"
+          onClick={onViewTimeline}
         >
           View timeline →
         </NeuralButton>
@@ -225,6 +229,17 @@ export function DailyBrief({ collapsed = false }: DailyBriefProps) {
   // For now, no events — CascadeTimeline will provide these
   const cascadeEvents: CascadeEvent[] = [];
 
+  const handleViewTimeline = useCallback(() => {
+    Spine.emit({
+      type: 'CASCADE_TIMELINE_REQUESTED',
+      source: 'hub',
+      domain: 'C',
+      data: { trigger: 'daily_brief_banner' },
+      cascadeDepth: 0,
+      priority: 'info',
+    });
+  }, []);
+
   return (
     <motion.section
       initial={reducedMotion ? false : { opacity: 0, y: 16 }}
@@ -264,7 +279,7 @@ export function DailyBrief({ collapsed = false }: DailyBriefProps) {
       </p>
 
       {/* Cascade Alert */}
-      <CascadeAlertBanner events={cascadeEvents} moduleNames={displayNames} />
+      <CascadeAlertBanner events={cascadeEvents} moduleNames={displayNames} onViewTimeline={handleViewTimeline} />
     </motion.section>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { saveSomaProfile, createEmptySomaProfile } from '../services/soma-profile-service';
+import { SomaDataService } from '../services/soma-data-service';
 import type { SomaProfile } from '../types';
 import { UnifiedOnboardingShell } from '@/core/intake/UnifiedOnboardingShell';
 import { SOMA_BASE_SPEC } from '@/core/intake/onboarding-configs';
@@ -30,6 +31,7 @@ export function SomaOnboarding({ profile, userId, encryptionKey, onComplete }: S
       },
       { userId, encryptionKey }
     );
+    SomaDataService.invalidateCache(userId);
     onComplete();
   }, [profile, userId, encryptionKey, onComplete]);
 

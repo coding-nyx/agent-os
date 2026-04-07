@@ -23,6 +23,7 @@ import {
   addVitalReading,
   addPhysicalAssessment,
 } from './services/soma-profile-service';
+import { SomaDataService } from './services/soma-data-service';
 import { useSomaHealth } from './hooks/use-soma-health';
 import { SomaProfile } from './types';
 import { buildSomaAgentSystemPrompt, SOMA_MEDICAL_DISCLAIMER } from './prompts/soma-prompt-builder';
@@ -176,6 +177,7 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
     if (!profile || !user?.uid || !encryptionKey) return;
     const updated: SomaProfile = { ...profile, ...updates, updatedAt: new Date().toISOString() };
     await saveSomaProfile(updated, { userId: user.uid, encryptionKey });
+    SomaDataService.invalidateCache(user.uid);
   }, [profile, user?.uid, encryptionKey]);
 
   const handleAddVitalReading = useCallback(async (reading: UIVitalReading) => {

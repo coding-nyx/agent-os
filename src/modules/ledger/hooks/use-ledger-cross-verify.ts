@@ -28,57 +28,65 @@ export interface LedgerCrossVerifyResult {
   isVerifying: boolean;
 }
 
-const FINANCIAL_STREAK_KEY = 'ledger_financial_streak_count';
-const FINANCIAL_STREAK_MILESTONE_KEY = 'ledger_financial_streak_last_milestone';
+const FINANCIAL_STREAK_STEP = 3;
 
-function buildFinancialStreakEvent(profile: LedgerIntakeProfile): SpineEventPayload | null {
+interface StreakResult {
+  event: SpineEventPayload | null;
+  nextStreakCount: number;
+  nextStreakLastMilestone: number;
+}
+
+function buildFinancialStreakEvent(profile: LedgerIntakeProfile): StreakResult {
   try {
     const totalIncome = Math.max(profile.monthlyIncome, 0);
     const totalExpenses = profile.fixedExpenses.reduce((sum, item) => sum + item.amount, 0)
       + profile.variableExpenses.reduce((sum, item) => sum + item.amount, 0);
     const netCashflow = totalIncome - totalExpenses;
 
-    const prevStreak = Number.parseInt(localStorage.getItem(FINANCIAL_STREAK_KEY) ?? '0', 10) || 0;
+    const prevStreak = profile.financialStreakCount ?? 0;
     const nextStreak = netCashflow > 0 ? prevStreak + 1 : 0;
-    localStorage.setItem(FINANCIAL_STREAK_KEY, String(nextStreak));
 
     if (nextStreak === 0) {
-      localStorage.setItem(FINANCIAL_STREAK_MILESTONE_KEY, '0');
-      return null;
+      return { event: null, nextStreakCount: 0, nextStreakLastMilestone: 0 };
     }
 
-    const lastMilestone = Number.parseInt(localStorage.getItem(FINANCIAL_STREAK_MILESTONE_KEY) ?? '0', 10) || 0;
-    const milestoneStep = 3;
-    const isMilestone = nextStreak % milestoneStep === 0 && nextStreak !== lastMilestone;
+    const lastMilestone = profile.financialStreakLastMilestone ?? 0;
+    const isMilestone = nextStreak % FINANCIAL_STREAK_STEP === 0 && nextStreak !== lastMilestone;
 
-    if (!isMilestone) return null;
-
-    localStorage.setItem(FINANCIAL_STREAK_MILESTONE_KEY, String(nextStreak));
+    if (!isMilestone) {
+      return { event: null, nextStreakCount: nextStreak, nextStreakLastMilestone: lastMilestone };
+    }
 
     return {
-      type: 'FINANCIAL_STREAK_MILESTONE',
-      source: 'ledger',
-      domain: 'R',
-      priority: 'info',
-      data: {
-        streak: nextStreak,
-        netCashflow,
-        cadence: profile.planningHorizon ?? 'monthly',
+      event: {
+        type: 'FINANCIAL_STREAK_MILESTONE',
+        source: 'ledger',
+        domain: 'R',
+        priority: 'info',
+        data: {
+          streak: nextStreak,
+          netCashflow,
+          cadence: profile.planningHorizon ?? 'monthly',
+        },
       },
+      nextStreakCount: nextStreak,
+      nextStreakLastMilestone: nextStreak,
     };
   } catch {
-    return null;
+    return { event: null, nextStreakCount: 0, nextStreakLastMilestone: 0 };
   }
 }
 
 /**
  * Runs the cross-verification pipeline on every profile change.
  *
- * @param profile - Current LedgerIntakeProfile or null (e.g. before data loads).
- * @returns       - Coherence report, NSV patch, and loading state for UI consumption.
+ * @param profile       - Current LedgerIntakeProfile or null (e.g. before data loads).
+ * @param persistUpdate - Optional callback to persist profile changes (used for streak tracking).
+ * @returns             - Coherence report, NSV patch, and loading state for UI consumption.
  */
 export function useLedgerCrossVerify(
   profile: LedgerIntakeProfile | null,
+  persistUpdate?: (next: LedgerIntakeProfile) => void,
 ): LedgerCrossVerifyResult {
   const { updateCrossFunctionalState } = useGlobalSoulActions();
 
@@ -106,8 +114,21 @@ export function useLedgerCrossVerify(
       profile,
       prevProfileRef.current ?? undefined,
     );
-    const streakEvent = buildFinancialStreakEvent(profile);
-    if (streakEvent) spineEvents.push(streakEvent);
+    const streak = buildFinancialStreakEvent(profile);
+    if (streak.event) spineEvents.push(streak.event);
+
+    // Persist streak values back into the profile (encrypted, not localStorage)
+    if (
+      persistUpdate &&
+      (streak.nextStreakCount !== (profile.financialStreakCount ?? 0) ||
+        streak.nextStreakLastMilestone !== (profile.financialStreakLastMilestone ?? 0))
+    ) {
+      persistUpdate({
+        ...profile,
+        financialStreakCount: streak.nextStreakCount,
+        financialStreakLastMilestone: streak.nextStreakLastMilestone,
+      });
+    }
 
     // --- Side-effects ---
 
@@ -128,7 +149,7 @@ export function useLedgerCrossVerify(
 
     // Advance the prev-profile cursor for the next render cycle
     prevProfileRef.current = profile;
-  }, [profile, updateCrossFunctionalState]);
+  }, [profile, persistUpdate, updateCrossFunctionalState]);
 
   return { coherenceReport, nsvPatch, isVerifying };
 }

@@ -172,7 +172,7 @@ export function useDeepResearch({
         source: 'scout',
         domain: 'C',
         priority: 'info',
-        data: { query, depth, useExpertSources },
+        data: { userId, query, depth, useExpertSources },
       });
 
       updateState({
@@ -193,7 +193,7 @@ export function useDeepResearch({
         source: 'scout',
         domain: 'C',
         priority: 'info',
-        data: { query, depth, useExpertSources },
+        data: { userId, query, depth, useExpertSources },
       });
 
       try {
@@ -505,7 +505,7 @@ Synthesize following the method in the system prompt. Respond with JSON:
           source: 'scout',
           domain: 'C',
           priority: 'info',
-          data: { query: currentQuery, nodeId: finalResult.synthesisNode.id },
+          data: { userId, query: currentQuery, nodeId: finalResult.synthesisNode.id },
         });
 
         onComplete?.(finalResult);

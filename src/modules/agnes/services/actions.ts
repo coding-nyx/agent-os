@@ -116,17 +116,37 @@ export function registerAgnesActions() {
 
     try {
       // Conflict detection: check if new belief's valence contradicts existing beliefs
+      // Uses Jaccard word overlap (≥ 0.4 threshold) instead of naive first-word match.
       const newNodes = p.nodes ?? [];
       const existing = await loadBeliefGraph({ userId, encryptionKey });
       const profile = existing ? { beliefGraph: existing } : null;
       const existingNodes = profile?.beliefGraph?.nodes ?? [];
       const conflicts: string[] = [];
+
+      const tokenize = (s: string): Set<string> => {
+        const words = s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+        return new Set(words.filter((w) => w.length > 2)); // drop trivial words (a, is, to, …)
+      };
+
+      const jaccardSimilarity = (a: Set<string>, b: Set<string>): number => {
+        if (a.size === 0 && b.size === 0) return 0;
+        let intersection = 0;
+        for (const w of a) { if (b.has(w)) intersection++; }
+        const union = a.size + b.size - intersection;
+        return union === 0 ? 0 : intersection / union;
+      };
+
+      const SIMILARITY_THRESHOLD = 0.4;
+
       for (const newNode of newNodes) {
         if (!newNode.valence || newNode.valence === 'neutral') continue;
         const oppositeValence = newNode.valence === 'positive' ? 'negative' : 'positive';
+        const newTokens = tokenize(newNode.label ?? '');
+        if (newTokens.size === 0) continue;
+
         const conflicting = existingNodes.find(
           (e) => e.valence === oppositeValence &&
-          e.label?.toLowerCase().includes(newNode.label?.toLowerCase().split(' ')[0])
+          jaccardSimilarity(newTokens, tokenize(e.label ?? '')) >= SIMILARITY_THRESHOLD
         );
         if (conflicting) {
           conflicts.push(`"${newNode.label}" conflicts with existing belief "${conflicting.label}"`);
@@ -182,21 +202,10 @@ export function registerAgnesActions() {
       severity: p.severity || 'high',
       timestamp: new Date().toISOString()
     });
-    // Also publish directly so cascade rules fire immediately
-    Spine.publish({
-      type: 'CRISIS_DETECTED',
-      source: 'agnes',
-      domain: 'E',
-      priority: 'critical',
-      data: {
-        trigger: p.trigger || 'unknown',
-        severity: p.severity || 'high',
-        timestamp: new Date().toISOString()
-      }
-    });
+    // NOTE: cascade rule 'agnes-crisis-detected-to-crisis-mode' converts
+    // CRISIS_DETECTED → CRISIS_MODE automatically, so no separate CRISIS_MODE
+    // emit is needed here.
     pushAssistantMessage?.('I hear you. You\'re safe here with me right now. Let\'s slow down together — there\'s no rush. I\'m not going anywhere.');
-    // Initiate post-crisis recovery phase (CRISIS_RECOVERY_INITIATED not in SpineEventType — using MODULE_STATE_UPDATED equivalent)
-    emitSpineEvent('CRISIS_MODE', { crisisFlag: true, source: 'agnes', recoveryInitiated: true });
   });
 
   // Emotional NSV actions — skip NSV writes and spine events for ephemeral (impromptu) sessions

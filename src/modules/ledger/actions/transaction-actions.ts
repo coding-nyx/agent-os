@@ -47,7 +47,9 @@ async function loadProfileCached(context: ActionContext): Promise<LedgerIntakePr
   const { userId, encryptionKey, profileCache } = context;
   if (!userId || !encryptionKey) return null;
   if (profileCache?.has(userId)) return profileCache.get(userId) as LedgerIntakeProfile;
-  return loadLedgerProfile({ userId, encryptionKey });
+  const profile = await loadLedgerProfile({ userId, encryptionKey });
+  if (profile && profileCache) profileCache.set(userId, profile);
+  return profile;
 }
 
 async function persistProfileCached(profile: LedgerIntakeProfile, context: ActionContext): Promise<void> {

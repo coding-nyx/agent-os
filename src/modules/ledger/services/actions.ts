@@ -67,7 +67,9 @@ async function loadProfile(
   if (profileCache?.has(userId)) {
     return profileCache.get(userId) as LedgerIntakeProfile;
   }
-  return loadLedgerProfile({ userId, encryptionKey });
+  const profile = await loadLedgerProfile({ userId, encryptionKey });
+  if (profile && profileCache) profileCache.set(userId, profile);
+  return profile;
 }
 
 async function persistProfile(
@@ -960,7 +962,7 @@ export function registerLedgerActions() {
      * Uses accumulated resonanceCoefficients to produce a resonance-weighted
      * value ranking across spending categories.
      */
-    compute_resonance_roi: async ({ userId, encryptionKey, profileCache, pushAssistantMessage }) => {
+    compute_resonance_roi: async ({ userId, encryptionKey, profileCache, pushAssistantMessage, emitSpineEvent }) => {
       const profile = await loadProfile(userId ?? null, encryptionKey ?? null, profileCache);
       if (!profile) return;
 
@@ -1015,6 +1017,15 @@ export function registerLedgerActions() {
         lines +
         `\n\nHigher resonance = spending that feels meaningful. Lower resonance = areas to review or reduce.`,
       );
+
+      // Emit Spine event so downstream listeners (e.g. Atlas) can react
+      const topCategory = resonanceValues[0];
+      emitSpineEvent('RESONANCE_ROI_UPDATED', {
+        moduleId: 'ledger',
+        newROI: topCategory?.coefficient ?? 0,
+        newFriction: 0,
+        categoryCount: resonanceValues.length,
+      });
     },
 
     // ── Handler: suggest_budget_rebalance ─────────────────────────────────

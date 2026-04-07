@@ -16,8 +16,21 @@ import { SchemaRegistry } from '@/lib/schema-registry';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { FieldDefinition } from '@/lib/field-system/types';
 import { loadSomaProfile, saveSomaProfile, addVitalReading } from '../services/soma-profile-service';
+import { SomaDataService } from '../services/soma-data-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import type { BiomarkerRecord, ClearanceRecord, LabSummaryRecord, SomaProfile, PhysicalAssessment } from '@/lib/types';
+
+// ---------------------------------------------------------------------------
+// Save helper — wraps saveSomaProfile + SomaDataService cache invalidation
+// ---------------------------------------------------------------------------
+
+async function saveAndInvalidate(
+  profile: SomaProfile,
+  ctx: { userId: string; encryptionKey: CryptoKey | null },
+): Promise<void> {
+  await saveSomaProfile(profile, ctx);
+  SomaDataService.invalidateCache(ctx.userId);
+}
 
 // ============================================================================
 // Soma Spine Event Types
@@ -596,7 +609,7 @@ export function registerSomaFieldActions(): void {
         try {
           const profile = await loadSomaProfile({ userId, encryptionKey });
           if (profile) {
-            await saveSomaProfile(
+            await saveAndInvalidate(
               { ...profile, readinessScore: result.score, updatedAt: new Date().toISOString() },
               { userId, encryptionKey }
             );
@@ -654,7 +667,7 @@ export function registerSomaFieldActions(): void {
         source: typeof payload.source === 'string' ? payload.source : 'ai',
         recordedAt: typeof payload.recordedAt === 'string' ? payload.recordedAt : new Date().toISOString(),
       };
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, biomarkers: [...profile.biomarkers, record], updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -727,7 +740,7 @@ export function registerSomaFieldActions(): void {
         expiresAt,
       } as ClearanceRecord & { expiresAt: string };
 
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, clearances: [...profile.clearances, record], updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -889,7 +902,7 @@ export function registerSomaFieldActions(): void {
         flags: Array.isArray(payload?.flags) ? (payload.flags as string[]) : [],
         recordedAt: new Date().toISOString(),
       };
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, labSummaries: [record, ...profile.labSummaries].slice(0, 50), updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -946,7 +959,7 @@ export function registerSomaFieldActions(): void {
         ...(incoming.allergies ? { allergies: mergedAllergies } : {}),
       };
 
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, ...updates, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -1081,7 +1094,7 @@ export function registerSomaFieldActions(): void {
         pushAssistantMessage?.('Unable to update medical summary: profile not found.');
         return;
       }
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, medicalSummary: summary, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -1112,7 +1125,7 @@ export function registerSomaFieldActions(): void {
         return;
       }
       const updated = [...profile.knownConditions, condition].slice(0, 200);
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, knownConditions: updated, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -1142,7 +1155,7 @@ export function registerSomaFieldActions(): void {
         pushAssistantMessage?.(`Condition not found: ${condition}.`);
         return;
       }
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, knownConditions: filtered, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -1173,7 +1186,7 @@ export function registerSomaFieldActions(): void {
         return;
       }
       const updated = [...profile.medications, medication].slice(0, 200);
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, medications: updated, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -1203,7 +1216,7 @@ export function registerSomaFieldActions(): void {
         pushAssistantMessage?.('Medication not found.');
         return;
       }
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, medications: filtered, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -1234,7 +1247,7 @@ export function registerSomaFieldActions(): void {
         return;
       }
       const updated = [...profile.allergies, allergy].slice(0, 200);
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, allergies: updated, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -1264,7 +1277,7 @@ export function registerSomaFieldActions(): void {
         pushAssistantMessage?.('Allergy not found.');
         return;
       }
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, allergies: filtered, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -1298,7 +1311,7 @@ export function registerSomaFieldActions(): void {
       };
       const existing = profile.physicalAssessments ?? [];
       const updated = [...existing, record].slice(-100);
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, physicalAssessments: updated, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );
@@ -1322,7 +1335,7 @@ export function registerSomaFieldActions(): void {
         pushAssistantMessage?.('Unable to schedule checkup: profile not found.');
         return;
       }
-      await saveSomaProfile(
+      await saveAndInvalidate(
         { ...profile, nextCheckup: date, updatedAt: new Date().toISOString() },
         { userId, encryptionKey }
       );

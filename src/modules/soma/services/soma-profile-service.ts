@@ -8,6 +8,10 @@ import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
 import { LoadContext } from '@/lib/types/encrypted-document';
 import type { SomaProfile, VitalReading } from '@/lib/types';
+// NOTE: Circular import with soma-data-service (it imports from this file).
+// Safe in practice: SomaDataService is only accessed at function call time,
+// well after both modules finish initializing.
+import { SomaDataService } from './soma-data-service';
 
 const COLLECTION = 'soma_profiles';
 
@@ -282,6 +286,7 @@ export async function syncGuestSomaProfileToUser({
     }
 
     await saveSomaProfile(profileToSave, { userId, encryptionKey });
+    SomaDataService.invalidateCache(userId);
     _service.clearGuest();
     return true;
   } catch (e) {
@@ -313,6 +318,7 @@ export async function addVitalReading(
     { ...base, vitalReadings: updatedReadings },
     { userId, encryptionKey },
   );
+  SomaDataService.invalidateCache(userId);
 }
 
 export async function addPhysicalAssessment(
@@ -334,4 +340,5 @@ export async function addPhysicalAssessment(
     { ...base, physicalAssessments: updatedAssessments },
     { userId, encryptionKey },
   );
+  SomaDataService.invalidateCache(userId);
 }

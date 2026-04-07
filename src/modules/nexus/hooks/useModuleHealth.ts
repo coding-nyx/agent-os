@@ -8,6 +8,7 @@ import { ModuleMemoryService } from '@/lib/services/module-memory-service';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
 import { useNexusSynthesis } from './useNexusSynthesis';
 import type { ModuleMemoryEnvelope } from '@/lib/types';
+import type { StatusTone } from '@/lib/types';
 
 /**
  * Maps each module to the NSV domain it "owns" for alert correlation.
@@ -23,7 +24,7 @@ const MODULE_DOMAIN_MAP: Record<string, string> = {
   forge: 'cognitive',
 };
 
-export type StatusTone = 'good' | 'warn' | 'bad' | 'neutral';
+export type { StatusTone };
 
 export interface ModuleHealthStatus {
   moduleId: ModuleId;

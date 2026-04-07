@@ -7,6 +7,7 @@ import type {
   MedicalImageAnalysis 
 } from '../types';
 import { loadSomaProfile, saveSomaProfile } from '../services/soma-profile-service';
+import { SomaDataService } from '../services/soma-data-service';
 
 /**
  * Merges user-approved medical diagnosis items into SomaProfile.
@@ -157,4 +158,5 @@ export async function mergeSomaDiagnosisData(
 
   next.updatedAt = new Date().toISOString();
   await saveSomaProfile(next, { userId, encryptionKey: encryptionKey ?? null });
+  SomaDataService.invalidateCache(userId);
 }

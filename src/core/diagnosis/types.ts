@@ -103,6 +103,7 @@ export interface DiagnosisSpecialization {
     actionType: string,
     payload: Record<string, unknown>,
     current: ExtractedDataBag,
+    context?: { userId?: string },
   ) => ExtractedDataBag;
 
   // -- Lifecycle --------------------------------------------------------------

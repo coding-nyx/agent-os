@@ -146,6 +146,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       source: 'scout',
       domain: 'C',
       data: {
+        userId: user?.uid,
         query: trimmed,
         nodeIds: matches.map((node) => node.id),
         count: matches.length,
@@ -153,7 +154,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
       cascadeDepth: 0,
       priority: 'info',
     });
-  }, [knowledgeNodes]);
+  }, [knowledgeNodes, user?.uid]);
 
   // --- Spine events hook (owns deepResearchOpen state) ---
 

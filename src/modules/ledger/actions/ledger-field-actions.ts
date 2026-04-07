@@ -455,36 +455,6 @@ async function handleUpdateFinancialFriction(context: ActionContext): Promise<vo
 
 }
 
-/**
- * Handle compute_resonance_roi action.
- */
-async function handleComputeResonanceROI(context: ActionContext): Promise<void> {
-  const { payload, emitSpineEvent, updateGlobalSoul } = context;
-
-  const financialFriction = Number(payload.financialFriction);
-  const resonanceROI = Number(payload.resonanceROI);
-
-  if (!Number.isFinite(financialFriction) || !Number.isFinite(resonanceROI)) {
-    console.warn('[Ledger] compute_resonance_roi: invalid values');
-    return;
-  }
-
-  await updateGlobalSoul({
-    resource: {
-      financialFriction,
-      resonanceROI,
-    },
-  });
-
-  emitSpineEvent('RESONANCE_ROI_UPDATED', {
-    moduleId: 'ledger',
-    newROI: resonanceROI,
-    newFriction: financialFriction,
-  });
-
-
-}
-
 // ============================================================================
 // LLM sendMessage adapter
 // ============================================================================
@@ -693,7 +663,8 @@ export function registerLedgerFieldActions(): void {
     delete_field: handleDeleteField,
     set_field_value: handleSetFieldValue,
     update_financial_friction: handleUpdateFinancialFriction,
-    compute_resonance_roi: handleComputeResonanceROI,
+    // NOTE: compute_resonance_roi is NOT registered here — the canonical handler
+    // lives in ledger/services/actions.ts with full ROI computation logic.
     ledger_update_budget_category_name: handleUpdateBudgetCategoryName,
     ledger_update_transaction_notes: handleUpdateTransactionNotes,
   });

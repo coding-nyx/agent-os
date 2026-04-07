@@ -1,5 +1,7 @@
 // --- Core Platform Contracts (v2) ---
 
+export type StatusTone = 'good' | 'warn' | 'bad' | 'neutral';
+
 export type GenderPersonality = 'female' | 'male' | 'non-binary' | 'gender-fluid';
 
 export interface AgentPersonalityProvision {
@@ -471,7 +473,14 @@ export type SpineEventType =
   | 'TAX_SUMMARY_GENERATED'
   | 'TRANSFER_COMPLETED'
   // Cross-module stress signals
-  | 'STRESS_SPIKE';
+  | 'STRESS_SPIKE'
+  // Forge Spine Events
+  | 'FORGE_EXECUTION_STARTED'
+  | 'FORGE_EXECUTION_COMPLETED'
+  | 'FORGE_EXECUTION_FAILED'
+  | 'FORGE_ARTIFACT_CREATED'
+  // Hub UI events
+  | 'CASCADE_TIMELINE_REQUESTED';
 
 export type SpineDomain = 'B' | 'E' | 'C' | 'R' | 'system';
 export type SpineEventPriority = 'info' | 'warning' | 'alert' | 'critical';
@@ -771,6 +780,8 @@ export interface WorkoutGoal {
   metric: GoalMetric;
   targetValue: number;           // The number to hit
   currentValue?: number;         // Latest measured value (updated automatically where possible)
+  /** Snapshot of currentValue at goal creation — used for directional progress on lower-is-better metrics. */
+  startValue?: number;
   unit: string;                  // e.g. "kg", "%", "min/km", "sessions"
   /** Optional: link to a specific exercise for lift_1rm goals */
   exerciseName?: string;

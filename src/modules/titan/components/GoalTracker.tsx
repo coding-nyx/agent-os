@@ -86,7 +86,7 @@ function clamp(value: number, min: number, max: number): number {
  */
 function computeProgress(goal: WorkoutGoal): number {
   if (goal.currentValue === undefined || goal.targetValue === 0) return 0;
-  const { currentValue, targetValue, metric } = goal;
+  const { currentValue, targetValue, metric, startValue } = goal;
 
   // For "lower-is-better" metrics where target < current (cutting / pace improvement)
   const lowerIsBetter =
@@ -94,12 +94,13 @@ function computeProgress(goal: WorkoutGoal): number {
     (metric === 'body_weight' && targetValue < currentValue);
 
   if (lowerIsBetter) {
-    // Need to know start; we approximate using currentValue as baseline at 0% if > target
     if (currentValue <= targetValue) return 100;
-    // We can't know the starting value, so just show inverse progress toward target
-    // Use current as if it started at 2× the distance from target.
-    // Simpler: show 0→100 as current approaches target from above
-    return 0; // without a start value we can't compute directional progress
+    // Use startValue (captured at goal creation) to compute directional progress.
+    // If startValue is missing (legacy goals), fall back to 0% to avoid misleading data.
+    if (startValue === undefined || startValue <= targetValue) return 0;
+    const totalDistance = startValue - targetValue;
+    const covered = startValue - currentValue;
+    return clamp((covered / totalDistance) * 100, 0, 100);
   }
 
   return clamp((currentValue / targetValue) * 100, 0, 100);
@@ -351,7 +352,7 @@ function NewGoalModal({
     }
     if (metric === 'body_fat_pct') {
       const pct = bodyWeightLog?.[0]?.bodyFatPct;
-      return pct !== undefined ? pct : undefined;
+      return pct;
     }
     return undefined;
   }
@@ -373,6 +374,7 @@ function NewGoalModal({
       metric: form.metric,
       targetValue: targetRaw,
       currentValue,
+      startValue: currentValue,
       unit: form.unit.trim() || DEFAULT_UNITS[form.metric],
       exerciseName: form.metric === 'lift_1rm' && form.exerciseName.trim()
         ? form.exerciseName.trim()

@@ -121,7 +121,7 @@ export function analyzeProfile(
 
 // ─── Cross-module side-effect (stays in TS) ───────────────────────────────────
 
-export async function checkAndEmitFinancialFriction(
+async function checkAndEmitFinancialFriction(
   profile: LedgerIntakeProfile,
   uid: string | undefined | null,
 ): Promise<void> {

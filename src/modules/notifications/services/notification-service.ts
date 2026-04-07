@@ -1,4 +1,5 @@
 import type { InboxRecord } from '@/lib/notifications/NotificationContext';
+import type { NexusDataLayer } from '@/lib/data-layer';
 
 // ─── Snooze ───────────────────────────────────────────────────────────────────
 
@@ -192,4 +193,67 @@ export function buildNotificationSummary(items: InboxRecord[]): NotificationSumm
     ? unread.reduce((a, b) => a.createdAt < b.createdAt ? a : b).createdAt
     : null;
   return { total: items.length, unread: unread.length, critical: critical.length, bySource, oldestUnread: oldest };
+}
+
+// ─── Quiet Hours Persistence ──────────────────────────────────────────────────
+
+const SETTINGS_COLLECTION = 'notification_settings';
+const SETTINGS_DOC_ID = 'preferences';
+
+function settingsPath(userId: string): string {
+  return `users/${userId}/${SETTINGS_COLLECTION}`;
+}
+
+export async function loadQuietHoursConfig(
+  dataLayer: NexusDataLayer,
+  userId: string,
+): Promise<QuietHoursConfig> {
+  try {
+    const doc = await dataLayer.getDocument<{ quietHours: QuietHoursConfig }>(
+      settingsPath(userId),
+      SETTINGS_DOC_ID,
+    );
+    if (doc?.quietHours) return doc.quietHours;
+  } catch {
+    // First load or missing doc — use defaults
+  }
+  return createDefaultQuietHours();
+}
+
+export async function saveQuietHoursConfig(
+  dataLayer: NexusDataLayer,
+  userId: string,
+  config: QuietHoursConfig,
+): Promise<void> {
+  await dataLayer.setDocument(settingsPath(userId), SETTINGS_DOC_ID, {
+    quietHours: config,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+// ─── Snooze Persistence ──────────────────────────────────────────────────────
+
+export async function persistSnooze(
+  dataLayer: NexusDataLayer,
+  userId: string,
+  notificationId: string,
+  snoozedUntil: string,
+): Promise<void> {
+  const inboxPath = `users/${userId}/notification_inbox`;
+  await dataLayer.updateDocument(inboxPath, notificationId, {
+    snoozedUntil,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function clearSnooze(
+  dataLayer: NexusDataLayer,
+  userId: string,
+  notificationId: string,
+): Promise<void> {
+  const inboxPath = `users/${userId}/notification_inbox`;
+  await dataLayer.updateDocument(inboxPath, notificationId, {
+    snoozedUntil: null,
+    updatedAt: new Date().toISOString(),
+  });
 }

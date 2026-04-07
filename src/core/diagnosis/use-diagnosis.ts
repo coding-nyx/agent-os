@@ -194,10 +194,10 @@ export function useDiagnosis({
   const onActionParsed = useCallback(
     (actionType: string, payload: Record<string, unknown>) => {
       if (spec.allowedActions.includes(actionType)) {
-        setExtractedData((prev) => spec.extractData(actionType, payload, prev));
+        setExtractedData((prev) => spec.extractData(actionType, payload, prev, { userId: user?.uid }));
       }
     },
-    [spec],
+    [spec, user?.uid],
   );
 
   // ---- Hydration replay: rebuild extracted data from persisted history -----
@@ -217,14 +217,14 @@ export function useDiagnosis({
           if (payloads.length === 0) continue;
 
           for (const payload of payloads) {
-            rebuilt = spec.extractData(actionType, payload, rebuilt);
+            rebuilt = spec.extractData(actionType, payload, rebuilt, { userId: user?.uid });
           }
         }
       }
 
       return rebuilt;
     },
-    [spec],
+    [spec, user?.uid],
   );
 
   // Wrap handleSendMessage to inject our onActionParsed
