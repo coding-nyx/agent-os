@@ -91,6 +91,14 @@ export function registerForgeActions() {
 
       await persistProfile(next, userId ?? null, encryptionKey ?? null);
 
+      Spine.emit({
+        type: 'FORGE_EXECUTION_STARTED',
+        source: 'forge',
+        domain: 'system',
+        priority: 'info',
+        data: { sessionId, language },
+      });
+
       try {
         const response = await ForgeCloudExecutionService.executeCode(code.trim(), language);
         const outputText = formatExecutionOutput(response);
@@ -115,6 +123,14 @@ export function registerForgeActions() {
           sessions: [updated, ...next.sessions.filter((entry) => entry.id !== sessionId)].slice(0, 300)
         };
         await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+        Spine.emit({
+          type: response.status === 'success' ? 'FORGE_EXECUTION_COMPLETED' : 'FORGE_EXECUTION_FAILED',
+          source: 'forge',
+          domain: 'system',
+          priority: response.status === 'success' ? 'info' : 'warning',
+          data: { sessionId, language, status: response.status },
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Cloud execution failed.';
         const updated: ForgeExecutionRecord = {
@@ -128,6 +144,14 @@ export function registerForgeActions() {
           sessions: [updated, ...next.sessions.filter((entry) => entry.id !== sessionId)].slice(0, 300)
         };
         await persistProfile(next, userId ?? null, encryptionKey ?? null);
+
+        Spine.emit({
+          type: 'FORGE_EXECUTION_FAILED',
+          source: 'forge',
+          domain: 'system',
+          priority: 'alert',
+          data: { sessionId, language, error: message },
+        });
       }
     },
 
@@ -153,6 +177,14 @@ export function registerForgeActions() {
       };
 
       await saveArtifact(artifact, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+
+      Spine.emit({
+        type: 'FORGE_ARTIFACT_CREATED',
+        source: 'forge',
+        domain: 'system',
+        priority: 'info',
+        data: { artifactId: artifact.id, artifactType: 'email', title: subject },
+      });
 
       const formatted = [
         `**Draft Email — Saved to Artifacts**`,
@@ -186,6 +218,14 @@ export function registerForgeActions() {
       };
 
       await saveArtifact(artifact, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+
+      Spine.emit({
+        type: 'FORGE_ARTIFACT_CREATED',
+        source: 'forge',
+        domain: 'system',
+        priority: 'info',
+        data: { artifactId: artifact.id, artifactType: 'email', title: 'Suggested Reply' },
+      });
 
       const formatted = [
         `**Suggested Reply — Saved to Artifacts**`,
@@ -247,6 +287,14 @@ export function registerForgeActions() {
       };
 
       await saveArtifact(artifact, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+
+      Spine.emit({
+        type: 'FORGE_ARTIFACT_CREATED',
+        source: 'forge',
+        domain: 'system',
+        priority: 'info',
+        data: { artifactId: artifact.id, artifactType: 'document', title },
+      });
 
       pushAssistantMessage?.([
         `**Document Created — Saved to Artifacts**`,
@@ -311,6 +359,14 @@ export function registerForgeActions() {
 
       await saveArtifact(artifact, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
 
+      Spine.emit({
+        type: 'FORGE_ARTIFACT_CREATED',
+        source: 'forge',
+        domain: 'system',
+        priority: 'info',
+        data: { artifactId: artifact.id, artifactType: 'checklist', title },
+      });
+
       pushAssistantMessage?.([
         `**Checklist: ${title} — Saved to Artifacts**`,
         ``,
@@ -352,6 +408,14 @@ export function registerForgeActions() {
 
       await saveArtifact(artifact, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
 
+      Spine.emit({
+        type: 'FORGE_ARTIFACT_CREATED',
+        source: 'forge',
+        domain: 'system',
+        priority: 'info',
+        data: { artifactId: artifact.id, artifactType: 'plan', title: `Trip Plan: ${destination}` },
+      });
+
       pushAssistantMessage?.([
         `**Trip Plan: ${destination} — Saved to Artifacts**`,
         ``,
@@ -390,6 +454,14 @@ export function registerForgeActions() {
       };
 
       await saveArtifact(artifact, { userId: userId ?? null, encryptionKey: encryptionKey ?? null });
+
+      Spine.emit({
+        type: 'FORGE_ARTIFACT_CREATED',
+        source: 'forge',
+        domain: 'system',
+        priority: 'info',
+        data: { artifactId: artifact.id, artifactType: 'plan', title: `Budget: ${event}` },
+      });
 
       pushAssistantMessage?.([
         `**Event Budget: ${event} — Saved to Artifacts**`,
