@@ -1,3 +1,4 @@
+import { BeliefGraphServiceJs } from '@cortex-logic';
 import type {
   ActionOrchestrationMetadata,
   HistoryMode,
@@ -9,6 +10,10 @@ import { OrchestrationActionGateService } from '@/lib/services/orchestration-act
 import { OrchestrationRuntimeService } from '@/lib/services/orchestration-runtime-service';
 import type { NeuralStateVector } from '@/lib/types';
 import type { BeliefGraph, BeliefNode } from './belief-graph-service';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Types (unchanged — re-exported for backward compatibility)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export interface BeliefInvitationDecision {
   shouldInvite: boolean;
@@ -49,17 +54,19 @@ export interface BeliefSessionInvitationRuntime {
 
 type EmotionalContext = NeuralStateVector['emotional'] | null | undefined;
 
-function round1(value: number): number {
-  return Math.round(value * 10) / 10;
+// ═══════════════════════════════════════════════════════════════════════════════
+// KMP singleton
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let _service: InstanceType<typeof BeliefGraphServiceJs> | null = null;
+function getService() {
+  if (!_service) _service = new BeliefGraphServiceJs() as InstanceType<typeof BeliefGraphServiceJs>;
+  return _service;
 }
 
-function clampConfidence(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
-
-function normalizeBeliefLabel(node: BeliefNode): string {
-  return node.label.trim().toLowerCase();
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// Internal helpers (used by orchestration functions that stay in TS)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 function hashToken(input: string): string {
   let hash = 2166136261;
@@ -84,90 +91,39 @@ function sanitizeThreadToken(value: string, maxLength = 36): string {
   return `${normalized.slice(0, Math.max(8, maxLength - 8))}-${hashToken(normalized)}`;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Domain logic — thin wrappers over KMP
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export function evaluateBeliefSessionInvitationThreshold(input: {
   graph: BeliefGraph | null;
   emotionalState?: EmotionalContext;
 }): BeliefInvitationDecision {
-  const nodes = input.graph?.nodes ?? [];
-  const negativeNodes = nodes.filter((node) => node.valence === 'negative');
-  const highIntensityNegativeNodes = negativeNodes.filter((node) => node.intensity >= 7);
-  const severeNegativeNodes = negativeNodes.filter((node) => node.intensity >= 9);
+  const graphJson = input.graph ? JSON.stringify(input.graph) : '';
   const resilience =
     typeof input.emotionalState?.emotionalResilience === 'number'
       ? input.emotionalState.emotionalResilience
-      : null;
+      : -1;
   const stressLoad =
     typeof input.emotionalState?.stressLoad === 'number'
       ? input.emotionalState.stressLoad
-      : null;
-  const averageNegativeIntensity =
-    negativeNodes.length > 0
-      ? round1(negativeNodes.reduce((sum, node) => sum + node.intensity, 0) / negativeNodes.length)
-      : 0;
+      : -1;
 
-  const rationale: string[] = [];
-
-  if (highIntensityNegativeNodes.length >= 2) {
-    rationale.push(
-      `${highIntensityNegativeNodes.length} high-intensity negative beliefs are active in the graph.`,
-    );
-  }
-
-  if (negativeNodes.length >= 3 && averageNegativeIntensity >= 6.5) {
-    rationale.push(
-      `Negative belief density is elevated (${negativeNodes.length} beliefs averaging ${averageNegativeIntensity}/10).`,
-    );
-  }
-
-  if (severeNegativeNodes.length >= 1 && (stressLoad ?? 0) >= 7) {
-    rationale.push('A severe negative belief is paired with a high stress signal.');
-  }
-
-  if (severeNegativeNodes.length >= 1 && (resilience ?? 10) <= 4) {
-    rationale.push('A severe negative belief is paired with low emotional resilience.');
-  }
-
-  const triggeringBeliefs = [...highIntensityNegativeNodes, ...severeNegativeNodes]
-    .map((node) => node.label.trim())
-    .filter((label, index, all) => label !== '' && all.indexOf(label) === index)
-    .slice(0, 4);
-
-  const uniqueReasonKeys = rationale.map((reason) => reason.toLowerCase());
-  const fingerprint = [
-    uniqueReasonKeys.join('|') || 'none',
-    ...triggeringBeliefs.map((label) => label.toLowerCase()),
-    `stress:${stressLoad ?? 'na'}`,
-    `resilience:${resilience ?? 'na'}`,
-  ].join('::');
-
-  const shouldInvite = rationale.length > 0;
-  const confidence = clampConfidence(
-    0.68 +
-      Math.min(0.18, highIntensityNegativeNodes.length * 0.06) +
-      (stressLoad !== null && stressLoad >= 7 ? 0.08 : 0) +
-      (resilience !== null && resilience <= 4 ? 0.08 : 0),
-  );
-
-  return {
-    shouldInvite,
-    summary: shouldInvite
-      ? 'Agnes can help unpack this pattern before it hardens into the next session gap.'
-      : 'Belief graph does not currently meet invitation thresholds.',
-    rationale,
-    fingerprint,
-    confidence,
-    triggeringBeliefs,
-    metrics: {
-      totalNodes: nodes.length,
-      negativeCount: negativeNodes.length,
-      highIntensityNegativeCount: highIntensityNegativeNodes.length,
-      severeNegativeCount: severeNegativeNodes.length,
-      averageNegativeIntensity,
-      resilience,
-      stressLoad,
-    },
-  };
+  const resultJson = getService().evaluateInvitationThreshold(graphJson, resilience, stressLoad);
+  return JSON.parse(resultJson) as BeliefInvitationDecision;
 }
+
+export function getTriggeringBeliefNodes(graph: BeliefGraph | null, invitation: BeliefSessionInvitation | null): BeliefNode[] {
+  if (!graph || !invitation) return [];
+  const graphJson = JSON.stringify(graph);
+  const labelsJson = JSON.stringify(invitation.triggeringBeliefs);
+  const resultJson = getService().getTriggeringNodes(graphJson, labelsJson);
+  return JSON.parse(resultJson) as BeliefNode[];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Orchestration-dependent functions — stay in TS
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export function createBeliefSessionInvitationRuntime(input: {
   graph: BeliefGraph | null;
@@ -283,10 +239,4 @@ export function buildBeliefSessionInvitationSnapshot(
     pendingTargets: ['agnes'],
     lastTurnRuntime: invitation.runtimeSummary,
   });
-}
-
-export function getTriggeringBeliefNodes(graph: BeliefGraph | null, invitation: BeliefSessionInvitation | null): BeliefNode[] {
-  if (!graph || !invitation) return [];
-  const labels = new Set(invitation.triggeringBeliefs.map((belief) => belief.trim().toLowerCase()));
-  return graph.nodes.filter((node) => labels.has(normalizeBeliefLabel(node)));
 }

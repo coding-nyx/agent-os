@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryDataProvider } from '@/lib/data-layer';
 import { setNexusDataLayer } from '@/lib/data-layer/provider';
+
+vi.mock('@cortex-logic', async () => await import('@/test/__mocks__/cortex-logic-mock'));
+
 import {
   compactBeliefGraph,
   compactBeliefGraphDocument,

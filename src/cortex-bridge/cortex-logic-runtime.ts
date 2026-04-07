@@ -56,6 +56,7 @@ export const AliveEntityUtilsJs = requireEngineExport('AliveEntityUtilsJs');
 export const EmbeddingUtilsJs = requireEngineExport('EmbeddingUtilsJs');
 export const MedicalClearanceEvaluatorJs = requireEngineExport('MedicalClearanceEvaluatorJs');
 export const AgnesGravityEngineJs = requireEngineExport('AgnesGravityEngineJs');
+export const BeliefGraphServiceJs = requireEngineExport('BeliefGraphServiceJs');
 export const AtlasBlueprintServiceJs = requireEngineExport('AtlasBlueprintServiceJs');
 export const AtlasPlanningEngineJs = requireEngineExport('AtlasPlanningEngineJs');
 export const AtlasPredictiveEngineJs = requireEngineExport('AtlasPredictiveEngineJs');

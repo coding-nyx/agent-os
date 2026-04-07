@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@cortex-logic', async () => await import('@/test/__mocks__/cortex-logic-mock'));
+
 import { buildBeliefSessionInvitationSnapshot, createBeliefSessionInvitationRuntime, evaluateBeliefSessionInvitationThreshold } from './belief-trigger-service';
 import type { BeliefGraph } from './belief-graph-service';
 

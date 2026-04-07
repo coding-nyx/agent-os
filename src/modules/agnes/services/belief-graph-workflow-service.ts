@@ -1,3 +1,4 @@
+import { BeliefGraphServiceJs } from '@cortex-logic';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import type { NexusRecord } from '@/lib/data-layer';
 import { getNexusDataLayer } from '@/lib/data-layer/provider';
@@ -7,10 +8,8 @@ import {
   loadBeliefGraph,
   normalizeBeliefGraph,
   saveBeliefGraph,
-  type BeliefEdge,
   type BeliefGraph,
   type BeliefGraphLoadContext,
-  type BeliefNode,
 } from './belief-graph-service';
 import {
   createBeliefSessionInvitationRuntime,
@@ -20,7 +19,12 @@ import { OrchestrationPersistenceService } from '@/lib/services/orchestration-pe
 
 const BELIEF_GRAPH_WORKFLOW_COLLECTION = 'belief_graph_workflows';
 const VAULT_SALT_MARKER = 'vault_salt_used';
-const MAX_BELIEF_GRAPH_NODES = 80;
+
+let _service: InstanceType<typeof BeliefGraphServiceJs> | null = null;
+function getService() {
+  if (!_service) _service = new BeliefGraphServiceJs() as InstanceType<typeof BeliefGraphServiceJs>;
+  return _service;
+}
 
 export interface BeliefGraphProposal {
   id: string;
@@ -139,118 +143,11 @@ function normalizeWorkflow(raw: unknown): BeliefGraphWorkflow {
   };
 }
 
-function normalizeBeliefKey(label: string): string {
-  return label.trim().toLowerCase();
-}
-
-function dedupeEdgeKey(edge: BeliefEdge): string {
-  return `${edge.from}::${edge.to}::${edge.relation.trim().toLowerCase()}`;
-}
-
 export function mergeBeliefGraphs(current: BeliefGraph | null, proposalGraph: BeliefGraph): BeliefGraph {
-  const base = current ?? normalizeBeliefGraph(null);
-  const addition = normalizeBeliefGraph(proposalGraph);
-  const now = new Date().toISOString();
-
-  const nodeByKey = new Map<string, BeliefNode>();
-  const nodeRankById = new Map<string, number>();
-  const aliasIdToCanonicalId = new Map<string, string>();
-  const usedIds = new Set<string>();
-  let rankCounter = 0;
-
-  const absorbNode = (node: BeliefNode) => {
-    const label = node.label.trim() || 'Belief';
-    const normalizedKey = normalizeBeliefKey(label);
-    if (!normalizedKey) return;
-
-    const existing = nodeByKey.get(normalizedKey);
-    if (existing) {
-      const incomingIntensity = Math.max(0, Math.min(10, node.intensity));
-      if (incomingIntensity >= existing.intensity) {
-        existing.label = label;
-        existing.valence = node.valence;
-      }
-      existing.intensity = Math.max(existing.intensity, incomingIntensity);
-      nodeRankById.set(existing.id, Math.max(nodeRankById.get(existing.id) ?? -1, rankCounter));
-      aliasIdToCanonicalId.set(node.id, existing.id);
-      rankCounter += 1;
-      return;
-    }
-
-    let canonicalId = node.id?.trim() ? node.id : `belief.${crypto.randomUUID()}`;
-    if (usedIds.has(canonicalId)) {
-      canonicalId = `belief.${crypto.randomUUID()}`;
-    }
-    usedIds.add(canonicalId);
-
-    const created: BeliefNode = {
-      ...node,
-      id: canonicalId,
-      label,
-      intensity: Math.max(0, Math.min(10, node.intensity)),
-    };
-
-    nodeByKey.set(normalizedKey, created);
-    nodeRankById.set(canonicalId, rankCounter);
-    aliasIdToCanonicalId.set(node.id, canonicalId);
-    rankCounter += 1;
-  };
-
-  base.nodes.forEach(absorbNode);
-  addition.nodes.forEach(absorbNode);
-
-  const scoredNodes = Array.from(nodeByKey.values())
-    .sort((left, right) => {
-      if (right.intensity !== left.intensity) return right.intensity - left.intensity;
-      const rightRank = nodeRankById.get(right.id) ?? -1;
-      const leftRank = nodeRankById.get(left.id) ?? -1;
-      if (rightRank !== leftRank) return rightRank - leftRank;
-      return left.label.localeCompare(right.label);
-    })
-    .slice(0, MAX_BELIEF_GRAPH_NODES);
-
-  const retainedNodeIds = new Set(scoredNodes.map((node) => node.id));
-  const nextNodes = scoredNodes.sort((left, right) => {
-    if (right.intensity !== left.intensity) return right.intensity - left.intensity;
-    return left.label.localeCompare(right.label);
-  });
-
-  const nextEdges: BeliefEdge[] = [];
-  const edgeKeys = new Set<string>();
-
-  const resolveNodeId = (id: string) => aliasIdToCanonicalId.get(id) ?? id;
-
-  const pushEdge = (edge: BeliefEdge) => {
-    const from = resolveNodeId(edge.from);
-    const to = resolveNodeId(edge.to);
-    if (!retainedNodeIds.has(from) || !retainedNodeIds.has(to)) return;
-    const normalizedEdge: BeliefEdge = {
-      from,
-      to,
-      relation: edge.relation.trim() || 'related',
-    };
-    if (normalizedEdge.from === normalizedEdge.to) return;
-    const key = dedupeEdgeKey(normalizedEdge);
-    if (edgeKeys.has(key)) return;
-    edgeKeys.add(key);
-    nextEdges.push(normalizedEdge);
-  };
-
-  for (const edge of base.edges) {
-    pushEdge({ ...edge });
-  }
-
-  for (const edge of addition.edges) {
-    pushEdge({ ...edge });
-  }
-
-  return {
-    nodes: nextNodes,
-    edges: nextEdges,
-    summary: addition.summary.trim() || base.summary,
-    createdAt: base.createdAt || addition.createdAt || now,
-    updatedAt: now,
-  };
+  const currentJson = current ? JSON.stringify(current) : '';
+  const proposalJson = JSON.stringify(proposalGraph);
+  const resultJson = getService().mergeGraphs(currentJson, proposalJson);
+  return JSON.parse(resultJson) as BeliefGraph;
 }
 
 async function saveBeliefGraphWorkflowDocument(
