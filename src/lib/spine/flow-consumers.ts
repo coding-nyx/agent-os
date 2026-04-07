@@ -5,6 +5,7 @@ import type { SpineEvent, SpineEventType } from '@/lib/types';
 const FLOW_EVENTS: SpineEventType[] = [
   'CLEARANCE_DENIED',
   'CLEARANCE_GRANTED',
+  'CLEARANCE_REQUESTED',
   'COGNITIVE_OVERLOAD',
   'SECURITY_POLICY_UPDATED',
   'MEDICAL_ALERT',

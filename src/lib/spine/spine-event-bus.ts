@@ -12,7 +12,7 @@ export interface CascadeRule {
 }
 
 export interface EventFilterOptions {
-  minPriority?: 'info' | 'alert' | 'critical';
+  minPriority?: 'info' | 'warning' | 'alert' | 'critical';
 }
 
 export interface CascadeTruncationRecord {
@@ -30,7 +30,7 @@ export interface CascadeDiagnosticsSnapshot {
   recentTruncations: CascadeTruncationRecord[];
 }
 
-const PRIORITY_LEVELS = { info: 0, alert: 1, critical: 2 };
+const PRIORITY_LEVELS = { info: 0, warning: 1, alert: 2, critical: 3 };
 const SPINE_EVENTS_SUBCOLLECTION = 'events';
 const SPINE_SPEC_EVENTS_SUBCOLLECTION = 'spec_events';
 const MAX_CASCADE_DEPTH = 3;
@@ -81,7 +81,7 @@ class SpineEventBus {
   private _sequenceCounter = 0;
 
   private readonly validDomains: SpineDomain[] = ['B', 'E', 'C', 'R', 'system'];
-  private readonly validPriorities: SpineEventPriority[] = ['info', 'alert', 'critical'];
+  private readonly validPriorities: SpineEventPriority[] = ['info', 'warning', 'alert', 'critical'];
 
   setUser(uid: string | null): void {
     this.uid = uid;
@@ -104,6 +104,14 @@ class SpineEventBus {
     this.cascadeRules = Array.from(deduped.values());
   }
 
+  /**
+   * Remove a single cascade rule by ID so it no longer fires.
+   * Used by CascadeRuleRegistry.disable().
+   */
+  unregisterCascadeRule(ruleId: string): void {
+    this.cascadeRules = this.cascadeRules.filter((rule) => rule.id !== ruleId);
+  }
+
   publish(eventInput: SpineEventPayload): SpineEvent {
     return this.emit(eventInput);
   }
@@ -114,16 +122,32 @@ class SpineEventBus {
 
   emit(eventInput: SpineEventPayload): SpineEvent {
     const normalized = this.validateAndNormalize(eventInput);
+
+    // Build a stable debounce key BEFORE assigning a unique idempotencyKey.
+    // The debounce key uses type:source:target so that logically identical
+    // events emitted within the 500ms window are deduplicated regardless of
+    // timing jitter. Callers may supply an explicit `idempotencyKey` to
+    // control deduplication granularity.
+    const debounceKey = normalized.idempotencyKey ?? `${normalized.type}:${normalized.source}:${normalized.target ?? ''}`;
+    if (this.debounceTimers.has(debounceKey)) {
+      // Return a synthetic event so callers still get a valid SpineEvent back,
+      // but skip all listeners, cascades, and persistence.
+      return {
+        ...normalized,
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        sequence: ++this._sequenceCounter,
+        idempotencyKey: debounceKey,
+      } as SpineEvent;
+    }
+
     const event: SpineEvent = {
       ...normalized,
       id: crypto.randomUUID(),
       timestamp: Date.now(),
       sequence: ++this._sequenceCounter,
-      idempotencyKey: normalized.idempotencyKey ?? `${normalized.type}:${normalized.source}:${Date.now()}`,
+      idempotencyKey: normalized.idempotencyKey ?? debounceKey,
     };
-
-    const debounceKey = event.idempotencyKey ?? `${event.type}:${event.source}:${event.target ?? ''}`;
-    if (this.debounceTimers.has(debounceKey)) return event;
 
     const timer = globalThis.setTimeout(() => {
       this.debounceTimers.delete(debounceKey);

@@ -47,17 +47,31 @@ export const LEDGER_CASCADE_RULES: CascadeRule[] = [
     id: 'ledger-risk-to-alert',
     trigger: 'RISK_DETECTED' as SpineEventType,
     condition: (event) => event.type === 'RISK_DETECTED' && event.domain === 'R',
-    transform: (event) => ({
-      type: 'FINANCIAL_FRICTION_CHANGED' as LedgerSpineEventType,
-      domain: 'R' as const,
-      source: event.source,
-      priority: 'alert' as const,
-      data: {
-        newScore: 8.5,
-        analysis: `Risk detected: ${event.data.riskType}`,
-        tier: 'elevated' as const
-      }
-    })
+    transform: (event) => {
+      // Derive friction score from risk type instead of hardcoding 8.5.
+      // High-severity types score ≥ 7 (triggering somatic cascade);
+      // moderate/unknown types stay below the threshold.
+      const HIGH_SEVERITY_RISK_TYPES: ReadonlySet<string> = new Set([
+        'fraud',
+        'identity_theft',
+        'severe_overspend',
+        'debt_spiral',
+        'financial_overcommitment',
+      ]);
+      const riskType = String(event.data?.riskType ?? '');
+      const score = HIGH_SEVERITY_RISK_TYPES.has(riskType) ? 8.5 : 5;
+      return {
+        type: 'FINANCIAL_FRICTION_CHANGED' as LedgerSpineEventType,
+        domain: 'R' as const,
+        source: event.source,
+        priority: 'alert' as const,
+        data: {
+          newScore: score,
+          analysis: `Risk detected: ${riskType || 'unknown'}`,
+          tier: (score >= 7 ? 'elevated' : 'moderate') as 'elevated' | 'moderate',
+        },
+      };
+    },
   },
 
   // ── Cross-module rules: high financial friction → somatic support ──────────

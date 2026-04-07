@@ -19,6 +19,7 @@ import { initializeSchemas } from './lib/schemas/init'
 import { getNexusDataLayer } from './lib/data-layer/provider'
 import { Spine } from './lib/spine/spine-event-bus'
 import { registerFlowConsumers } from './lib/spine/flow-consumers'
+import { SchedulerService } from './lib/spine/scheduler-service'
 
 // Module-specific action registrations — imported here so handlers are available
 // immediately, regardless of which page the user visits first (or Nexus delegates to).
@@ -106,6 +107,35 @@ initializeSchemas();
 // to inject InMemoryDataLayer via setNexusDataLayer() before the Spine emits.
 Spine.setDataLayer(getNexusDataLayer());
 registerFlowConsumers();
+
+// Start the platform scheduler and register static schedules.
+// The scheduler is user-independent (it emits Spine events, not user-specific
+// data), so it runs for the lifetime of the tab — no stop-on-logout.
+SchedulerService.register({
+  id: 'atlas.morning_brief',
+  moduleId: 'atlas',
+  type: 'morning_brief',
+  time: '09:00',
+  spineEventType: 'MORNING_BRIEF_DUE',
+  defaultEnabled: true,
+});
+SchedulerService.register({
+  id: 'atlas.evening_checkin',
+  moduleId: 'atlas',
+  type: 'evening_checkin',
+  time: '20:30',
+  spineEventType: 'EVENING_CHECKIN_DUE',
+  defaultEnabled: true,
+});
+SchedulerService.register({
+  id: 'atlas.weekly_review',
+  moduleId: 'atlas',
+  type: 'weekly_review',
+  time: 'Sun 18:00',
+  spineEventType: 'WEEKLY_REVIEW_DUE',
+  defaultEnabled: true,
+});
+SchedulerService.start();
 
 // Filter out noisy THREE.Clock deprecation warnings from @react-three/fiber internals.
 // We patch console.warn AFTER NexusLogger.init() so the original method is already

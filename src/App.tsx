@@ -7,6 +7,7 @@ import { GlobalSoulProvider } from './lib/global-soul-context';
 import { AIProvider, useAI } from './cortex-bridge/ai-context';
 import { BootLoader } from './core/components/BootLoader';
 import { AppErrorBoundary } from './core/components/AppErrorBoundary';
+import { ModuleErrorBoundary } from './core/components/ModuleErrorBoundary';
 import { ProtectedRoute } from './core/components/ProtectedRoute';
 import { AppVaultGate } from './core/components/AppVaultGate';
 import { NexusOverlay } from './core/components/NexusOverlay';
@@ -21,7 +22,6 @@ import { ConflictResolutionOverlay } from './core/components/ConflictResolutionO
 import { useIntelligencePipeline } from './lib/services/intelligence-pipeline';
 import { BridgeService } from './lib/services/bridge-service';
 import { ReminderScheduler } from './lib/notifications/reminder-scheduler-service';
-import { SchedulerService } from './lib/spine/scheduler-service';
 import { OrchestrationRetryWorkerService } from './lib/services/orchestration-retry-worker-service';
 import { Spine } from './lib/spine/spine-event-bus';
 import { useOrchestrationProfileSync } from './lib/hooks/use-orchestration-profile-sync';
@@ -174,49 +174,8 @@ function IntelligencePipelineMount() {
   return null;
 }
 
-function SchedulerRuntimeBootstrap() {
-  useEffect(() => {
-    // 1. Start the platform scheduler
-    SchedulerService.start();
-
-    // 2. Register global core schedules
-    // S9-007: Atlas Morning Brief (Daily 09:00)
-    SchedulerService.register({
-      id: 'atlas.morning_brief',
-      moduleId: 'atlas',
-      type: 'morning_brief',
-      time: '09:00',
-      spineEventType: 'MORNING_BRIEF_DUE',
-      defaultEnabled: true,
-    });
-
-    // S9-007: Atlas Evening Check-in (Daily 20:30)
-    SchedulerService.register({
-      id: 'atlas.evening_checkin',
-      moduleId: 'atlas',
-      type: 'evening_checkin',
-      time: '20:30',
-      spineEventType: 'EVENING_CHECKIN_DUE',
-      defaultEnabled: true,
-    });
-
-    // S18-002: Atlas Weekly Review (Sundays 18:00)
-    SchedulerService.register({
-      id: 'atlas.weekly_review',
-      moduleId: 'atlas',
-      type: 'weekly_review',
-      time: 'Sun 18:00',
-      spineEventType: 'WEEKLY_REVIEW_DUE',
-      defaultEnabled: true,
-    });
-
-    return () => {
-      SchedulerService.stop();
-    };
-  }, []);
-
-  return null;
-}
+// SchedulerService is started synchronously in main.tsx (not in a React effect)
+// to avoid lifecycle thrashing across login/logout transitions.
 
 function BridgeMount() {
   const { user, isGuest } = useAuth();
@@ -227,7 +186,6 @@ function BridgeMount() {
       if (mountedUserId.current) {
         BridgeService.stop();
         ReminderScheduler.stop();
-        SchedulerService.stop();
         OrchestrationRetryWorkerService.stop();
         mountedUserId.current = null;
       }
@@ -249,14 +207,12 @@ function BridgeMount() {
       });
 
     ReminderScheduler.start(user.uid);
-    SchedulerService.start();
     OrchestrationRetryWorkerService.start(user.uid);
 
     return () => {
       // Immediate stop when BridgeMount is actually removed from the tree (e.g. lock down)
       BridgeService.stop();
       ReminderScheduler.stop();
-      SchedulerService.stop();
       OrchestrationRetryWorkerService.stop();
       mountedUserId.current = null;
     };
@@ -283,7 +239,6 @@ function AppContent() {
       {!isLockedDown && (
         <>
           <SpineRuntimeBootstrap />
-          <SchedulerRuntimeBootstrap />
           <IntelligencePipelineMount />
           <BridgeMount />
           <NexusOverlay />
@@ -305,67 +260,89 @@ function AppContent() {
 
         <Route path="/nexus/*" element={
           <ProtectedRoute requireOnboarding={false}>
-            <NexusPage />
+            <ModuleErrorBoundary moduleName="Nexus">
+              <NexusPage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/hub" element={
           <ProtectedRoute>
-            <HubPage />
+            <ModuleErrorBoundary moduleName="Hub">
+              <HubPage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/agnes" element={
           <ProtectedRoute>
-            <AgnesPage />
+            <ModuleErrorBoundary moduleName="Agnes">
+              <AgnesPage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/titan" element={
           <ProtectedRoute>
-            <TitanPage />
+            <ModuleErrorBoundary moduleName="Titan">
+              <TitanPage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/ledger" element={
           <ProtectedRoute>
-            <LedgerPage />
+            <ModuleErrorBoundary moduleName="Ledger">
+              <LedgerPage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/soma" element={
           <ProtectedRoute>
-            <SomaPage />
+            <ModuleErrorBoundary moduleName="Soma">
+              <SomaPage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/atlas" element={
           <ProtectedRoute>
-            <AtlasPage />
+            <ModuleErrorBoundary moduleName="Atlas">
+              <AtlasPage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/scout" element={
           <ProtectedRoute>
-            <ScoutPage />
+            <ModuleErrorBoundary moduleName="Scout">
+              <ScoutPage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/forge" element={
           <ProtectedRoute>
-            <ForgePage />
+            <ModuleErrorBoundary moduleName="Forge">
+              <ForgePage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/profile" element={
           <ProtectedRoute>
-            <ProfilePage />
+            <ModuleErrorBoundary moduleName="Profile">
+              <ProfilePage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 
         <Route path="/notifications" element={
           <ProtectedRoute>
-            <NotificationsPage />
+            <ModuleErrorBoundary moduleName="Notifications">
+              <NotificationsPage />
+            </ModuleErrorBoundary>
           </ProtectedRoute>
         } />
 

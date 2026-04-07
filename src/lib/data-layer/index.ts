@@ -48,7 +48,12 @@ export type NexusQueryListener<T> = (documents: NexusRecord<T>[]) => void;
 
 export interface NexusDataLayer {
   getDocument<T>(collection: string, id: NexusDocumentId): Promise<NexusRecord<T> | null>;
-  listDocuments<T>(collection: string): Promise<NexusRecord<T>[]>;
+  /**
+   * Lists documents in a collection.
+   * @param options.limit - Maximum number of documents to return. Defaults to 100.
+   *   Pass `0` to disable the limit and return all documents.
+   */
+  listDocuments<T>(collection: string, options?: { limit?: number }): Promise<NexusRecord<T>[]>;
   createDocument<T>(
     collection: string,
     data: Omit<NexusRecord<T>, 'id'> & Partial<Pick<NexusRecord<T>, 'id'>>,
@@ -110,8 +115,9 @@ export class InMemoryDataProvider implements NexusDataLayer {
     return record ? cloneValue(record) : null;
   }
 
-  async listDocuments<T>(collection: string): Promise<NexusRecord<T>[]> {
-    return this.query<T>({ collection });
+  async listDocuments<T>(collection: string, options?: { limit?: number }): Promise<NexusRecord<T>[]> {
+    const cap = options?.limit ?? 100;
+    return this.query<T>({ collection, ...(cap > 0 ? { limit: cap } : {}) });
   }
 
   async createDocument<T>(

@@ -11,13 +11,13 @@ import type { CascadeRule } from './cascade-rules';
 class CascadeRuleRegistryImpl {
   private readonly rules = new Map<string, CascadeRule>();
   private readonly disabled = new Set<string>();
-  private spineRef: { registerCascadeRules: (rules: CascadeRule[]) => void; unregisterCascadeRule?: (id: string) => void } | null = null;
+  private spineRef: { registerCascadeRules: (rules: CascadeRule[]) => void; unregisterCascadeRule: (id: string) => void } | null = null;
 
   /**
    * Provide the Spine instance so the registry can forward enable/disable to it.
    * Must be called once at bootstrap before any register() calls.
    */
-  setSpine(spine: { registerCascadeRules: (rules: CascadeRule[]) => void; unregisterCascadeRule?: (id: string) => void }): void {
+  setSpine(spine: { registerCascadeRules: (rules: CascadeRule[]) => void; unregisterCascadeRule: (id: string) => void }): void {
     this.spineRef = spine;
   }
 
@@ -46,7 +46,7 @@ class CascadeRuleRegistryImpl {
    */
   disable(ruleId: string): void {
     this.disabled.add(ruleId);
-    this.spineRef?.unregisterCascadeRule?.(ruleId);
+    this.spineRef?.unregisterCascadeRule(ruleId);
   }
 
   /**

@@ -66,20 +66,44 @@ export default function HubPage() {
 
   useSpineEvent('*', pushSpineEvent, { minPriority: 'alert' });
 
-  // Edge pulse decay with debounced state updates — skips when tab is hidden
+  // Edge pulse decay via rAF — only runs while a pulse is active (at > 0).
+  // Starts on mount to catch any pre-existing pulse; re-triggered by pushSpineEvent.
+  const rafRef = useRef(0);
+
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === 'hidden') return;
-      if (!edgePulseRef.current.at) {
-        setEdgePulse((prev) => (prev === 0 ? prev : 0));
+    let stopped = false;
+
+    const tick = () => {
+      if (stopped) return;
+      if (document.visibilityState === 'hidden') {
+        rafRef.current = requestAnimationFrame(tick);
         return;
       }
-      const elapsed = Date.now() - edgePulseRef.current.at;
+      const { at } = edgePulseRef.current;
+      if (!at) {
+        setEdgePulse((prev) => (prev === 0 ? prev : 0));
+        // No active pulse — stop the loop. pushSpineEvent will restart it.
+        rafRef.current = 0;
+        return;
+      }
+      const elapsed = Date.now() - at;
       const newDecay = Math.max(0, 1 - elapsed / 1600);
       setEdgePulse((prev) => (Math.abs(newDecay - prev) > 0.05 ? newDecay : prev));
-    }, 120);
-    return () => window.clearInterval(interval);
-  }, []);
+      if (newDecay <= 0) {
+        edgePulseRef.current = { ...edgePulseRef.current, at: 0 };
+        rafRef.current = 0;
+        return;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    // Kick off — if there's already a pulse in the ref, decay it.
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      stopped = true;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [edgePulsePriority]); // edgePulsePriority changes each time pushSpineEvent fires, restarting the loop
 
   // Reset cursor when leaving 3D view
   useEffect(() => {
