@@ -506,6 +506,10 @@ export interface SpineEventPayload {
   originId?: string;
   /** Event payload schema version for migration-safe consumers. */
   schemaVersion?: number;
+  /** Pre-resolved notification title produced by NotificationContentResolver (KMP). */
+  notificationTitle?: string;
+  /** Pre-resolved notification body produced by NotificationContentResolver (KMP). */
+  notificationBody?: string;
 }
 
 export interface SpineEvent {

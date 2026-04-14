@@ -3,6 +3,7 @@ import { SpineDomain, SpineEvent, SpineEventPayload, SpineEventPriority, SpineEv
 import type { NexusDataLayer } from '@/lib/data-layer';
 import { adaptSpineEventToSpec, serializeSpecSpineEvent } from '@/lib/contracts/orchestration';
 import { NexusLogger } from '@/lib/nexus-logger';
+import { NotificationContentResolverJs } from '@cortex-logic';
 
 export interface CascadeRule {
   id: string;
@@ -59,6 +60,43 @@ const CASCADE_ALERT_RATE_LIMITED_TYPES = new Set<string>([
 
 /** Minimum ms between cascade emissions of the same system alert type. Default: 60 minutes. */
 const CASCADE_ALERT_COOLDOWN_MS = 60 * 60 * 1000;
+
+/** Lazily-created singleton for the KMP notification content resolver. */
+let _notificationResolver: InstanceType<typeof NotificationContentResolverJs> | null = null;
+function getNotificationResolver(): InstanceType<typeof NotificationContentResolverJs> | null {
+  if (_notificationResolver) return _notificationResolver;
+  try {
+    _notificationResolver = new (NotificationContentResolverJs as any)();
+    return _notificationResolver;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve notification title/body via the KMP NotificationContentResolver and
+ * merge them into the event's data map so that downstream consumers (Cloud
+ * Functions, Android FCM handler) receive pre-resolved content.
+ */
+function enrichWithNotificationContent(event: SpineEvent): SpineEvent {
+  const resolver = getNotificationResolver();
+  if (!resolver) return event;
+  try {
+    const resultJson = resolver.resolve(event.type, JSON.stringify(event.data));
+    if (!resultJson) return event;
+    const { title, body } = JSON.parse(resultJson) as { title: string; body: string };
+    return {
+      ...event,
+      data: {
+        ...event.data,
+        _notificationTitle: title,
+        _notificationBody: body,
+      },
+    };
+  } catch {
+    return event;
+  }
+}
 
 type Listener = (event: SpineEvent) => void;
 interface ListenerRegistration {
@@ -265,10 +303,14 @@ class SpineEventBus {
   private async logEvent(event: SpineEvent): Promise<void> {
     if (!this.uid) return;
 
+    // Resolve notification content from KMP before persistence so the Cloud
+    // Function receives pre-resolved title/body in the Firestore document.
+    const enrichedEvent = enrichWithNotificationContent(event);
+
     // Prefer NexusDataLayer when injected — supports InMemoryDataLayer in tests
     // and keeps Spine decoupled from the Firebase SDK.
     if (this.dataLayer) {
-      await this.dataLayer.createDocument(`spine_events/${this.uid}/${SPINE_EVENTS_SUBCOLLECTION}`, event);
+      await this.dataLayer.createDocument(`spine_events/${this.uid}/${SPINE_EVENTS_SUBCOLLECTION}`, enrichedEvent);
 
       try {
         await this.dataLayer.createDocument(
