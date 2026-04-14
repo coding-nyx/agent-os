@@ -94,7 +94,6 @@ export const HabitEnergyMatcherJs = requireEngineExport('HabitEnergyMatcherJs');
 export const InsuranceAggregationJs = requireEngineExport('InsuranceAggregationJs');
 export const InteractionGateJs = requireEngineExport('InteractionGateJs');
 export const LedgerAggregationUtilsJs = requireEngineExport('LedgerAggregationUtilsJs');
-export const LedgerAutomationEngineJs = requireEngineExport('LedgerAutomationEngineJs');
 export const LlmSanitizerJs = requireEngineExport('LlmSanitizerJs');
 export const NetWorthAggregationJs = requireEngineExport('NetWorthAggregationJs');
 export const OnboardingValidationJs = requireEngineExport('OnboardingValidationJs');
@@ -141,4 +140,18 @@ export const TitanPromptBuilderJs: (new (...args: unknown[]) => unknown) | null 
   try { return requireEngineExport('TitanPromptBuilderJs'); } catch { return null; }
 })();
 export const TransactionAggregationJs = requireEngineExport('TransactionAggregationJs');
+// RagChunkingServiceJs may not be in the export map if the DFS doesn't reach the rag namespace;
+// use the safe lazy pattern so the app boots even if the export is missing at load time.
+export const RagChunkingServiceJs: (new (...args: unknown[]) => unknown) | null = (() => {
+  try { return requireEngineExport('RagChunkingServiceJs'); } catch { return null; }
+})();
+// NotificationContentResolverJs may not be in the export map until the KMP JS library is rebuilt;
+// use the safe lazy pattern so the app boots even if the export is missing at load time.
+export const NotificationContentResolverJs: (new (...args: unknown[]) => unknown) | null = (() => {
+  try { return requireEngineExport('NotificationContentResolverJs'); } catch { return null; }
+})();
 export const UserIdentityJs = requireEngineExport('UserIdentityJs');
+// AutomationServiceJs is added in cortex-logic 1.6.0 — use safe lazy pattern until the dep is bumped.
+export const AutomationServiceJs: (new (...args: unknown[]) => unknown) | null = (() => {
+  try { return requireEngineExport('AutomationServiceJs'); } catch { return null; }
+})();
