@@ -118,7 +118,7 @@ export class OrchestrationHistoryService {
     if (!uid) return [];
 
     const dataLayer = options?.dataLayer ?? getNexusDataLayer();
-    const docs = await dataLayer.listDocuments<SilentHistoryEntry>(this.getSilentHistoryCollectionPath(uid), { limit: 0 });
+    const docs = await dataLayer.listDocuments<SilentHistoryEntry>(this.getSilentHistoryCollectionPath(uid), { limit: 400 });
     const sorted = sortSilentHistoryEntries(docs);
     return typeof options?.limit === 'number' ? sorted.slice(0, options.limit) : sorted;
   }

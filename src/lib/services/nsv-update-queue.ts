@@ -31,6 +31,8 @@ interface QueuedUpdate {
 const MAX_ATTEMPTS = 3;
 const BACKOFF_MS = [2000, 4000, 8000]; // Exponential backoff delays
 const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes — discard stale updates
+const DEAD_LETTER_KEY = 'nexus_nsv_dead_letter';
+const DEAD_LETTER_MAX = 50; // Cap stored entries to avoid unbounded localStorage growth
 
 // ---------------------------------------------------------------------------
 // State
@@ -161,7 +163,7 @@ async function processQueue(): Promise<void> {
           error
         );
         updateQueue.shift(); // Give up — remove from queue
-        // TODO: Optionally persist to dead-letter storage for manual recovery
+        persistToDeadLetter(update, error);
       } else {
         // Wait with exponential backoff before retry
         const delay = BACKOFF_MS[update.attempts - 1] ?? BACKOFF_MS[BACKOFF_MS.length - 1];
@@ -174,6 +176,62 @@ async function processQueue(): Promise<void> {
   }
 
   isProcessing = false;
+}
+
+// ---------------------------------------------------------------------------
+// Dead-letter storage
+// ---------------------------------------------------------------------------
+
+interface DeadLetterEntry {
+  userId: string;
+  patch: NeuralStateVectorPatch;
+  source?: string;
+  failedAt: number;
+  errorMessage: string;
+}
+
+function persistToDeadLetter(update: QueuedUpdate, error: unknown): void {
+  try {
+    const entry: DeadLetterEntry = {
+      userId: update.userId,
+      patch: update.patch,
+      source: update.source,
+      failedAt: Date.now(),
+      errorMessage: error instanceof Error ? error.message : String(error),
+    };
+    const raw = localStorage.getItem(DEAD_LETTER_KEY);
+    const existing: DeadLetterEntry[] = raw ? (JSON.parse(raw) as DeadLetterEntry[]) : [];
+    existing.push(entry);
+    // Trim to keep only the most recent entries
+    const trimmed = existing.slice(-DEAD_LETTER_MAX);
+    localStorage.setItem(DEAD_LETTER_KEY, JSON.stringify(trimmed));
+    console.warn(
+      `[NSVQueue] Patch from ${update.source ?? 'unknown'} moved to dead-letter (${trimmed.length}/${DEAD_LETTER_MAX} stored)`
+    );
+  } catch (storageError) {
+    console.error('[NSVQueue] Failed to persist dead-letter entry:', storageError);
+  }
+}
+
+/**
+ * Returns all dead-lettered NSV patches for the current session.
+ * Useful for diagnostics and manual recovery flows.
+ */
+export function getDeadLetterQueue(): DeadLetterEntry[] {
+  try {
+    const raw = localStorage.getItem(DEAD_LETTER_KEY);
+    return raw ? (JSON.parse(raw) as DeadLetterEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Clears the dead-letter queue from localStorage.
+ * Call after successfully re-syncing recovered patches.
+ */
+export function clearDeadLetterQueue(): void {
+  localStorage.removeItem(DEAD_LETTER_KEY);
 }
 
 // ---------------------------------------------------------------------------

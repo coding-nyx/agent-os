@@ -159,6 +159,57 @@ describe('OrchestrationActionGateService', () => {
     expect(decision.metadata.execution.status).toBe('executed');
   });
 
+  it('auto-dispatches medium-risk module writes when moduleSessionActive, even at autopilot level 2', () => {
+    const decision = OrchestrationActionGateService.evaluate({
+      moduleId: 'agnes',
+      actionType: 'update_mood_trend',
+      payload: { trend: 'stable' },
+      autopilotLevel: 2,
+      historyMode: 'standard',
+      isGuest: false,
+      activeThreadId: 'thread-agnes-session',
+      moduleSessionActive: true,
+    });
+
+    expect(decision.shouldDispatch).toBe(true);
+    expect(decision.metadata.approvalRequirement.required).toBe(false);
+    expect(decision.metadata.approvalRequirement.reason).toBe('session_trusted');
+    expect(decision.metadata.executionMode).toBe('autonomous');
+    expect(decision.metadata.dispatchStatus).toBe('approved');
+    expect(decision.metadata.execution.status).toBe('executed');
+  });
+
+  it('still defers high-risk writes during an active session (session trust does not cover destructive actions)', () => {
+    const decision = OrchestrationActionGateService.evaluate({
+      moduleId: 'agnes',
+      actionType: 'delete_belief',
+      payload: { beliefId: 'b-1' },
+      autopilotLevel: 2,
+      historyMode: 'standard',
+      isGuest: false,
+      moduleSessionActive: true,
+    });
+
+    expect(decision.shouldDispatch).toBe(false);
+    expect(decision.metadata.approvalRequirement.required).toBe(true);
+    expect(decision.metadata.highRisk).toBe(true);
+  });
+
+  it('falls back to manual-level approval when moduleSessionActive is absent', () => {
+    const decision = OrchestrationActionGateService.evaluate({
+      moduleId: 'agnes',
+      actionType: 'update_mood_trend',
+      payload: { trend: 'stable' },
+      autopilotLevel: 2,
+      historyMode: 'standard',
+      isGuest: false,
+    });
+
+    expect(decision.shouldDispatch).toBe(false);
+    expect(decision.metadata.approvalRequirement.required).toBe(true);
+    expect(decision.metadata.approvalRequirement.reason).toBe('manual_level');
+  });
+
   it('keeps ephemeral sessions analysis-only regardless of action type', () => {
     const decision = OrchestrationActionGateService.evaluate({
       moduleId: 'ledger',

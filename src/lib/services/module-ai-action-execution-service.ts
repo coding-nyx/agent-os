@@ -32,6 +32,8 @@ interface ExecuteModuleAIActionsInput {
   orchestrationHistoryMode: HistoryMode;
   activeThreadId: string | null;
   persistencePolicy: PersistencePolicy;
+  /** Whether the module is in an active user-facing session; forwarded to the KMP gate. */
+  moduleSessionActive?: boolean;
   userId?: string;
   isGuest: boolean;
   encryptionKey?: CryptoKey | null;
@@ -103,6 +105,7 @@ export class ModuleAIActionExecutionService {
       orchestrationHistoryMode,
       activeThreadId,
       persistencePolicy,
+      moduleSessionActive,
       userId,
       isGuest,
       encryptionKey,
@@ -238,6 +241,7 @@ export class ModuleAIActionExecutionService {
         isGuest,
         activeThreadId,
         persistencePolicy,
+        moduleSessionActive,
       });
 
       NexusLogger.emit('ai', {

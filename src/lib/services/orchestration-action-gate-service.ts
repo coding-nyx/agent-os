@@ -18,6 +18,13 @@ export interface OrchestrationActionGateInput {
   isGuest: boolean;
   activeThreadId?: string | null;
   persistencePolicy?: PersistencePolicy;
+  /**
+   * True when the calling module is inside an active user-facing session (e.g. a live Agnes
+   * therapy session). KMP honors this by bypassing the autopilot-level approval gate for the
+   * module's own non-high-risk mutations. Explicit per-action gates and high-risk inferences
+   * still apply. Defaults to false.
+   */
+  moduleSessionActive?: boolean;
   now?: string;
 }
 

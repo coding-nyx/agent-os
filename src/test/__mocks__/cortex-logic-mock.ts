@@ -60,11 +60,18 @@ function defaultOrchestrationMetadata() {
 
 // ─── Orchestration Services ─────────────────────────────────────────────────
 
+const HIGH_RISK_KEYWORDS = ['delete', 'discard', 'archive', 'clearance', 'transaction', 'budget', 'diagnosis'];
+function inferHighRiskAction(actionType: string): boolean {
+  const lower = actionType.toLowerCase();
+  return HIGH_RISK_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
 export class OrchestrationActionGateServiceJs {
   evaluate(inputJson: string, _actionType: string) {
     const input = JSON.parse(inputJson);
-    const { moduleId, actionType, autopilotLevel, historyMode, isGuest, persistencePolicy, payload, activeThreadId } = input;
+    const { moduleId, actionType, autopilotLevel, historyMode, isGuest, persistencePolicy, payload, activeThreadId, moduleSessionActive } = input;
     const mutatesState = !NON_MUTATING_ACTIONS.has(actionType);
+    const highRisk = inferHighRiskAction(actionType);
     const now = new Date().toISOString();
 
     // Build runtime semantics
@@ -73,51 +80,70 @@ export class OrchestrationActionGateServiceJs {
     let executionMode: string;
     let executionStatus: string;
     let shouldDispatch: boolean;
+    let approvalReason: string;
+    // Session-trust bypass mirrors OrchestrationPolicyService.kt: when the module is inside an
+    // active user-facing session, its own non-high-risk mutations auto-dispatch regardless of
+    // the ambient autopilot level.
+    const sessionTrusted = !!moduleSessionActive && mutatesState && !highRisk && !isGuest && persistencePolicy !== 'ephemeral';
 
     if (persistencePolicy === 'ephemeral') {
       dispatchStatus = 'ephemeral';
       executionMode = 'analysis_only';
       executionStatus = 'analysis_only';
       shouldDispatch = false;
+      approvalReason = 'none';
     } else if (isGuest && mutatesState) {
       dispatchStatus = 'blocked';
       executionMode = 'analysis_only';
       executionStatus = 'analysis_only';
       shouldDispatch = false;
+      approvalReason = 'guest_scope';
     } else if (!mutatesState) {
       dispatchStatus = 'approved';
       executionMode = autopilotLevel === 5 ? 'ghost' : autopilotLevel <= 2 ? 'assisted' : 'autonomous';
       executionStatus = 'executed';
       shouldDispatch = true;
+      approvalReason = 'none';
+    } else if (sessionTrusted) {
+      dispatchStatus = 'approved';
+      executionMode = 'autonomous';
+      executionStatus = 'executed';
+      shouldDispatch = true;
+      approvalReason = 'session_trusted';
     } else if (autopilotLevel <= 1) {
       dispatchStatus = 'awaiting_approval';
       executionMode = 'assisted';
       executionStatus = 'deferred';
       shouldDispatch = false;
+      approvalReason = 'manual_level';
     } else if (autopilotLevel === 2) {
       dispatchStatus = 'awaiting_approval';
       executionMode = 'assisted';
       executionStatus = 'deferred';
       shouldDispatch = false;
+      approvalReason = 'manual_level';
     } else if (autopilotLevel === 3) {
       dispatchStatus = 'approved';
       executionMode = 'autonomous';
       executionStatus = 'executed';
       shouldDispatch = true;
+      approvalReason = 'none';
     } else if (autopilotLevel === 4) {
       dispatchStatus = 'approved';
       executionMode = 'autonomous';
       executionStatus = 'executed';
       shouldDispatch = true;
+      approvalReason = 'none';
     } else {
       // level 5 ghost
       dispatchStatus = 'approved';
       executionMode = 'ghost';
       executionStatus = 'executed';
       shouldDispatch = true;
+      approvalReason = 'none';
     }
 
-    const runtime = runtimeBuilder.build(autopilotLevel, historyMode, dispatchStatus, false);
+    const runtime = runtimeBuilder.build(autopilotLevel, historyMode, dispatchStatus, highRisk);
     // Silent audit entries ARE persisted (to the audit log), just not to visible history
     if (runtime.historyDestination === 'silent_audit') {
       runtime.willPersistHistory = true;
@@ -141,12 +167,12 @@ export class OrchestrationActionGateServiceJs {
       executionMode,
       historyMode: resolvedHistoryMode,
       mutatesState,
-      highRisk: false,
+      highRisk,
       patientScope,
       dispatchStatus,
       approvalRequirement: {
         required: dispatchStatus === 'awaiting_approval',
-        reason: dispatchStatus === 'awaiting_approval' ? 'manual_level' : 'none',
+        reason: approvalReason,
       },
       runtime,
       proposal: {
@@ -165,7 +191,7 @@ export class OrchestrationActionGateServiceJs {
         summary: '',
         source: moduleId || 'nexus',
         status: 'pending',
-        approvalRequirement: { required: dispatchStatus === 'awaiting_approval', reason: dispatchStatus === 'awaiting_approval' ? 'manual_level' : 'none' },
+        approvalRequirement: { required: dispatchStatus === 'awaiting_approval', reason: approvalReason },
         executionMode,
         historyMode: resolvedHistoryMode,
       },
@@ -519,13 +545,19 @@ export class RuntimeSemanticsBuilderJs {
       autopilotLevel === 3 ? 'conditional_autonomy' :
       autopilotLevel === 4 ? 'supervised_autonomy' : 'ghost';
 
+    // Mirror RuntimeSemanticsBuilder.kt: HIGH_RISK_REVIEW only applies when the action is
+     // actually being held for approval at level >= 3. Once a high-risk action is approved
+     // (e.g. because it's running at level 5 ghost), runtime disposition follows the normal
+     // silent/visible execution path.
     const disposition: string =
       dispatchStatus === 'ephemeral' ? 'ephemeral_preview' :
-      highRisk ? 'high_risk_review' :
-      autopilotLevel === 0 ? 'manual_review' :
-      dispatchStatus === 'awaiting_approval' ? 'proposal_review' :
-      dispatchStatus === 'analysis_only' ? 'analysis_only' :
-      (autopilotLevel === 5 && historyMode === 'silent') ? 'silent_execution' : 'visible_execution';
+      dispatchStatus === 'analysis_only' || dispatchStatus === 'blocked' ? 'analysis_only' :
+      dispatchStatus === 'awaiting_approval'
+        ? (autopilotLevel === 0 ? 'manual_review'
+          : highRisk && autopilotLevel >= 3 ? 'high_risk_review'
+          : 'proposal_review')
+      : (historyMode === 'silent' || autopilotLevel === 5) ? 'silent_execution'
+      : 'visible_execution';
 
     const historyDestination =
       (autopilotLevel === 5 && historyMode === 'silent') ? 'silent_audit' : 'standard';
@@ -1336,7 +1368,7 @@ export class CognitiveEngineJs {
   clearCredentials() {}
   chat(
     _moduleId: string, _userMessage: string, _historyJson: string,
-    _identity: any, _nsvJson: string,
+    _identity: any, _nsvJson: string, _globalSoulJson: string,
     _onChunk: (chunk: { delta: string; isThinking: boolean; isActing: boolean; currentActionType: string | null }) => void,
     onComplete: (final: { content: string; thoughts: string | null; actionsJson: string; mutationsJson: string }) => void,
     _onError: (error: string) => void
@@ -2375,11 +2407,6 @@ export class AtlasPredictiveEngineJs {
 
 // ─── Ledger Automation & Recurring ──────────────────────────────────────────
 
-export class LedgerAutomationEngineJs {
-  evaluateRules(_profileJson: string, _nowIso: string) { return j([]); }
-  getDefaultRules(_nowIso: string) { return j([]); }
-}
-
 export class RecurringBillEngineJs {
   advanceByFrequency(_dateStr: string, _frequency: string) { return _dateStr; }
   computeNextDueDate(_ruleJson: string, _fromIso?: string) { return new Date().toISOString().slice(0, 10); }
@@ -2495,6 +2522,30 @@ export class MedicalClearanceEvaluatorJs {
     const profile = JSON.parse(profileJson);
     const clearances = profile.clearances ?? [];
     return clearances.length > 0 ? JSON.stringify(clearances[0]) : 'null';
+  }
+}
+
+// ─── RAG Chunking ───────────────────────────────────────────────────────────
+
+export class RagChunkingServiceJs {
+  chunkText(text: string, chunkSize = 2000, _chunkOverlap = 400, minChunkSize = 200): string {
+    const trimmed = text.trim();
+    if (!trimmed) return '[]';
+    if (trimmed.length <= chunkSize) {
+      return j([{ index: 0, text: trimmed, startChar: 0, endChar: trimmed.length }]);
+    }
+    // Simple fixed-size split for tests (no overlap logic needed)
+    const chunks: { index: number; text: string; startChar: number; endChar: number }[] = [];
+    let cursor = 0;
+    while (cursor < trimmed.length) {
+      const end = Math.min(cursor + chunkSize, trimmed.length);
+      const chunkText = trimmed.slice(cursor, end);
+      if (chunkText.length >= minChunkSize || chunks.length === 0) {
+        chunks.push({ index: chunks.length, text: chunkText, startChar: cursor, endChar: end });
+      }
+      cursor = end;
+    }
+    return j(chunks);
   }
 }
 
