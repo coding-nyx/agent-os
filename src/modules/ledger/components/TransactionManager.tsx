@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Plus, Search, Filter, Download, Upload, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import { SurfaceCard } from '@/core/components/SurfaceCard';
@@ -311,6 +311,24 @@ export function TransactionManager({
     input.click();
   };
 
+  // Virtual scrolling refs
+  const desktopScrollRef = useRef<HTMLDivElement>(null);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+
+  const desktopVirtualizer = useVirtualizer({
+    count: filteredTransactions.length,
+    getScrollElement: () => desktopScrollRef.current,
+    estimateSize: () => 48,
+    overscan: 10,
+  });
+
+  const mobileVirtualizer = useVirtualizer({
+    count: filteredTransactions.length,
+    getScrollElement: () => mobileScrollRef.current,
+    estimateSize: () => 110,
+    overscan: 5,
+  });
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -393,58 +411,86 @@ export function TransactionManager({
           </div>
         ) : (
           <>
-            {/* Mobile card view */}
-            <div className="block md:hidden space-y-3 p-4">
-              {filteredTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex flex-col gap-2 p-3 rounded-lg border border-white/[0.09] bg-white/[0.045]">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-white truncate">{transaction.description}</div>
-                      <div className="text-xs text-white/60 mt-1">{new Date(transaction.date).toLocaleDateString()}</div>
-                      {transaction.recurring && (
-                        <div className="text-[11px] text-[var(--module-color-400)] mt-1">
-                          ↻ {transaction.recurringFrequency}
+            {/* Mobile card view — virtualized */}
+            <div
+              ref={mobileScrollRef}
+              className="block md:hidden overflow-y-auto p-4"
+              style={{ maxHeight: 'calc(100dvh - 16rem)' }}
+            >
+              <div
+                style={{
+                  height: mobileVirtualizer.getTotalSize(),
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {mobileVirtualizer.getVirtualItems().map((virtualItem) => {
+                  const transaction = filteredTransactions[virtualItem.index];
+                  return (
+                    <div
+                      key={transaction.id}
+                      data-index={virtualItem.index}
+                      ref={mobileVirtualizer.measureElement}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualItem.start}px)`,
+                      }}
+                    >
+                      <div className="flex flex-col gap-2 p-3 mb-3 rounded-lg border border-white/[0.09] bg-white/[0.045]">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-white truncate">{transaction.description}</div>
+                            <div className="text-xs text-white/60 mt-1">{new Date(transaction.date).toLocaleDateString()}</div>
+                            {transaction.recurring && (
+                              <div className="text-[11px] text-[var(--module-color-400)] mt-1">
+                                ↻ {transaction.recurringFrequency}
+                              </div>
+                            )}
+                          </div>
+                          <div className={cn(
+                            "text-right whitespace-nowrap font-bold tabular-nums text-sm",
+                            transaction.type === 'income' ? 'text-emerald-400' : 'text-red-400'
+                          )}>
+                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, currency)}
+                          </div>
                         </div>
-                      )}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="inline-block px-2 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
+                            {transaction.category}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <NeuralButton
+                              variant="ghost"
+                              onClick={() => openEdit(transaction)}
+                              disabled={disabled}
+                              className="p-1.5 h-auto min-h-[40px] text-white/60 hover:text-white"
+                              aria-label="Edit transaction"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </NeuralButton>
+                            <NeuralButton
+                              variant="ghost"
+                              onClick={() => onDeleteTransaction(transaction.id)}
+                              disabled={disabled}
+                              className="p-1.5 h-auto min-h-[40px] text-white/60 hover:text-red-400"
+                              aria-label="Delete transaction"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </NeuralButton>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className={cn(
-                      "text-right whitespace-nowrap font-bold tabular-nums text-sm",
-                      transaction.type === 'income' ? 'text-emerald-400' : 'text-red-400'
-                    )}>
-                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, currency)}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-block px-2 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md bg-[var(--module-accent-muted)] text-[var(--module-color-400)] border border-[var(--module-accent-border)]">
-                      {transaction.category}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <NeuralButton
-                        variant="ghost"
-                        onClick={() => openEdit(transaction)}
-                        disabled={disabled}
-                        className="p-1.5 h-auto min-h-[40px] text-white/60 hover:text-white"
-                        aria-label="Edit transaction"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </NeuralButton>
-                      <NeuralButton
-                        variant="ghost"
-                        onClick={() => onDeleteTransaction(transaction.id)}
-                        disabled={disabled}
-                        className="p-1.5 h-auto min-h-[40px] text-white/60 hover:text-red-400"
-                        aria-label="Delete transaction"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </NeuralButton>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Desktop table view */}
-            <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[calc(100dvh-16rem)]">
+            {/* Desktop table view — virtualized */}
+            <div ref={desktopScrollRef} className="hidden md:block overflow-x-auto overflow-y-auto max-h-[calc(100dvh-16rem)]">
               <table className="w-full" role="table">
                 <thead>
                   <tr className="border-b border-white/[0.12] sticky top-0 z-10 backdrop-blur-xl bg-slate-900/85">
@@ -464,16 +510,36 @@ export function TransactionManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTransactions.map((transaction) => (
+                  {desktopVirtualizer.getVirtualItems().length > 0 && (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        style={{ height: desktopVirtualizer.getVirtualItems()[0].start, padding: 0, border: 'none' }}
+                      />
+                    </tr>
+                  )}
+                  {desktopVirtualizer.getVirtualItems().map((virtualItem) => (
                     <TransactionRow
-                      key={transaction.id}
-                      transaction={transaction}
+                      key={filteredTransactions[virtualItem.index].id}
+                      transaction={filteredTransactions[virtualItem.index]}
                       currency={currency}
                       disabled={disabled}
                       onEdit={openEdit}
                       onDelete={onDeleteTransaction}
                     />
                   ))}
+                  {desktopVirtualizer.getVirtualItems().length > 0 && (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        style={{
+                          height: desktopVirtualizer.getTotalSize() - (desktopVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                          padding: 0,
+                          border: 'none',
+                        }}
+                      />
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

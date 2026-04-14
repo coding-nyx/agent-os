@@ -71,7 +71,7 @@ export class SpineEventService {
     source?: string;
     startDate?: number;
     endDate?: number;
-  }): Promise<LedgerEvent[]> {
+  }, userId?: string | null): Promise<LedgerEvent[]> {
     if (!this.dataLayer) {
       console.warn('[SpineEventService] Data layer not available');
       return [];
@@ -84,8 +84,12 @@ export class SpineEventService {
       if (filter?.startDate) where.push({ field: 'timestamp', op: '>=', value: filter.startDate });
       if (filter?.endDate) where.push({ field: 'timestamp', op: '<=', value: filter.endDate });
 
+      const collection = userId
+        ? `ledger_events/${userId}/events`
+        : 'ledger_events_guest';
+
       const query: NexusQuery = {
-        collection: 'ledger_events',
+        collection,
         ...(where.length > 0 && { where }),
         orderBy: [{ field: 'timestamp', direction: 'desc' }],
         limit: 100,
@@ -99,7 +103,7 @@ export class SpineEventService {
     }
   }
 
-  async getFinancialSummary(period: 'week' | 'month' | 'quarter' | 'year'): Promise<{
+  async getFinancialSummary(period: 'week' | 'month' | 'quarter' | 'year', userId?: string | null): Promise<{
     totalIncome: number;
     totalExpenses: number;
     netCashflow: number;
@@ -132,7 +136,7 @@ export class SpineEventService {
         type: 'TRANSACTION_CREATED' as LedgerSpineEventType,
         startDate,
         endDate
-      });
+      }, userId);
 
       const incomeEvents = events.filter(e => e.data.transactionType === 'income');
       const expenseEvents = events.filter(e => e.data.transactionType === 'expense');
@@ -162,7 +166,7 @@ export class SpineEventService {
     }
   }
 
-  async getGoalProgress(goalId: string): Promise<{
+  async getGoalProgress(goalId: string, userId?: string | null): Promise<{
     goalName: string;
     currentAmount: number;
     targetAmount: number;
@@ -184,7 +188,7 @@ export class SpineEventService {
       const events = await this.getLedgerEvents({
         type: 'GOAL_PROGRESS' as LedgerSpineEventType,
         source: goalId
-      });
+      }, userId);
 
       if (events.length === 0) {
         return {
