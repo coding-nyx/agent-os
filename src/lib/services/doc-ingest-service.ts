@@ -1,4 +1,3 @@
-import Papa from 'papaparse';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import workerSrc from 'pdfjs-dist/build/pdf.worker?url';
 import { extractTextWithVision } from './vision-analysis-service';
@@ -86,7 +85,8 @@ export function validateDocumentFile(file: File) {
   return { valid: true, error: null, errorCode: null };
 }
 
-function parseCsv(text: string): string {
+export async function parseCsv(text: string): Promise<string> {
+  const Papa = (await import('papaparse')).default;
   const parsed = Papa.parse<string[]>(text, { skipEmptyLines: true });
   const rows = Array.isArray(parsed.data) ? (parsed.data as string[][]) : [];
   return rows
@@ -268,7 +268,7 @@ export async function parseDocument(
     case 'csv': {
       notes.push('Parsed as CSV tabular data.');
       const rawText = new TextDecoder('utf-8').decode(buffer);
-      text = parseCsv(rawText);
+      text = await parseCsv(rawText);
       break;
     }
     case 'md': {

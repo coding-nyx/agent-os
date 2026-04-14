@@ -15,7 +15,6 @@
 //   • parseAnalysisResponse never throws — it returns an empty result on
 //     malformed LLM output so the caller can degrade gracefully.
 
-import Papa from 'papaparse';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import workerSrc from 'pdfjs-dist/build/pdf.worker?url';
 
@@ -154,6 +153,7 @@ export class DocumentAnalysisService {
     const rawText = new TextDecoder('utf-8').decode(buffer);
 
     if (file.type === 'text/csv' || filename.endsWith('.csv')) {
+      const Papa = (await import('papaparse')).default;
       const parsed = Papa.parse<string[]>(rawText, { skipEmptyLines: true });
       const rows = Array.isArray(parsed.data) ? (parsed.data as string[][]) : [];
       const tabular = rows

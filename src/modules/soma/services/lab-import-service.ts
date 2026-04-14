@@ -1,4 +1,3 @@
-import Papa from 'papaparse';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import workerSrc from 'pdfjs-dist/build/pdf.worker?url';
 import { Spine } from '@/lib/spine/spine-event-bus';
@@ -31,7 +30,8 @@ async function parsePdf(buffer: ArrayBuffer): Promise<string> {
   return chunks.join('\n');
 }
 
-function parseCsv(text: string): string {
+async function parseCsv(text: string): Promise<string> {
+  const Papa = (await import('papaparse')).default;
   const parsed = Papa.parse<string[]>(text, { skipEmptyLines: true });
   const rows = Array.isArray(parsed.data) ? (parsed.data as string[][]) : [];
   return rows
@@ -55,7 +55,7 @@ export async function parseLabFile(file: File): Promise<LabImportResult> {
     const rawText = new TextDecoder('utf-8').decode(buffer);
     if (file.type === 'text/csv' || filename.endsWith('.csv')) {
       notes.push('Parsed as CSV.');
-      result = { text: parseCsv(rawText), notes };
+      result = { text: await parseCsv(rawText), notes };
     } else {
       notes.push('Parsed as plain text.');
       result = { text: rawText, notes };
