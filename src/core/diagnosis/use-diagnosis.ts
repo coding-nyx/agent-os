@@ -10,6 +10,7 @@ import {
 import type { ParseProgressEvent, DocumentParseResult } from '@/lib/services/doc-ingest-service';
 import { saveDocumentRecord, subscribeDocuments } from '@/lib/services/document-service';
 import { deleteDocumentsByThread } from '@/lib/services/document-service';
+import { RagIngestionService } from '@/lib/services/rag/rag-ingestion-service';
 import type { DocumentRecord, MessageContent } from '@/lib/types';
 import { getDiagnosisSpec } from './diagnosis-registry';
 import type {
@@ -337,6 +338,15 @@ export function useDiagnosis({
             encryptionKey,
           });
           setActiveDocId(record.id);
+        }
+
+        // Fire-and-forget: chunk + embed + write to rag_chunks for RAG retrieval
+        if (user?.uid) {
+          RagIngestionService.ingest(result.text, {
+            userId: user.uid,
+            moduleId,
+            source: result.metadata.filename,
+          }).catch(() => {/* logged internally */});
         }
 
         // Build analysis prompt and send to AI
