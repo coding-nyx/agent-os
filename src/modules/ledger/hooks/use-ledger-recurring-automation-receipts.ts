@@ -9,10 +9,38 @@ import type {
 } from '../services/ledger-intake-service';
 import { computeNetLiquidAssets } from '../services/aggregation/account-aggregation';
 import { computeCashFlowForecast } from '../services/aggregation/forecast-aggregation';
-import { getDefaultAutomationRules } from '../services/automation-engine';
 import { upsertCurrencyRate } from '../services/currency-service';
 import { runExport } from '../services/export-service';
 import { postSingleRule, skipNextOccurrence } from '../services/recurring-engine';
+
+// Default automation rules — mirrors LedgerAutomationEngine.getDefaultRules() in cortex-logic.
+// Source of truth is cortex; these exist here only for the hook's direct-profile mutation path.
+const DEFAULT_AUTOMATION_RULES: Array<Omit<AutomationRule, 'id' | 'createdAt'>> = [
+  {
+    name: 'High Dining Spend',
+    isEnabled: true,
+    triggerType: 'spending_exceeds' as AutomationTriggerType,
+    triggerThreshold: 300,
+    triggerCategory: 'Food',
+    suggestionType: 'review_budget' as AutomationSuggestionType,
+    suggestionMessage: 'Your dining/food spend exceeded $300 this month. Consider meal prepping or cooking at home to save.',
+  },
+  {
+    name: 'Low Balance Warning',
+    isEnabled: true,
+    triggerType: 'balance_below' as AutomationTriggerType,
+    triggerThreshold: 500,
+    suggestionType: 'transfer_to_savings' as AutomationSuggestionType,
+    suggestionMessage: 'Your total balance dropped below $500. Review upcoming expenses and consider pausing non-essential subscriptions.',
+  },
+  {
+    name: 'Month-End Snapshot',
+    isEnabled: true,
+    triggerType: 'month_end' as AutomationTriggerType,
+    suggestionType: 'record_snapshot' as AutomationSuggestionType,
+    suggestionMessage: 'End of month \u2014 a good time to record a net worth snapshot and review your budget performance.',
+  },
+];
 
 export interface LedgerRecurringActions {
   handleAddRecurringRule: (data: Omit<RecurringRule, 'id' | 'createdAt' | 'nextDueDate'>) => void;
@@ -156,9 +184,14 @@ export function useLedgerAutomation(
 
   const handleAddDefaultAutomationRules = useCallback(() => {
     if (!profile) return;
-    const defaults = getDefaultAutomationRules();
+    const now = new Date().toISOString();
     const existing = profile.automationRules ?? [];
-    persistUpdate({ ...profile, automationRules: [...existing, ...defaults], updatedAt: new Date().toISOString() });
+    const existingTriggers = new Set(existing.map(r => r.triggerType));
+    const toAdd: AutomationRule[] = DEFAULT_AUTOMATION_RULES
+      .filter(d => !existingTriggers.has(d.triggerType))
+      .map(d => ({ ...d, id: crypto.randomUUID(), createdAt: now }));
+    if (toAdd.length === 0) return;
+    persistUpdate({ ...profile, automationRules: [...existing, ...toAdd], updatedAt: now });
   }, [profile, persistUpdate]);
 
   return {

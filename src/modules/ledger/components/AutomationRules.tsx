@@ -21,7 +21,7 @@
  *   • Filtering dismissed: O(r) with a Set lookup for O(1) per check.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
 import {
   Zap,
   ZapOff,
@@ -40,9 +40,7 @@ import { NeuralInput } from '@/core/components/NeuralInput';
 import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import { EmptyState } from '@/core/components/EmptyState';
 import { cn } from '@/lib/utils';
-import {
-  evaluateAutomationRules,
-} from '../services/automation-engine';
+import { subscribeToSuggestions, getSuggestionsSnapshot, pokeSuggestions } from '@/cortex-bridge/automation-bridge';
 import type {
   AutomationRule,
   AutomationSuggestion,
@@ -537,13 +535,24 @@ export default function AutomationRules({
   );
 
   /**
-   * Run evaluation and filter dismissed suggestions.
-   * Re-computed only when profile changes — not on modal or tab state changes.
-   * O(r·t + r) where r = rules, t = transactions.
+   * Poke the bridge to (re-)evaluate whenever the profile changes.
+   * The bridge cache is shared with use-ledger-derived-data so only one
+   * evaluation fires per profile update despite multiple subscribers.
+   */
+  useEffect(() => {
+    pokeSuggestions(JSON.stringify(profile));
+  }, [profile]);
+
+  /** Subscribe to the bridge cache for live suggestion updates. */
+  const suggestionsJson = useSyncExternalStore(subscribeToSuggestions, getSuggestionsSnapshot);
+
+  /**
+   * Filter dismissed suggestions. Re-computed only when the cache or dismissed
+   * set changes — not on modal or tab state changes.
    */
   const activeSuggestions = useMemo<AutomationSuggestion[]>(
-    () => evaluateAutomationRules(profile).filter(s => !dismissedRuleIds.has(s.ruleId)),
-    [profile, dismissedRuleIds],
+    () => (JSON.parse(suggestionsJson) as AutomationSuggestion[]).filter(s => !dismissedRuleIds.has(s.ruleId)),
+    [suggestionsJson, dismissedRuleIds],
   );
 
   const rules: AutomationRule[] = profile.automationRules ?? [];

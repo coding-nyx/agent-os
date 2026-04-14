@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
@@ -11,27 +11,15 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { SectionHeader } from '@/core/components/SectionHeader';
 import { NeuralTabGroup } from '@/core/components/NeuralTabGroup';
 import { NeuralButton } from '@/core/components/NeuralButton';
-import { Camera, FileUp, FolderOpen, Plus, Settings, LayoutDashboard, Receipt as ReceiptIcon, PiggyBank, Target, Scale, Globe } from 'lucide-react';
-import { Spine } from '@/lib/spine/spine-event-bus';
-import type { SpineEvent } from '@/lib/types';
-import { LEDGER_TOAST_EVENTS } from '@/modules/ledger/actions/ledger-field-actions';
+import { Camera, FileUp, FolderOpen, Plus, Settings, Globe } from 'lucide-react';
 import {
-  FinancialPlan,
   LedgerIntakeProfile,
-  Transaction,
-  BudgetCategory,
-  FinancialGoal,
   saveLedgerProfile,
 } from './services/ledger-intake-service';
-import { computeBudgetActuals, matchCategoryToTransaction } from './services/aggregation';
 import { useSchemaRegistry } from '@/lib/hooks/use-schema-registry';
 import { useExtensionFieldValues } from '@/lib/hooks/use-extension-field-values';
-import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import { computeResonanceROI } from './services/resonance-roi-service';
 import { useLedgerCrossVerify } from './hooks/use-ledger-cross-verify';
 import { LedgerNotificationSettingsPanel } from './components/LedgerNotificationSettingsPanel';
-import { SchemaRegistry } from '@/lib/schema-registry';
-import { FieldType, type FieldDefinition } from '@/lib/field-system/types';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { LedgerActionsProvider } from './context/LedgerActionsContext';
 import { DashboardTab } from './tabs/DashboardTab';
@@ -44,6 +32,7 @@ import { RecurringTab } from './tabs/RecurringTab';
 import { FieldsTab } from './components/FieldsTab';
 import { NetWorthDashboard } from './components/NetWorthDashboard';
 import { CashFlowForecast } from './components/CashFlowForecast';
+import { LedgerOverviewSummaryCards } from './components/LedgerOverviewSummaryCards';
 import AlertsCenter from './components/AlertsCenter';
 import SubscriptionManager from './components/SubscriptionManager';
 import InvestmentPortfolio from './components/InvestmentPortfolio';
@@ -58,7 +47,6 @@ import ReceiptLibrary from './components/ReceiptLibrary';
 import CurrencySettings from './components/CurrencySettings';
 import { useRecurringEngine } from './hooks/use-recurring-engine';
 import { computeNetLiquidAssets } from './services/aggregation/account-aggregation';
-import { evaluateAutomationRules } from './services/automation-engine';
 
 // ─── Extracted domain hooks ─────────────────────────────────────────────────
 import { useLedgerTransactions } from './hooks/use-ledger-transactions';
@@ -69,34 +57,9 @@ import { useLedgerAlerts, useLedgerTax } from './hooks/use-ledger-alerts-tax';
 import { useLedgerCredit, useLedgerInsurance, useLedgerRetirement } from './hooks/use-ledger-credit-insurance-retirement';
 import { useLedgerRecurring, useLedgerAutomation, useLedgerReceipts, useLedgerCurrency, useLedgerExport } from './hooks/use-ledger-recurring-automation-receipts';
 import { useLedgerDocumentIntake } from './hooks/use-ledger-document-intake';
-
-function createStarterPlan(profile: LedgerIntakeProfile): FinancialPlan {
-  const totalFixed = profile.fixedExpenses.reduce((sum, item) => sum + item.amount, 0);
-  const totalVariable = profile.variableExpenses.reduce((sum, item) => sum + item.amount, 0);
-  const baselineSpend = totalFixed + totalVariable;
-  const monthlyTarget = Math.max(profile.monthlyIncome - baselineSpend, 0);
-  const now = new Date().toISOString();
-
-  return {
-    id: crypto.randomUUID(),
-    title: 'Starter Financial Plan',
-    summary: 'Baseline cashflow stabilization with weekly execution checkpoints.',
-    monthlyTarget,
-    allocation: {
-      essentials: 60,
-      growth: 25,
-      buffer: 15
-    },
-    tasks: [
-      'Track every variable expense for the next 7 days.',
-      'Cap discretionary spending at 80% of current baseline.',
-      'Apply first buffer deposit to emergency reserve this month.'
-    ],
-    status: 'active',
-    createdAt: now,
-    updatedAt: now
-  };
-}
+import { useLedgerExtensionFields } from './hooks/use-ledger-extension-fields';
+import { useLedgerDerivedData } from './hooks/use-ledger-derived-data';
+import { useLedgerBootstrap } from './hooks/use-ledger-bootstrap';
 
 type LedgerTab = 'overview' | 'transactions' | 'budget' | 'goals' | 'tax' | 'accounts' | 'recurring' | 'subscriptions' | 'investments' | 'calendar' | 'retirement' | 'credit' | 'insurance' | 'automation' | 'receipts';
 
@@ -126,11 +89,9 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
   const { sendMessage, analyzeImage } = useAI();
 
   const agentAlias = globalSoul?.displayNames?.ledger || 'Ledger';
-  const plannerBootstrappedRef = useRef(false);
   const [activeTab, setActiveTab] = useState<LedgerTab>('overview');
   const [isAddTransactionModalOpen, setIsAddTransactionModalOpen] = useState(false);
   const [isCurrencySettingsOpen, setIsCurrencySettingsOpen] = useState(false);
-  const [recentEvents, setRecentEvents] = useState<SpineEvent[]>([]);
   const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
 
   // Extension fields — custom user-defined financial tracking fields
@@ -187,99 +148,24 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
   const { pendingRules } = useRecurringEngine(profile, handleRecurringEngineUpdate);
 
   // ─── Derived data ────────────────────────────────────────────────────────
-  const transactions = useMemo(() => profile?.transactions ?? [], [profile?.transactions]);
+  const {
+    transactions,
+    budgetCategories,
+    financialGoals,
+    automationSuggestions,
+    categories,
+    budgetWithActuals,
+  } = useLedgerDerivedData(profile);
 
-  const transactionTotals = useMemo(() => {
-    let totalIncome = 0;
-    let totalExpenses = 0;
-    for (const t of transactions) {
-      if (t.type === 'income') totalIncome += t.amount;
-      else if (t.type === 'expense') totalExpenses += t.amount;
-    }
-    return { totalIncome, totalExpenses };
-  }, [transactions]);
-
-  const budgetCategories = useMemo(() => profile?.budgetCategories ?? [], [profile?.budgetCategories]);
-  const financialGoals = useMemo(() => profile?.financialGoals ?? [], [profile?.financialGoals]);
-
-  const automationSuggestions = useMemo(() => {
-    if (!profile) return [];
-    return evaluateAutomationRules(profile);
-  }, [profile]);
-
-  const categories = useMemo((): string[] => {
-    if (!profile) return ['Groceries', 'Utilities', 'Transportation', 'Entertainment', 'Healthcare', 'Other'];
-    const expenseCategories = [
-      ...profile.fixedExpenses.map(e => e.label),
-      ...profile.variableExpenses.map(e => e.label),
-    ];
-    const unique = Array.from(new Set(expenseCategories));
-    const defaults = ['Groceries', 'Utilities', 'Transportation', 'Entertainment', 'Healthcare', 'Other'];
-    defaults.forEach(cat => { if (!unique.includes(cat)) unique.push(cat); });
-    return unique;
-  }, [profile]);
-
-  const budgetWithActuals = useMemo((): BudgetCategory[] => {
-    const performances = computeBudgetActuals(
-      profile?.transactions ?? [],
-      profile?.budgetCategories ?? [],
-    );
-    const actualById = new Map<string, number>(
-      performances.map((p) => [p.categoryId, p.actual]),
-    );
-    return budgetCategories.map((cat) => ({
-      ...cat,
-      spent: actualById.get(cat.id) ?? 0,
-    }));
-  }, [profile?.transactions, profile?.budgetCategories, budgetCategories]);
-
-  // ─── Extension values state for FieldsTab ───────────────────────────────
-  const [extensionValues, setExtensionValues] = useState<Record<string, unknown>>(
-    () => profile?.extensionValues ?? {}
-  );
+  // ─── Extension fields ─────────────────────────────────────────────────────
+  const {
+    extensionValues,
+    handleExtensionValueChange,
+    handleAddField,
+    handleDeleteField,
+  } = useLedgerExtensionFields(profile, persistUpdate);
 
   const [extraDebtPayment, setExtraDebtPayment] = useState(0);
-
-  const extensionValuesSynced = useRef(false);
-  useEffect(() => {
-    if (!extensionValuesSynced.current && profile?.extensionValues) {
-      setExtensionValues(profile.extensionValues);
-      extensionValuesSynced.current = true;
-    }
-  }, [profile?.extensionValues]);
-
-  const handleExtensionValueChange = useCallback((fieldId: string, value: unknown) => {
-    setExtensionValues(prev => {
-      const next = { ...prev, [fieldId]: value };
-      if (profile) {
-        persistUpdate({ ...profile, extensionValues: next });
-      }
-      return next;
-    });
-  }, [profile, persistUpdate]);
-
-  const handleAddField = useCallback(() => {
-    const newField: FieldDefinition = {
-      id: crypto.randomUUID(),
-      name: 'Custom Field',
-      type: FieldType.TEXT,
-      required: false,
-    };
-    SchemaRegistry.extendSchema('ledger', [newField]).catch(err =>
-      console.error('[LedgerPage] Failed to add custom field:', err)
-    );
-  }, []);
-
-  const handleDeleteField = useCallback((fieldId: string) => {
-    SchemaRegistry.removeExtension('ledger', fieldId).catch(err =>
-      console.error('[LedgerPage] Failed to delete custom field:', err)
-    );
-    setExtensionValues(prev => {
-      const next = { ...prev };
-      delete next[fieldId];
-      return next;
-    });
-  }, []);
 
   const handleProfileUpdate = useCallback((updates: Partial<LedgerIntakeProfile>) => {
     if (!profile) return;
@@ -287,62 +173,15 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
   }, [profile, persistUpdate]);
 
   // ─── Bootstrap & side-effects ─────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!profile || !profile.onboardingComplete || plannerBootstrappedRef.current) return;
-    if (profile.activePlanId) return;
-
-    const starterPlan = createStarterPlan(profile);
-    const nextProfile: LedgerIntakeProfile = {
-      ...profile,
-      plans: [starterPlan, ...profile.plans.filter((plan) => plan.id !== starterPlan.id)].slice(0, 50),
-      activePlanId: starterPlan.id,
-      plannerBotState: 'active',
-      lastPlanGeneratedAt: new Date().toISOString(),
-      summary: profile.summary || 'Starter plan auto-generated from current baseline.'
-    };
-
-    plannerBootstrappedRef.current = true;
-    persistUpdate(nextProfile);
-  }, [profile, persistUpdate]);
-
-  useEffect(() => {
-    if (!user || isGuest || !profile || !profile.onboardingComplete) return;
-
-    const metrics = computeResonanceROI(profile);
-    const current = globalSoul?.crossFunctionalState?.resource;
-    const hasChange =
-      metrics.resonanceROI !== current?.resonanceROI ||
-      metrics.financialFriction !== current?.financialFriction;
-
-    if (!hasChange) return;
-
-    GlobalProjectionService.updateCrossFunctionalState(user.uid, {
-      resource: {
-        resonanceROI: metrics.resonanceROI,
-        financialFriction: metrics.financialFriction
-      }
-    }).catch((err) => console.error('Failed to update resonance ROI:', err));
-  }, [user, isGuest, profile, globalSoul?.crossFunctionalState?.resource]);
-
-  useEffect(() => {
-    const unsubs = (LEDGER_TOAST_EVENTS as any[]).map((evtType) =>
-      Spine.on(evtType, (evt: SpineEvent) => {
-        setRecentEvents((prev) => [evt, ...prev].slice(0, 10));
-      })
-    );
-    return () => unsubs.forEach((fn) => fn());
-  }, []);
-
-  useEffect(() => {
-    if (profile?.onboardingComplete && ai.messages.length === 0 && !ai.isProcessing && !ai.streamingText) {
-      const greeting = !profile.activePlanId 
-        ? `No active plan was found. I created a starter financial plan and activated planner mode. Tell me what constraint to optimize first: debt reduction, savings speed, or monthly cashflow.`
-        : `Resource link active. I am ${agentAlias}. I optimize your budget, spending strategy, and plan execution. What should we optimize first this week?`;
-      
-      ai.setMessages([{ role: 'assistant', content: greeting }]);
-    }
-  }, [profile?.onboardingComplete, profile?.activePlanId, agentAlias, ai.messages.length, ai.isProcessing, ai.streamingText, ai.setMessages]);
+  const { recentEvents } = useLedgerBootstrap({
+    profile,
+    persistUpdate,
+    userId: user?.uid,
+    isGuest,
+    globalSoul,
+    agentAlias,
+    ai,
+  });
 
   // Memoize the context actions object so LedgerActionsContext.value stays stable
   const ledgerActions = useMemo(() => ({
@@ -600,79 +439,12 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
                     />
 
                     {/* P3 Summary Row */}
-                    {(automationSuggestions.length > 0 || (profile.creditScoreHistory ?? []).length > 0 || (profile.insurancePolicies ?? []).length > 0 || profile.lastRetirementProjection) && (
-                      <div className="space-y-4">
-                        {automationSuggestions.length > 0 && (
-                          <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-                            <span className="mt-0.5 text-amber-400 text-lg">💡</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-amber-300">{automationSuggestions[0].ruleName}</p>
-                              <p className="text-xs text-amber-200/70 mt-0.5">{automationSuggestions[0].message}</p>
-                            </div>
-                            <button
-                              onClick={() => automationActions.handleDismissSuggestion(automationSuggestions[0].ruleId)}
-                              className="text-amber-400/60 hover:text-amber-300 text-xs px-2 py-1 rounded shrink-0"
-                            >
-                              Dismiss
-                            </button>
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          {(profile.creditScoreHistory ?? []).length > 0 && (() => {
-                            const sorted = [...(profile.creditScoreHistory ?? [])].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime());
-                            const latest = sorted[0];
-                            const tier = latest.score >= 800 ? 'Exceptional' : latest.score >= 740 ? 'Very Good' : latest.score >= 670 ? 'Good' : latest.score >= 580 ? 'Fair' : 'Poor';
-                            const color = latest.score >= 740 ? '#10b981' : latest.score >= 670 ? '#3b82f6' : latest.score >= 580 ? '#f59e0b' : '#ef4444';
-                            return (
-                              <button onClick={() => setActiveTab('credit')} className="text-left rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.07] transition-colors p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-lg">🛡️</span>
-                                  <span className="text-xs text-white/60 font-medium uppercase tracking-wide">Credit Score</span>
-                                </div>
-                                <div className="text-2xl font-bold" style={{ color }}>{latest.score}</div>
-                                <div className="text-xs text-white/60 mt-0.5">{tier} · {latest.bureau}</div>
-                              </button>
-                            );
-                          })()}
-
-                          {(profile.insurancePolicies ?? []).filter(p => p.isActive).length > 0 && (() => {
-                            const active = (profile.insurancePolicies ?? []).filter(p => p.isActive);
-                            const totalMonthly = active.reduce((s, p) => s + p.monthlyPremium, 0);
-                            const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: profile.currency, maximumFractionDigits: 0 }).format(n);
-                            const soonRenewing = active.filter(p => {
-                              const days = (new Date(p.nextRenewalDate).getTime() - Date.now()) / 86_400_000;
-                              return days >= 0 && days <= 30;
-                            }).length;
-                            return (
-                              <button onClick={() => setActiveTab('insurance')} className="text-left rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.07] transition-colors p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-lg">🔒</span>
-                                  <span className="text-xs text-white/60 font-medium uppercase tracking-wide">Insurance</span>
-                                </div>
-                                <div className="text-2xl font-bold text-emerald-400">{fmt(totalMonthly)}<span className="text-sm font-normal text-white/50">/mo</span></div>
-                                <div className="text-xs text-white/60 mt-0.5">{active.length} policies{soonRenewing > 0 ? ` · ⚠ ${soonRenewing} renewing soon` : ''}</div>
-                              </button>
-                            );
-                          })()}
-
-                          {profile.lastRetirementProjection && (() => {
-                            const proj = profile.lastRetirementProjection!;
-                            const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: profile.currency, notation: 'compact', maximumFractionDigits: 1 }).format(n);
-                            return (
-                              <button onClick={() => setActiveTab('retirement')} className="text-left rounded-xl border border-white/[0.09] bg-white/[0.045] hover:bg-white/[0.07] transition-colors p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-lg">🏖️</span>
-                                  <span className="text-xs text-white/60 font-medium uppercase tracking-wide">Retirement</span>
-                                </div>
-                                <div className={`text-2xl font-bold ${proj.onTrack ? 'text-emerald-400' : 'text-amber-400'}`}>{fmt(proj.projectedNestEgg)}</div>
-                                <div className="text-xs text-white/60 mt-0.5">{proj.onTrack ? '✅ On track' : '⚠ Behind'} · {proj.yearsToRetirement}y left</div>
-                              </button>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    )}
+                    <LedgerOverviewSummaryCards
+                      profile={profile}
+                      automationSuggestions={automationSuggestions}
+                      onDismissSuggestion={automationActions.handleDismissSuggestion}
+                      onNavigateTab={setActiveTab}
+                    />
 
                     <ExportPanel
                       profile={profile}
