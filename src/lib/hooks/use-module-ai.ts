@@ -9,7 +9,6 @@ import { useAuth } from '../auth-context';
 import { Message, MessageContent, GuestQuota, ContextPolicy, NeuralStateVectorPatch } from '../types';
 import { GuestQuotaService } from '../services/guest-quota-service';
 import { ModuleMemoryService } from '../services/module-memory-service';
-import { PersonaFactory } from '@/lib/ai-adapters/persona-factory';
 import { GlobalProjectionService } from '../services/global-projection-service';
 import { Spine } from '../spine/spine-event-bus';
 import { ActionHub } from '../actions/action-hub';
@@ -94,11 +93,11 @@ const MAX_MESSAGES = 200;
 const HISTORY_WINDOW = 40;
 
 /**
- * Fallback window used while a session summary is being generated (first
- * overflow) so the LLM still gets reasonable context before the summary
- * is ready.
+ * Verbatim history window used while a session summary is being generated (first overflow),
+ * so the LLM still gets reasonable context before the summary is ready.
+ * Mirrors cortex-logic MemoryManager.FALLBACK_CONTEXT_WINDOW.
  */
-const HISTORY_FALLBACK_WINDOW = 80;
+const HISTORY_FALLBACK_WINDOW = 40;
 const OPENROUTER_AUTH_ERROR_MESSAGE = 'OpenRouter authentication failed (401). Add a valid API key in Settings -> Models.';
 
 function trimToCharLimit(text: string, limit: number): string {
@@ -263,7 +262,7 @@ export function useModuleAI({
   getSessionProgressBlock,
   moduleContext,
 }: UseModuleAIOptions) {
-  const { streamMessage, sendMessage, generateJSON } = useAI();
+  const { streamWithMemory, sendMessage, generateJSON } = useAI();
   const threadIdRef = useRef<string | undefined>(undefined);
   const openRouterAuthBlockedRef = useRef(false);
   const { enhanceContext, enhanceContextForModule } = useGlobalSoulActions();
@@ -368,6 +367,7 @@ export function useModuleAI({
   const pendingStreamTextRef = useRef('');
   const pendingAIStateRef = useRef<{ isThinking: boolean; isActing: boolean; currentActionType: string | null }>({ isThinking: false, isActing: false, currentActionType: null });
   const streamRafRef = useRef<number>(0);
+  const idleConsolidationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }) => void) | null>(null);
   const recoveryReplayKeyRef = useRef<string | null>(null);
 
@@ -437,6 +437,10 @@ export function useModuleAI({
       if (streamRafRef.current) {
         cancelAnimationFrame(streamRafRef.current);
         streamRafRef.current = 0;
+      }
+      if (idleConsolidationTimerRef.current) {
+        clearTimeout(idleConsolidationTimerRef.current);
+        idleConsolidationTimerRef.current = null;
       }
     };
   }, []);
@@ -820,36 +824,20 @@ export function useModuleAI({
         }
       }
 
-      // --- Memory retrieval — use pre-warmed cache on first message, then fetch fresh ---
-      const recentHistorySlice = messagesRef.current
-          .slice(-3)
-          .map((msg) => `${msg.role}: ${contentToText(msg.content)}`)
-          .join('\n');
-        const memoryQuery = `${semanticContentText}\n${recentHistorySlice}`;
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
 
-        let memoryResult: MemoryContext;
-        if (resolvedContextPolicy === 'doc-only') {
-          memoryResult = { recalledSessionsSummary: '', recalledFactsSummary: '' };
-        } else if (prewarmedMemoryRef.current) {
-          memoryResult = prewarmedMemoryRef.current;
-          prewarmedMemoryRef.current = null; // consume once
-        } else {
-          memoryResult = await retrieveMemoryContext(memoryQuery);
-        }
-        const { recalledSessionsSummary, recalledFactsSummary, status: memoryStatus } = memoryResult;
+        const sendStartTime = Date.now();
+        const { historySlice } = buildHistoryForStream(
+          historyBeforeUserMsg,
+          userMsg.threadId,
+          sessionSummaryRef.current,
+        );
 
-        const progressBlock = getSessionProgressBlockRef.current?.();
-        const baseWithProgress = progressBlock
-          ? `${baseRoleRef.current}\n\n${progressBlock}`
-          : baseRoleRef.current;
+        // Snapshot prewarmed memory before the async callback (retrieveMemory) closes over it.
+        const prewarmed = prewarmedMemoryRef.current;
+        if (prewarmed) prewarmedMemoryRef.current = null;
 
-        const finalSystemPrompt = PersonaFactory.generateSystemPrompt({
-          moduleId,
-          baseRole: baseWithProgress,
-          userProfile: profileRef.current,
-          globalSoul: globalSoulRef.current,
-          moduleContext: moduleContextRef.current
-        });
         const now = new Date();
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const localTime = now.toLocaleString(undefined, {
@@ -867,12 +855,10 @@ export function useModuleAI({
         const offsetHours = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0');
         const offsetMins = String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
         const isoWithOffset = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}${offsetSign}${offsetHours}:${offsetMins}`;
-
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const tomorrow = new Date(now);
         tomorrow.setDate(now.getDate() + 1);
         const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
-
         const timeContext = [
           '[CURRENT_TIME]',
           `ISO: ${isoWithOffset}`,
@@ -881,51 +867,47 @@ export function useModuleAI({
           `Today: ${todayStr}`,
           `Tomorrow: ${tomorrowStr}`,
         ].join('\n');
-        const finalSystemPromptWithTime = `${finalSystemPrompt}\n\n${timeContext}`;
 
-        const memorySummarySections = [
-          `[MODULE]: ${moduleId}`,
-          recalledSessionsSummary ? `[RELEVANT PAST SESSIONS]\n${recalledSessionsSummary}` : '',
-          recalledFactsSummary ? `[STABLE FACTS]\n${recalledFactsSummary}` : ''
-        ]
-          .filter(Boolean)
-          .join('\n\n');
+        const progressBlock = getSessionProgressBlockRef.current?.();
+        const baseWithProgress = progressBlock
+          ? `${baseRoleRef.current}\n\n${progressBlock}`
+          : baseRoleRef.current;
 
-        const cappedMemorySummary = trimToCharLimit(memorySummarySections, MEMORY_SECTION_CHAR_LIMIT);
-        const memoryContextFacts = recalledFactsSummary
-          ? recalledFactsSummary.split('\n').filter(Boolean)
-          : [];
+        // KMP PersonaFactory reads baseRole as the persona string; MemoryManager injects timeContext.
+        const moduleContextJson = JSON.stringify({
+          ...(moduleContextRef.current ?? {}),
+          baseRole: baseWithProgress,
+          timeContext,
+        });
 
-        // C-1: create AbortController for this stream
-        const controller = new AbortController();
-        abortControllerRef.current = controller;
-
-        const sendStartTime = Date.now();
-        const { historySlice, summaryBlock } = buildHistoryForStream(
-          historyBeforeUserMsg,
-          userMsg.threadId,
-          sessionSummaryRef.current,
-        );
-
-        const systemPromptWithSummary = summaryBlock
-          ? `${finalSystemPromptWithTime}\n\n[SESSION HISTORY SUMMARY — earlier in this conversation]\n${summaryBlock}\n[END SUMMARY — the most recent messages follow in history]`
-          : finalSystemPromptWithTime;
-
-        const { response } = await streamMessage(
+        const { response } = await streamWithMemory(
           content,
-          resolvedEnhanceContextRef.current({
+          {
             moduleId,
-            systemPrompt: systemPromptWithSummary,
-            memoryContext: memoryContextFacts,
-            summary: memoryStatus === 'vault_blocked'
-              ? `Memory unavailable: vault locked for ${moduleId}.`
-              : cappedMemorySummary || `Active session in ${moduleId}${resolvedContextPolicy === 'doc-only' ? ' (doc-only).' : '.'}`,
+            systemPrompt: '',
+            memoryContext: [],
+            summary: '',
             parsedCommand,
             history: historySlice.map((message) => ({
               ...message,
               content: normalizeContentForAI(message.content),
-            })) // history before user message — CognitiveAgent adds user msg
-          }),
+            })),
+            nsvJson: JSON.stringify(globalSoulRef.current?.crossFunctionalState ?? {}),
+            moduleContextJson,
+            longTermSummary: sessionSummaryRef.current?.summary ?? '',
+            userProfile: profileRef.current,
+            retrieveMemory: (resolvedContextPolicy === 'doc-only' || isGuest || !user)
+              ? async () => []
+              : async (query: string) => {
+                  const result = prewarmed ?? await retrieveMemoryContext(query);
+                  const parts: string[] = [];
+                  if (result.recalledSessionsSummary) parts.push(result.recalledSessionsSummary);
+                  if (result.recalledFactsSummary) parts.push(...result.recalledFactsSummary.split('\n').filter(Boolean));
+                  return trimToCharLimit(parts.join('\n'), MEMORY_SECTION_CHAR_LIMIT)
+                    .split('\n')
+                    .filter(Boolean);
+                },
+          },
           (chunk) => {
             // Update refs synchronously on every chunk (for post-stream processing)
             pendingStreamTextRef.current += chunk.delta;
@@ -947,6 +929,16 @@ export function useModuleAI({
           controller.signal
         );
         abortControllerRef.current = null;
+
+        // If a RAF is still pending when the stream closes, cancel it and flush
+        // the final state synchronously so tokens reach the DOM before the heavy
+        // post-stream work (action execution, NSV writes, Spine events) begins.
+        if (streamRafRef.current) {
+          cancelAnimationFrame(streamRafRef.current);
+          streamRafRef.current = 0;
+          setStreamingText(pendingStreamTextRef.current);
+          setAIState({ ...pendingAIStateRef.current });
+        }
 
         // M-1: guard post-unmount state update
         if (!mountedRef.current) return;
@@ -1314,6 +1306,15 @@ export function useModuleAI({
         // --- Pending query result (delegated to useHandoffProcessor) ---
         handlePendingQueryResult(adjustedPublicText);
 
+        // If the user goes quiet for 3 minutes, run consolidation proactively so
+        // it is already done before the next send rather than blocking it.
+        if (user && !isGuest && persistencePolicy === 'auto') {
+          if (idleConsolidationTimerRef.current) clearTimeout(idleConsolidationTimerRef.current);
+          idleConsolidationTimerRef.current = setTimeout(() => {
+            consolidateIfNeeded(localHistory, sessionStartRef.current).catch(() => {});
+          }, 3 * 60 * 1000);
+        }
+
         // --- Consolidation (delegated to useConsolidation) ---
         // Fire-and-forget: consolidation involves an LLM summarization call + Firestore writes.
         // Guard with isProcessingRef so the history trim is skipped if a new turn has
@@ -1428,7 +1429,7 @@ export function useModuleAI({
       orchestrationHistoryMode,
       activeThreadId,
       sendMessage,
-      streamMessage,
+      streamWithMemory,
       classifyAndRoute,
       storeDelegation,
       retrieveMemoryContext,

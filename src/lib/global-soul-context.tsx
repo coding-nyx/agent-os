@@ -62,7 +62,6 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
   const soulStale = useGlobalSoulStore(s => s.soulStale);
   const derivedWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDerivedSignatureRef = useRef<string>('');
-  const lastNsvRefreshTimeRef = useRef<number>(0);
   // Keep globalSoul and soulStale in refs so enhanceContext/enhanceContextForModule
   // don't need them as useCallback deps. Without this, every Firebase write to
   // global_souls recreates the callbacks → actionsValue context updates → every
@@ -71,9 +70,8 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
   globalSoulRef.current = globalSoul;
   const soulStaleRef = useRef(soulStale);
   soulStaleRef.current = soulStale;
-  // Prevents background stale-refreshes (enhanceContextForModule 30s check) from
-  // calling setIsLoading(true), which would cause ProtectedRoute to unmount all
-  // children mid-request. Only the initial boot should trigger the loading gate.
+  // Only the initial load triggers the loading gate — background refreshes must not
+  // call setIsLoading(true) or ProtectedRoute will unmount all children mid-request.
   const hasSoulLoadedRef = useRef(false);
 
   const refreshGlobalSoul = useCallback(async () => {
@@ -93,7 +91,6 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
       const projection = await GlobalProjectionService.getProjection(user.uid, dataLayer);
       setGlobalSoul(projection);
       hasSoulLoadedRef.current = true;
-      lastNsvRefreshTimeRef.current = Date.now();
     } catch (e) {
       console.error("Failed to refresh Global Projection:", e);
       setSoulStale(true);
@@ -180,44 +177,62 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
 
   // Wire derived insights into `global_souls.{userId}.compactedInsights`
   // so the orchestrator prompt augmentation can see them.
+  // Deferred until the browser is idle so this non-critical subscription doesn't
+  // compete with critical-path Firebase listeners during initial paint.
   useEffect(() => {
     if (!user || authLoading) return;
 
-    const unsubscribe = DerivedInsightsService.subscribeToInsights(user.uid, (insights) => {
-      const derivedLines = Array.from(
-        new Map(
-          insights.slice(0, 10).map((i) => {
-            const content = (i.content ?? '').slice(0, 220);
-            const line = `[DI:${i.id}] ${content}`;
-            return [i.id, line] as const;
-          }),
-        ).values(),
-      );
+    let unsubscribeRef: (() => void) | null = null;
+    let idleHandle: number | null = null;
 
-      const signature = derivedLines.join('|');
-      if (signature === lastDerivedSignatureRef.current) return;
-      lastDerivedSignatureRef.current = signature;
+    const subscribe = () => {
+      unsubscribeRef = DerivedInsightsService.subscribeToInsights(user.uid, (insights) => {
+        const derivedLines = Array.from(
+          new Map(
+            insights.slice(0, 10).map((i) => {
+              const content = (i.content ?? '').slice(0, 220);
+              const line = `[DI:${i.id}] ${content}`;
+              return [i.id, line] as const;
+            }),
+          ).values(),
+        );
 
-      // Preserve non-derived compacted insights (e.g. analysis summaries).
-      const current = useGlobalSoulStore.getState().globalSoul;
-      const existingNonDerived = (current?.compactedInsights ?? []).filter((s) => !s.startsWith('[DI:'));
-      const nextCompactedInsights = [...derivedLines, ...existingNonDerived].slice(0, 12);
+        const signature = derivedLines.join('|');
+        if (signature === lastDerivedSignatureRef.current) return;
+        lastDerivedSignatureRef.current = signature;
 
-      if (derivedWriteTimerRef.current) clearTimeout(derivedWriteTimerRef.current);
-      derivedWriteTimerRef.current = setTimeout(() => {
-        dataLayer
-          .updateDocument('global_souls', user.uid, {
-            compactedInsights: nextCompactedInsights,
-            lastSync: new Date().toISOString(),
-          })
-          .catch((e: unknown) => {
-            console.error('[DerivedInsights] Failed to compact into global_souls:', e);
-          });
-      }, 350);
-    });
+        // Preserve non-derived compacted insights (e.g. analysis summaries).
+        const current = useGlobalSoulStore.getState().globalSoul;
+        const existingNonDerived = (current?.compactedInsights ?? []).filter((s) => !s.startsWith('[DI:'));
+        const nextCompactedInsights = [...derivedLines, ...existingNonDerived].slice(0, 12);
+
+        if (derivedWriteTimerRef.current) clearTimeout(derivedWriteTimerRef.current);
+        derivedWriteTimerRef.current = setTimeout(() => {
+          dataLayer
+            .updateDocument('global_souls', user.uid, {
+              compactedInsights: nextCompactedInsights,
+              lastSync: new Date().toISOString(),
+            })
+            .catch((e: unknown) => {
+              console.error('[DerivedInsights] Failed to compact into global_souls:', e);
+            });
+        }, 350);
+      });
+    };
+
+    // Defer non-critical subscription until the browser is idle (Item 8)
+    if (typeof requestIdleCallback !== 'undefined') {
+      idleHandle = requestIdleCallback(subscribe);
+    } else {
+      idleHandle = window.setTimeout(subscribe, 0);
+    }
 
     return () => {
-      unsubscribe();
+      if (idleHandle !== null) {
+        if (typeof requestIdleCallback !== 'undefined') cancelIdleCallback(idleHandle);
+        else clearTimeout(idleHandle);
+      }
+      unsubscribeRef?.();
       if (derivedWriteTimerRef.current) {
         clearTimeout(derivedWriteTimerRef.current);
         derivedWriteTimerRef.current = null;
@@ -267,14 +282,6 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
   ): ConversationContext => {
     const soul = globalSoulRef.current;
     if (!soul) return context;
-
-    // Speculatively refresh NSV in the background if data is >30s stale.
-    // The real-time subscription handles live updates; this catches cases where
-    // the subscription missed an update or the user has been on the same page
-    // for an extended session without a write triggering the subscription.
-    if (Date.now() - lastNsvRefreshTimeRef.current > 30_000) {
-      refreshGlobalSoul().catch((err) => { console.warn('[GlobalSoul] Background NSV refresh failed:', err); });
-    }
 
     const state = soul.crossFunctionalState;
     // eslint-disable-next-line no-control-regex
