@@ -87,8 +87,14 @@ export default defineConfig({
             id.includes('/node_modules/react-is/')
           ) return 'vendor-core';
 
+          // KMP shared library + js-joda runtime — changes rarely (pinned to git tag),
+          // so isolating it maximises long-lived caching (~3.5 MB)
+          if (
+            id.includes('/cortex-logic/') ||
+            id.includes('/@js-joda/')
+          ) return 'vendor-cortex';
+
           // Large data processors — keep isolated to avoid bloating main bundle
-          if (id.includes('/gpt-tokenizer/')) return 'vendor-gpt';
           if (id.includes('/pdfjs-dist/')) return 'vendor-pdf';
 
           // Animation — large lib loaded on every route, worth caching separately
@@ -114,10 +120,30 @@ export default defineConfig({
           // Rich text editor — only loaded in specific modules
           if (id.includes('/@tiptap/') || id.includes('/tiptap-')) return 'vendor-editor';
 
-          // UI primitives & Navigation — Radix, Recharts, React Router
+          // Markdown rendering ecosystem — used in chat panels, worth caching separately
+          if (
+            id.includes('/react-markdown/') ||
+            id.includes('/unified/') ||
+            id.includes('/micromark') ||
+            id.includes('/remark-') ||
+            id.includes('/rehype-') ||
+            id.includes('/mdast-') ||
+            id.includes('/hast-') ||
+            id.includes('/vfile/')
+          ) return 'vendor-markdown';
+
+          // UI primitives & Navigation — Radix, Recharts (+ transitive deps), React Router
           if (
             id.includes('/@radix-ui/') ||
             id.includes('/recharts/') ||
+            id.includes('/d3-') ||
+            id.includes('/decimal.js') ||
+            id.includes('/victory-vendor/') ||
+            id.includes('/react-smooth/') ||
+            id.includes('/es-toolkit/') ||
+            id.includes('/eventemitter3/') ||
+            id.includes('/reselect/') ||
+            id.includes('/immer/') ||
             id.includes('/react-router/') ||
             id.includes('/react-router-dom/') ||
             id.includes('/lucide-react/')
