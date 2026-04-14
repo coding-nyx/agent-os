@@ -15,6 +15,7 @@ import type { AuthUser } from '@/lib/services/auth-service';
 import type { TitanProfile, SomaProfile, GlobalProjection } from '@/lib/types';
 import type { PlanTab } from '../tabs/PlanTab';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
+import { TITAN_PROMPT_FALLBACK } from '../prompts/titan-prompt-fallback';
 import { useNavigate } from 'react-router-dom';
 import { getCalibrationPrompt, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
 import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
@@ -52,6 +53,10 @@ export function useTitanChat({
   // ── Module AI hook ───────────────────────────────────────────────────────
   const ai = useModuleAI({
     moduleId: 'titan',
+    // TITAN_PROMPT_FALLBACK is used only when KMP's PersonaPromptCatalog returns
+    // an empty string for the titan moduleId. KMP (TitanPersonaPrompts.kt) is
+    // the authoritative source; this is a safety-net, not the real prompt.
+    systemPrompt: TITAN_PROMPT_FALLBACK,
     encryptionKey,
     moduleContext: {
       titan_profile: profile,

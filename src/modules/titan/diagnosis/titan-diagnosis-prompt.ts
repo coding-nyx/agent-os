@@ -2,7 +2,15 @@ import type { DiagnosisContextPolicy, ExtractedDataBag } from '@/core/diagnosis/
 import type { TitanProfile } from '@/lib/types';
 import { TitanPromptBuilderJs } from '@cortex-logic';
 
-const _builder = new TitanPromptBuilderJs();
+// TitanPromptBuilderJs is lazy-guarded in the cortex-logic runtime (null if the
+// KMP build omits the class). Construct lazily so a missing export doesn't throw
+// "null is not a constructor" at module-load time for the whole Titan module.
+let _builder: InstanceType<NonNullable<typeof TitanPromptBuilderJs>> | null = null;
+function getBuilder() {
+  if (!TitanPromptBuilderJs) throw new Error('[TitanDiagnosis] TitanPromptBuilderJs is not available in the current cortex-logic build.');
+  if (!_builder) _builder = new TitanPromptBuilderJs() as InstanceType<NonNullable<typeof TitanPromptBuilderJs>>;
+  return _builder;
+}
 
 /**
  * Builds the system prompt for Titan's medical diagnosis mode.
@@ -16,5 +24,5 @@ export function buildTitanDiagnosisPrompt(
   _extractedData?: ExtractedDataBag,
 ): string {
   const profileJson = profile ? JSON.stringify(profile) : null;
-  return _builder.buildDiagnosisPrompt(profileJson, contextPolicy);
+  return getBuilder().buildDiagnosisPrompt(profileJson, contextPolicy);
 }

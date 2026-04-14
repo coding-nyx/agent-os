@@ -33,7 +33,14 @@ import { TITAN_BASE_SPEC } from '@/core/intake/onboarding-configs';
 
 // ---- Chip data -----------------------------------------------------------
 
-const _titanPromptBuilder = new TitanPromptBuilderJs();
+// TitanPromptBuilderJs is lazy-guarded; construct on first use so a missing
+// KMP export doesn't crash the entire Titan module at import time.
+let _titanPromptBuilder: InstanceType<NonNullable<typeof TitanPromptBuilderJs>> | null = null;
+function getTitanPromptBuilder() {
+  if (!TitanPromptBuilderJs) throw new Error('[TitanOnboarding] TitanPromptBuilderJs is not available in the current cortex-logic build.');
+  if (!_titanPromptBuilder) _titanPromptBuilder = new TitanPromptBuilderJs() as InstanceType<NonNullable<typeof TitanPromptBuilderJs>>;
+  return _titanPromptBuilder;
+}
 
 const GOAL_CHIPS = [
   { value: 'strength', label: 'Build Strength' },
@@ -246,7 +253,7 @@ export function TitanOnboarding({ onComplete, onGlobalBaseContextFinalize, initi
         const missing = getMissingSectionsFromAccumulator(state.accumulator);
         return {
           moduleId: 'titan',
-          systemPrompt: `${_titanPromptBuilder.buildOnboardingPrompt(
+          systemPrompt: `${getTitanPromptBuilder().buildOnboardingPrompt(
             state.privacyLevel || 'basic',
             state.baseContext?.name ?? null,
             state.baseContext?.pronouns ?? null,
