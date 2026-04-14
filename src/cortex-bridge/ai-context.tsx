@@ -7,6 +7,7 @@ import { createContext, useContext, useState, ReactNode, useEffect, useCallback,
 import { Message, ConversationContext, MessageContent } from './types';
 import { CognitiveAgent } from './engine/CognitiveAgent';
 import { EngineConfig, StructuredResponse, StreamChunk } from './engine/types';
+import type { CoreUserProfile } from '@/lib/types';
 import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
 import { getCredentialStore } from './credential-store-bridge';
 
@@ -27,6 +28,19 @@ export interface AIContextType {
   streamMessage: (
     content: MessageContent,
     context: ConversationContext,
+    onChunk: (chunk: StreamChunk) => void,
+    signal?: AbortSignal
+  ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
+  /** KMP-orchestrated stream — PersonaFactory + NSV injection + memory callback all run in KMP. */
+  streamWithMemory: (
+    content: MessageContent,
+    context: ConversationContext & {
+      nsvJson: string;
+      moduleContextJson: string;
+      longTermSummary?: string;
+      userProfile?: Pick<CoreUserProfile, 'preferredName' | 'pronouns'> | null;
+      retrieveMemory: (query: string) => Promise<string[]>;
+    },
     onChunk: (chunk: StreamChunk) => void,
     signal?: AbortSignal
   ) => Promise<{ response: StructuredResponse, updatedHistory: Message[] }>;
@@ -279,6 +293,39 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
       return result;
   }, [agent]);
 
+  const streamWithMemory = useCallback(async (
+    content: MessageContent,
+    context: ConversationContext & {
+      nsvJson: string;
+      moduleContextJson: string;
+      longTermSummary?: string;
+      userProfile?: Pick<CoreUserProfile, 'preferredName' | 'pronouns'> | null;
+      retrieveMemory: (query: string) => Promise<string[]>;
+    },
+    onChunk: (chunk: StreamChunk) => void,
+    signal?: AbortSignal
+  ) => {
+    if (!agent) {
+      const offlineText = 'AI assistant is unavailable — add an API key in Profile settings.';
+      onChunk({ delta: offlineText, isThinking: false, isActing: false, currentActionType: null } satisfies StreamChunk);
+      return {
+        response: {
+          fullText: offlineText,
+          publicText: offlineText,
+          internalThoughts: null,
+          actions: [],
+          mutations: [],
+          isInterrupted: false,
+        } satisfies StructuredResponse,
+        updatedHistory: context.history,
+      };
+    }
+    const safeChunk = (chunk: StreamChunk) => {
+      try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }
+    };
+    return agent.chatWithMemory(content, context, safeChunk, signal);
+  }, [agent]);
+
   const generateJSON = useCallback(async (prompt: string, options?: any) => {
     if (!agent) throw new Error('AI agent unavailable');
     return agent.generateJSON(prompt, options);
@@ -298,6 +345,7 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
     () => ({
       sendMessage,
       streamMessage,
+      streamWithMemory,
       generateJSON,
       analyzeImage,
       analyzeImageJSON,
@@ -306,7 +354,7 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
       isInitialized,
       initFailed
     }),
-    [sendMessage, streamMessage, generateJSON, analyzeImage, analyzeImageJSON, runtimeModelId, runtimeProvider, isInitialized, initFailed]
+    [sendMessage, streamMessage, streamWithMemory, generateJSON, analyzeImage, analyzeImageJSON, runtimeModelId, runtimeProvider, isInitialized, initFailed]
   );
 
   return (

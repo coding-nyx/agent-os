@@ -1,6 +1,7 @@
 import { Message, ConversationContext, MessageContent } from '../types';
 import { EngineConfig, StructuredResponse, StreamChunk, ParsedAction } from './types';
 import { CognitiveEngineJs, CancellableTask, UserIdentityJs } from '@cortex-logic';
+import type { CoreUserProfile } from '@/lib/types';
 import type { ExtractedMutation } from '../sanitize';
 import { sanitizeJsonPayload } from '../sanitize';
 
@@ -114,7 +115,7 @@ export class CognitiveAgent {
       const settle = (fn: () => void) => {
         if (settled) return;
         settled = true;
-        signal?.removeEventListener('abort', abortHandler!);
+        if (signal && abortHandler) signal.removeEventListener('abort', abortHandler);
         fn();
       };
 
@@ -155,6 +156,108 @@ export class CognitiveAgent {
           });
         },
         (err) => settle(() => reject(new Error(err)))
+      );
+
+      if (signal) {
+        abortHandler = () => {
+          task.cancel();
+          settle(() => reject(new DOMException('Aborted', 'AbortError')));
+        };
+        signal.addEventListener('abort', abortHandler, { once: true });
+      }
+    });
+  }
+
+  /**
+   * Full-orchestration streaming via the new KMP chatWithMemory path.
+   *
+   * KMP owns: PersonaFactory (system prompt assembly with NSV injection),
+   * memory callback invocation, MemoryManager context optimization, LLM streaming.
+   *
+   * Caller owns: history slicing, moduleContextJson serialization, memory retrieval
+   * Promise, post-stream action execution and NSV writes (unchanged).
+   */
+  async chatWithMemory(
+    userMessage: MessageContent,
+    context: ConversationContext & {
+      nsvJson: string;
+      moduleContextJson: string;
+      longTermSummary?: string;
+      userProfile?: Pick<CoreUserProfile, 'preferredName' | 'pronouns'> | null;
+      retrieveMemory: (query: string) => Promise<string[]>;
+    },
+    onChunk?: (chunk: StreamChunk) => void,
+    signal?: AbortSignal,
+  ): Promise<{ response: StructuredResponse; updatedHistory: Message[] }> {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+
+    const messageText = typeof userMessage === 'string'
+      ? userMessage
+      : Array.isArray(userMessage)
+        ? userMessage.map(p => (typeof p === 'string' ? p : (p as any).text ?? '')).join(' ')
+        : '';
+
+    const historyJson = JSON.stringify(context.history);
+    const identity = new UserIdentityJs(
+      context.userProfile?.preferredName ?? 'User',
+      context.userProfile?.pronouns ?? 'they/them',
+    );
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let abortHandler: (() => void) | null = null;
+
+      const settle = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        if (signal && abortHandler) signal.removeEventListener('abort', abortHandler);
+        fn();
+      };
+
+      const task: CancellableTask = this.kmpEngine.chatWithMemory(
+        context.moduleId ?? 'nexus',
+        messageText,
+        historyJson,
+        identity,
+        context.nsvJson,
+        '{}', // globalSoulJson — not needed; NSV is already in nsvJson
+        context.moduleContextJson,
+        context.longTermSummary ?? '',
+        (query, onComplete, onError) => {
+          context.retrieveMemory(query)
+            .then((facts) => onComplete(facts))
+            .catch((err) => onError(String(err)));
+        },
+        (chunk) => {
+          if (settled) return;
+          onChunk?.({
+            delta: chunk.delta,
+            isThinking: chunk.isThinking,
+            isActing: chunk.isActing,
+            currentActionType: chunk.currentActionType ?? null,
+          });
+        },
+        (final) => {
+          settle(() => {
+            const actions = safeJsonParse<ParsedAction[]>(final.actionsJson, []);
+            const mutations = safeJsonParse<ExtractedMutation[]>(final.mutationsJson, []);
+            const response: StructuredResponse = {
+              fullText: final.content,
+              publicText: final.content,
+              internalThoughts: final.thoughts ?? null,
+              actions,
+              mutations,
+              isInterrupted: false,
+            };
+            const updatedHistory: Message[] = [
+              ...context.history,
+              { role: 'user', content: userMessage } as Message,
+              { role: 'assistant', content: final.content } as Message,
+            ];
+            resolve({ response, updatedHistory });
+          });
+        },
+        (err) => settle(() => reject(new Error(err))),
       );
 
       if (signal) {

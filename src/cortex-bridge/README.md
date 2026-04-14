@@ -99,3 +99,25 @@ import { setActionHubUser, invalidateActionHubBridge } from '@/cortex-bridge/act
 ## TypeScript types
 
 `src/types/cortex-logic.d.ts` is the authoritative TS declaration for `@cortex-logic`. It is hand-maintained. When cortex-logic ships new exports, update this file to match. The generated `.d.ts` inside `node_modules/cortex-logic/` is not wired into tsconfig.
+
+---
+
+## Intentional web-only services
+
+The following KMP services exist in `cortex-logic/src/commonMain/` but deliberately have **no JS facade**. Each has platform-specific concerns that belong in the TypeScript layer. This is a recorded architectural decision — do not add JS exports for these.
+
+| KMP service | Web counterpart | Why web-only |
+|---|---|---|
+| `MemoryOrchestrator` | `src/lib/services/module-memory-service.ts` | Storage is Firestore-backed with vault encryption; persistence layer is platform-specific |
+| `EpisodicMemoryRepository` | `src/lib/services/module-memory-service.ts` | Interface only in KMP; implementation requires Firebase subcollections and the vault key |
+| `SessionConsolidationEngine` | `src/lib/hooks/useConsolidation.ts` | Uses `CognitiveEngineJs` (already bridged) and triggers React state updates; no separate facade needed |
+| `SpineCoordinator` | `src/lib/spine/spine-event-bus.ts` | agnes owns a singleton Spine bus; a second KMP coordinator would create two conflicting event pipelines |
+| `DocumentIngestionService` | `src/lib/services/document-ingestion-service.ts` | Routes extracted document text to module-specific action handlers; routing logic is web-app-specific |
+| `FieldSystemManager` | `src/lib/field-system/` | Coupled to React form state and DynamicFormBuilder; UI binding is platform-specific |
+| `NsvSnapshotService` | `src/lib/services/nsv-snapshot-service.ts` | KMP implementation is in-memory only; web needs localStorage persistence across browser sessions |
+
+### Why GlobalProjectionServiceJs only has two methods
+
+`GlobalProjectionService` in KMP commonMain is a **pure-computation object** with no I/O. Its two methods (`computeOverallWellness`, `buildNSVUpdatePayload`) are synchronous and deterministic — safely exposed as plain JS functions.
+
+All Firestore operations on the GlobalProjection document live in `src/lib/services/global-projection-service.ts` and depend on Firebase SDK, vault encryption, and the agnes data layer — platform-specific concerns that belong in TS. The facade is correct and complete; do not add Firestore-backed methods to `GlobalProjectionServiceJs.kt`.

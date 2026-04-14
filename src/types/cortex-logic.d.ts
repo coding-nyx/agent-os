@@ -202,6 +202,33 @@ declare module '@cortex-logic' {
       onComplete: (final: FinalResponseJs) => void,
       onError: (error: string) => void
     ): CancellableTask;
+    /**
+     * Full-orchestration streaming — KMP runs PersonaFactory (with NSV injection),
+     * calls jsRetrieveMemory once to fetch memory context, then streams the response.
+     *
+     * moduleContextJson may include:
+     *   "baseRole"      — module-specific persona string (overrides KMP default)
+     *   "timeContext"   — formatted time block for temporal awareness
+     *   "progressBlock" — session progress summary (optional)
+     */
+    chatWithMemory(
+      moduleId: string,
+      userMessage: string,
+      historyJson: string,
+      identity: UserIdentityJs,
+      nsvJson: string,
+      globalSoulJson: string,
+      moduleContextJson: string,
+      longTermSummary: string,
+      jsRetrieveMemory: (
+        query: string,
+        onComplete: (facts: string[]) => void,
+        onError: (err: string) => void,
+      ) => void,
+      onChunk: (chunk: StreamChunkJs) => void,
+      onComplete: (final: FinalResponseJs) => void,
+      onError: (error: string) => void,
+    ): CancellableTask;
     generateText(
       prompt: string,
       systemPrompt: string | null,
