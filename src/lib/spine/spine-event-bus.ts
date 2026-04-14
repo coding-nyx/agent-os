@@ -56,6 +56,15 @@ const CASCADE_ALERT_RATE_LIMITED_TYPES = new Set<string>([
   'CRISIS_DETECTED',
   'ATLAS_ENERGY_OVERLOAD',
   'ATLAS_OVERLOAD_DETECTED',
+  'BURNOUT_TRAJECTORY_WARNING',
+  'ATLAS_PREDICTIVE_ALERT',
+  'COMMITMENT_MISSED',
+  'BUDGET_ALERT',
+  'OVERSPEND_DETECTED',
+  'EXPENSE_SPIKE',
+  'CASHFLOW_NEGATIVE',
+  'DEADLINE_APPROACHING',
+  'AI_LINK_FAILURE',
 ]);
 
 /** Minimum ms between cascade emissions of the same system alert type. Default: 60 minutes. */
