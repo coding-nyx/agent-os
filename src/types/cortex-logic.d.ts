@@ -185,6 +185,8 @@ declare module '@cortex-logic' {
       identity: UserIdentityJs,
       /** Optional JSON-encoded NeuralStateVector for richer persona prompts. Pass '{}' or omit for defaults. */
       nsvJson: string,
+      /** Optional JSON-encoded GlobalSoul for condensed neural state. Pass '{}' or omit to fall back to NSV. */
+      globalSoulJson: string,
       onChunk: (chunk: StreamChunkJs) => void,
       onComplete: (final: FinalResponseJs) => void,
       onError: (error: string) => void
@@ -660,6 +662,24 @@ declare module '@cortex-logic' {
     requiredMonthlyContribution(planJson: string): number;
   }
 
+  // ─── NotificationContentResolver ──────────────────────────────────────────
+
+  /**
+   * Single source of truth for mapping Spine event types + payload data to
+   * user-facing notification content (title & body).
+   */
+  export class NotificationContentResolverJs {
+    /**
+     * Resolve notification content for a Spine event.
+     *
+     * @param eventType The Spine event type (e.g. `"BURNOUT_WARNING"`).
+     * @param dataJson  JSON-encoded data map.
+     * @returns JSON string `{"title":"...","body":"..."}`, or `null` if the event
+     *          type is not a user-facing notification type.
+     */
+    resolve(eventType: string, dataJson: string): string | null;
+  }
+
   // ─── PrecedenceResolver ─────────────────────────────────────────────────────
 
   export class PrecedenceResolverJs {
@@ -709,7 +729,7 @@ declare module '@cortex-logic' {
     ): ProgressionRecommendationJs;
   }
 
-  // ─── Orchestration Intelligence (v1.4.0) ─────────────────────────────────
+  // ─── Orchestration Intelligence (v1.5.1) ─────────────────────────────────
 
   export class OrchestrationContractsJs {
     isAutopilotLevel(level: unknown): boolean;
@@ -857,7 +877,7 @@ declare module '@cortex-logic' {
     evaluate(inputJson: string, actionLabel: string): string;
   }
 
-  // ─── Agent System (v1.4.0) ───────────────────────────────────────────────
+  // ─── Agent System (v1.5.1) ───────────────────────────────────────────────
 
   export class ActionCapabilityResolverJs {
     resolve(actionType: string): string[];
@@ -874,7 +894,7 @@ declare module '@cortex-logic' {
     resolveActionAlias(moduleId: string, actionType: string): string;
   }
 
-  // ─── Spine Flow Contracts (v1.4.0) ───────────────────────────────────────
+  // ─── Spine Flow Contracts (v1.5.1) ───────────────────────────────────────
 
   export class FlowContractsJs {
     createFlowMeta(source: string, flowId?: string | null): string;
@@ -886,7 +906,7 @@ declare module '@cortex-logic' {
     parseDelegationTarget(eventJson: string): string | null;
   }
 
-  // ─── Session Arc (v1.4.0) ────────────────────────────────────────────────
+  // ─── Session Arc (v1.5.1) ────────────────────────────────────────────────
 
   export class SessionArcJs {
     computeSessionProgressJson(
@@ -899,7 +919,7 @@ declare module '@cortex-logic' {
     getSessionExchangeTarget(mode: string): number;
   }
 
-  // ─── Ledger Aggregation Suite (v1.4.0) ───────────────────────────────────
+  // ─── Ledger Aggregation Suite (v1.5.1) ───────────────────────────────────
 
   export class LedgerAggregationUtilsJs {
     round2(value: number): number;
@@ -1002,7 +1022,7 @@ declare module '@cortex-logic' {
     computeSavingsProjection(goalJson: string, nowMs: number): string;
   }
 
-  // ─── Titan Data (v1.4.0) ─────────────────────────────────────────────────
+  // ─── Titan Data (v1.5.1) ─────────────────────────────────────────────────
 
   export class ExerciseLibraryJs {
     findExercise(query: string): string | null;
@@ -1020,7 +1040,7 @@ declare module '@cortex-logic' {
     buildHistorySuggestion(recentSessionsJson: string, maxLength?: number): string | null;
   }
 
-  // ─── Soma Field Templates (v1.4.0) ──────────────────────────────────────
+  // ─── Soma Field Templates (v1.5.1) ──────────────────────────────────────
 
   export class SomaFieldTemplatesJs {
     getClinicalRange(fieldId: string): string | null;
@@ -1094,24 +1114,41 @@ export class ActionHubJs {
   // ─── LedgerAutomationEngine ──────────────────────────────────────────────
 
   /**
-   * Evaluates automation rules against a LedgerIntakeProfile and returns
-   * AutomationSuggestion objects for triggered, non-dismissed rules.
-   * UUIDs for suggestions are generated in jsMain via Web Crypto.
+   * Unified automation service facade (cortex-logic 2.0.0+).
+   * Single entry point for evaluation, CRUD, and observation, backed by
+   * an injectable storage adapter.
+   *
+   * Constructor parameters are six JS callback pairs wrapping async storage:
+   *   jsLoadRules / jsSaveRules   — persist List<AutomationRule> as JSON
+   *   jsLoadStates / jsSaveStates — persist Map<ruleId, AutomationState> as JSON
+   *   jsLoadSchedules / jsSaveSchedules — persist List<ScheduleDefinition>
+   *
+   * All async methods return a CancellableTask so callers can abort in-flight
+   * operations (e.g. on component unmount).
    */
-  export class LedgerAutomationEngineJs {
-    /**
-     * Evaluate all enabled automation rules against the profile.
-     * @param profileJson JSON string conforming to LedgerIntakeProfile.
-     * @param nowIso      ISO-8601 instant string representing the current time.
-     * @returns           JSON array of AutomationSuggestion objects.
-     */
-    evaluateRules(profileJson: string, nowIso: string): string;
-    /**
-     * Return the default set of automation rules for a new user.
-     * @param nowIso ISO-8601 instant string used for createdAt timestamps.
-     * @returns      JSON array of AutomationRule objects.
-     */
-    getDefaultRules(nowIso: string): string;
+  export class AutomationServiceJs {
+    constructor(
+      jsLoadRules: (onComplete: (json: string) => void, onError: (msg: string) => void) => void,
+      jsSaveRules: (rulesJson: string, onComplete: () => void, onError: (msg: string) => void) => void,
+      jsLoadStates: (onComplete: (json: string) => void, onError: (msg: string) => void) => void,
+      jsSaveStates: (statesJson: string, onComplete: () => void, onError: (msg: string) => void) => void,
+      jsLoadSchedules: (onComplete: (json: string) => void, onError: (msg: string) => void) => void,
+      jsSaveSchedules: (schedulesJson: string, onComplete: () => void, onError: (msg: string) => void) => void,
+    );
+    /** Evaluate all enabled rules against the profile. Persists Suggested states. */
+    evaluate(profileJson: string, onComplete: (suggestionsJson: string) => void, onError: (msg: string) => void): CancellableTask;
+    /** Parse and apply an LLM action command. Single mutation path for all CRUD. */
+    apply(actionId: string, payloadJson: string, onComplete: () => void, onError: (msg: string) => void): CancellableTask;
+    /** Subscribe to suggestion updates. Emits on every storage-visible change. */
+    observeSuggestions(onNext: (suggestionsJson: string) => void): CancellableTask;
+    /** Returns a JSON array of action IDs supported by this service. */
+    supportedActionIds(): string;
+    /** Start the daily 00:05 evaluation runner. */
+    startRunner(getProfileJson: () => string): void;
+    /** Stop the runner and deregister the scheduler. */
+    stopRunner(): void;
+    /** Trigger an immediate evaluation (call on window focus / app resume). */
+    poke(): void;
   }
 
   // ─── RecurringBillEngine ─────────────────────────────────────────────────
@@ -1176,5 +1213,19 @@ export class ActionHubJs {
      * @returns           JSON string of the updated LedgerIntakeProfile.
      */
     skipNextOccurrence(ruleJson: string, profileJson: string): string;
+  }
+
+  // ─── RagChunkingService ───────────────────────────────────────────────────
+
+  export class RagChunkingServiceJs {
+    /**
+     * Split text into overlapping chunks for RAG ingestion.
+     * @param text         Raw document text.
+     * @param chunkSize    Target chunk size in characters (default 2000).
+     * @param chunkOverlap Overlap between adjacent chunks in characters (default 400).
+     * @param minChunkSize Minimum chunk size; shorter fragments are merged (default 200).
+     * @returns JSON array: `[{ index: number, text: string, startChar: number, endChar: number }]`
+     */
+    chunkText(text: string, chunkSize?: number, chunkOverlap?: number, minChunkSize?: number): string;
   }
 }
