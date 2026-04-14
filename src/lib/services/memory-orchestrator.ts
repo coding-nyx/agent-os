@@ -74,6 +74,7 @@ export class MemoryOrchestrator {
       RagService.retrieve({
         moduleId,
         query: memoryQuery,
+        userId,
         encryptionKey: options.encryptionKey,
         requiresVault: options.requiresVault,
       }),

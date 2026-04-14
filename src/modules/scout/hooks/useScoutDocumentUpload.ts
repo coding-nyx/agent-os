@@ -6,6 +6,7 @@ import type { DocumentParseResult } from '../services/scout-document-service';
 import { runDocumentPipeline, type DocumentParsed } from '@/lib/services/document-pipeline';
 import { scoutDocumentPolicy, type ScoutDocumentProposal } from '../services/scout-document-policy';
 import { prepareDocumentChatPrompt } from '@/lib/services/document-chat-handoff-service';
+import { RagIngestionService } from '@/lib/services/rag/rag-ingestion-service';
 import type { DocumentUploadRequest } from '@/lib/services/document-upload-message';
 
 // ---------------------------------------------------------------------------
@@ -18,6 +19,7 @@ export interface UseScoutDocumentUploadParams {
   ai: { handleSendMessage: (content: any, onAction?: any, opts?: any) => Promise<void> };
   onActionParsed?: (type: string, payload: Record<string, unknown>) => void;
   setErrorMessage: (msg: string | null) => void;
+  userId?: string;
 }
 
 export interface UseScoutDocumentUploadReturn {
@@ -44,6 +46,7 @@ export function useScoutDocumentUpload({
   ai,
   onActionParsed,
   setErrorMessage,
+  userId,
 }: UseScoutDocumentUploadParams): UseScoutDocumentUploadReturn {
   const [showUploadZone, setShowUploadZone] = useState(false);
   const [docProposal, setDocProposal] = useState<ScoutDocumentProposal | null>(null);
@@ -109,10 +112,19 @@ export function useScoutDocumentUpload({
       setDocProposalSummary(pipeline.summary);
       setDocProposalParsed(result);
       setDocReviewOpen(true);
+
+      // Fire-and-forget: ingest into RAG chunks
+      if (userId) {
+        RagIngestionService.ingest(result.text, {
+          userId,
+          moduleId: 'scout',
+          source: result.metadata.filename,
+        }).catch(() => {/* logged internally */});
+      }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to process document. Please try again.');
     }
-  }, [sendMessage, setErrorMessage]);
+  }, [sendMessage, setErrorMessage, userId]);
 
   // -----------------------------------------------------------------------
   // Chat-inline document uploads (drag-and-drop into the chat input)
@@ -151,11 +163,26 @@ export function useScoutDocumentUpload({
         userContext: request.caption,
       });
       await ai.handleSendMessage(prompt, onActionParsed, { visibleContent: request.visibleContent });
+
+      // Fire-and-forget: ingest uploaded files into RAG chunks
+      if (userId) {
+        for (const file of request.files) {
+          import('@/lib/services/doc-ingest-service').then(({ parseDocument: parse }) =>
+            parse(file).then((parsed) =>
+              RagIngestionService.ingest(parsed.text, {
+                userId,
+                moduleId: 'scout',
+                source: file.name,
+              }),
+            ),
+          ).catch(() => {/* logged internally */});
+        }
+      }
     } catch (error) {
       console.error('[Scout] Chat document analysis failed:', error);
       setErrorMessage('I could not analyze those documents together. Please try again with supported files.');
     }
-  }, [ai, analyzeImage, onActionParsed, sendMessage, setErrorMessage]);
+  }, [ai, analyzeImage, onActionParsed, sendMessage, setErrorMessage, userId]);
 
   // -----------------------------------------------------------------------
   // Commit the reviewed proposal into the chat

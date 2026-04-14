@@ -31,12 +31,15 @@ export const SemanticMemoryService = {
 
     try {
       const dataLayer = getNexusDataLayer();
-      const facts = await dataLayer.listDocuments<Omit<SemanticFact, 'id'>>(`semantic_memory/${uid}/facts`, { limit: 0 });
+      // Use server-side filter + limit instead of fetching all facts.
+      const facts = await dataLayer.query<Omit<SemanticFact, 'id'>>({
+        collection: `semantic_memory/${uid}/facts`,
+        where: [{ field: 'moduleId', op: 'in', value: moduleIds }],
+        orderBy: [{ field: 'confidence', direction: 'desc' }],
+        limit: 10,
+      });
 
-      return facts
-        .filter((fact) => moduleIds.includes(fact.moduleId))
-        .sort((a, b) => b.confidence - a.confidence)
-        .slice(0, 10);
+      return facts as SemanticFact[];
     } catch (error) {
       console.error('[SemanticMemoryService] Failed to get facts:', error);
       return [];

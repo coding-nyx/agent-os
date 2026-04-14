@@ -1,5 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EmbeddingUtilsJs } from '@cortex-logic';
+
+// Lazy-loaded to keep ~100 kB out of the initial bundle.
+// The SDK is only needed when googleEmbedding() is actually called.
+let _GoogleGenerativeAI: typeof import('@google/generative-ai').GoogleGenerativeAI | null = null;
 
 const EMBEDDING_MODEL = 'gemini-embedding-001';
 const EMBEDDING_DIMENSION = 256;
@@ -40,6 +43,10 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return _utils.cosineSimilarity(JSON.stringify(a), JSON.stringify(b)) as number;
 }
 
+export function computeKeywordScore(chunkText: string, queryText: string): number {
+  return _utils.computeKeywordScore(chunkText, queryText) as number;
+}
+
 async function googleEmbedding(text: string): Promise<number[] | null> {
   const storedKey =
     typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function'
@@ -49,7 +56,11 @@ async function googleEmbedding(text: string): Promise<number[] | null> {
   if (!key) return null;
 
   try {
-    const genAI = new GoogleGenerativeAI(key);
+    if (!_GoogleGenerativeAI) {
+      const mod = await import('@google/generative-ai');
+      _GoogleGenerativeAI = mod.GoogleGenerativeAI;
+    }
+    const genAI = new _GoogleGenerativeAI(key);
     const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
     const result = await model.embedContent(text);
     const values = result.embedding.values;
