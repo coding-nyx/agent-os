@@ -355,6 +355,7 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     ai,
     onActionParsed,
     setErrorMessage,
+    userId: user?.uid,
   });
 
   // --- Wrapped send message ---

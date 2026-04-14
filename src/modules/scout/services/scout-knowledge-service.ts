@@ -243,7 +243,7 @@ export async function loadKnowledgeNodes({ userId, encryptionKey }: LoadContext)
   if (!userId || !encryptionKey) return [];
   const dataLayer = getNexusDataLayer();
   try {
-    const docs = await dataLayer.listDocuments<{ encryptedData: string; iv: string }>(nodesCollection(userId), { limit: 0 });
+    const docs = await dataLayer.listDocuments<{ encryptedData: string; iv: string }>(nodesCollection(userId), { limit: 500 });
     const decrypted = await Promise.allSettled(
       docs.map(async (d) => {
         const json = await decryptWithKey({ ciphertext: d.encryptedData, iv: d.iv }, encryptionKey);

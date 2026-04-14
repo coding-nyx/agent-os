@@ -98,6 +98,10 @@ export function useScoutSpineEvents(params: UseScoutSpineEventsParams): UseScout
     localExportOriginRef.current = `scout-export:${crypto.randomUUID()}`;
   }
 
+  // Reentrancy guard: prevent requestExport -> Spine.emit -> subscriber -> presentExportDialog
+  // from causing a feedback loop if the originId guard is ever bypassed.
+  const exportingRef = useRef(false);
+
   // ---- Export helpers ----
 
   const presentExportDialog = useCallback((target: ExportTarget) => {
@@ -107,18 +111,24 @@ export function useScoutSpineEvents(params: UseScoutSpineEventsParams): UseScout
 
   const requestExport = useCallback(
     (target: ExportTarget) => {
-      const flowMeta = createFlowMeta(localExportOriginRef.current!);
-      Spine.emit({
-        type: 'EXPORT_REQUESTED',
-        source: 'scout',
-        domain: 'C',
-        data: { exportType: target.type },
-        cascadeDepth: 0,
-        priority: 'info',
-        ...flowMeta,
-        idempotencyKey: `export:${target.type}:${flowMeta.flowId}`,
-      });
-      presentExportDialog(target);
+      if (exportingRef.current) return; // reentrancy guard
+      exportingRef.current = true;
+      try {
+        const flowMeta = createFlowMeta(localExportOriginRef.current!);
+        Spine.emit({
+          type: 'EXPORT_REQUESTED',
+          source: 'scout',
+          domain: 'C',
+          data: { exportType: target.type },
+          cascadeDepth: 0,
+          priority: 'info',
+          ...flowMeta,
+          idempotencyKey: `export:${target.type}:${flowMeta.flowId}`,
+        });
+        presentExportDialog(target);
+      } finally {
+        exportingRef.current = false;
+      }
     },
     [presentExportDialog],
   );

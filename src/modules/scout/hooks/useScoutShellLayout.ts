@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { throttle } from '@/lib/utils';
 
 import {
   SCOUT_SHELL_BREAKPOINTS,
@@ -38,9 +39,9 @@ export function useScoutShellLayout({
   );
 
   useEffect(() => {
-    const handleResize = () => setViewportWidth(window.innerWidth);
+    const handleResize = throttle(() => setViewportWidth(window.innerWidth), 150);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => { window.removeEventListener('resize', handleResize); handleResize.cancel(); };
   }, []);
 
   const shellState = useMemo(

@@ -47,7 +47,7 @@ export async function loadSessions({ userId }: SessionContext): Promise<Research
   if (!userId) return [];
   const dataLayer = getNexusDataLayer();
   try {
-    const docs = await dataLayer.listDocuments<ResearchSession>(sessionsCollection(userId), { limit: 0 });
+    const docs = await dataLayer.listDocuments<ResearchSession>(sessionsCollection(userId), { limit: 50 });
     return (docs || []).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   } catch (err) {
     console.warn('[ScoutSessionService] Failed to load sessions:', err);

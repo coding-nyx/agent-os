@@ -1,4 +1,4 @@
-import Papa from 'papaparse';
+import { parseCsv } from '@/lib/services/doc-ingest-service';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import workerSrc from 'pdfjs-dist/build/pdf.worker?url';
 
@@ -133,19 +133,6 @@ async function parsePdf(
   return { text: chunks.join('\n'), pageCount: pdf.numPages };
 }
 
-function parseCsv(text: string): string {
-  const parsed = Papa.parse<string[]>(text, { skipEmptyLines: true });
-  const rows = Array.isArray(parsed.data) ? (parsed.data as string[][]) : [];
-  return rows
-    .map((row: string[]) =>
-      row
-        .map((cell: string) => String(cell || '').trim())
-        .filter(Boolean)
-        .join(' | ')
-    )
-    .filter(Boolean)
-    .join('\n');
-}
 
 function extractTitle(text: string, filename: string): string | null {
   // Heuristic: use the first non-empty line as a potential title
@@ -199,7 +186,7 @@ export async function parseDocument(
     case 'csv': {
       notes.push('Parsed as CSV tabular data.');
       const rawText = new TextDecoder('utf-8').decode(buffer);
-      text = parseCsv(rawText);
+      text = await parseCsv(rawText);
       break;
     }
     case 'md': {

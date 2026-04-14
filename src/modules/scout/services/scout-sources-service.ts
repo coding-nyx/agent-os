@@ -218,7 +218,7 @@ export async function loadSources(
   const dataLayer = getNexusDataLayer();
 
   try {
-    const docs = await dataLayer.listDocuments<any>(sourcesCollection(userId), { limit: 0 });
+    const docs = await dataLayer.listDocuments<any>(sourcesCollection(userId), { limit: 200 });
     if (!docs || docs.length === 0) return [];
 
     const decrypted = await Promise.allSettled(
