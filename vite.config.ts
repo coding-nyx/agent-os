@@ -68,6 +68,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['lucide-react'],
+    // Force re-prebundle on every dev server start. This ensures the cortex-logic
+    // UMD bundle is always re-processed after a KMP rebuild, so browsers never
+    // load a stale pre-bundle even when source file import paths stay the same.
+    force: true,
   },
   build: {
     outDir: 'out',
@@ -132,10 +136,37 @@ export default defineConfig({
             id.includes('/vfile/')
           ) return 'vendor-markdown';
 
-          // UI primitives & Navigation — Radix, Recharts (+ transitive deps), React Router
+          // UI primitives & Navigation — Radix, Recharts (+ all transitive deps), React Router.
+          //
+          // Chunk colocation rationale (prevents circular-chunk init crashes):
+          //  - @reduxjs/toolkit + redux + react-redux + redux-thunk: recharts uses createSlice
+          //    internally; splitting toolkit into vendor-other leaves createSlice undefined at
+          //    recharts module-init time → "Ye is not a function" TypeError.
+          //  - clsx/classnames: shared by recharts and @radix-ui.
+          //  - tiny-invariant, use-sync-external-store: recharts direct deps.
+          //  - cookie, set-cookie-parser: react-router direct deps.
+          //  - zustand: imports immer (already here); keeping both in one chunk avoids a
+          //    vendor-other → vendor-ui → vendor-other cycle.
           if (
             id.includes('/@radix-ui/') ||
             id.includes('/recharts/') ||
+            id.includes('/@reduxjs/') ||
+            id.includes('/redux/') ||
+            id.includes('/react-redux/') ||
+            id.includes('/redux-thunk/') ||
+            id.includes('/clsx/') ||
+            id.includes('/classnames/') ||
+            id.includes('/tiny-invariant/') ||
+            id.includes('/use-sync-external-store/') ||
+            id.includes('/cookie/') ||
+            id.includes('/set-cookie-parser/') ||
+            id.includes('/zustand/') ||
+            id.includes('/aria-hidden/') ||
+            id.includes('/@floating-ui/') ||
+            id.includes('/internmap/') ||
+            id.includes('/@hello-pangea/') ||
+            id.includes('/css-box-model/') ||
+            id.includes('/class-variance-authority/') ||
             id.includes('/d3-') ||
             id.includes('/decimal.js') ||
             id.includes('/victory-vendor/') ||
