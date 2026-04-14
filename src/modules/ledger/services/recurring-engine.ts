@@ -3,6 +3,27 @@ import type { RecurringRule, RecurrenceFrequency, Transaction, LedgerIntakeProfi
 
 const _engine = new RecurringBillEngineJs();
 
+/**
+ * Normalize a LedgerIntakeProfile for KMP serialization.
+ *
+ * The TypeScript profile uses `label` on BudgetLineItem (fixedExpenses /
+ * variableExpenses), but the Kotlin LedgerExpense data class requires
+ * `name: String` (no default). Map label → name so the KMP serializer
+ * finds the required field and doesn't throw MissingFieldException.
+ */
+function normalizeProfileForKMP(profile: LedgerIntakeProfile): string {
+  const norm = {
+    ...profile,
+    fixedExpenses: (profile.fixedExpenses ?? []).map(
+      (e) => ({ ...e, name: (e as unknown as Record<string, string>)['name'] ?? e.label }),
+    ),
+    variableExpenses: (profile.variableExpenses ?? []).map(
+      (e) => ({ ...e, name: (e as unknown as Record<string, string>)['name'] ?? e.label }),
+    ),
+  };
+  return JSON.stringify(norm);
+}
+
 export interface PostResult {
   /** Updated profile with transactions added and rules advanced. */
   updatedProfile: LedgerIntakeProfile;
@@ -48,7 +69,7 @@ export function computeUpcomingBills(
  */
 export function postDueTransactions(rules: RecurringRule[], profile: LedgerIntakeProfile): PostResult {
   const todayIso = new Date().toISOString().slice(0, 10);
-  return JSON.parse(_engine.postDueTransactions(JSON.stringify(rules), JSON.stringify(profile), todayIso));
+  return JSON.parse(_engine.postDueTransactions(JSON.stringify(rules), normalizeProfileForKMP(profile), todayIso));
 }
 
 /** Post a specific pending rule once (user-confirmed). Advances its nextDueDate. */
@@ -57,10 +78,10 @@ export function postSingleRule(rule: RecurringRule, profile: LedgerIntakeProfile
   transaction: Transaction;
 } {
   const todayIso = new Date().toISOString().slice(0, 10);
-  return JSON.parse(_engine.postSingleRule(JSON.stringify(rule), JSON.stringify(profile), todayIso));
+  return JSON.parse(_engine.postSingleRule(JSON.stringify(rule), normalizeProfileForKMP(profile), todayIso));
 }
 
 /** Advance a rule's nextDueDate without posting a transaction (skip). */
 export function skipNextOccurrence(rule: RecurringRule, profile: LedgerIntakeProfile): LedgerIntakeProfile {
-  return JSON.parse(_engine.skipNextOccurrence(JSON.stringify(rule), JSON.stringify(profile)));
+  return JSON.parse(_engine.skipNextOccurrence(JSON.stringify(rule), normalizeProfileForKMP(profile)));
 }

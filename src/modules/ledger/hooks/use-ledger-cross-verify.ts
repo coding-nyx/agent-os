@@ -10,7 +10,7 @@
  * All side-effects are isolated here — the service layer stays pure.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useGlobalSoulActions } from '@/lib/global-soul-context';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { NeuralStateVectorPatch, SpineEventPayload } from '@/lib/types';
@@ -96,6 +96,16 @@ export function useLedgerCrossVerify(
 
   // Keep a stable reference to the previous profile for delta-based Spine events.
   const prevProfileRef = useRef<LedgerIntakeProfile | null>(null);
+  // Use a ref for the callback so it never appears in the effect dep array.
+  // Without this, every globalSoul Firestore snapshot creates a new function
+  // reference → effect re-runs → writes to global_souls → snapshot fires → loop.
+  const updateCrossFunctionalStateRef = useRef(updateCrossFunctionalState);
+  useLayoutEffect(() => { updateCrossFunctionalStateRef.current = updateCrossFunctionalState; });
+  // Streak is written at most once per session mount to avoid the
+  // persistUpdate → Firestore onSnapshot → profile change → effect re-run → infinite loop.
+  // The streak counter increments by 1 on every call, so without this guard,
+  // every Firestore write triggers another write forever.
+  const hasWrittenStreakRef = useRef(false);
 
   useEffect(() => {
     if (profile === null) {
@@ -117,12 +127,18 @@ export function useLedgerCrossVerify(
     const streak = buildFinancialStreakEvent(profile);
     if (streak.event) spineEvents.push(streak.event);
 
-    // Persist streak values back into the profile (encrypted, not localStorage)
+    // Persist streak values back into the profile (encrypted, not localStorage).
+    // Guard: write at most once per mount. buildFinancialStreakEvent computes
+    // nextStreak = profile.financialStreakCount + 1, which always differs from
+    // the current profile value — without the ref guard this causes an infinite
+    // persistUpdate → onSnapshot → effect-rerun → persistUpdate loop.
     if (
       persistUpdate &&
+      !hasWrittenStreakRef.current &&
       (streak.nextStreakCount !== (profile.financialStreakCount ?? 0) ||
         streak.nextStreakLastMilestone !== (profile.financialStreakLastMilestone ?? 0))
     ) {
+      hasWrittenStreakRef.current = true;
       persistUpdate({
         ...profile,
         financialStreakCount: streak.nextStreakCount,
@@ -138,7 +154,7 @@ export function useLedgerCrossVerify(
     }
 
     // 2. Push NSV patch (async; errors are swallowed at the service layer)
-    updateCrossFunctionalState(patch).catch((err: unknown) => {
+    updateCrossFunctionalStateRef.current(patch).catch((err: unknown) => {
       console.warn('[useLedgerCrossVerify] NSV patch failed:', err);
     });
 
@@ -149,7 +165,10 @@ export function useLedgerCrossVerify(
 
     // Advance the prev-profile cursor for the next render cycle
     prevProfileRef.current = profile;
-  }, [profile, persistUpdate, updateCrossFunctionalState]);
+  // updateCrossFunctionalState is intentionally excluded from deps — it's accessed
+  // via updateCrossFunctionalStateRef to prevent re-runs on every globalSoul snapshot.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, persistUpdate]);
 
   return { coherenceReport, nsvPatch, isVerifying };
 }
