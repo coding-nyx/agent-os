@@ -221,8 +221,9 @@ export function registerAgnesActions() {
       pushAssistantMessage?.('This moment is just for us — nothing is being stored outside this session.');
       console.warn('[Agnes] NSV write skipped — ephemeral session (update_emotional_resilience)');
     }
-    // Burnout warning if resilience critically low
-    if (score <= 3) {
+    // Burnout warning if resilience critically low — skip during ephemeral sessions
+    // (emitting during ephemeral triggers the full cascade chain without any state change)
+    if (score <= 3 && persistencePolicy !== 'ephemeral') {
       emitSpineEvent('BURNOUT_WARNING', { cnsFatigue: score / 10, source: 'agnes', trigger: 'low_resilience' });
     }
   });
@@ -239,14 +240,16 @@ export function registerAgnesActions() {
       pushAssistantMessage?.('This moment is just for us — nothing is being stored outside this session.');
       console.warn('[Agnes] NSV write skipped — ephemeral session (update_stress_load)');
     }
-    if (score >= 8) {
-      emitSpineEvent('COMPOUND_STRESS', { stressLoad: score, source: 'agnes' });
-    } else if (score >= 6) {
-      emitSpineEvent('VITAL_UPDATED', { stressLoad: score, source: 'agnes', domain: 'E' });
+    // Only emit stress events when persisting — use-module-ai emits a consolidated
+    // VITAL_UPDATED post-turn regardless, so these are for high-priority alert escalation only.
+    if (persistencePolicy !== 'ephemeral') {
+      if (score >= 8) {
+        emitSpineEvent('COMPOUND_STRESS', { stressLoad: score, source: 'agnes' });
+      }
     }
   });
 
-  ActionHub.register('agnes', 'update_mood_trend', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
+  ActionHub.register('agnes', 'update_mood_trend', async ({ payload, persistencePolicy, updateGlobalSoul, pushAssistantMessage }) => {
     const p = typed<MoodTrendPayload>(payload);
     const trend = p.trend;
     if (!trend) { return; }
@@ -257,7 +260,8 @@ export function registerAgnesActions() {
     } else {
       console.warn('[Agnes] NSV write skipped — ephemeral session (update_mood_trend)');
     }
-    emitSpineEvent('VITAL_UPDATED', { moodTrend: trend, source: 'agnes', domain: 'E' });
+    // VITAL_UPDATED is emitted post-turn by use-module-ai with aggregated soulUpdates.
+    // Emitting here creates a duplicate event with a flat payload structure.
   });
 
   ActionHub.register('agnes', 'update_trauma_markers', async ({ payload, persistencePolicy, updateGlobalSoul }) => {
@@ -272,7 +276,7 @@ export function registerAgnesActions() {
     }
   });
 
-  ActionHub.register('agnes', 'sync_vitals', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent, pushAssistantMessage }) => {
+  ActionHub.register('agnes', 'sync_vitals', async ({ payload, persistencePolicy, updateGlobalSoul, emitSpineEvent }) => {
     const p = typed<SyncVitalsPayload>(payload);
     const emotional = p.emotional;
     if (!emotional) { return; }
@@ -281,11 +285,13 @@ export function registerAgnesActions() {
         console.error('[Agnes] NSV write failed (sync_vitals):', e);
       });
     }
-    const stressLoad = typeof emotional.stressLoad === 'number' ? emotional.stressLoad : null;
-    if (stressLoad !== null && stressLoad >= 8) {
-      emitSpineEvent('COMPOUND_STRESS', { stressLoad, source: 'agnes' });
-    } else {
-      emitSpineEvent('VITAL_UPDATED', { ...emotional, source: 'agnes', domain: 'E' });
+    // Only emit COMPOUND_STRESS for critical stress during persisting sessions.
+    // VITAL_UPDATED is covered post-turn by use-module-ai.
+    if (persistencePolicy !== 'ephemeral') {
+      const stressLoad = typeof emotional.stressLoad === 'number' ? emotional.stressLoad : null;
+      if (stressLoad !== null && stressLoad >= 8) {
+        emitSpineEvent('COMPOUND_STRESS', { stressLoad, source: 'agnes' });
+      }
     }
   });
 

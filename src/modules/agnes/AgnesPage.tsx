@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import { useVault } from '@/lib/vault-context';
 import { useAuth } from '@/lib/auth-context';
@@ -14,7 +14,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { NexusChat } from '@/core/components/NexusChat';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { AgnesClosingBar } from './components/AgnesClosingBar';
-import { Agnes3DEnvironment } from './components/Agnes3DEnvironment';
+const Agnes3DEnvironment = React.lazy(() =>
+  import('./components/Agnes3DEnvironment').then((m) => ({ default: m.Agnes3DEnvironment })),
+);
 import { AgnesSettingsPanel } from './components/AgnesSettingsPanel';
 import { AgnesDashboard } from './components/AgnesDashboard';
 import { AgnesSanctuarySidebar } from './components/AgnesSanctuarySidebar';
@@ -195,7 +197,9 @@ function AgnesContent({
       <SanctuaryBackground />
 
       <div className="absolute inset-0 pointer-events-none">
-        <Agnes3DEnvironment activeSession={currentState === 'session'} isProcessing={isProcessing} />
+        <Suspense fallback={null}>
+          <Agnes3DEnvironment activeSession={currentState === 'session'} isProcessing={isProcessing} />
+        </Suspense>
       </div>
 
       <div className={cn(

@@ -110,6 +110,7 @@ export function useAgnesSession({
     persistencePolicy: isImpromptu ? 'ephemeral' : 'auto',
     sessionId: isImpromptu ? 'impromptu' : undefined,
     getSessionProgressBlock,
+    moduleSessionActive: currentState === 'session',
   });
 
   // Guard: never accumulate routing suggestions while a session is active.

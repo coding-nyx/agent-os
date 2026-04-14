@@ -1,19 +1,19 @@
 /**
  * Agnes persona prompts — source of truth lives in KMP (cortex-logic).
  *
- * This file is a thin bridge that reads from PersonaPromptCatalogJs so the
- * persona text is NOT duplicated in TypeScript. If the KMP export is
- * unavailable at runtime (e.g. during unit tests), a minimal fallback is used.
+ * This file is a thin bridge that reads from PersonaPromptCatalogJs.
+ * Throws at import time if the cortex bundle is missing the class —
+ * this is intentional: a missing catalog means the bundle is broken,
+ * not a graceful degradation scenario.
  */
 import { PersonaPromptCatalogJs } from '@cortex-logic';
 
-const _catalog = PersonaPromptCatalogJs ? new PersonaPromptCatalogJs() : null;
+if (!PersonaPromptCatalogJs) {
+  throw new Error('cortex-logic PersonaPromptCatalogJs is unavailable — check cortex bundle integrity');
+}
 
-const FALLBACK_PERSONA = 'You are AGNES, a high-fidelity AI psychotherapist. Respond with clinical depth and compassion.';
-const FALLBACK_ONBOARDING = 'You are AGNES in Intake Protocol mode. Gather the user\'s background, struggles, and goals through warm, conversational questioning.';
+const _catalog = new PersonaPromptCatalogJs();
 
-export const AGNES_PERSONA: string =
-  _catalog?.promptFor('agnes') ?? FALLBACK_PERSONA;
+export const AGNES_PERSONA: string = _catalog.promptFor('agnes') ?? '';
 
-export const THERAPY_ONBOARDING_PERSONA: string =
-  _catalog?.promptFor('agnes_onboarding') ?? FALLBACK_ONBOARDING;
+export const THERAPY_ONBOARDING_PERSONA: string = _catalog.promptFor('agnes_onboarding') ?? '';
