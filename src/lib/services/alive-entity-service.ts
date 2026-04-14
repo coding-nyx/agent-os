@@ -447,7 +447,7 @@ export async function listAliveEntities(
 ): Promise<Array<NexusRecord<AliveEntity>>> {
   const collection = resolveAliveEntityCollectionPath(options);
   if (!sourceModule) {
-    return dataLayer.listDocuments<AliveEntity>(collection, { limit: 0 });
+    return dataLayer.listDocuments<AliveEntity>(collection, { limit: 500 });
   }
 
   return dataLayer.query<AliveEntity>({
@@ -482,7 +482,7 @@ export async function syncAliveEntities(
   if (options?.pruneMissingWithinIncomingPrefixes) {
     const incomingIds = new Set(normalized.map((entity) => entity.id));
     const incomingPrefixes = new Set(normalized.map((entity) => getAliveEntityPrefix(entity.id)));
-    const existing = await dataLayer.listDocuments<AliveEntity>(collection, { limit: 0 });
+    const existing = await dataLayer.listDocuments<AliveEntity>(collection, { limit: 500 });
     const stale = existing.filter(
       (entity) => incomingPrefixes.has(getAliveEntityPrefix(entity.id)) && !incomingIds.has(entity.id),
     );

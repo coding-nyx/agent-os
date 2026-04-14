@@ -89,7 +89,9 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
         setIsLoading(true);
       }
       const key = !isGuest && isUnlocked ? await getMasterKey() : null;
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setEncryptionKey(key);
 
       if (user && !isGuest && key && subscribeProfileRef.current) {

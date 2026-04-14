@@ -85,6 +85,11 @@ const normalizeOrchestrationPreferences = (
  * exactly "Nexus".
  */
 const _aliasMigrationFired = new Set<string>();
+// Cap consecutive write failures per uid so a rules-denied migration doesn't
+// retry on every subsequent snapshot indefinitely.
+const _aliasMigrationFailures = new Map<string, number>();
+const ALIAS_MIGRATION_MAX_FAILURES = 3;
+
 function migrateOrchestratorAlias(
   uid: string,
   profile: CoreUserProfile,
@@ -93,6 +98,8 @@ function migrateOrchestratorAlias(
   const currentAlias = profile.agentPersonalityProvision?.orchestratorAlias;
   if (currentAlias !== 'Nexus') return profile;
   if (_aliasMigrationFired.has(uid)) return profile;
+  const failures = _aliasMigrationFailures.get(uid) ?? 0;
+  if (failures >= ALIAS_MIGRATION_MAX_FAILURES) return profile;
   _aliasMigrationFired.add(uid);
 
   // Fire-and-forget write to persist the rename.
@@ -102,7 +109,16 @@ function migrateOrchestratorAlias(
       updatedAt: new Date().toISOString(),
     } as any)
     .catch((err) => {
-      console.warn('[CoreProfileService] orchestratorAlias migration failed, will retry on next load:', err);
+      const nextFailures = (_aliasMigrationFailures.get(uid) ?? 0) + 1;
+      _aliasMigrationFailures.set(uid, nextFailures);
+      if (nextFailures >= ALIAS_MIGRATION_MAX_FAILURES) {
+        console.warn(
+          `[CoreProfileService] orchestratorAlias migration failed ${nextFailures} times — giving up for this session:`,
+          err,
+        );
+      } else {
+        console.warn('[CoreProfileService] orchestratorAlias migration failed, will retry on next snapshot:', err);
+      }
       _aliasMigrationFired.delete(uid);
     });
 

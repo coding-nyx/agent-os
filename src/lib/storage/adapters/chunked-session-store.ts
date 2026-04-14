@@ -120,7 +120,7 @@ export class ChunkedSessionStore implements SessionStore {
     };
 
     const chunkCollection = getChunkCollectionPath(docId);
-    const existingChunks = await this.dataLayer.listDocuments<PersistedSessionChunk>(chunkCollection, { limit: 0 });
+    const existingChunks = await this.dataLayer.listDocuments<PersistedSessionChunk>(chunkCollection, { limit: 20 });
 
     const operations = [
       ...existingChunks.map((chunk) => ({ type: 'delete' as const, collection: chunkCollection, id: chunk.id })),
@@ -199,7 +199,7 @@ export class ChunkedSessionStore implements SessionStore {
       history = collected;
     } else {
       // Legacy path: no index stored — fetch all chunks.
-      const chunks = await this.dataLayer.listDocuments<PersistedSessionChunk>(chunkCollection, { limit: 0 });
+      const chunks = await this.dataLayer.listDocuments<PersistedSessionChunk>(chunkCollection, { limit: 20 });
       const ordered = [...chunks].sort((left, right) => left.seqStart - right.seqStart);
       history = ordered.flatMap((chunk) => Array.isArray(chunk.messages) ? chunk.messages : []);
     }
@@ -260,7 +260,7 @@ export class ChunkedSessionStore implements SessionStore {
             }
             history = collected;
           } else {
-            const chunks = await this.dataLayer.listDocuments<PersistedSessionChunk>(chunkCollection, { limit: 0 });
+            const chunks = await this.dataLayer.listDocuments<PersistedSessionChunk>(chunkCollection, { limit: 20 });
             const ordered = [...chunks].sort((left, right) => left.seqStart - right.seqStart);
             history = ordered.flatMap((chunk) => Array.isArray(chunk.messages) ? chunk.messages : []);
           }
@@ -290,7 +290,7 @@ export class ChunkedSessionStore implements SessionStore {
   async clear(sessionKey: SessionKey): Promise<void> {
     const docId = buildSessionDocId(sessionKey);
     const chunkCollection = getChunkCollectionPath(docId);
-    const chunks = await this.dataLayer.listDocuments<PersistedSessionChunk>(chunkCollection, { limit: 0 });
+    const chunks = await this.dataLayer.listDocuments<PersistedSessionChunk>(chunkCollection, { limit: 20 });
     const operations = chunks.map((chunk) => ({
       type: 'delete' as const,
       collection: chunkCollection,

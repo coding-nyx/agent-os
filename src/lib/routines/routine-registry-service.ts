@@ -25,7 +25,7 @@ export class RoutineRegistryService {
     if (!uid) return [];
 
     const dataLayer = options?.dataLayer ?? getNexusDataLayer();
-    const docs = await dataLayer.listDocuments<RoutineDefinition>(this.getRoutineCollectionPath(uid), { limit: 0 });
+    const docs = await dataLayer.listDocuments<RoutineDefinition>(this.getRoutineCollectionPath(uid));
     return sortRoutines(docs);
   }
 

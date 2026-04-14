@@ -88,6 +88,17 @@ export function useNexusCrossModuleBlocker() {
       }
     };
 
+    // MODULE_PROFILE_UPDATED: the target module finished work — unconditionally
+    // clear pending state. The old implementation required a delegation-completion
+    // signal, but regular profile writes from the delegated module are proof that
+    // the module has processed the request.
+    const handleProfileUpdated = (event: SpineEvent) => {
+      const sourceId = getSourceAsModuleId(event);
+      if (sourceId && pendingMapRef.current.has(sourceId)) {
+        removePending(sourceId);
+      }
+    };
+
     const handleModuleProgress = (event: SpineEvent) => {
       if (!isDelegationCompletionSignal(event)) return;
       const sourceId = getSourceAsModuleId(event);
@@ -98,7 +109,7 @@ export function useNexusCrossModuleBlocker() {
 
     const unsubDelegated = Spine.on('MODULE_DELEGATED', handleModuleDelegated);
     const unsubVital = Spine.on('VITAL_UPDATED', handleVitalUpdated);
-    const unsubProfileUpdated = Spine.on('MODULE_PROFILE_UPDATED', handleModuleProgress);
+    const unsubProfileUpdated = Spine.on('MODULE_PROFILE_UPDATED', handleProfileUpdated);
     const unsubAiFailure = Spine.on('AI_LINK_FAILURE', handleModuleProgress);
 
     // Safety net: clear stale pending targets so chat never deadlocks.

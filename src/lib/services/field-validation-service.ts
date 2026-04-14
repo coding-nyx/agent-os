@@ -351,7 +351,7 @@ export async function validateBatch(
 }
 
 /**
- * Persist a user-correction event to `validation_feedback/{userId}/{feedback.id}`.
+ * Persist a user-correction event to `validation_feedback/{userId}/entries/{feedback.id}`.
  *
  * Fire-and-forget: never throws, logs errors to console only.
  */
@@ -362,7 +362,7 @@ export async function recordValidationFeedback(
   try {
     const dataLayer = getNexusDataLayer();
     await dataLayer.setDocument<ValidationFeedback>(
-      `validation_feedback/${userId}`,
+      `validation_feedback/${userId}/entries`,
       feedback.id,
       feedback,
     );
@@ -385,7 +385,7 @@ export async function getRecentFeedback(
   try {
     const dataLayer = getNexusDataLayer();
     const q: NexusQuery = {
-      collection: `validation_feedback/${userId}`,
+      collection: `validation_feedback/${userId}/entries`,
       where: [{ field: 'moduleId', op: '==', value: moduleId }],
       orderBy: [{ field: 'timestamp', direction: 'desc' }],
       limit,
