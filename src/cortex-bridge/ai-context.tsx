@@ -240,7 +240,17 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
 
   const sendMessage = useCallback(async (content: MessageContent, context: ConversationContext, signal?: AbortSignal) => {
       if (!agent) {
-        throw new Error('AI Engine is currently unavailable (initialization failed or missing API keys).');
+        return {
+          response: {
+            fullText: 'AI assistant is unavailable — add an API key in Profile settings.',
+            publicText: 'AI assistant is unavailable — add an API key in Profile settings.',
+            internalThoughts: null,
+            actions: [],
+            mutations: [],
+            isInterrupted: false,
+          } satisfies StructuredResponse,
+          updatedHistory: context.history,
+        };
       }
       const result = await agent.chat(content, context, undefined, signal);
       return result;
@@ -248,7 +258,19 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
 
   const streamMessage = useCallback(async (content: MessageContent, context: ConversationContext, onChunk: (chunk: StreamChunk) => void, signal?: AbortSignal) => {
       if (!agent) {
-        throw new Error('AI Engine is currently unavailable (initialization failed or missing API keys).');
+        const offlineText = 'AI assistant is unavailable — add an API key in Profile settings.';
+        onChunk({ delta: offlineText, isThinking: false, isActing: false, currentActionType: null } satisfies StreamChunk);
+        return {
+          response: {
+            fullText: offlineText,
+            publicText: offlineText,
+            internalThoughts: null,
+            actions: [],
+            mutations: [],
+            isInterrupted: false,
+          } satisfies StructuredResponse,
+          updatedHistory: context.history,
+        };
       }
       const safeChunk = (chunk: StreamChunk) => {
         try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }

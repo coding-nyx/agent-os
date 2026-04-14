@@ -1,5 +1,3 @@
-
-import { encode } from 'gpt-tokenizer';
 import { Message } from '../types';
 import { CognitiveContext } from './types';
 
@@ -20,14 +18,15 @@ export class MemoryManager {
     return Math.floor(this.MAX_TOTAL_TOKENS * this.CONSOLIDATION_RATIO);
   }
 
+  /**
+   * Approximate token count using ~4 chars per token heuristic.
+   * This is the standard GPT-family approximation and is more than
+   * accurate enough for consolidation threshold checks (~75% of 128k).
+   * Removes the 2 MB gpt-tokenizer dependency from the critical path.
+   */
   static countTokens(text: string): number {
     if (!text) return 0;
-    try {
-      return encode(text).length;
-    } catch (e) {
-      // Fallback to rough char count if tokenizer fails
-      return Math.ceil(text.length / 4);
-    }
+    return Math.ceil(text.length / 4);
   }
 
   static getMessageTokens(message: Message): number {

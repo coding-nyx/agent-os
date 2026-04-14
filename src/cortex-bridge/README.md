@@ -1,392 +1,101 @@
-# LLM Engine (`src/llm-engine/`)
+# cortex-bridge (`src/cortex-bridge/`)
 
-**Purpose:** AI orchestration and conversation engine (EXTERNAL BOUNDARY)  
-**Last Updated:** 2026-03-10
+**Purpose:** TypeScript bridge layer between the agnes React app and the `cortex-logic` KMP library.
 
----
-
-## ⚠️ CRITICAL: External API Boundary
-
-**This directory is treated as a black-box external runtime.**
-
-### Rules for All Developers and AI Assistants:
-
-1. **DO NOT** modify internal engine code unless explicitly requested
-2. **DO NOT** import engine internals directly (e.g., `import { Agent } from '@/llm-engine/engine'`)
-3. **DO** interact only through provided hooks and interfaces
-4. **DO** treat this as you would a third-party npm package
+The KMP JS bundle (`cortex.js`) is published as the `cortex-logic` npm package and aliased to `@cortex-logic` by Vite. All access from app code goes through this directory — never import directly from `cortex-logic/build/dist/…`.
 
 ---
 
-## Architecture Overview
-
-The LLM engine is a self-contained AI orchestration system with its own internal architecture:
+## Directory layout
 
 ```
-llm-engine/
-├── adapters/           # Storage and crypto adapters (dependency inversion)
-├── engine/             # Core engine (Agent, Orchestrator, MemoryManager)
-│   ├── Agent.ts        # LLM interaction and streaming
-│   ├── Orchestrator.ts # Multi-model orchestration
-│   ├── MemoryManager.ts# Conversation history management
-│   └── ModelRegistry.ts# Model configuration
-├── ai-context.tsx      # React provider for engine
-├── persona-factory.ts  # Persona creation utilities
-├── types.ts            # Engine type definitions
-└── sanitize.ts         # Input sanitization
-```
-
-**Key Principle:** The engine has ZERO imports from `src/lib/` or `src/modules/`. It is fully decoupled.
-
----
-
-## How to Interact with the Engine
-
-### 1. Using the `useAI()` Hook
-
-**Primary interface for AI interactions.**
-
-```typescript
-import { useAI } from '@/llm-engine/ai-context';
-
-function MyComponent() {
-  const { sendMessage, streamMessage, generateJSON, analyzeImage, isInitialized } = useAI();
-  
-  // 1. Conversational Chat
-  const handleSend = async () => {
-    const response = await sendMessage({
-      userMessage: 'Hello',
-      systemPrompt: 'You are a helpful assistant',
-      history: previousMessages
-    });
-  };
-
-  // 2. Structured Data Generation (JSON Mode)
-  const handleSynthesis = async () => {
-    const data = await generateJSON<{ claim: string }>('Analyze these results...', {
-      systemPrompt: 'Respond with JSON only.'
-    });
-    console.log(data.claim);
-  };
-
-  // 3. Vision / Multi-modal Analysis
-  const handleOCR = async (url: string) => {
-    const text = await analyzeImage(url, 'Extract text from this image', {
-      format: 'text'
-    });
-    console.log(text);
-  };
-}
-```
-
-### 2. Using the `useModuleAI()` Hook
-
-**Recommended for module-level AI integration.** Wraps `useAI()` with module-specific logic.
-
-```typescript
-import { useModuleAI } from '@/lib/ai-adapters/module-ai-adapter';
-
-function MyModulePage() {
-  const {
-    sendMessage,
-    isProcessing,
-    lastResponse,
-    executeAction
-  } = useModuleAI({
-    moduleName: 'agnes',
-    allowedActions: ['UPDATE_PROFILE', 'CREATE_NOTE'],
-    onActionComplete: (action, result) => {
-      console.log('Action completed:', action);
-    }
-  });
-}
-```
-
-### 3. Conversation Context Type
-
-Pass this structure to `sendMessage()` or `streamMessage()`:
-
-```typescript
-interface ConversationContext {
-  userMessage: string;
-  systemPrompt: string;
-  history?: Message[];
-  insights?: string[];     // From GlobalSoul
-  summary?: SessionSummary;// Session context
-  onToolCall?: (call: ToolCall) => Promise<any>;
-  onChunk?: (chunk: string) => void; // For streaming
-}
-```
-
-### 4. Message Type
-
-```typescript
-interface Message {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: number;
-  metadata?: {
-    actionTags?: string[];
-    modelUsed?: string;
-    tokensUsed?: number;
-  };
-}
+cortex-bridge/
+├── cortex-logic-runtime.ts   # Master re-exporter — pre-loads Kotlin/Ktor runtime JARs,
+│                             # runs a DFS over the UMD namespace, and exports ~80 *Js classes.
+│                             # 5 exports are lazy-guarded (null if the KMP build omits them):
+│                             #   ActionHubJs, CancellableTask, PersonaPromptCatalogJs,
+│                             #   TitanPromptBuilderJs, RagChunkingServiceJs.
+│                             # Callers of lazy-guarded exports must null-check at call site.
+│
+├── ai-context.tsx            # React AIProvider / useAI() — wraps CognitiveEngineJs,
+│                             # handles init timeout (8 s), degraded-mode fallback, and
+│                             # credential store integration.
+│
+├── action-hub-bridge.ts      # ActionHubJs + NsvOwnershipServiceJs singleton management.
+│                             # Call setActionHubUser(uid) on login; invalidateActionHubBridge()
+│                             # on logout.
+│
+├── credential-store-bridge.ts# CredentialStoreJs singleton; encrypts API keys in Firestore.
+│                             # Includes a legacy localStorage → vault migration path.
+│
+├── nexus-synthesis-bridge.ts # NexusSynthesisServiceJs singleton.
+├── nexus-data-layer-bridge.ts# Action-hub callback glue for the data layer.
+├── persona-factory.ts        # PersonaFactoryJs wrapper + fallback persona strings.
+├── sanitize.ts               # LlmSanitizerJs wrapper.
+├── kmp-parse.ts              # Safe JSON.parse helper for KMP JSON string returns.
+│
+├── ws-browser-shim.ts        # Maps `ws` module import to the browser's native WebSocket.
+│                             # Required by Ktor's JS HTTP client.
+│
+├── js-joda-global.ts         # Sets up @js-joda/timezone global before cortex.js loads.
+│
+├── types.ts                  # Shared types for bridge layer (not KMP-generated).
+│
+└── engine/                   # Pre-KMP local engine; still in use for CognitiveAgent,
+    ├── CognitiveAgent.ts     # MemoryManager, and streaming plumbing. Wraps KMP
+    ├── MemoryManager.ts      # CognitiveEngineJs internally.
+    └── types.ts
 ```
 
 ---
 
-## Common Use Cases
+## How to use the KMP layer
 
-### Use Case 1: Simple Question-Answer
+### 1. LLM / chat — `useAI()` or `useModuleAI()`
 
 ```typescript
-const { sendMessage } = useAI();
+import { useAI } from '@/cortex-bridge/ai-context';
 
-const response = await sendMessage({
-  userMessage: 'What is the weather today?',
-  systemPrompt: 'You are a helpful assistant.',
-  history: []
-});
-
-console.log(response.content); // AI response
+const { sendMessage, streamMessage, generateJSON, isInitialized, initFailed } = useAI();
 ```
 
-### Use Case 2: Streaming Response
+`useModuleAI()` (`@/lib/ai-adapters/module-ai-adapter`) is the recommended hook for module pages — it wraps `useAI()` with persona resolution, orchestration gate checks, and action dispatch.
+
+### 2. Direct KMP exports
+
+Import named exports from the `@cortex-logic` alias (resolved by Vite to `cortex-logic-runtime.ts`):
 
 ```typescript
-const { streamMessage } = useAI();
-
-await streamMessage({
-  userMessage: 'Tell me a story',
-  systemPrompt: 'You are a storyteller.',
-  history: [],
-  onChunk: (chunk) => {
-    // Update UI with each chunk
-    setDisplayText(prev => prev + chunk);
-  }
-});
+import { SessionArcJs, NsvServiceJs, ExerciseLibraryJs } from '@cortex-logic';
 ```
 
-### Use Case 3: AI with Actions
+Always null-check the 5 lazy-guarded exports before constructing them:
 
 ```typescript
-const { sendMessage } = useAI();
+import { TitanPromptBuilderJs } from '@cortex-logic';
 
-await sendMessage({
-  userMessage: 'Update my profile name to John',
-  systemPrompt: 'You can update user profiles.',
-  history: [],
-  onToolCall: async (toolCall) => {
-    if (toolCall.action === 'UPDATE_PROFILE') {
-      await profileService.update(toolCall.params);
-      return { success: true, message: 'Profile updated' };
-    }
-  }
-});
+if (!TitanPromptBuilderJs) throw new Error('TitanPromptBuilderJs unavailable in this build');
+const builder = new TitanPromptBuilderJs();
 ```
 
-### Use Case 4: With GlobalSoul Context
+### 3. Action hub
 
 ```typescript
-const { sendMessage } = useAI();
-const { globalSoul } = useGlobalSoul();
-
-const response = await sendMessage({
-  userMessage: 'How am I doing overall?',
-  systemPrompt: 'You are a wellness coach.',
-  history: [],
-  insights: [
-    `Emotional resilience: ${globalSoul.nsv.emotionalResilience}`,
-    `Physical readiness: ${globalSoul.nsv.physicalReadiness}`,
-    globalSoul.recentInsights.join('\n')
-  ]
-});
+import { setActionHubUser, invalidateActionHubBridge } from '@/cortex-bridge/action-hub-bridge';
+// Called in SpineRuntimeBootstrap (App.tsx) — do not call from modules directly.
 ```
 
 ---
 
-## Engine Configuration
+## Adding a new KMP export
 
-### Model Providers
-
-The engine supports multiple LLM providers:
-- **OpenRouter** (primary: DeepSeek-V3, Grok-Beta, Gemini-Flash)
-- **Direct Grok API** (optional fallback)
-
-**Configuration:** API keys from `.env.local` or `localStorage`:
-```
-VITE_OPENROUTER_API_KEY=...
-VITE_GROK_API_KEY=...
-```
-
-### Persona System
-
-Personas define AI behavior. Each module has its own personas:
-
-```typescript
-// modules/agnes/personas.ts
-export const agnesPersonas = {
-  supportive: {
-    name: 'Supportive Agnes',
-    systemPrompt: 'You are a compassionate therapist...',
-    modelPreference: 'deepseek'
-  }
-};
-
-// Usage
-import { createPersona } from '@/llm-engine/persona-factory';
-
-const persona = createPersona(agnesPersonas.supportive);
-```
+1. Ensure the Kotlin class has `@JsExport` in `cortex-logic/src/jsMain`.
+2. Add `export const FooJs = requireEngineExport('FooJs');` to `cortex-logic-runtime.ts`.
+3. Add the TypeScript declaration to `src/types/cortex-logic.d.ts`.
+4. If the export may be absent in some builds, use the lazy-guard pattern (see lines 65/76/120/140/146 in the runtime).
 
 ---
 
-## Performance Considerations
+## TypeScript types
 
-### Token Management
-- Engine automatically manages token limits per model
-- Long conversations are summarized to fit context windows
-- Use `SessionSummary` to preserve context across sessions
-
-### Streaming
-- Always use `streamMessage()` for long-form responses
-- Provides better UX (progressive loading)
-- Reduces perceived latency
-
-### Error Handling
-```typescript
-try {
-  const response = await sendMessage(context);
-} catch (error) {
-  if (error.code === 'RATE_LIMIT') {
-    // Handle rate limit
-  } else if (error.code === 'NO_API_KEY') {
-    // Handle missing configuration
-  }
-}
-```
-
----
-
-## Debugging
-
-### Check Engine Initialization
-```typescript
-const { isInitialized, error } = useAI();
-
-if (!isInitialized) {
-  console.log('Engine not ready:', error);
-}
-```
-
-### View Engine State (DevTools)
-```
-React DevTools → Components → AIProvider
-```
-
-### Common Issues
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| "Engine not initialized" | Missing API keys | Check `.env.local` |
-| Empty responses | Invalid system prompt | Verify prompt format |
-| Actions not executing | `onToolCall` not provided | Add action handler |
-| Rate limit errors | Too many requests | Implement retry logic |
-
----
-
-## What NOT to Do
-
-### ❌ Don't Import Engine Internals
-```typescript
-// WRONG
-import { Agent } from '@/llm-engine/engine/Agent';
-import { Orchestrator } from '@/llm-engine/engine/Orchestrator';
-
-// RIGHT
-import { useAI } from '@/llm-engine/ai-context';
-```
-
-### ❌ Don't Couple UI to Engine Logic
-```typescript
-// WRONG
-function MyComponent() {
-  const agent = new Agent(); // Direct instantiation
-}
-
-// RIGHT
-function MyComponent() {
-  const { sendMessage } = useAI(); // Use hook
-}
-```
-
-### ❌ Don't Store Engine State in Modules
-```typescript
-// WRONG
-const [agent, setAgent] = useState(new Agent());
-
-// RIGHT
-// Engine state managed by AIProvider internally
-const { sendMessage } = useAI();
-```
-
----
-
-## When to Modify Engine Code
-
-**Allowed modifications:**
-1. **Persona definitions** (module-specific, outside engine)
-2. **Action schemas** (app-layer, not engine)
-3. **Adapter implementations** (e.g., custom storage adapter)
-
-**Requires explicit approval:**
-1. **Internal orchestration logic**
-2. **Model registry changes**
-3. **Core Agent/Orchestrator refactors**
-4. **Memory management algorithms**
-
----
-
-## Testing Engine Integration
-
-```typescript
-// Test basic message flow
-describe('AI Integration', () => {
-  it('should send message and receive response', async () => {
-    const { sendMessage } = useAI();
-    
-    const response = await sendMessage({
-      userMessage: 'Test',
-      systemPrompt: 'Echo the user message',
-      history: []
-    });
-    
-    expect(response.content).toBeDefined();
-  });
-});
-```
-
----
-
-## Documentation Maintenance
-
-**Update this README when:**
-- New hooks are added to engine interface
-- New model providers are supported
-- Engine API changes (breaking or non-breaking)
-- New error codes are introduced
-
-**Do NOT update for:**
-- Internal engine refactors (unless interface changes)
-- Performance optimizations
-- Bug fixes (unless they change behavior)
-
----
-
-## See Also
-
-- [CODE_DOCUMENTATION.md](../../CODE_DOCUMENTATION.md) - Overall architecture
-- [AGENTS.md](../../AGENTS.md) - Agent protocol
-- `src/lib/ai-adapters/` - App-layer AI adapters
-- `src/modules/*/personas.ts` - Module-specific AI personas
+`src/types/cortex-logic.d.ts` is the authoritative TS declaration for `@cortex-logic`. It is hand-maintained. When cortex-logic ships new exports, update this file to match. The generated `.d.ts` inside `node_modules/cortex-logic/` is not wired into tsconfig.
