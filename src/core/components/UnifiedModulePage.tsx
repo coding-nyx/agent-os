@@ -124,72 +124,76 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   if (isLoading) {
     const ModuleIcon = manifest.icon;
     return (
-      <ModuleLayout title={title} themeColor={themeColor} moduleId={moduleId}>
-        <div className="flex-1 flex items-center justify-center">
-          <motion.div
-            className="flex flex-col items-center gap-8"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {/* Module icon with ambient glow */}
-            <div className="relative flex items-center justify-center w-20 h-20">
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{ background: `${manifest.colorHex}18` }}
-                animate={{ scale: [1, 1.18, 1], opacity: [0.6, 0.15, 0.6] }}
-                transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-              />
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: `${manifest.colorHex}12`,
-                  border: `1px solid ${manifest.colorHex}35`,
-                }}
-              >
-                <ModuleIcon className="w-6 h-6" style={{ color: manifest.colorHex }} />
-              </div>
-            </div>
-
-            {/* Module name + sweep line */}
-            <div className="flex flex-col items-center gap-3">
-              <p
-                className="text-[11px] font-semibold tracking-[0.25em] uppercase"
-                style={{ color: 'rgba(255,255,255,0.35)' }}
-              >
-                {manifest.alias}
-              </p>
-              <div
-                className="relative w-28 overflow-hidden rounded-full"
-                style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }}
-              >
+      <ModuleThemeProvider moduleId={moduleId}>
+        <ModuleLayout title={title} themeColor={themeColor} moduleId={moduleId}>
+          <div className="flex-1 flex items-center justify-center">
+            <motion.div
+              className="flex flex-col items-center gap-8"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {/* Module icon with ambient glow */}
+              <div className="relative flex items-center justify-center w-20 h-20">
                 <motion.div
-                  className="absolute inset-y-0 w-full"
-                  style={{
-                    background: `linear-gradient(90deg, transparent 0%, ${manifest.colorHex}00 10%, ${manifest.colorHex}99 50%, ${manifest.colorHex}00 90%, transparent 100%)`,
-                  }}
-                  animate={{ x: ['-100%', '100%'] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: `${manifest.colorHex}18` }}
+                  animate={{ scale: [1, 1.18, 1], opacity: [0.6, 0.15, 0.6] }}
+                  transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
                 />
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                  style={{
+                    background: `${manifest.colorHex}12`,
+                    border: `1px solid ${manifest.colorHex}35`,
+                  }}
+                >
+                  <ModuleIcon className="w-6 h-6" style={{ color: manifest.colorHex }} />
+                </div>
               </div>
-            </div>
-          </motion.div>
-        </div>
-      </ModuleLayout>
+
+              {/* Module name + sweep line */}
+              <div className="flex flex-col items-center gap-3">
+                <p
+                  className="text-[11px] font-semibold tracking-[0.25em] uppercase"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}
+                >
+                  {manifest.alias}
+                </p>
+                <div
+                  className="relative w-28 overflow-hidden rounded-full"
+                  style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }}
+                >
+                  <motion.div
+                    className="absolute inset-y-0 w-full"
+                    style={{
+                      background: `linear-gradient(90deg, transparent 0%, ${manifest.colorHex}00 10%, ${manifest.colorHex}99 50%, ${manifest.colorHex}00 90%, transparent 100%)`,
+                    }}
+                    animate={{ x: ['-100%', '100%'] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </ModuleLayout>
+      </ModuleThemeProvider>
     );
   }
 
   if (isGuest && !guestReady) {
     return (
-      <ModuleLayout title={title} themeColor={themeColor} moduleId={moduleId}>
-        <GuestModePanel
-          moduleId={moduleId}
-          onContinue={() => {
-            sessionStorage.setItem(`nexus_guest_module_${moduleId}`, 'true');
-            setGuestReady(true);
-          }}
-        />
-      </ModuleLayout>
+      <ModuleThemeProvider moduleId={moduleId}>
+        <ModuleLayout title={title} themeColor={themeColor} moduleId={moduleId}>
+          <GuestModePanel
+            moduleId={moduleId}
+            onContinue={() => {
+              sessionStorage.setItem(`nexus_guest_module_${moduleId}`, 'true');
+              setGuestReady(true);
+            }}
+          />
+        </ModuleLayout>
+      </ModuleThemeProvider>
     );
   }
 
@@ -197,57 +201,63 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   // accidentally render intake forms while the vault is locked.
   if (!isGuest && requireVault && !isModuleAccessible(moduleId)) {
     return (
-      <ModuleLayout title={title} themeColor={themeColor} moduleId={moduleId}>
-        <VaultLockedShell
-          moduleName={manifest.title}
-          moduleDescription={manifest.description}
-          accentClassName={`text-${themeColor}-400`}
-          onUnlock={() => navigate(`/vault-gate?returnTo=${encodeURIComponent(window.location.pathname)}`)}
-        />
-      </ModuleLayout>
+      <ModuleThemeProvider moduleId={moduleId}>
+        <ModuleLayout title={title} themeColor={themeColor} moduleId={moduleId}>
+          <VaultLockedShell
+            moduleName={manifest.title}
+            moduleDescription={manifest.description}
+            accentClassName={`text-${themeColor}-400`}
+            onUnlock={() => navigate(`/vault-gate?returnTo=${encodeURIComponent(window.location.pathname)}`)}
+          />
+        </ModuleLayout>
+      </ModuleThemeProvider>
     );
   }
 
   if (isOnboarding && onboardingMode !== 'optional' && !RenderOnboarding) {
     return (
-      <ModuleLayout title={`${title} Intake`} themeColor={themeColor} moduleId={moduleId}>
-        <div className="flex-1 flex items-center justify-center p-8">
-          <SurfaceCard variant="strong" className="w-full max-w-2xl p-8 space-y-4">
-            <div className="text-[11px] font-black uppercase tracking-[0.3em] italic text-rose-300">
-              Onboarding Contract Mismatch
-            </div>
-            <p className="text-sm text-white/70">
-              `{moduleId}` is configured as `{onboardingMode}` onboarding mode but no onboarding renderer was provided.
-            </p>
-            <p className="text-xs text-white/45">
-              Add `renderOnboarding` for required/hybrid modules or switch mode to optional in `module-manifest.ts`.
-            </p>
-          </SurfaceCard>
-        </div>
-      </ModuleLayout>
+      <ModuleThemeProvider moduleId={moduleId}>
+        <ModuleLayout title={`${title} Intake`} themeColor={themeColor} moduleId={moduleId}>
+          <div className="flex-1 flex items-center justify-center p-8">
+            <SurfaceCard variant="strong" className="w-full max-w-2xl p-8 space-y-4">
+              <div className="text-[11px] font-black uppercase tracking-[0.3em] italic text-rose-300">
+                Onboarding Contract Mismatch
+              </div>
+              <p className="text-sm text-white/70">
+                `{moduleId}` is configured as `{onboardingMode}` onboarding mode but no onboarding renderer was provided.
+              </p>
+              <p className="text-xs text-white/45">
+                Add `renderOnboarding` for required/hybrid modules or switch mode to optional in `module-manifest.ts`.
+              </p>
+            </SurfaceCard>
+          </div>
+        </ModuleLayout>
+      </ModuleThemeProvider>
     );
   }
 
   if (isOnboarding && onboardingMode !== 'optional' && RenderOnboarding) {
     return (
-      <ModuleLayout title={`${title} Intake`} themeColor={themeColor} moduleId={moduleId}>
-        <RenderOnboarding
-          profile={profile}
-          onComplete={async (completedProfile) => {
-            await persistProfile(completedProfile);
-            setProfile(completedProfile);
-            setIsOnboarding(false);
-            Spine.emit({
-              type: 'MODULE_PROFILE_UPDATED',
-              source: moduleId,
-              domain: 'system',
-              data: { moduleId, reason: 'onboarding_complete', onboardingMode },
-              cascadeDepth: 0,
-              priority: 'info',
-            });
-          }}
-        />
-      </ModuleLayout>
+      <ModuleThemeProvider moduleId={moduleId}>
+        <ModuleLayout title={`${title} Intake`} themeColor={themeColor} moduleId={moduleId}>
+          <RenderOnboarding
+            profile={profile}
+            onComplete={async (completedProfile) => {
+              await persistProfile(completedProfile);
+              setProfile(completedProfile);
+              setIsOnboarding(false);
+              Spine.emit({
+                type: 'MODULE_PROFILE_UPDATED',
+                source: moduleId,
+                domain: 'system',
+                data: { moduleId, reason: 'onboarding_complete', onboardingMode },
+                cascadeDepth: 0,
+                priority: 'info',
+              });
+            }}
+          />
+        </ModuleLayout>
+      </ModuleThemeProvider>
     );
   }
 
