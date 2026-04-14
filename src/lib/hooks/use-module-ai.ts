@@ -18,6 +18,8 @@ import { useMemoryIntegration, MemoryContext } from './useMemoryIntegration';
 import { useConsolidation } from './useConsolidation';
 import { useHandoffProcessor } from './useHandoffProcessor';
 import { usePendingRecovery } from './use-pending-recovery';
+import { useSessionPersistence } from './use-session-persistence';
+import { useSessionSummary } from './use-session-summary';
 import { MODULE_MANIFEST } from '../module-manifest';
 import { NexusLogger } from '@/lib/nexus-logger';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
@@ -60,6 +62,13 @@ interface UseModuleAIOptions {
    *  value for this module's action gate evaluation. Use 5 to auto-execute all mutations
    *  (e.g. Ledger, where the user explicitly directs every financial write). */
   autopilotLevelOverride?: 0 | 1 | 2 | 3 | 4 | 5;
+  /**
+   * Set to true while the module is inside an active, user-facing session (e.g. a live Agnes
+   * therapy session). Forwarded to the KMP action gate so that the module's own non-high-risk
+   * mutations auto-dispatch without the autopilot-level approval card. Explicit per-action
+   * gates and high-risk inferences still apply.
+   */
+  moduleSessionActive?: boolean;
   /**
    * Called at send time to append a dynamic block (e.g. session progress) to the base
    * system prompt. Runs inside handleSendMessage so it always reflects current state
@@ -250,6 +259,7 @@ export function useModuleAI({
   persistencePolicy = 'auto',
   onError,
   autopilotLevelOverride,
+  moduleSessionActive,
   getSessionProgressBlock,
   moduleContext,
 }: UseModuleAIOptions) {
@@ -337,7 +347,6 @@ export function useModuleAI({
   });
   const [disposition, setDisposition] = useState<'reply' | 'consulting' | 'delegating' | 'acting' | null>(null);
   const [consultationTarget, setConsultationTarget] = useState<string | null>(null);
-  const [isHydrating, setIsHydrating] = useState(true);
   const [streamingText, setStreamingText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [lastParsedCommand, setLastParsedCommand] = useState<ParsedCommandEnvelope | null>(null);
@@ -350,19 +359,11 @@ export function useModuleAI({
   } | null>(null);
   const [pendingApprovals, setPendingApprovals] = useState<DeferredApproval[]>([]);
   const sessionStartRef = useRef<string>(new Date().toISOString());
-  const lastRemoteSignatureRef = useRef<string | null>(null);
   const isProcessingRef = useRef(false);
-  // Tracks whether the last setMessages was from hydration (subscription echo)
-  // so the save effect can skip the redundant echo-write.
-  const hydratedFromRemoteRef = useRef(false);
   const currentAssistantMessageBodyRef = useRef('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const pendingApprovalsRef = useRef<Map<string, DeferredApproval>>(new Map());
   const mountedRef = useRef(true);
-  // Nonce of the last local flushActiveSession write. Used to suppress
-  // subscription echoes deterministically — when the incoming session's
-  // _writeNonce matches our ref, we know it's our own echo and skip setMessages().
-  const lastWriteNonceRef = useRef<string | null>(null);
   // RAF batching: buffer deltas and flush to React state once per animation frame
   const pendingStreamTextRef = useRef('');
   const pendingAIStateRef = useRef<{ isThinking: boolean; isActing: boolean; currentActionType: string | null }>({ isThinking: false, isActing: false, currentActionType: null });
@@ -370,10 +371,46 @@ export function useModuleAI({
   const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }) => void) | null>(null);
   const recoveryReplayKeyRef = useRef<string | null>(null);
 
-  // Session summary buffer — compressed summary of messages older than
-  // HISTORY_WINDOW so the LLM never loses early-session context.
-  const sessionSummaryRef = useRef<{ summary: string; coveredUpTo: number } | null>(null);
-  const summaryGeneratingRef = useRef(false);
+  // ── Session persistence sub-hook ────────────────────────────────────
+  const {
+    isHydrating,
+    flushActiveSession,
+    maybeWarnHistoryCompaction,
+    maybeWarnSizePressure,
+    cancelPendingSave,
+    messagesRef,
+    lastRemoteSignatureRef,
+    lastWriteNonceRef,
+  } = useSessionPersistence({
+    moduleId,
+    activeSessionId,
+    resolvedContextPolicy,
+    persistencePolicy,
+    user,
+    isGuest: !!isGuest,
+    messages,
+    setMessages,
+    setError,
+    isProcessingRef,
+    currentAssistantMessageBodyRef,
+    threadIdRef,
+    sessionStartRef,
+    mountedRef,
+  });
+
+  // ── Session summary sub-hook ────────────────────────────────────────
+  const {
+    sessionSummaryRef,
+    refreshSessionSummaryIfNeeded,
+    resetSummary,
+  } = useSessionSummary({
+    moduleId,
+    user,
+    isGuest: !!isGuest,
+    sendMessage,
+    threadIdRef,
+    mountedRef,
+  });
 
   useEffect(() => {
     setMessages([]);
@@ -386,9 +423,8 @@ export function useModuleAI({
     setLastTurnRuntime(null);
     pendingApprovalsRef.current.clear();
     setPendingApprovals([]);
-    sessionSummaryRef.current = null;
-    summaryGeneratingRef.current = false;
-  }, [activeSessionId, moduleId, setLastTurnRuntime]);
+    resetSummary();
+  }, [activeSessionId, moduleId, setLastTurnRuntime, resetSummary]);
 
   // C-1: Abort in-flight stream on unmount
   useEffect(() => {
@@ -430,46 +466,6 @@ export function useModuleAI({
     }).catch((e) => { NexusLogger.warn('ModuleAI', 'Memory prewarm failed (non-critical)'); });
   }, [resolvedContextPolicy, isGuest, user, retrieveMemoryContext]);
 
-  // Background session summary refresh.
-  // Generates a compressed summary of the portion of the conversation that has
-  // overflowed the HISTORY_WINDOW.  Called after each assistant turn — runs
-  // entirely off the critical path so TTFT is unaffected.
-  const refreshSessionSummaryIfNeeded = useCallback(async (currentMessages: Message[]) => {
-    if (isGuest || !user) return;
-    const thread = currentMessages.filter((m) => !m.threadId || m.threadId === threadIdRef.current);
-    if (thread.length <= HISTORY_WINDOW) return;
-
-    const coveredUpTo = thread.length - HISTORY_WINDOW;
-    if (sessionSummaryRef.current && sessionSummaryRef.current.coveredUpTo >= coveredUpTo) return;
-    if (summaryGeneratingRef.current) return;
-
-    summaryGeneratingRef.current = true;
-    try {
-      const olderMessages = thread.slice(0, coveredUpTo);
-      const transcript = olderMessages
-        .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${contentToText(m.content)}`)
-        .join('\n\n');
-
-      const { response } = await sendMessage(
-        `Summarize the following conversation excerpt in 4–6 sentences. Preserve all key topics, decisions, emotional context, and any commitments or disclosures made. This summary will be given to an AI to prevent it from contradicting or forgetting earlier context. Do not include any XML tags, action tags, or technical markup — plain prose only.\n\n${transcript}`,
-        {
-          moduleId,
-          systemPrompt: 'You are a conversation archivist. Output only the summary — plain prose, no bullet points, no preamble.',
-          memoryContext: [],
-          summary: '',
-          history: [],
-        },
-      );
-
-      if (mountedRef.current && response.publicText) {
-        sessionSummaryRef.current = { summary: response.publicText, coveredUpTo };
-      }
-    } catch {
-      // Non-critical — will retry next turn
-    } finally {
-      summaryGeneratingRef.current = false;
-    }
-  }, [isGuest, user, sendMessage]);
 
   const { consolidateIfNeeded, resetConsolidation } = useConsolidation({
     moduleId,
@@ -500,194 +496,6 @@ export function useModuleAI({
     markPendingRequestPending
   } = usePendingRecovery(moduleId);
 
-  // Hydrate active session on mount + subscribe for cross-tab sync
-  useEffect(() => {
-    let mounted = true;
-    let unsubscribe: (() => void) | null = null;
-
-    if (persistencePolicy === 'ephemeral') {
-      // Ephemeral (impromptu) sessions: sessionStorage only, never Firestore
-      try {
-        const cached = sessionStorage.getItem(`nexus_session_${moduleId}_${activeSessionId}`);
-        if (cached && mounted) {
-          const parsed = JSON.parse(cached);
-          if (parsed?.history?.length > 0) {
-            setMessages(parsed.history);
-            sessionStartRef.current = parsed.startTime || new Date().toISOString();
-          }
-        }
-      } catch { /* ignore parse errors */ }
-      setIsHydrating(false);
-    } else if (user && !isGuest) {
-      unsubscribe = ModuleMemoryService.subscribeActiveSession(user.uid, moduleId, activeSessionId, (session) => {
-        if (!mounted || !mountedRef.current) return;
-        // Skip subscription echoes entirely while the agent is actively processing.
-        // During agent flow, all message state is managed locally via setMessages —
-        // remote echoes can only cause duplicates or state thrashing.
-        if (isProcessingRef.current) {
-          setIsHydrating(false);
-          return;
-        }
-        if (session && session.history?.length > 0) {
-          const signature = `${session.lastMessageAt}:${session.history.length}`;
-          if (signature !== lastRemoteSignatureRef.current) {
-            lastRemoteSignatureRef.current = signature;
-            // RC-1 fix: skip echoes of our own writes. When we flush to Firestore
-            // we store a _writeNonce in the session document and in lastWriteNonceRef.
-            // If the incoming snapshot carries the same nonce, it's our own echo.
-            const isOwnEcho = session._writeNonce != null && session._writeNonce === lastWriteNonceRef.current;
-            if (isOwnEcho) {
-              setIsHydrating(false);
-              return;
-            }
-            const remoteLen = session.history.length;
-            const currentMsgs = messagesRef.current;
-            const localLen = currentMsgs.length;
-            const lastRemoteContent = session.history[remoteLen - 1]?.content;
-            const lastLocalContent = currentMsgs[localLen - 1]?.content;
-            const hasRealDiff = remoteLen !== localLen || lastRemoteContent !== lastLocalContent;
-            if (hasRealDiff) {
-              hydratedFromRemoteRef.current = true;
-              setMessages(session.history);
-              sessionStartRef.current = session.startTime || new Date().toISOString();
-            }
-          }
-        }
-        setIsHydrating(false);
-      });
-    } else {
-      // Guest: try restoring from sessionStorage
-      try {
-        const cached = sessionStorage.getItem(`nexus_session_${moduleId}_${activeSessionId}`);
-        if (cached && mounted) {
-          const parsed = JSON.parse(cached);
-          if (parsed?.history?.length > 0) {
-            setMessages(parsed.history);
-            sessionStartRef.current = parsed.startTime || new Date().toISOString();
-          }
-        }
-      } catch { /* ignore parse errors */ }
-      setIsHydrating(false);
-    }
-
-    return () => {
-      mounted = false;
-      if (unsubscribe) unsubscribe();
-    };
-  }, [user, isGuest, moduleId, activeSessionId, persistencePolicy]);
-
-  // Save active session to Firestore with debounce; guest sessions to sessionStorage
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const messagesRef = useRef(messages);
-  messagesRef.current = messages;
-  const lastCompactionNoticeAtRef = useRef(0);
-
-  const maybeWarnHistoryCompaction = useCallback((droppedCount: number) => {
-    if (droppedCount <= 0) return;
-    const now = Date.now();
-    if (now - lastCompactionNoticeAtRef.current < 30_000) return;
-    lastCompactionNoticeAtRef.current = now;
-    setError(`Session memory was compacted to stay stable. ${droppedCount} older message${droppedCount === 1 ? '' : 's'} were removed from active context.`);
-  }, []);
-  const maybeWarnSizePressure = useCallback((estimatedBytes: number, hardLimitExceeded: boolean) => {
-    const now = Date.now();
-    if (now - lastCompactionNoticeAtRef.current < 30_000) return;
-    lastCompactionNoticeAtRef.current = now;
-    if (hardLimitExceeded) {
-      setError(`Active session reached storage hard limit protection (${Math.round(estimatedBytes / 1024)} KB). Older context was compacted.`);
-      return;
-    }
-    setError(`Active session is nearing storage limit (${Math.round(estimatedBytes / 1024)} KB). Context will be compacted automatically if needed.`);
-  }, []);
-
-  const flushActiveSession = useCallback((forceRemote = false) => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-    let currentMessages = [...messagesRef.current];
-
-    // If we are currently processing a stream, include the partial content
-    // so it's not lost on page reload/unmount.
-    if (isProcessingRef.current && currentAssistantMessageBodyRef.current.trim()) {
-        currentMessages = [...currentMessages, { role: 'assistant', content: currentAssistantMessageBodyRef.current, threadId: threadIdRef.current } as Message];
-    }
-
-    if (currentMessages.length === 0) return;
-
-    // Strip ephemeral debug metadata before any persistence — debug signals are display-only
-    const persistableMessages = currentMessages.map((msg) => {
-      const { debugMeta: _dm, ...rest } = msg as typeof msg & { debugMeta?: unknown };
-      return rest as typeof msg;
-    });
-
-    const shouldSaveRemote = forceRemote || (persistencePolicy === 'auto' && user && !isGuest);
-
-    if (shouldSaveRemote && user) {
-      const lastMessageAt = new Date().toISOString();
-      lastRemoteSignatureRef.current = `${lastMessageAt}:${currentMessages.length}`;
-      const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      lastWriteNonceRef.current = nonce;
-      ModuleMemoryService.saveActiveSession(user.uid, {
-        sessionId: activeSessionId,
-        moduleId,
-        startTime: sessionStartRef.current,
-        lastMessageAt,
-        history: persistableMessages,
-        tokenCount: 0,
-        isGuestTrial: false,
-        contextPolicy: resolvedContextPolicy,
-        _writeNonce: nonce
-      })
-        .catch((e) => console.error('Failed to save active session:', e));
-    }
-
-    // Always persist to sessionStorage as a lightweight fallback
-    try {
-      sessionStorage.setItem(`nexus_session_${moduleId}_${activeSessionId}`, JSON.stringify({
-        history: persistableMessages,
-        startTime: sessionStartRef.current,
-        savedAt: new Date().toISOString()
-      }));
-    } catch { /* sessionStorage full or unavailable */ }
-  }, [user, isGuest, moduleId, activeSessionId, resolvedContextPolicy, persistencePolicy, maybeWarnHistoryCompaction, maybeWarnSizePressure]);
-
-  useEffect(() => {
-    if (isHydrating || messages.length === 0) return;
-    // Skip echo-save when messages were just hydrated from Firestore — writing
-    // the same data back is a no-op that wastes a write and triggers the
-    // onSnapshot callback unnecessarily.
-    if (hydratedFromRemoteRef.current) {
-      hydratedFromRemoteRef.current = false;
-      return;
-    }
-    
-    // For scout-research, we only save to remote on specific commit actions, but we keep local storage updated
-    if (persistencePolicy === 'scout-research') {
-       try {
-        sessionStorage.setItem(`nexus_session_${moduleId}_${activeSessionId}`, JSON.stringify({
-          history: messages,
-          startTime: sessionStartRef.current,
-          savedAt: new Date().toISOString()
-        }));
-      } catch { /* ignore */ }
-      return;
-    }
-
-    saveTimerRef.current = setTimeout(() => flushActiveSession(), 1500);
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      // s18-005: flush on SPA unmount so last turns aren't lost on navigation
-      flushActiveSession();
-    };
-  }, [isHydrating, messages, flushActiveSession, persistencePolicy, moduleId, activeSessionId]);
-
-  // Flush pending saves on tab close
-  useEffect(() => {
-    const handleBeforeUnload = () => flushActiveSession();
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [flushActiveSession]);
 
   // Clear auth circuit-breaker when model/provider/key inputs change.
   useEffect(() => {
@@ -760,6 +568,17 @@ export function useModuleAI({
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let parserAuthError: string | null = null;
       const parsedCommand = await (async (): Promise<ParsedCommandEnvelope> => {
+        // Fast path: try the synchronous phase-1 parser first.
+        // For plain conversational messages (confidence ≥ 0.75), skip the LLM
+        // round-trip entirely — saves ~5-15 s per turn on slower providers.
+        try {
+          const quickJson = _kmpCommandParser.parse(semanticContentText, moduleId, nowIso, timezone);
+          const quickResult = JSON.parse(quickJson) as ParsedCommandEnvelope;
+          if ((quickResult.confidence ?? 0) >= 0.75) {
+            return quickResult;
+          }
+        } catch { /* low confidence or parse error — fall through to LLM */ }
+
         try {
           return await new Promise<ParsedCommandEnvelope>((resolve, reject) => {
             const task = _kmpCommandParser.parseWithLlm(
@@ -924,6 +743,7 @@ export function useModuleAI({
               isGuest,
               activeThreadId,
               persistencePolicy,
+              moduleSessionActive,
             });
             if (!gate.shouldDispatch) {
               canExecuteFastPath = false;
@@ -945,13 +765,14 @@ export function useModuleAI({
 
           if (user && Object.keys(deterministicSoulUpdates).length > 0) {
             await GlobalProjectionService.updateCrossFunctionalState(user.uid, deterministicSoulUpdates);
+            // 'info' priority — NSV is already persisted to global_souls; no Firestore write needed for this signal.
             Spine.emit({
               type: 'VITAL_UPDATED',
               source: moduleId,
               domain: 'system',
               data: deterministicSoulUpdates,
               cascadeDepth: 0,
-              priority: 'alert',
+              priority: 'info',
             });
           }
 
@@ -1186,6 +1007,7 @@ export function useModuleAI({
           orchestrationHistoryMode,
           activeThreadId,
           persistencePolicy,
+          moduleSessionActive,
           userId: user?.uid,
           isGuest: !!isGuest,
           encryptionKey,
@@ -1235,27 +1057,40 @@ export function useModuleAI({
           setPendingApprovals(Array.from(pendingApprovalsRef.current.values()));
         }
 
-        // CRITICAL FIX: Persist NSV updates BEFORE emitting MODULE_PROFILE_UPDATED
-        // This ensures profile refresh happens with stable NSV state, preventing stale reads
+        // NSV persistence is fire-and-forget — soul writes should not block visual turn
+        // completion. VITAL_UPDATED fires inside the .then() to preserve the invariant that
+        // MODULE_PROFILE_UPDATED is never emitted before VITAL_UPDATED.
         const shouldUpdateGlobalSoul = persistencePolicy !== 'scout-research' && persistencePolicy !== 'ephemeral' && user && !isGuest && Object.keys(soulUpdates).length > 0;
 
         if (shouldUpdateGlobalSoul && user) {
-          await GlobalProjectionService.updateCrossFunctionalState(user.uid, soulUpdates);
-
-          Spine.emit({
-            type: 'VITAL_UPDATED',
-            source: moduleId,
-            domain: 'system',
-            data: soulUpdates,
-            cascadeDepth: 0,
-            priority: 'alert'
-          });
-        }
-
-        // Only emit MODULE_PROFILE_UPDATED when an action handler explicitly marked the
-        // profile as dirty. NSV-only actions (e.g. update_emotional_resilience) propagate
-        // through VITAL_UPDATED and the GlobalSoul Firestore subscription instead.
-        if (profileDirty && persistencePolicy !== 'ephemeral') {
+          const capturedSoulUser = user;
+          GlobalProjectionService.updateCrossFunctionalState(capturedSoulUser.uid, soulUpdates)
+            .then(() => {
+              // 'info' priority — NSV is already persisted to global_souls; no Firestore write needed for this signal.
+              Spine.emit({
+                type: 'VITAL_UPDATED',
+                source: moduleId,
+                domain: 'system',
+                data: soulUpdates,
+                cascadeDepth: 0,
+                priority: 'info'
+              });
+              // Emit MODULE_PROFILE_UPDATED after VITAL_UPDATED to preserve ordering.
+              // (persistencePolicy !== 'ephemeral' is guaranteed by shouldUpdateGlobalSoul)
+              if (profileDirty) {
+                Spine.emit({
+                  type: 'MODULE_PROFILE_UPDATED',
+                  source: moduleId,
+                  domain: 'system',
+                  data: { moduleId, actionCount: dispatchedActionTypes.length },
+                  cascadeDepth: 0,
+                  priority: 'info'
+                });
+              }
+            })
+            .catch((e) => console.error('[useModuleAI] Failed to persist NSV updates:', e));
+        } else if (profileDirty && persistencePolicy !== 'ephemeral') {
+          // No NSV write needed — emit MODULE_PROFILE_UPDATED directly.
           Spine.emit({
             type: 'MODULE_PROFILE_UPDATED',
             source: moduleId,
@@ -1297,16 +1132,15 @@ export function useModuleAI({
         }
 
         if (user && !isGuest) {
-          try {
-            await OrchestrationPersistenceService.persistRuntimeArtifacts(user.uid, {
-              moduleId,
-              decisions: orchestrationMetadata,
-              runtimeSummary: turnRuntime,
-              threadId: activeThreadId,
-            });
-          } catch (error) {
-            console.error('[useModuleAI] Failed to persist orchestration runtime artifacts:', error);
-          }
+          // Fire-and-forget: orchestration artifacts and silent history are audit/debug
+          // records that must not block the visual turn completion.
+          const capturedArtifactUser = user;
+          OrchestrationPersistenceService.persistRuntimeArtifacts(capturedArtifactUser.uid, {
+            moduleId,
+            decisions: orchestrationMetadata,
+            runtimeSummary: turnRuntime,
+            threadId: activeThreadId,
+          }).catch((error) => console.error('[useModuleAI] Failed to persist orchestration runtime artifacts:', error));
 
           const silentHistoryEntries = orchestrationMetadata
             .map((metadata) =>
@@ -1319,11 +1153,8 @@ export function useModuleAI({
             .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
           if (silentHistoryEntries.length > 0) {
-            try {
-              await OrchestrationHistoryService.persistSilentHistory(user.uid, silentHistoryEntries);
-            } catch (error) {
-              console.error('[useModuleAI] Failed to persist silent orchestration history:', error);
-            }
+            OrchestrationHistoryService.persistSilentHistory(capturedArtifactUser.uid, silentHistoryEntries)
+              .catch((error) => console.error('[useModuleAI] Failed to persist silent orchestration history:', error));
           }
         }
 
@@ -1484,20 +1315,21 @@ export function useModuleAI({
         handlePendingQueryResult(adjustedPublicText);
 
         // --- Consolidation (delegated to useConsolidation) ---
+        // Fire-and-forget: consolidation involves an LLM summarization call + Firestore writes.
+        // Guard with isProcessingRef so the history trim is skipped if a new turn has
+        // already started before consolidation finishes (prevents stomping new messages).
         if (visibleAssistantText && user && !isGuest && persistencePolicy === 'auto') {
-          const consolidationResult = await consolidateIfNeeded(localHistory, sessionStartRef.current);
-          if (consolidationResult) {
+          const capturedConsolidationUser = user;
+          consolidateIfNeeded(localHistory, sessionStartRef.current).then((consolidationResult) => {
+            if (!consolidationResult || !mountedRef.current || isProcessingRef.current) return;
             const { trimmedHistory, lastMessageAt, metadata } = consolidationResult;
             setMessages(trimmedHistory);
             messagesRef.current = trimmedHistory;
-            if (saveTimerRef.current) {
-              clearTimeout(saveTimerRef.current);
-              saveTimerRef.current = null;
-            }
+            cancelPendingSave();
             lastRemoteSignatureRef.current = `${metadata.trigger}:${lastMessageAt}:${trimmedHistory.length}`;
             const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             lastWriteNonceRef.current = nonce;
-            ModuleMemoryService.saveActiveSession(user.uid, {
+            ModuleMemoryService.saveActiveSession(capturedConsolidationUser.uid, {
               sessionId: activeSessionId,
               moduleId,
               startTime: sessionStartRef.current,
@@ -1507,9 +1339,8 @@ export function useModuleAI({
               isGuestTrial: false,
               contextPolicy: resolvedContextPolicy,
               _writeNonce: nonce
-            })
-              .catch((e) => console.error('Failed to save trimmed session:', e));
-          }
+            }).catch((e) => console.error('Failed to save trimmed session:', e));
+          }).catch(() => NexusLogger.warn('ModuleAI', 'Background consolidation failed'));
         }
       } catch (e: unknown) {
         if (e instanceof DOMException && e.name === 'AbortError') {
@@ -1593,6 +1424,7 @@ export function useModuleAI({
       moduleId,
       user,
       autopilotLevel,
+      moduleSessionActive,
       orchestrationHistoryMode,
       activeThreadId,
       sendMessage,
@@ -1606,6 +1438,7 @@ export function useModuleAI({
       resolvedContextPolicy,
       persistencePolicy,
       flushActiveSession,
+      cancelPendingSave,
       maybeWarnHistoryCompaction,
       savePendingRequest,
       setLastTurnRuntime,
@@ -1666,10 +1499,7 @@ export function useModuleAI({
 
   const clearSession = useCallback(async () => {
     // Cancel any pending debounced save so it cannot race with clearActiveSession
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
+    cancelPendingSave();
     messagesRef.current = [];
     setMessages([]);
     sessionStartRef.current = new Date().toISOString();
@@ -1686,7 +1516,7 @@ export function useModuleAI({
         priority: 'info'
       });
     }
-  }, [user, isGuest, moduleId, resetConsolidation, activeSessionId]);
+  }, [user, isGuest, moduleId, resetConsolidation, activeSessionId, cancelPendingSave]);
 
   const summarizeSession = useCallback(async (): Promise<string> => {
     if (messages.length < 3) return 'Session was too brief for full synthesis.';
