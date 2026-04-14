@@ -126,7 +126,7 @@ export function SpineToastProvider() {
                     {toast.title}
                   </p>
                   <p className="text-[11px] text-white/40 mt-1 uppercase tracking-wider">
-                    {toast.note || sourceName}
+                    {toast.note?.trim() || (sourceName !== toast.source ? sourceName : null)}
                   </p>
                 </div>
                 <div className="flex flex-col gap-1">

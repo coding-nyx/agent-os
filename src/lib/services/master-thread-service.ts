@@ -128,7 +128,10 @@ export class MasterThreadService {
   static createNexusShellSnapshot(input: CreateNexusShellThreadSnapshotInput): MasterThreadShellSnapshot {
     const patientScope = input.patientScope ?? 'USER';
     const shellProposalState = input.routingSuggestionState ?? 'draft';
-    let thread = this.createThread(input.threadId, input.now, input.seedParticipants ?? []);
+    let thread = this.pruneStaleParticipants(
+      this.createThread(input.threadId, input.now, input.seedParticipants ?? []),
+      input.now,
+    );
     const projectedLiveChatMessages = this.projectConversationMessages(input.threadId, input.liveChatMessages ?? [], {
       assistantSource: input.liveChatAssistantSource ?? 'nexus',
       now: input.now,
@@ -184,12 +187,33 @@ export class MasterThreadService {
       });
     }
 
+    // Expire any previous-turn mention-only invites before processing current mentions.
+    // A participant whose only reason for being here is that they were mentioned in a prior
+    // turn — and who never progressed to 'joined'/'active'/'waiting' — is removed so the
+    // thread doesn't accumulate stale observers across topics. If the same module is
+    // mentioned again this turn the loop below will re-invite it cleanly.
+    for (const p of [...thread.participants]) {
+      if (
+        p.state === 'invited' &&
+        p.inclusionReasons !== undefined &&
+        p.inclusionReasons.length > 0 &&
+        p.inclusionReasons.every((r) => r === 'mentioned')
+      ) {
+        thread = this.leaveParticipant(thread, {
+          moduleId: p.moduleId,
+          role: p.role,
+          leftAt: input.now,
+          state: 'left',
+        });
+      }
+    }
+
     for (const participantId of input.mentionedParticipants ?? []) {
       if (participantId === 'nexus') continue;
       thread = this.inviteParticipant(thread, {
         moduleId: participantId,
         role: 'secondary',
-        invitedAt: this.findExistingParticipant(thread, participantId)?.invitedAt ?? input.now,
+        invitedAt: input.now,
         inclusionReasons: ['mentioned'],
       });
     }
@@ -371,6 +395,28 @@ export class MasterThreadService {
       lastActiveAt: participant.lastActiveAt ?? existing?.lastActiveAt,
       leftAt: participant.leftAt,
     }, participant.leftAt);
+  }
+
+  /**
+   * Removes `'invited'` participants that have been waiting longer than `staleInviteMs`
+   * (default 2 minutes) without progressing to any active state. Nexus is always kept.
+   * Called at the top of createNexusShellSnapshot to prevent stale seeds from accumulating
+   * across turns.
+   */
+  static pruneStaleParticipants(
+    state: MasterThreadState,
+    nowIso: string,
+    staleInviteMs = 2 * 60 * 1000,
+  ): MasterThreadState {
+    const nowMs = new Date(nowIso).getTime();
+    const pruned = state.participants.filter((p) => {
+      if (p.moduleId === 'nexus') return true;
+      if (p.state !== 'invited') return true;
+      const invitedMs = new Date(p.invitedAt ?? nowIso).getTime();
+      return nowMs - invitedMs < staleInviteMs;
+    });
+    if (pruned.length === state.participants.length) return state;
+    return { ...state, participants: pruned };
   }
 
   static appendMessage(state: MasterThreadState, message: MasterThreadMessage): MasterThreadState {

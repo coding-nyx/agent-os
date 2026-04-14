@@ -52,7 +52,7 @@ export function computeMonthlyTotals(
   months: number = 6,
 ): MonthlyTotals[] {
   const raw = JSON.parse(
-    _txAgg.computeMonthlyTotals(JSON.stringify(transactions), months, Date.now()),
+    _txAgg.computeMonthlyTotals(JSON.stringify(transactions), Date.now(), months),
   ) as Array<Omit<MonthlyTotals, 'label'> & { label?: string }>;
 
   // KMP does not have access to browser toLocaleString — patch labels in TS.
@@ -72,6 +72,7 @@ export function computeCategorySpend(
       JSON.stringify(transactions),
       bounds.start,
       bounds.end,
+      Date.now(),
     ),
   ) as CategorySpend[];
 }
@@ -87,7 +88,7 @@ export function computeCategoryTrends(
   topN: number = 5,
 ): { data: CategoryTrendMonth[]; categories: string[] } {
   const raw = JSON.parse(
-    _txAgg.computeCategoryTrends(JSON.stringify(transactions), topN, Date.now()),
+    _txAgg.computeCategoryTrends(JSON.stringify(transactions), Date.now(), 6, topN),
   ) as { data: Array<{ month: string; [k: string]: number | string }>; categories: string[] };
 
   // Replace KMP-produced month keys with locale-formatted labels.
