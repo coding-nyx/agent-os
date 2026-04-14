@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Transition, Variants } from 'framer-motion';
+import { throttle } from '@/lib/utils';
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 const MOBILE_BREAKPOINT = 768;
@@ -100,12 +101,13 @@ export function useMotionConfig(): MotionConfig {
     const onMotionChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
     mql.addEventListener('change', onMotionChange);
 
-    const onResize = () => setTier(getDeviceTier());
+    const onResize = throttle(() => setTier(getDeviceTier()), 150);
     window.addEventListener('resize', onResize, { passive: true });
 
     return () => {
       mql.removeEventListener('change', onMotionChange);
       window.removeEventListener('resize', onResize);
+      onResize.cancel();
     };
   }, []);
 

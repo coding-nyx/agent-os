@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { cn, throttle } from '@/lib/utils';
 import { NexusChat } from '@/core/components/NexusChat';
 import { NeuralThemeColor } from '@/core/components/NeuralTabGroup';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
@@ -140,7 +140,7 @@ export function SingleAgentLayout({
     // Keep track of previous width to detect crossing the breakpoint
     let prevWidth = window.innerWidth;
 
-    const handleResize = () => {
+    const handleResize = throttle(() => {
       const width = window.innerWidth;
       const mobile = width < mobileBreakpoint;
       
@@ -153,10 +153,10 @@ export function SingleAgentLayout({
       
       prevWidth = width;
       setViewportWidth(width);
-    };
+    }, 150);
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => { window.removeEventListener('resize', handleResize); handleResize.cancel(); };
   }, [mobileBreakpoint, toggleChat]);
 
   const themeClasses: Record<NeuralThemeColor, { 

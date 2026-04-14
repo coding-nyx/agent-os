@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { throttle } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 import { useGlobalSoulActions } from '@/lib/global-soul-context';
 import { useVault } from '@/lib/vault-context';
@@ -85,9 +86,9 @@ function NexusOverlayContent() {
   );
 
   useEffect(() => {
-    const update = () => setIsMobile(window.innerWidth < 1024);
+    const update = throttle(() => setIsMobile(window.innerWidth < 1024), 150);
     window.addEventListener('resize', update, { passive: true });
-    return () => window.removeEventListener('resize', update);
+    return () => { window.removeEventListener('resize', update); update.cancel(); };
   }, []);
 
   // Allow external components to open Nexus via a custom DOM event

@@ -23,7 +23,9 @@ export function useChatScroll(
     }
   }, []);
 
-  // Smart auto-scroll: only scroll if user is already near the bottom OR it's a user message
+  // Smart auto-scroll: only scroll if user is already near the bottom OR it's a user message.
+  // Dep is messages.length (not messages) so this effect does NOT fire on every streamed token —
+  // only when the number of messages changes (new send or turn commit).
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
     const isUserMessage = lastMessage?.role === 'user';
@@ -34,7 +36,8 @@ export function useChatScroll(
     } else if (lastMessage?.role === 'assistant' || isLoading) {
       setHasNewCompletion(true);
     }
-  }, [messages, isLoading, error, scrollToBottom]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length, isLoading, error, scrollToBottom]);
 
   // Track scroll position to detect if user scrolled up
   useEffect(() => {

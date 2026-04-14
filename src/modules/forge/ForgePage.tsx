@@ -8,7 +8,7 @@ import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import { NeuralTextarea } from '@/core/components/NeuralTextarea';
 import { NexusChat } from '@/core/components/NexusChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
-import { cn } from '@/lib/utils';
+import { cn, throttle } from '@/lib/utils';
 import { ForgeDashboard } from './components/ForgeDashboard';
 import {
   ForgeExecutionRecord,
@@ -95,9 +95,9 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
   }, [messages.length, isProcessing, streamingText, profile?.onboardingComplete, setMessages, agentAlias]);
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = throttle(() => setIsMobile(window.innerWidth < 768), 150);
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => { window.removeEventListener('resize', onResize); onResize.cancel(); };
   }, []);
 
   const pushSession = useCallback(

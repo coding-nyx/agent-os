@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
@@ -39,7 +39,7 @@ const PROSE_BASE =
   // Suppress prose default styling for pre/code — CodeBlock handles it
   '[&_pre]:bg-transparent [&_pre]:p-0 [&_pre]:m-0 [&_pre]:border-none [&_pre]:shadow-none ';
 
-export function ChatMarkdown({ content, className, isStreaming = false, proseSize = 'prose-sm' }: ChatMarkdownProps) {
+export const ChatMarkdown = memo(function ChatMarkdown({ content, className, isStreaming = false, proseSize = 'prose-sm' }: ChatMarkdownProps) {
   if (isStreaming) {
     return (
       <div className={cn(PROSE_BASE, proseSize, 'chat-markdown', className)}>
@@ -198,4 +198,4 @@ export function ChatMarkdown({ content, className, isStreaming = false, proseSiz
       </ReactMarkdown>
     </div>
   );
-}
+});

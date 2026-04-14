@@ -23,7 +23,7 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { ConfirmDialog } from '@/core/components/ConfirmDialog';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { QuickReminderModal } from '@/core/components/QuickReminderModal';
-import { cn } from '@/lib/utils';
+import { cn, throttle } from '@/lib/utils';
 import { recurrenceSummary } from '@/lib/notifications/recurrence-summary';
 import { useNotifications, type InboxRecord } from '@/lib/notifications/NotificationContext';
 import { type ModuleId } from '@/lib/module-manifest';
@@ -356,9 +356,9 @@ export default function NotificationsPage() {
   const [isWide, setIsWide] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : false));
 
   useEffect(() => {
-    const onResize = () => setIsWide(window.innerWidth >= 1024);
+    const onResize = throttle(() => setIsWide(window.innerWidth >= 1024), 150);
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => { window.removeEventListener('resize', onResize); onResize.cancel(); };
   }, []);
 
   // ── Hooks ──────────────────────────────────────────────────────────────

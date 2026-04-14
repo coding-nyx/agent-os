@@ -248,6 +248,19 @@ export const ChatInterface = React.memo(function ChatInterface({
     setShowInternalMap((prev) => ({ ...prev, [idx]: !prev[idx] }));
   }, []);
 
+  // Stable per-index handler cache — prevents ChatBubble.memo from failing due to
+  // inline arrow creation on every render. toggleInternalForMessage is stable so the
+  // closures created here are safe to cache indefinitely.
+  const toggleHandlersRef = React.useRef<Map<number, () => void>>(new Map());
+  const getToggleHandler = React.useCallback((idx: number): () => void => {
+    let h = toggleHandlersRef.current.get(idx);
+    if (!h) {
+      h = () => toggleInternalForMessage(idx);
+      toggleHandlersRef.current.set(idx, h);
+    }
+    return h;
+  }, [toggleInternalForMessage]);
+
   // Compute the set of indices for the last 3 USER messages.
   const last3Indices = useMemo(() => {
     const userIndices = messages
@@ -392,7 +405,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                           showInternalSignals={showInternalSignals}
                           timestamp={msg.timestamp}
                           externalShowInternal={showInternalMap[i] ?? false}
-                          onToggleInternal={() => toggleInternalForMessage(i)}
+                          onToggleInternal={getToggleHandler(i)}
                         />
                         {isLast && !composer.effectiveIsProcessing && pendingApprovals && pendingApprovals.length > 0 && (
                           <div className="w-full mt-1 space-y-1">

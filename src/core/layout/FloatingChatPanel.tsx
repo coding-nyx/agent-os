@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, GripHorizontal, RotateCcw, Trash2 } from 'lucide-react';
 import { useMotionConfig } from '@/lib/hooks/use-motion-config';
-import { cn } from '@/lib/utils';
+import { cn, throttle } from '@/lib/utils';
 
 interface FloatingPanelGeometry {
   x: number;
@@ -105,10 +105,10 @@ export function FloatingChatPanel({
 
   // Re-measure navbar height on mount and window resize
   useEffect(() => {
-    const measure = () => setNavBottom(getNavbarBottom());
+    const measure = throttle(() => setNavBottom(getNavbarBottom()), 150);
     measure();
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    return () => { window.removeEventListener('resize', measure); measure.cancel(); };
   }, []);
 
   const [geo, setGeo] = useState<FloatingPanelGeometry>(() => {

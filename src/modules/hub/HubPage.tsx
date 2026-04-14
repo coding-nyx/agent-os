@@ -6,7 +6,7 @@ import { useVault } from '@/lib/vault-context';
 import { useGlobalSoulStore } from '@/lib/global-soul-context';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { UnifiedAuthModal, AuthMode } from '@/core/components/UnifiedAuthModal';
-import { cn } from '@/lib/utils';
+import { cn, throttle } from '@/lib/utils';
 import { ModuleId } from '@/lib/module-manifest';
 import { ModuleLayout } from '@/core/layout/ModuleLayout';
 import type { SpineEvent } from '@/lib/types';
@@ -111,9 +111,9 @@ export default function HubPage() {
   }, [viewMode]);
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = throttle(() => setIsMobile(window.innerWidth < 768), 150);
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => { window.removeEventListener('resize', onResize); onResize.cancel(); };
   }, []);
 
   const moduleAccess = useMemo(() => {
