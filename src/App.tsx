@@ -39,6 +39,7 @@ import {
 import { DataLayerProvider } from './lib/data-layer/provider';
 import { registerScoutHandoffConsumer } from './modules/scout/services/scout-handoff-consumer';
 import { setActionHubUser, invalidateActionHubBridge } from './cortex-bridge/action-hub-bridge';
+import { isFirebaseAvailable } from './lib/firebase';
 
 // Route-level lazy loading for chunk splitting.
 const LandingPage = lazy(() => import('./modules/landing/LandingPage'));
@@ -153,15 +154,32 @@ function AIRuntimeGate({ children }: { children: React.ReactNode }) {
   // Still initializing — wait with the boot screen.
   if (!aiReady && !initFailed) return <BootLoader />;
 
+  const banners: React.ReactNode[] = [];
+
+  // Firebase env vars missing — auth and Firestore features will not work.
+  if (!isFirebaseAvailable()) {
+    banners.push(
+      <div key="firebase-banner" className="fixed top-0 left-0 right-0 z-[var(--z-header)] bg-rose-500/20 border-b border-rose-500/30 px-4 py-2 text-center text-xs text-rose-300">
+        Firebase is not configured — set VITE_FIREBASE_* environment variables to enable auth and data sync
+      </div>
+    );
+  }
+
   // Initialization timed out / API keys missing — render app in degraded mode
   // with a persistent banner so the user knows AI features are offline.
   if (initFailed) {
+    banners.push(
+      <div key="ai-banner" className={`fixed left-0 right-0 z-[var(--z-header)] bg-amber-500/20 border-b border-amber-500/30 px-4 py-2 text-center text-xs text-amber-300 ${banners.length > 0 ? 'top-8' : 'top-0'}`}>
+        AI assistant is unavailable — check your API key in Profile settings
+      </div>
+    );
+  }
+
+  if (banners.length > 0) {
     return (
       <>
-        <div className="fixed top-0 left-0 right-0 z-[var(--z-header)] bg-amber-500/20 border-b border-amber-500/30 px-4 py-2 text-center text-xs text-amber-300">
-          AI assistant is unavailable — check your API key in Profile settings
-        </div>
-        {children}
+        {banners}
+        <div style={{ paddingTop: `${banners.length * 2}rem` }}>{children}</div>
       </>
     );
   }

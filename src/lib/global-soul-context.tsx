@@ -116,13 +116,17 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
       await GlobalProjectionService.updateCrossFunctionalState(user.uid, updates, dataLayer);
     } catch (e) {
       console.error("[GlobalSoul] Failed to update Cross Functional State:", e);
+      // Use 'info' priority so the event is NOT persisted to Firestore.
+      // If the root cause is a Firestore write failure, a 'warning' persistence
+      // write would amplify the problem — the console.error above already records
+      // the failure. The 500ms Spine debounce also limits duplicate emissions.
       Spine.emit({
         type: 'SOUL_STALE',
         source: 'nexus',
         domain: 'system',
         data: { reason: 'nsv_write_failed', error: e instanceof Error ? e.message : String(e) },
         cascadeDepth: 0,
-        priority: 'warning',
+        priority: 'info',
       });
     }
   }, [user, dataLayer]);

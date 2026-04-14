@@ -6,26 +6,84 @@ import { syncAllGuestDataToUser } from './services/guest-sync-service';
 import { useDataLayer } from './data-layer/provider';
 import { CoreProfileService } from './services/core-profile-service';
 import { SoulTerminationService } from './services/soul-termination-service';
+import { reconnectFirestore } from './firebase';
 
-// ── Ephemeral session encryption ────────────────────────────────────────────
-// Instead of storing the vault password in plaintext in sessionStorage, we
-// encrypt it with a per-page-load AES-GCM key held only in a module-scoped
-// variable. On hard refresh the key is lost and auto-unlock gracefully fails
-// (user re-enters password). On SPA navigation the key persists in memory.
-let _sessionEphemeralKey: CryptoKey | null = null;
+// ── Session wrap-key (IndexedDB-backed) ─────────────────────────────────────
+// The vault password is encrypted with a non-extractable AES-GCM key stored in
+// IndexedDB. Both the key (IDB) and the ciphertext (sessionStorage) are required
+// to recover the password, so:
+//   • Hard refresh: both survive → SESSION mode auto-unlocks ✓
+//   • Tab close:    sessionStorage is cleared → cannot decrypt → re-prompt ✓
+//   • Explicit lock: clearVaultWrapKey() deletes the IDB key → cannot decrypt ✓
+// STRICT mode bypasses this path entirely and never touches IDB.
+const IDB_DB_NAME = 'nexus_vault_keystore';
+const IDB_STORE   = 'wrap_keys';
+const IDB_KEY_ID  = 'session_wrap_v1';
 
-async function getOrCreateSessionEphemeralKey(): Promise<CryptoKey> {
-  if (_sessionEphemeralKey) return _sessionEphemeralKey;
-  _sessionEphemeralKey = await window.crypto.subtle.generateKey(
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt'],
-  );
-  return _sessionEphemeralKey;
+function openWrapKeyStore(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_DB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+/** Creates the wrap key if it doesn't exist yet. Used during encrypt (unlock). */
+async function loadOrCreateVaultWrapKey(): Promise<CryptoKey> {
+  const db = await openWrapKeyStore();
+  return new Promise((resolve, reject) => {
+    const tx    = db.transaction(IDB_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_STORE);
+    const getReq = store.get(IDB_KEY_ID);
+    getReq.onsuccess = () => {
+      const existing = getReq.result as CryptoKey | undefined;
+      if (existing) { db.close(); resolve(existing); return; }
+      window.crypto.subtle
+        .generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
+        .then((newKey) => {
+          const putReq = store.put(newKey, IDB_KEY_ID);
+          putReq.onsuccess = () => { db.close(); resolve(newKey); };
+          putReq.onerror   = () => { db.close(); reject(putReq.error); };
+        })
+        .catch((e) => { db.close(); reject(e); });
+    };
+    getReq.onerror = () => { db.close(); reject(getReq.error); };
+  });
+}
+
+/** Read-only: returns null if no key exists (e.g. after explicit lock or tab reopen). */
+async function getVaultWrapKey(): Promise<CryptoKey | null> {
+  try {
+    const db = await openWrapKeyStore();
+    return new Promise((resolve, reject) => {
+      const tx  = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(IDB_KEY_ID);
+      req.onsuccess = () => { db.close(); resolve((req.result as CryptoKey) ?? null); };
+      req.onerror   = () => { db.close(); reject(req.error); };
+    });
+  } catch {
+    return null; // IDB unavailable (e.g. Safari private browsing)
+  }
+}
+
+/** Deletes the IDB wrap key. Called on explicit lock and vault destruction. */
+export async function clearVaultWrapKey(): Promise<void> {
+  try {
+    const db = await openWrapKeyStore();
+    await new Promise<void>((resolve, reject) => {
+      const tx  = db.transaction(IDB_STORE, 'readwrite');
+      const req = tx.objectStore(IDB_STORE).delete(IDB_KEY_ID);
+      req.onsuccess = () => { db.close(); resolve(); };
+      req.onerror   = () => { db.close(); reject(req.error); };
+    });
+  } catch {
+    // Best-effort — if IDB is unavailable the key never existed
+  }
 }
 
 async function encryptSessionPassword(password: string): Promise<string> {
-  const key = await getOrCreateSessionEphemeralKey();
+  const key = await loadOrCreateVaultWrapKey();
   const enc = new TextEncoder();
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await window.crypto.subtle.encrypt(
@@ -40,20 +98,21 @@ async function encryptSessionPassword(password: string): Promise<string> {
 }
 
 async function decryptSessionPassword(blob: string): Promise<string | null> {
-  if (!_sessionEphemeralKey) return null; // key lost (hard refresh)
   const [ivB64, ctB64] = blob.split('.');
   if (!ivB64 || !ctB64) return null;
   try {
+    const key = await getVaultWrapKey();
+    if (!key) return null; // key absent: IDB cleared or after explicit lock
     const iv = Uint8Array.from(window.atob(ivB64), c => c.charCodeAt(0));
     const ct = Uint8Array.from(window.atob(ctB64), c => c.charCodeAt(0));
     const plainBuf = await window.crypto.subtle.decrypt(
       { name: 'AES-GCM', iv } as AesGcmParams,
-      _sessionEphemeralKey,
+      key,
       ct,
     );
     return new TextDecoder().decode(plainBuf);
   } catch {
-    return null; // tampered or wrong key
+    return null; // tampered blob or mismatched key
   }
 }
 // ────────────────────────────────────────────────────────────────────────────
@@ -174,6 +233,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     masterKeyRef.current = null;
     setIsUnlocked(false);
     clearSessionPassword();
+    void clearVaultWrapKey();
   }, [clearSessionPassword]);
 
   const getSessionTtlMs = useCallback(() => {
@@ -420,6 +480,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     try {
       await SoulTerminationService.purgeUserData(user.uid);
       SoulTerminationService.clearLocalArtifacts(); // clears nexus_vault_nudge_seen + session keys
+      await clearVaultWrapKey(); // remove the IDB wrap key so ciphertext is unrecoverable
     } catch (err) {
       console.error('[Vault] Purge failed during destruction:', err);
     }
@@ -463,6 +524,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     const safetyTimer = setTimeout(() => {
       setIsLoading(false);
       setIsHandshaking(false);
+      reconnectFirestore();
     }, 8000);
 
     const unsubscribe = dataLayer.subscribeToDocument(

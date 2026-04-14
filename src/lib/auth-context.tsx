@@ -15,6 +15,8 @@ interface AuthContextType {
   user: AuthUser | null;
   profile: CoreUserProfile | null;
   loading: boolean;
+  /** Set when refreshProfile() fails — cleared on the next successful sync. */
+  profileSyncError: string | null;
   isAuthenticated: boolean;
   isGuest: boolean;
   login: (email: string, password: string) => Promise<boolean>;
@@ -36,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<CoreUserProfile | null>(null);
+  const [profileSyncError, setProfileSyncError] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(() => {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem(GUEST_SESSION_KEY) === 'true';
@@ -53,12 +56,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const p = await CoreProfileService.getProfile(user.uid, dataLayer);
       if (p) {
         setProfile(p);
+        setProfileSyncError(null);
         await GlobalProjectionService.syncFromProfile(p, dataLayer);
       } else {
         setProfile(null);
       }
     } catch (e) {
-      console.error("Profile sync suspended due to network integrity.");
+      const msg = e instanceof Error ? e.message : 'Profile sync failed — check your connection.';
+      console.error('[Auth] refreshProfile failed:', e);
+      setProfileSyncError(msg);
     }
   }, [user, dataLayer]);
 
@@ -216,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isGuest,
     user,
     profile,
+    profileSyncError,
     login,
     register,
     logout,
@@ -225,7 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshProfile,
     initializeNewUser,
     loading,
-  }), [isAuthenticated, isGuest, user, profile, login, register, logout,
+  }), [isAuthenticated, isGuest, user, profile, profileSyncError, login, register, logout,
       enterGuestMode, reloadUser, sendVerification, refreshProfile, initializeNewUser, loading]);
 
   return (

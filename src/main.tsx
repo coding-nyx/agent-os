@@ -63,41 +63,59 @@ if (import.meta.env.DEV) {
 const _debugOnBoot = localStorage.getItem('nexus_debug_mode') === 'true';
 NexusLogger.init(_debugOnBoot);
 
+// Global unhandled-rejection guard — catches rejected promises that escape React
+// (e.g. BridgeService.start, ReminderScheduler, SpineEventBus emissions).
+// React's own error boundaries only capture synchronous render errors; this
+// covers the async gap.
+window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+  const reason = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+  NexusLogger.error('[UnhandledRejection]', reason);
+  // Dispatch a custom event so in-app components (SpineToastProvider, etc.) can
+  // surface a user-visible message without this module depending on React context.
+  window.dispatchEvent(new CustomEvent('nexus_unhandled_rejection', { detail: { message: reason.message } }));
+});
+
 // Initialize the central action registry for core NSV updates and orchestration.
+// Each register*() call is wrapped individually so a single broken import does
+// not prevent the rest of the handlers — or the React tree — from initialising.
 // Orchestrator supplementary handlers (navigate_to_module, create_module_handoff,
 // and typed fallbacks for the 4 AI-facing handlers) are registered first so that
 // registerCoreActions() can overwrite shared keys with its hardened implementations.
-registerOrchestratorActions();
-registerCoreActions();
-registerAnalysisActions();
-registerGlobalValidationActions();
-registerFieldSuggestionActions();
+const _safeRegister = (name: string, fn: () => void) => {
+  try { fn(); } catch (e) { NexusLogger.error(`[Boot] Failed to register ${name}:`, e as Error); }
+};
+
+_safeRegister('orchestratorActions', registerOrchestratorActions);
+_safeRegister('coreActions', registerCoreActions);
+_safeRegister('analysisActions', registerAnalysisActions);
+_safeRegister('globalValidationActions', registerGlobalValidationActions);
+_safeRegister('fieldSuggestionActions', registerFieldSuggestionActions);
 
 // Register module-specific action handlers eagerly so Nexus cross-module delegation
 // never falls through due to lazy page-level registration.
-registerAgnesActions();
-registerAtlasActions();
-registerAtlasFieldActions();
-registerLedgerActions();
-registerLedgerFieldActions();
-registerLedgerTransactionActions();
-registerLedgerAccountActions();
-registerLedgerCreditActions();
-registerLedgerAutomationActions();
-registerLedgerInvestmentActions();
-registerLedgerRetirementActions();
-registerLedgerSubscriptionActions();
-registerLedgerInsuranceActions();
-registerLedgerTaxActions();
-registerLedgerReceiptActions();
-registerLedgerAlertActions();
-registerLedgerExportActions();
-registerLedgerRecurringActions();
-registerTitanActions();
-registerScoutActions();
-registerScoutProjectionListeners();
-registerForgeActions();
-registerSomaFieldActions();
+_safeRegister('agnesActions', registerAgnesActions);
+_safeRegister('atlasActions', registerAtlasActions);
+_safeRegister('atlasFieldActions', registerAtlasFieldActions);
+_safeRegister('ledgerActions', registerLedgerActions);
+_safeRegister('ledgerFieldActions', registerLedgerFieldActions);
+_safeRegister('ledgerTransactionActions', registerLedgerTransactionActions);
+_safeRegister('ledgerAccountActions', registerLedgerAccountActions);
+_safeRegister('ledgerCreditActions', registerLedgerCreditActions);
+_safeRegister('ledgerAutomationActions', registerLedgerAutomationActions);
+_safeRegister('ledgerInvestmentActions', registerLedgerInvestmentActions);
+_safeRegister('ledgerRetirementActions', registerLedgerRetirementActions);
+_safeRegister('ledgerSubscriptionActions', registerLedgerSubscriptionActions);
+_safeRegister('ledgerInsuranceActions', registerLedgerInsuranceActions);
+_safeRegister('ledgerTaxActions', registerLedgerTaxActions);
+_safeRegister('ledgerReceiptActions', registerLedgerReceiptActions);
+_safeRegister('ledgerAlertActions', registerLedgerAlertActions);
+_safeRegister('ledgerExportActions', registerLedgerExportActions);
+_safeRegister('ledgerRecurringActions', registerLedgerRecurringActions);
+_safeRegister('titanActions', registerTitanActions);
+_safeRegister('scoutActions', registerScoutActions);
+_safeRegister('scoutProjectionListeners', registerScoutProjectionListeners);
+_safeRegister('forgeActions', registerForgeActions);
+_safeRegister('somaFieldActions', registerSomaFieldActions);
 
 // Initialize schema registry with all module schemas
 initializeSchemas();

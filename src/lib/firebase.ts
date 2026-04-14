@@ -5,6 +5,8 @@ import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  disableNetwork,
+  enableNetwork,
 } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 import { getStorage, FirebaseStorage } from "firebase/storage";
@@ -17,6 +19,15 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
+
+// Eagerly evaluate availability so callers never need to call getFirebase() just
+// to check config — getFirebase() has Firestore-initialisation side-effects.
+const _firebaseAvailable = !!firebaseConfig.apiKey;
+
+/** Returns true when all required Firebase environment variables are present. */
+export function isFirebaseAvailable(): boolean {
+  return _firebaseAvailable;
+}
 
 let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
@@ -35,11 +46,10 @@ export function getFirebase() {
       const isFirstInit = !getApps().length;
       app = isFirstInit ? initializeApp(firebaseConfig) : getApp();
       console.log("[Firebase] App initialized:", app?.name);
-      // experimentalAutoDetectLongPolling prevents 400 errors on the Write/channel
-      // by automatically falling back from WebSockets to HTTP long-polling when needed.
+      // SDK v12 defaults to WebSocket transport with native long-polling
+      // fallback — no experimental flags needed.
       db = isFirstInit
         ? initializeFirestore(app, {
-            experimentalAutoDetectLongPolling: true,
             ignoreUndefinedProperties: true,
             localCache: persistentLocalCache({
               tabManager: persistentMultipleTabManager(),
@@ -60,4 +70,27 @@ export function getFirebase() {
   return { app, db, auth, storage };
 }
 
+// ── Firestore connection recovery ─────────────────────────────────────────
+// When the SDK's long-polling channel hangs (no response for Listen/channel),
+// toggling the network forces it to drop stuck connections and re-establish.
+// Debounced so multiple callers (auth, vault, soul, module) don't trigger
+// simultaneous reconnects within the same window.
+let _reconnectInFlight = false;
+
+export async function reconnectFirestore(): Promise<void> {
+  if (_reconnectInFlight) return;
+  const { db: firestoreDb } = getFirebase();
+  if (!firestoreDb) return;
+
+  _reconnectInFlight = true;
+  try {
+    console.warn('[Firebase] reconnectFirestore — cycling network to recover stuck channels');
+    await disableNetwork(firestoreDb);
+    await enableNetwork(firestoreDb);
+  } catch (e) {
+    console.error('[Firebase] reconnectFirestore failed:', e);
+  } finally {
+    _reconnectInFlight = false;
+  }
+}
 

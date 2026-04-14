@@ -30,6 +30,45 @@ import {
 
 type FirestoreQuery = Query | ReturnType<typeof collection>;
 
+// ── Dev-only Firestore write tracer ──────────────────────────────────────────
+// Surfaces which collections are being written and how often.
+// Gated on import.meta.env.DEV — zero overhead in production builds.
+// Usage: open DevTools console, filter for "[FirestoreWriteTracer]".
+const _writeTracer = (() => {
+  if (!import.meta.env.DEV) return null;
+
+  const windowCounts = new Map<string, number>();
+  const cumulativeCounts = new Map<string, number>();
+
+  const summary = setInterval(() => {
+    if (windowCounts.size === 0) return;
+    const sorted = [...windowCounts.entries()].sort((a, b) => b[1] - a[1]);
+    console.warn(
+      '[FirestoreWriteTracer] last 10s writes by collection:',
+      Object.fromEntries(sorted),
+    );
+    windowCounts.clear();
+  }, 10_000);
+
+  // Keep the interval from blocking process exit in non-browser environments.
+  if (typeof summary === 'object' && summary !== null && 'unref' in summary) {
+    (summary as { unref(): void }).unref();
+  }
+
+  return {
+    record(op: string, collectionPath: string): void {
+      // Normalise to the top-level collection name (first segment).
+      const topLevel = collectionPath.split('/')[0];
+      windowCounts.set(topLevel, (windowCounts.get(topLevel) ?? 0) + 1);
+      const cum = (cumulativeCounts.get(topLevel) ?? 0) + 1;
+      cumulativeCounts.set(topLevel, cum);
+      // Capture a short stack slice to identify the call-site.
+      const frames = new Error().stack?.split('\n').slice(3, 6).join(' | ') ?? '';
+      console.debug(`[FirestoreWriteTracer] ${op} → ${topLevel} (cumulative: ${cum})`, frames);
+    },
+  };
+})();
+
 const mapSnapshot = <T>(snap: DocumentSnapshot): NexusRecord<T> | null => {
   if (!snap.exists()) return null;
   return { ...(snap.data() as T), id: snap.id };
@@ -195,6 +234,7 @@ export class FirebaseDataLayer implements NexusDataLayer {
     collectionName: string,
     data: Omit<NexusRecord<T>, 'id'> & Partial<Pick<NexusRecord<T>, 'id'>>,
   ): Promise<NexusRecord<T>> {
+    _writeTracer?.record('createDocument', collectionName);
     const { id, ...payload } = data;
     if (id) {
       const ref = doc(this.db, collectionName, id);
@@ -210,6 +250,7 @@ export class FirebaseDataLayer implements NexusDataLayer {
     id: NexusDocumentId,
     data: T,
   ): Promise<NexusRecord<T>> {
+    _writeTracer?.record('setDocument', collectionName);
     const payload = omitId((data || {}) as Record<string, unknown>);
     await setDoc(doc(this.db, collectionName, id), payload);
     return { ...(payload as T), id };
@@ -220,6 +261,7 @@ export class FirebaseDataLayer implements NexusDataLayer {
     id: NexusDocumentId,
     updates: Partial<T>,
   ): Promise<NexusRecord<T> | null> {
+    _writeTracer?.record('updateDocument', collectionName);
     const ref = doc(this.db, collectionName, id);
     const payload = omitId((updates || {}) as Record<string, unknown>);
     try {
@@ -250,6 +292,7 @@ export class FirebaseDataLayer implements NexusDataLayer {
 
   async batchWrite(operations: BatchOperation[]): Promise<void> {
     if (operations.length === 0) return;
+    _writeTracer?.record('batchWrite', operations.map((o) => o.collection).join(','));
     
     // Firestore batch limit is 500
     const CHUNK_SIZE = 500;
