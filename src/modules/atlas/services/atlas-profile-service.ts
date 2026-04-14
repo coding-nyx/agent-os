@@ -209,24 +209,24 @@ async function _doSaveAtlasProfile(profile: AtlasProfile, { userId, encryptionKe
   // Side effects — only for authenticated users.
   if (!userId) return;
 
-  try {
-    await syncAliveEntities(
+  // Side effects are independent (different Firestore collections) — run in parallel.
+  const results = await Promise.allSettled([
+    syncAliveEntities(
       getNexusDataLayer(),
       bootstrapAliveEntities({
         goals: normalized.goals,
         habits: normalized.habits,
       }),
       { uid: userId, pruneMissingWithinIncomingPrefixes: true },
-    );
-  } catch (error) {
-    console.error('[AtlasProfileService] Failed to sync alive entities:', error);
-  }
-  try {
-    await GlobalProjectionService.updateCrossFunctionalState(userId, {
-      cognitive: { activeLoad: normalized.taskGraph.length }
-    });
-  } catch (error) {
-    console.error('[AtlasProfileService] Failed to update cross-functional state:', error);
+    ),
+    GlobalProjectionService.updateCrossFunctionalState(userId, {
+      cognitive: { activeLoad: normalized.taskGraph.length },
+    }),
+  ]);
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      console.error('[AtlasProfileService] Side-effect failed:', result.reason);
+    }
   }
 }
 

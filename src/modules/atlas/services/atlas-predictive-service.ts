@@ -102,15 +102,25 @@ export class AtlasPredictiveService {
 
   getBurnoutTrajectoryScore(): number {
     if (this._history.length < 2) return 0;
-    return _engine.computeBurnoutTrajectoryScore(JSON.stringify(this._history)) as number;
+    try {
+      return _engine.computeBurnoutTrajectoryScore(JSON.stringify(this._history)) as number;
+    } catch (e) {
+      console.warn('[AtlasPredictive] computeBurnoutTrajectoryScore failed:', e);
+      return 0;
+    }
   }
 
   getTransitionRisk(): number {
     if (this._history.length < 2) return 0;
-    return _engine.computeTransitionRisk(
-      JSON.stringify(this._history[0]),
-      JSON.stringify(this._history[1]),
-    ) as number;
+    try {
+      return _engine.computeTransitionRisk(
+        JSON.stringify(this._history[0]),
+        JSON.stringify(this._history[1]),
+      ) as number;
+    } catch (e) {
+      console.warn('[AtlasPredictive] computeTransitionRisk failed:', e);
+      return 0;
+    }
   }
 
   getStateForDisplay(): AtlasStateDisplay {
@@ -139,9 +149,15 @@ export class AtlasPredictiveService {
       });
     }
 
-    const result = JSON.parse(
-      _engine.evaluateNextState(this._state, JSON.stringify(nsv), this._cleanEvalCount),
-    ) as { nextState: AtlasState; newCleanCount: number; isBurnout: boolean; emitOverload: boolean };
+    let result: { nextState: AtlasState; newCleanCount: number; isBurnout: boolean; emitOverload: boolean };
+    try {
+      result = JSON.parse(
+        _engine.evaluateNextState(this._state, JSON.stringify(nsv), this._cleanEvalCount),
+      );
+    } catch (e) {
+      console.warn('[AtlasPredictive] evaluateNextState failed:', e);
+      return;
+    }
 
     if (result.isBurnout) {
       this._emitCrisisMode('burnout_multi_domain');
@@ -186,8 +202,13 @@ export class AtlasPredictiveService {
     }
   }
 
-  flattenEnergyWave(energyWave: EnergyWavePoint[], reason: string): FlatteningPlan {
-    return JSON.parse(_engine.flattenEnergyWave(JSON.stringify(energyWave), reason)) as FlatteningPlan;
+  flattenEnergyWave(energyWave: EnergyWavePoint[], reason: string): FlatteningPlan | null {
+    try {
+      return JSON.parse(_engine.flattenEnergyWave(JSON.stringify(energyWave), reason)) as FlatteningPlan;
+    } catch (e) {
+      console.warn('[AtlasPredictive] flattenEnergyWave failed:', e);
+      return null;
+    }
   }
 
   destroy(): void {

@@ -953,7 +953,7 @@ describe('Journal edge cases', () => {
 describe('AtlasPredictiveService.flattenEnergyWave edge cases', () => {
   it('empty wave returns a valid FlatteningPlan without crashing', () => {
     const svc = new AtlasPredictiveService();
-    const plan = svc.flattenEnergyWave([], 'test_reason');
+    const plan = svc.flattenEnergyWave([], 'test_reason')!;
     expect(plan.rescaledWave).toEqual([]);
     expect(plan.budgetCap).toBe(0.8);
     expect(plan.deferrals).toEqual([]);
@@ -965,7 +965,7 @@ describe('AtlasPredictiveService.flattenEnergyWave edge cases', () => {
   it('single-element wave reduces values by 20% without crashing on redistribution', () => {
     const svc = new AtlasPredictiveService();
     const wave = [{ id: 'w1', slot: 'Morning', energy: 8, focus: 7, load: 6 }];
-    const plan = svc.flattenEnergyWave(wave, 'single_slot');
+    const plan = svc.flattenEnergyWave(wave, 'single_slot')!;
 
     // Current day reduced by 20%
     expect(plan.rescaledWave[0].energy).toBeCloseTo(8 * 0.8, 1);
@@ -984,7 +984,7 @@ describe('AtlasPredictiveService.flattenEnergyWave edge cases', () => {
       { id: 'w1', slot: 'Morning', energy: 0.5, focus: 0.5, load: 0.5 },
       { id: 'w2', slot: 'Midday', energy: 1, focus: 1, load: 1 },
     ];
-    const plan = svc.flattenEnergyWave(wave, 'near_zero_test');
+    const plan = svc.flattenEnergyWave(wave, 'near_zero_test')!;
 
     for (const pt of plan.rescaledWave) {
       expect(pt.energy).toBeGreaterThanOrEqual(0);
@@ -1002,7 +1002,7 @@ describe('AtlasPredictiveService.flattenEnergyWave edge cases', () => {
       { id: 'w2', slot: 'Midday', energy: 9.9, focus: 9.9, load: 9.9 },
       { id: 'w3', slot: 'Afternoon', energy: 9.9, focus: 9.9, load: 9.9 },
     ];
-    const plan = svc.flattenEnergyWave(wave, 'cap_test');
+    const plan = svc.flattenEnergyWave(wave, 'cap_test')!;
 
     for (const pt of plan.rescaledWave) {
       expect(pt.energy).toBeLessThanOrEqual(10);
