@@ -755,7 +755,7 @@ export function registerCoreActions() {
 
       const dataLayer = getNexusDataLayer();
       const all = await dataLayer.listDocuments<NotificationScheduleConfig>(
-        `users/${userId}/notification_schedules`, { limit: 0 },
+        `users/${userId}/notification_schedules`,
       );
       const filtered = all.filter((s) => {
         const matchesModule = moduleFilter.length === 0
@@ -965,8 +965,11 @@ export function registerCoreActions() {
     const snoozedUntil = computeSnoozedUntil(option);
     const dataLayer = getNexusDataLayer();
     const inboxPath = `users/${userId}/notification_inbox`;
-    const all = await dataLayer.listDocuments<{ id: string; source: string }>(inboxPath, { limit: 0 });
-    const matches = all.filter((item) => item.source === source);
+    const matches = await dataLayer.query<{ id: string; source: string }>({
+      collection: inboxPath,
+      where: [{ field: 'source', op: '==', value: source }],
+      limit: 200,
+    });
     await Promise.all(matches.map((item) => persistSnooze(dataLayer, userId, item.id, snoozedUntil)));
     pushAssistantMessage?.(`Snoozed ${matches.length} notification${matches.length !== 1 ? 's' : ''} from ${source} for ${option.label}.`);
   });
@@ -975,10 +978,22 @@ export function registerCoreActions() {
     if (!userId) { pushAssistantMessage?.('Sign in to manage notifications.'); return; }
     const dataLayer = getNexusDataLayer();
     const inboxPath = `users/${userId}/notification_inbox`;
-    const all = await dataLayer.listDocuments<{ id: string; read: boolean }>(inboxPath, { limit: 0 });
-    const unread = all.filter((item) => !item.read);
-    const now = new Date().toISOString();
-    await Promise.all(unread.map((item) => dataLayer.updateDocument(inboxPath, item.id, { read: true, updatedAt: now })));
+    const unread = await dataLayer.query<{ id: string; read: boolean }>({
+      collection: inboxPath,
+      where: [{ field: 'read', op: '==', value: false }],
+      limit: 500,
+    });
+    if (unread.length > 0) {
+      const now = new Date().toISOString();
+      await dataLayer.batchWrite(
+        unread.map((item) => ({
+          type: 'update' as const,
+          collection: inboxPath,
+          id: item.id,
+          data: { read: true, updatedAt: now },
+        })),
+      );
+    }
     pushAssistantMessage?.(`Marked ${unread.length} notification${unread.length !== 1 ? 's' : ''} as read.`);
   });
 
@@ -990,7 +1005,7 @@ export function registerCoreActions() {
     if (ids.length === 0) { pushAssistantMessage?.('No notification IDs provided.'); return; }
     const dataLayer = getNexusDataLayer();
     const inboxPath = `users/${userId}/notification_inbox`;
-    await Promise.all(ids.map((id) => dataLayer.deleteDocument(inboxPath, id)));
+    await dataLayer.batchWrite(ids.map((id) => ({ type: 'delete' as const, collection: inboxPath, id })));
     pushAssistantMessage?.(`Deleted ${ids.length} notification${ids.length !== 1 ? 's' : ''}.`);
   });
 

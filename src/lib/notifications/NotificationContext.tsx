@@ -84,6 +84,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const quietHoursRef = useRef(quietHoursConfig);
   quietHoursRef.current = quietHoursConfig;
 
+  // Stable ref for inbox so performAction doesn't re-create on every inbox change.
+  const inboxRef = useRef(inbox);
+  inboxRef.current = inbox;
+
   // Tracks notification IDs that have already been toasted in this session.
   // Module-level set (not a ref) so it survives provider remounts on navigation.
   // Cleared when the user changes to prevent cross-user leakage.
@@ -137,7 +141,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // 2. Handle Actions
   const performAction = useCallback(async (action: NotificationAction, notificationId?: string) => {
-    const record = notificationId ? inbox.find(r => r.id === notificationId) : undefined;
+    const record = notificationId ? inboxRef.current.find(r => r.id === notificationId) : undefined;
     if (notificationId) {
       // Mark as read when an action is performed
       if (record && !record.read) {
@@ -163,7 +167,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (action.type === 'DISMISS' && notificationId) {
       setToasts(prev => prev.filter(t => t.id !== notificationId));
     }
-  }, [user, dataLayer, navigate, inbox]);
+  }, [user, dataLayer, navigate]);
 
   // 3. Foreground Toast Logic (triggered by new unread items in inbox)
   // Use a ref-based set of already-toasted IDs instead of a time window.
@@ -223,14 +227,30 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
     const unread = inbox.filter(r => !r.read);
+    if (unread.length === 0) return;
     const inboxPath = `users/${user.uid}/notification_inbox`;
-    
-    await Promise.all(unread.map(r => 
-      dataLayer.updateDocument(inboxPath, r.id, { read: true, updatedAt: new Date().toISOString() })
-    ));
-    await Promise.all(unread.map((record) =>
-      ReminderOutcomeService.recordOutcome(dataLayer, user.uid, record, 'skipped'),
-    ));
+    const now = new Date().toISOString();
+
+    // Merge read flag + reminderOutcome into a single batch write per doc.
+    await dataLayer.batchWrite(
+      unread.map(r => ({
+        type: 'update' as const,
+        collection: inboxPath,
+        id: r.id,
+        data: {
+          read: true,
+          updatedAt: now,
+          ...(r.type === 'MODULE_REMINDER_DUE' && r.data
+            ? { data: { ...r.data, reminderOutcome: 'skipped' as const } }
+            : {}),
+        },
+      })),
+    );
+
+    // Record outcomes in batch (skip inbox update since we handled it above).
+    await ReminderOutcomeService.recordOutcomeBatch(
+      dataLayer, user.uid, unread, 'skipped', { skipInboxUpdate: true },
+    );
   }, [user, inbox, dataLayer]);
 
   const dismissToast = useCallback((id: string) => {
