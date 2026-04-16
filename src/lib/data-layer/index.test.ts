@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   InMemoryDataProvider,
-  NexusQuery,
-  NexusRecord,
+  AraQuery,
+  AraRecord,
 } from './index';
 
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -33,7 +33,7 @@ describe('InMemoryDataProvider', () => {
     await provider.createDocument('tasks', { id: 'b', title: 'Ship', priority: 1 });
     await provider.createDocument('tasks', { id: 'c', title: 'Archive', priority: 3 });
 
-    const query: NexusQuery = {
+    const query: AraQuery = {
       collection: 'tasks',
       where: [{ field: 'priority', op: '>=', value: 1 }],
       orderBy: [{ field: 'priority', direction: 'asc' }],
@@ -47,7 +47,7 @@ describe('InMemoryDataProvider', () => {
 
   it('notifies document subscribers on mutations', async () => {
     const provider = new InMemoryDataProvider();
-    const listener = vi.fn<(doc: NexusRecord<{ title: string }> | null) => void>();
+    const listener = vi.fn<(doc: AraRecord<{ title: string }> | null) => void>();
 
     const unsubscribe = provider.subscribeToDocument('notes', 'doc-1', listener);
     expect(listener).toHaveBeenCalledTimes(1);
@@ -68,8 +68,8 @@ describe('InMemoryDataProvider', () => {
 
   it('notifies query subscribers with sorted results', async () => {
     const provider = new InMemoryDataProvider();
-    const listener = vi.fn<(docs: NexusRecord<{ status: string; priority: number }>[]) => void>();
-    const query: NexusQuery = {
+    const listener = vi.fn<(docs: AraRecord<{ status: string; priority: number }>[]) => void>();
+    const query: AraQuery = {
       collection: 'queue',
       where: [{ field: 'status', op: '==', value: 'open' }],
       orderBy: [{ field: 'priority', direction: 'asc' }],

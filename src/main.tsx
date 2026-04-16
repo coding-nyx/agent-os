@@ -10,19 +10,19 @@ if (import.meta.env.DEV) {
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
-import { NexusLogger } from './lib/nexus-logger'
+import { AraLogger } from './lib/ara-logger'
 import { registerCoreActions } from './lib/actions/core-handlers'
 import { registerAnalysisActions } from './lib/actions/analysis-actions'
 import { registerGlobalValidationActions } from './lib/actions/validation-actions'
 import { registerFieldSuggestionActions } from './lib/actions/field-suggestion-actions'
 import { initializeSchemas } from './lib/schemas/init'
-import { getNexusDataLayer } from './lib/data-layer/provider'
+import { getAraDataLayer } from './lib/data-layer/provider'
 import { Spine } from './lib/spine/spine-event-bus'
 import { registerFlowConsumers } from './lib/spine/flow-consumers'
 import { SchedulerService } from './lib/spine/scheduler-service'
 
 // Module-specific action registrations — imported here so handlers are available
-// immediately, regardless of which page the user visits first (or Nexus delegates to).
+// immediately, regardless of which page the user visits first (or Ara delegates to).
 import { registerAgnesActions } from './modules/agnes/services/actions'
 import { registerAtlasActions } from './modules/atlas/services/actions'
 import { registerAtlasFieldActions } from './modules/atlas/actions/atlas-field-actions'
@@ -46,22 +46,23 @@ import { registerScoutActions } from './modules/scout/services/actions'
 import { registerScoutProjectionListeners } from './modules/scout/services/scout-projection-listener'
 import { registerForgeActions } from './modules/forge/services/actions'
 import { registerSomaFieldActions } from './modules/soma/actions/soma-field-actions'
-import { registerOrchestratorActions } from './modules/nexus/services/actions'
+import { registerOrchestratorActions } from './modules/ara/services/actions'
+import { ActionHub } from './lib/actions/action-hub'
 
 // Dev-only capture mode: enable guest access via `?capture=1` for design exports.
 if (import.meta.env.DEV) {
   const params = new URLSearchParams(window.location.search);
   if (params.get('capture') === '1') {
-    sessionStorage.setItem('nexus_guest_active', 'true');
-    const moduleIds = ['nexus', 'agnes', 'titan', 'soma', 'ledger', 'atlas', 'scout', 'forge'];
-    moduleIds.forEach((id) => sessionStorage.setItem(`nexus_guest_module_${id}`, 'true'));
+    sessionStorage.setItem('ara_guest_active', 'true');
+    const moduleIds = ['ara', 'agnes', 'titan', 'soma', 'ledger', 'atlas', 'scout', 'forge'];
+    moduleIds.forEach((id) => sessionStorage.setItem(`ara_guest_module_${id}`, 'true'));
   }
 }
 
-// Boot NexusLogger before anything else — console override must be in place before
+// Boot AraLogger before anything else — console override must be in place before
 // any module code or React runs. Reads debug state from localStorage so it persists.
-const _debugOnBoot = localStorage.getItem('nexus_debug_mode') === 'true';
-NexusLogger.init(_debugOnBoot);
+const _debugOnBoot = localStorage.getItem('ara_debug_mode') === 'true';
+AraLogger.init(_debugOnBoot);
 
 // Global unhandled-rejection guard — catches rejected promises that escape React
 // (e.g. BridgeService.start, ReminderScheduler, SpineEventBus emissions).
@@ -69,10 +70,10 @@ NexusLogger.init(_debugOnBoot);
 // covers the async gap.
 window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
   const reason = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
-  NexusLogger.error('[UnhandledRejection]', reason);
+  AraLogger.error('[UnhandledRejection]', reason);
   // Dispatch a custom event so in-app components (SpineToastProvider, etc.) can
   // surface a user-visible message without this module depending on React context.
-  window.dispatchEvent(new CustomEvent('nexus_unhandled_rejection', { detail: { message: reason.message } }));
+  window.dispatchEvent(new CustomEvent('ara_unhandled_rejection', { detail: { message: reason.message } }));
 });
 
 // Initialize the central action registry for core NSV updates and orchestration.
@@ -82,7 +83,7 @@ window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => 
 // and typed fallbacks for the 4 AI-facing handlers) are registered first so that
 // registerCoreActions() can overwrite shared keys with its hardened implementations.
 const _safeRegister = (name: string, fn: () => void) => {
-  try { fn(); } catch (e) { NexusLogger.error(`[Boot] Failed to register ${name}:`, e as Error); }
+  try { fn(); } catch (e) { AraLogger.error(`[Boot] Failed to register ${name}:`, e as Error); }
 };
 
 _safeRegister('orchestratorActions', registerOrchestratorActions);
@@ -91,7 +92,7 @@ _safeRegister('analysisActions', registerAnalysisActions);
 _safeRegister('globalValidationActions', registerGlobalValidationActions);
 _safeRegister('fieldSuggestionActions', registerFieldSuggestionActions);
 
-// Register module-specific action handlers eagerly so Nexus cross-module delegation
+// Register module-specific action handlers eagerly so Ara cross-module delegation
 // never falls through due to lazy page-level registration.
 _safeRegister('agnesActions', registerAgnesActions);
 _safeRegister('atlasActions', registerAtlasActions);
@@ -117,13 +118,19 @@ _safeRegister('scoutProjectionListeners', registerScoutProjectionListeners);
 _safeRegister('forgeActions', registerForgeActions);
 _safeRegister('somaFieldActions', registerSomaFieldActions);
 
+// Cross-module action routing: Agnes and Forge can emit habit actions (owned by Atlas).
+// This surfaces Atlas's habitActions in ActionHub.getAllowedActions() for these modules,
+// preventing the schema guard from blocking create_habit / complete_habit etc.
+ActionHub.addDependency('agnes', 'atlas');
+ActionHub.addDependency('forge', 'atlas');
+
 // Initialize schema registry with all module schemas
 initializeSchemas();
 
-// Wire NexusDataLayer into SpineEventBus so spine_events persistence goes through
+// Wire AraDataLayer into SpineEventBus so spine_events persistence goes through
 // the abstraction layer rather than hitting Firebase directly. This allows tests
-// to inject InMemoryDataLayer via setNexusDataLayer() before the Spine emits.
-Spine.setDataLayer(getNexusDataLayer());
+// to inject InMemoryDataLayer via setAraDataLayer() before the Spine emits.
+Spine.setDataLayer(getAraDataLayer());
 registerFlowConsumers();
 
 // Start the platform scheduler and register static schedules.
@@ -156,7 +163,7 @@ SchedulerService.register({
 SchedulerService.start();
 
 // Filter out noisy THREE.Clock deprecation warnings from @react-three/fiber internals.
-// We patch console.warn AFTER NexusLogger.init() so the original method is already
+// We patch console.warn AFTER AraLogger.init() so the original method is already
 // snapshotted — this wrapper calls the (potentially overridden) console.warn.
 const _origWarn = console.warn.bind(console);
 console.warn = (...args: unknown[]) => {

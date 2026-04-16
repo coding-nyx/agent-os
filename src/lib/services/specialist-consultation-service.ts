@@ -250,7 +250,7 @@ export class SpecialistConsultationService {
           moduleDataContext
         : `You are ${moduleName}, a specialist agent in the AGNES neural network. ` +
           `Your domain is: ${moduleEntry?.description || input.targetModuleId}. ` +
-          `Answer the following consultation from Nexus concisely and precisely from your domain expertise. ` +
+          `Answer the following consultation from Ara concisely and precisely from your domain expertise. ` +
           `Do not use action tags. Respond in 2-4 sentences.` +
           nsvContext;
 
@@ -261,8 +261,8 @@ export class SpecialistConsultationService {
         memoryContext: [],
         summary:
           input.mode === 'state_plus_persisted_data'
-            ? `Internal consultation (persisted data) from Nexus to ${moduleName}`
-            : `Internal consultation from Nexus to ${moduleName}`,
+            ? `Internal consultation (persisted data) from Ara to ${moduleName}`
+            : `Internal consultation from Ara to ${moduleName}`,
       });
 
       const responseText = response.publicText.trim();

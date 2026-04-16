@@ -23,8 +23,8 @@ describe('NSV_OWNERSHIP map', () => {
     expect(NSV_OWNERSHIP.titan).toContain('biological.sleepQuality');
   });
 
-  it('nexus owns no metrics', () => {
-    expect(NSV_OWNERSHIP.nexus).toHaveLength(0);
+  it('ara owns no metrics', () => {
+    expect(NSV_OWNERSHIP.ara).toHaveLength(0);
   });
 });
 
@@ -41,8 +41,8 @@ describe('getMetricOwner', () => {
     expect(getMetricOwner('resource.financialFriction')).toBe('ledger');
   });
 
-  it('falls back to nexus for unknown metric', () => {
-    expect(getMetricOwner('unknown.metric' as NSVMetricPath)).toBe('nexus');
+  it('falls back to ara for unknown metric', () => {
+    expect(getMetricOwner('unknown.metric' as NSVMetricPath)).toBe('ara');
   });
 });
 
@@ -132,7 +132,7 @@ describe('buildCalibrationPrompt', () => {
   });
 
   it('returns generic prompt for modules with no owned metrics', () => {
-    const prompt = buildCalibrationPrompt('nexus');
+    const prompt = buildCalibrationPrompt('ara');
     expect(prompt).toContain('Calibration required');
     expect(prompt).toContain('missing vital metrics');
   });
@@ -171,8 +171,8 @@ describe('filterNSVForModule', () => {
     expect(filtered.lastUpdated['emotional.traumaMarkers']).toBeUndefined();
   });
 
-  it('returns full access for nexus', () => {
-    const filtered = filterNSVForModule(sampleNSV, 'nexus');
+  it('returns full access for ara', () => {
+    const filtered = filterNSVForModule(sampleNSV, 'ara');
     expect(filtered.emotional.traumaMarkers).toEqual(['flashback']);
     expect(filtered.resource.financialFriction).toBe(8);
     expect(filtered.lastUpdated['emotional.traumaMarkers']).toBe('2024-01-02T00:00:00.000Z');
@@ -183,8 +183,8 @@ describe('filterGlobalSoulForModule', () => {
   const projection: GlobalProjection = {
     lastSync: '2024-02-01T00:00:00.000Z',
     overallWellnessScore: 7,
-    displayNames: { nexus: 'Nexus' },
-    agentGenders: { nexus: 'female' },
+    displayNames: { ara: 'Ara' },
+    agentGenders: { ara: 'female' },
     crossFunctionalState: {
       biological: { cnsFatigue: 3, sleepQuality: 6, recoveryScore: 5, hormonalContext: 'follicular' },
       emotional: { emotionalResilience: 8, stressLoad: 1, moodTrend: 'stable', traumaMarkers: ['redacted'] },

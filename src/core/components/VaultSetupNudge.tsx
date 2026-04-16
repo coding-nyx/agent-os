@@ -149,8 +149,8 @@ export function VaultSetupNudge({ onClose }: VaultSetupNudgeProps) {
         {/* Body copy */}
         <div id="vault-nudge-body" className="text-white/60 text-sm leading-relaxed space-y-2 mb-6">
           <p>
-            Add a master vault key to encrypt all your Nexus data. Only you can decrypt it
-            — even Nexus can&apos;t read it.
+            Add a master vault key to encrypt all your Ara data. Only you can decrypt it
+            — even Ara can&apos;t read it.
           </p>
           <p>If you skip, your data is stored in standard cloud storage.</p>
         </div>

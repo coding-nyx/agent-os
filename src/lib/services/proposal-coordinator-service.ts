@@ -3,13 +3,13 @@
  *
  * Lightweight module-level singleton that coordinates proposal surface priority
  * across globally-mounted components (e.g. NeuralDraftPanel) and route-scoped
- * components (e.g. NexusDashboard's routing / routine / conflict proposals).
+ * components (e.g. AraDashboard's routing / routine / conflict proposals).
  *
  * Problem: NeuralDraftPanel is mounted at the App root and reacts to DRAFT_PROPOSED
- * Spine events independently of the NexusDashboard state machine. This means a
+ * Spine events independently of the AraDashboard state machine. This means a
  * routing suggestion and a neural draft can appear simultaneously with no coordination.
  *
- * Solution: NexusDashboard calls markHighPriorityActive / markHighPriorityIdle to
+ * Solution: AraDashboard calls markHighPriorityActive / markHighPriorityIdle to
  * signal when a high-priority proposal surface is visible. NeuralDraftPanel subscribes
  * and defers rendering until the coordinator reports availability.
  */

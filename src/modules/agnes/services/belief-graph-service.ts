@@ -1,8 +1,8 @@
 import { BeliefGraphServiceJs } from '@cortex-logic';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import type { NexusRecord } from '@/lib/data-layer';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
+import type { AraRecord } from '@/lib/data-layer';
+import { AraLogger } from '@/lib/ara-logger';
 
 const VAULT_SALT_MARKER = 'vault_salt_used';
 const DEFAULT_COMPACT_BELIEF_NODE_LIMIT = 60;
@@ -148,7 +148,7 @@ export async function compactBeliefGraphWithLLM(
 export async function loadBeliefGraph({ userId, encryptionKey }: BeliefGraphLoadContext): Promise<BeliefGraph | null> {
   if (!userId || !encryptionKey) return null;
 
-  const record = await getNexusDataLayer().getDocument<{ encryptedData: string; iv: string }>(
+  const record = await getAraDataLayer().getDocument<{ encryptedData: string; iv: string }>(
     'belief_graphs',
     userId,
   );
@@ -171,10 +171,10 @@ export function subscribeBeliefGraph(
   onUpdate: (graph: BeliefGraph | null) => void
 ): () => void {
   if (userId && encryptionKey) {
-    const unsubscribe = getNexusDataLayer().subscribeToDocument<{ encryptedData: string; iv: string }>(
+    const unsubscribe = getAraDataLayer().subscribeToDocument<{ encryptedData: string; iv: string }>(
       'belief_graphs',
       userId,
-      async (record: NexusRecord<{ encryptedData: string; iv: string }> | null) => {
+      async (record: AraRecord<{ encryptedData: string; iv: string }> | null) => {
         if (!record) {
           onUpdate(null);
           return;
@@ -210,7 +210,7 @@ export async function saveBeliefGraph(
   const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
 
   try {
-    await getNexusDataLayer().setDocument('belief_graphs', userId, {
+    await getAraDataLayer().setDocument('belief_graphs', userId, {
       encryptedData: encrypted.ciphertext,
       iv: encrypted.iv,
       salt: VAULT_SALT_MARKER,
@@ -241,7 +241,7 @@ export async function compactBeliefGraphDocument(
     : compactBeliefGraph(existing, options?.maxNodes);
   const changed = JSON.stringify(existing) !== JSON.stringify(compacted);
   if (!changed) {
-    NexusLogger.emit('ai', {
+    AraLogger.emit('ai', {
       moduleId: 'agnes',
       label: 'belief_graph_compaction_skipped',
       detail: {
@@ -259,7 +259,7 @@ export async function compactBeliefGraphDocument(
   }
 
   await saveBeliefGraph(compacted, { userId, encryptionKey });
-  NexusLogger.emit('ai', {
+  AraLogger.emit('ai', {
     moduleId: 'agnes',
     label: 'belief_graph_compaction_persisted',
     detail: {

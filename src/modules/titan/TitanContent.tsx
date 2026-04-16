@@ -31,7 +31,7 @@ import { Activity, RefreshCw, Zap, X, ShieldAlert, TrendingUp, Scale, Dumbbell, 
 import { SingleAgentLayout } from '@/core/layout/SingleAgentLayout';
 import { useVault } from '@/lib/vault-context';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
+import { AraRoutingService } from '@/lib/services/ara-routing-service';
 import { TitanNotificationSettingsPanel } from './components/TitanNotificationSettingsPanel';
 import { ModuleReminderEntry } from '@/core/components/ModuleReminderEntry';
 import { QuickReminderModal } from '@/core/components/QuickReminderModal';
@@ -63,7 +63,7 @@ function resolveInitialTab(searchParams: URLSearchParams, recoveryActive: boolea
   return recoveryActive ? 'recovery' : 'train';
 }
 
-export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null }) {
+export function TitanContent({ profile, encryptionKey, profileError, isLoading }: { profile: TitanProfile | null; encryptionKey: CryptoKey | null; profileError?: 'subscription_failed' | null; isLoading?: boolean }) {
   const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const globalSoulRef = useRef(globalSoul);
   globalSoulRef.current = globalSoul;
@@ -102,6 +102,8 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
   const chat = useTitanChat({
     profile,
     encryptionKey,
+    profileError,
+    isLoading,
     user: user ?? null,
     somaProfile,
     globalSoul,
@@ -496,7 +498,7 @@ export function TitanContent({ profile, encryptionKey }: { profile: TitanProfile
         pendingConsults={recovery.pendingConsults}
         onRequestConsults={recovery.requestRecoveryConsults}
         onOpenModule={(moduleId) => {
-          const route = NexusRoutingService.getRoute(moduleId);
+          const route = AraRoutingService.getRoute(moduleId);
           if (route) navigate(route);
         }}
       />

@@ -1,7 +1,7 @@
 /**
  * ExportPanel.tsx
  *
- * Settings / Export Panel for the Nexus Ledger finance module.
+ * Settings / Export Panel for the Ara Ledger finance module.
  *
  * Provides three export actions:
  *   1. Transactions CSV  — optional date-range filter

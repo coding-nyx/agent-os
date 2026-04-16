@@ -1,4 +1,4 @@
-import { getNexusDataLayer } from '../data-layer/provider';
+import { getAraDataLayer } from '../data-layer/provider';
 import type { ChatThread, ContextPolicy } from '../types';
 
 const COLLECTION = 'chat_threads';
@@ -14,7 +14,7 @@ export const ChatThreadService = {
     onUpdate: (threads: ChatThread[]) => void
   ): () => void {
     if (!userId || !moduleId) return () => {};
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     return dataLayer.subscribeToQuery<ChatThread>(
       {
         collection: COLLECTION,
@@ -30,7 +30,7 @@ export const ChatThreadService = {
   },
 
   async createThread(userId: string, moduleId: string, title: string, contextPolicy: ContextPolicy = 'base-context') {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
 
     const threadId = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -57,7 +57,7 @@ export const ChatThreadService = {
     threadId: string,
     patch: Partial<Omit<ChatThread, 'id' | 'moduleId' | 'userId' | 'createdAt'>>
   ) {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     await dataLayer.updateDocument(COLLECTION, threadDocId(userId, moduleId, threadId), {
       ...patch,
       updatedAt: new Date().toISOString()
@@ -65,7 +65,7 @@ export const ChatThreadService = {
   },
 
   async touchThread(userId: string, moduleId: string, threadId: string) {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const now = new Date().toISOString();
     await dataLayer.updateDocument(COLLECTION, threadDocId(userId, moduleId, threadId), {
       lastMessageAt: now,
@@ -74,7 +74,7 @@ export const ChatThreadService = {
   },
 
   async archiveThread(userId: string, moduleId: string, threadId: string) {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     await dataLayer.updateDocument(COLLECTION, threadDocId(userId, moduleId, threadId), {
       archived: true,
       updatedAt: new Date().toISOString()
@@ -82,12 +82,12 @@ export const ChatThreadService = {
   },
 
   async deleteThread(userId: string, moduleId: string, threadId: string) {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     await dataLayer.deleteDocument(COLLECTION, threadDocId(userId, moduleId, threadId));
   },
 
   async deleteAllThreadsForModule(userId: string, moduleId: string) {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const threads = await dataLayer.query<ChatThread>({
       collection: COLLECTION,
       where: [

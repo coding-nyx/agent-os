@@ -1,11 +1,11 @@
-import { getNexusDataLayer } from '../data-layer/provider';
+import { getAraDataLayer } from '../data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '../encryption';
 import type { NotebookCell } from '../types';
 
 const COLLECTION = 'notebook_cells';
 
 export async function createNotebookCell(params: Omit<NotebookCell, 'id' | 'createdAt' | 'updatedAt' | 'encryptedData'> & { encryptionKey: CryptoKey }) {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const encrypted = await encryptWithKey(params.content, params.encryptionKey);
@@ -28,7 +28,7 @@ export async function updateNotebookCell(
   id: string,
   patch: Partial<Omit<NotebookCell, 'id' | 'createdAt'>> & { encryptionKey?: CryptoKey }
 ) {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const nextPatch = { ...patch } as Partial<NotebookCell>;
   if (typeof patch.content === 'string' && patch.encryptionKey) {
     const encrypted = await encryptWithKey(patch.content, patch.encryptionKey);
@@ -47,7 +47,7 @@ export function subscribeNotebookCells(
   onUpdate: (cells: NotebookCell[]) => void
 ) {
   if (!userId || !moduleId || !threadId) return () => {};
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   return dataLayer.subscribeToQuery<NotebookCell>(
     {
       collection: COLLECTION,

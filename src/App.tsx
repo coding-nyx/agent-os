@@ -10,11 +10,11 @@ import { AppErrorBoundary } from './core/components/AppErrorBoundary';
 import { ModuleErrorBoundary } from './core/components/ModuleErrorBoundary';
 import { ProtectedRoute } from './core/components/ProtectedRoute';
 import { AppVaultGate } from './core/components/AppVaultGate';
-import { NexusOverlay } from './core/components/NexusOverlay';
+import { AraOverlay } from './core/components/AraOverlay';
 import { NeuralDraftPanel } from './core/components/NeuralDraftPanel';
 import { SpineOverlay } from './core/components/SpineOverlay';
 import { SpineToastProvider } from './core/components/SpineToast';
-import { NexusRouteBanner } from './core/components/NexusRouteBanner';
+import { AraRouteBanner } from './core/components/AraRouteBanner';
 import { ReminderFallbackBanner } from './core/components/ReminderFallbackBanner';
 import { SoulWriteInbox } from './core/components/SoulWriteInbox';
 import { DebugActivityOverlay } from './core/components/debug';
@@ -47,7 +47,7 @@ const HubPage = lazy(() => import('./modules/hub/HubPage'));
 const AgnesPage = lazy(() => import('./modules/agnes/AgnesPage'));
 const TitanPage = lazy(() => import('./modules/titan/TitanPage'));
 const LedgerPage = lazy(() => import('./modules/ledger/LedgerPage'));
-const NexusPage = lazy(() => import('./modules/nexus/NexusPage'));
+const AraPage = lazy(() => import('./modules/ara/AraPage'));
 const SomaPage = lazy(() => import('./modules/soma/SomaPage'));
 const AtlasPage = lazy(() => import('./modules/atlas/AtlasPage'));
 const ScoutPage = lazy(() => import('./modules/scout/ScoutPage'));
@@ -79,12 +79,12 @@ function AIWrapper({ children }: { children: React.ReactNode }) {
       localStorage.setItem('preferred_model', profileModel);
       changed = true;
     }
-    if (profileProvider && !localStorage.getItem('nexus_debug_provider')) {
-      localStorage.setItem('nexus_debug_provider', profileProvider);
+    if (profileProvider && !localStorage.getItem('ara_debug_provider')) {
+      localStorage.setItem('ara_debug_provider', profileProvider);
       changed = true;
     }
     if (changed) {
-      window.dispatchEvent(new CustomEvent('nexus_model_changed'));
+      window.dispatchEvent(new CustomEvent('ara_model_changed'));
     }
   }, [profileModel, profileProvider]);
 
@@ -243,7 +243,7 @@ function AppContent() {
   const { profile, isGuest, isAuthenticated } = useAuth();
   useOrchestrationProfileSync();
 
-  // A session is "onboarded" if it's a guest session (which bypasses Nexus onboarding)
+  // A session is "onboarded" if it's a guest session (which bypasses Ara onboarding)
   // or if the authenticated user has completed their core profile.
   const isOnboardingComplete = isGuest || !!profile?.onboardingComplete;
 
@@ -259,11 +259,11 @@ function AppContent() {
           <SpineRuntimeBootstrap />
           <IntelligencePipelineMount />
           <BridgeMount />
-          <NexusOverlay />
+          <AraOverlay />
           <SpineOverlay />
           <NeuralDraftPanel />
           <ReminderFallbackBanner />
-          <NexusRouteBanner />
+          <AraRouteBanner />
         </>
       )}
 
@@ -276,10 +276,10 @@ function AppContent() {
         {/* Vault unlock gate — outside ProtectedRoute so it's always reachable */}
         <Route path="/vault-gate" element={<AppVaultGate />} />
 
-        <Route path="/nexus/*" element={
+        <Route path="/ara/*" element={
           <ProtectedRoute requireOnboarding={false}>
-            <ModuleErrorBoundary moduleName="Nexus">
-              <NexusPage />
+            <ModuleErrorBoundary moduleName="Ara">
+              <AraPage />
             </ModuleErrorBoundary>
           </ProtectedRoute>
         } />

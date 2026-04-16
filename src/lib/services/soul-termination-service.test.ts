@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryDataLayer } from '@/lib/data-layer/in-memory-data-layer';
-import { setNexusDataLayer } from '@/lib/data-layer/provider';
+import { setAraDataLayer } from '@/lib/data-layer/provider';
 import { useOrchestrationStore } from '@/lib/stores/orchestration-store';
 import { ALIVE_ENTITY_COLLECTION } from './alive-entity-service';
 import { ORCHESTRATION_EXECUTION_SUBCOLLECTION, ORCHESTRATION_PROPOSAL_SUBCOLLECTION, ORCHESTRATION_THREAD_SUBCOLLECTION } from './orchestration-persistence-service';
@@ -49,7 +49,7 @@ describe('SoulTerminationService', () => {
     vi.stubGlobal('localStorage', createStorageMock());
     vi.stubGlobal('sessionStorage', createStorageMock());
     vi.stubGlobal('window', { localStorage, sessionStorage });
-    setNexusDataLayer(new InMemoryDataLayer());
+    setAraDataLayer(new InMemoryDataLayer());
     useOrchestrationStore.getState().resetShell();
     clearStorageArea(localStorage);
     clearStorageArea(sessionStorage);
@@ -57,7 +57,7 @@ describe('SoulTerminationService', () => {
 
   it('purges orchestration artifact subcollections alongside the user record', async () => {
     const dataLayer = new InMemoryDataLayer();
-    setNexusDataLayer(dataLayer);
+    setAraDataLayer(dataLayer);
 
     await dataLayer.setDocument('users', USER_ID, {
       uid: USER_ID,
@@ -66,7 +66,7 @@ describe('SoulTerminationService', () => {
       pronouns: '',
       onboardingComplete: true,
       agentPersonalityProvision: {
-        orchestratorAlias: 'Nexus',
+        orchestratorAlias: 'Ara',
         moduleAliases: { agnes: 'Agnes', titan: 'Titan', ledger: 'Ledger' },
         agentGenders: { orchestrator: 'female', agnes: 'female', titan: 'non-binary', ledger: 'female' },
         personaOverlays: {},
@@ -95,7 +95,7 @@ describe('SoulTerminationService', () => {
   it('clears local orchestration shell state alongside browser artifacts', () => {
     useOrchestrationStore.getState().setActiveThreadId('thread-1');
     useOrchestrationStore.getState().setLastTurnRuntime({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 5,
       historyMode: 'silent',
       activeThreadId: 'thread-1',
@@ -114,14 +114,14 @@ describe('SoulTerminationService', () => {
       },
       shouldSuppressAssistantMessage: false,
     });
-    localStorage.setItem('nexus_cache', '1');
-    sessionStorage.setItem('nexus_vault_session', 'open');
+    localStorage.setItem('ara_cache', '1');
+    sessionStorage.setItem('ara_vault_session', 'open');
 
     SoulTerminationService.clearLocalArtifacts();
 
     expect(useOrchestrationStore.getState().activeThreadId).toBeNull();
     expect(useOrchestrationStore.getState().lastTurnRuntime).toBeNull();
-    expect(localStorage.getItem('nexus_cache')).toBeNull();
-    expect(sessionStorage.getItem('nexus_vault_session')).toBeNull();
+    expect(localStorage.getItem('ara_cache')).toBeNull();
+    expect(sessionStorage.getItem('ara_vault_session')).toBeNull();
   });
 });

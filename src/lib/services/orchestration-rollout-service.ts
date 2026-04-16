@@ -1,6 +1,6 @@
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
 import type { OrchestrationTurnRuntimeSummary } from '@/lib/contracts/orchestration';
-import type { RoutingDecision } from './nexus-routing-service';
+import type { RoutingDecision } from './ara-routing-service';
 import { OrchestrationRolloutServiceJs } from '@cortex-logic';
 import { safeParseKmp } from '@/cortex-bridge/kmp-parse';
 
@@ -26,7 +26,7 @@ export class OrchestrationRolloutService {
   }
 
   static recordRoutingDecision(decision: RoutingDecision): void {
-    _service.recordRoutingDecision(decision.reason ?? 'default_nexus');
+    _service.recordRoutingDecision(decision.reason ?? 'default_ara');
   }
 
   static recordPlanningAttempt(built: boolean): void {

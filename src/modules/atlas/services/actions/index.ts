@@ -17,7 +17,7 @@ export function registerAtlasActions() {
   registered = true;
 
   ActionHub.registerProvider('atlas', {
-    capabilities: ['daily-planning', 'schedule-mutation', 'recovery-planning', 'reminder-management'],
+    capabilities: ['daily-planning', 'schedule-mutation', 'recovery-planning', 'reminder-management', 'habit-management'],
     latencyTier: 'balanced',
   });
 

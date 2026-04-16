@@ -6,6 +6,7 @@ import { NeuralInput } from '@/core/components/NeuralInput';
 import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
 import { useAuth } from '@/lib/auth-context';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
+import { ARA_STORAGE_KEYS } from '@/cortex-bridge/ara-events';
 
 // ---------------------------------------------------------------------------
 // Types & constants
@@ -19,8 +20,8 @@ const PROVIDERS: Array<{ id: ProviderId; label: string }> = [
   { id: 'grok', label: 'Grok' },
 ];
 
-const PROVIDER_KEY = 'nexus_debug_provider';
-const MODEL_KEY = 'preferred_model';
+const PROVIDER_KEY = ARA_STORAGE_KEYS.DEBUG_PROVIDER;
+const MODEL_KEY = ARA_STORAGE_KEYS.PREFERRED_MODEL;
 
 const DEFAULT_PROVIDER_MODELS: Record<string, string> = {
   google: 'google/gemini-2.0-flash:free',
@@ -180,12 +181,12 @@ export function ModelSelector() {
   const setProvider = useCallback((p: ProviderId) => {
     setProviderState(p);
     try { localStorage.setItem(PROVIDER_KEY, p); } catch { /* noop */ }
-    window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { provider: p } }));
+    window.dispatchEvent(new CustomEvent('ara_model_changed', { detail: { provider: p } }));
     const nextModel = p !== 'openrouter' ? (DEFAULT_PROVIDER_MODELS[p] ?? '') : selectedModel;
     if (p !== 'openrouter') {
       setSelectedModelState(nextModel);
       try { localStorage.setItem(MODEL_KEY, nextModel); } catch { /* noop */ }
-      window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { provider: p, model: nextModel } }));
+      window.dispatchEvent(new CustomEvent('ara_model_changed', { detail: { provider: p, model: nextModel } }));
     }
     if (user?.uid) {
       CoreProfileService.updateProfile(user.uid, {
@@ -198,7 +199,7 @@ export function ModelSelector() {
   const selectModel = useCallback((id: string) => {
     setSelectedModelState(id);
     try { localStorage.setItem(MODEL_KEY, id); } catch { /* noop */ }
-    window.dispatchEvent(new CustomEvent('nexus_model_changed', { detail: { model: id } }));
+    window.dispatchEvent(new CustomEvent('ara_model_changed', { detail: { model: id } }));
     setIsOpen(false);
     setSearch('');
     if (user?.uid) {

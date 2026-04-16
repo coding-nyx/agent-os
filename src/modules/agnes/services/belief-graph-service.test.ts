@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryDataProvider } from '@/lib/data-layer';
-import { setNexusDataLayer } from '@/lib/data-layer/provider';
+import { setAraDataLayer } from '@/lib/data-layer/provider';
 
 vi.mock('@cortex-logic', async () => await import('@/test/__mocks__/cortex-logic-mock'));
 
@@ -22,7 +22,7 @@ vi.mock('@/lib/encryption', () => ({
 
 describe('belief-graph-service', () => {
   afterEach(() => {
-    setNexusDataLayer(new InMemoryDataProvider());
+    setAraDataLayer(new InMemoryDataProvider());
   });
 
   it('compacts dense graphs by deduplicating labels and pruning detached edges', () => {
@@ -50,7 +50,7 @@ describe('belief-graph-service', () => {
   });
 
   it('persists compacted graph with a configurable node cap', async () => {
-    setNexusDataLayer(new InMemoryDataProvider());
+    setAraDataLayer(new InMemoryDataProvider());
     const context = { userId: 'user-1', encryptionKey: {} as CryptoKey };
 
     await saveBeliefGraph(

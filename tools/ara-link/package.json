@@ -1,0 +1,11 @@
+{
+  "name": "ara-link",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs"
+  },
+  "dependencies": {
+    "ws": "8.18.3"
+  }
+}

@@ -156,7 +156,7 @@ export function useSessionPersistence({
 
     // Always persist to sessionStorage as a lightweight fallback
     try {
-      sessionStorage.setItem(`nexus_session_${moduleId}_${activeSessionId}`, JSON.stringify({
+      sessionStorage.setItem(`ara_session_${moduleId}_${activeSessionId}`, JSON.stringify({
         history: persistableMessages,
         startTime: sessionStartRef.current,
         savedAt: new Date().toISOString(),
@@ -173,7 +173,7 @@ export function useSessionPersistence({
     if (persistencePolicy === 'ephemeral') {
       // Ephemeral (impromptu) sessions: sessionStorage only, never Firestore
       try {
-        const cached = sessionStorage.getItem(`nexus_session_${moduleId}_${activeSessionId}`);
+        const cached = sessionStorage.getItem(`ara_session_${moduleId}_${activeSessionId}`);
         if (cached && mounted) {
           const parsed = JSON.parse(cached);
           if (parsed?.history?.length > 0) {
@@ -219,7 +219,7 @@ export function useSessionPersistence({
     } else {
       // Guest: try restoring from sessionStorage
       try {
-        const cached = sessionStorage.getItem(`nexus_session_${moduleId}_${activeSessionId}`);
+        const cached = sessionStorage.getItem(`ara_session_${moduleId}_${activeSessionId}`);
         if (cached && mounted) {
           const parsed = JSON.parse(cached);
           if (parsed?.history?.length > 0) {
@@ -250,7 +250,7 @@ export function useSessionPersistence({
     // For scout-research, we only save to remote on specific commit actions
     if (persistencePolicy === 'scout-research') {
       try {
-        sessionStorage.setItem(`nexus_session_${moduleId}_${activeSessionId}`, JSON.stringify({
+        sessionStorage.setItem(`ara_session_${moduleId}_${activeSessionId}`, JSON.stringify({
           history: messages,
           startTime: sessionStartRef.current,
           savedAt: new Date().toISOString(),

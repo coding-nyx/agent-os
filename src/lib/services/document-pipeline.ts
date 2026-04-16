@@ -1,7 +1,7 @@
 import type { DocumentDomain } from './document-intelligence-service';
 import { parseDocument, analyzeRawText } from './document-intelligence-service';
 import { extractTextWithVision } from './vision-analysis-service';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 
 export type DocumentFileType = 'pdf' | 'csv' | 'text' | 'image';
 
@@ -176,7 +176,7 @@ export async function runDocumentPipeline<TAnalysis, TProposal>(params: {
   const emitStage = (stage: DocumentPipelineStage) => {
     try {
       onStageChange?.(stage);
-    } catch (e) { NexusLogger.warn('DocumentPipeline', 'UI callback threw (suppressed)'); }
+    } catch (e) { AraLogger.warn('DocumentPipeline', 'UI callback threw (suppressed)'); }
   };
 
   emitStage({ id: 'parsing', label: 'Uploading document…', progress: 0 });

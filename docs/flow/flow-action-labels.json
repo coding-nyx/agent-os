@@ -132,7 +132,7 @@
   {
     "actionType": "sync_vitals",
     "label": "Synchronizing neural state vectors",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "sync_vitals",
@@ -162,107 +162,107 @@
   {
     "actionType": "detect_data_hint",
     "label": "Detect Data Hint",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "propose_draft",
     "label": "Propose Draft",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "delegate_to_module",
     "label": "Delegate To Module",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "broadcast_spine_event",
     "label": "Broadcast Spine Event",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "query_module",
     "label": "Query Module",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "query_module_data",
     "label": "Query Module Data",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "update_global_identity",
     "label": "Update Global Identity",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "update_orchestrator_intake",
     "label": "Update Orchestrator Intake",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "focus_identity",
     "label": "Focus Identity",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "focus_bio",
     "label": "Focus Bio",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "focus_review",
     "label": "Focus Review",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "complete_orchestrator_onboarding",
     "label": "Complete Orchestrator Onboarding",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "propose_reminder",
     "label": "Proposing a reminder",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "propose_routine",
     "label": "Propose Routine",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "confirm_routine",
     "label": "Confirm Routine",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "dismiss_routine",
     "label": "Dismiss Routine",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "confirm_reminder",
     "label": "Scheduling reminder",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "dismiss_reminder",
     "label": "Dismissing reminder",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "query_reminders",
     "label": "Listing reminders",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "sync_personality_provision",
     "label": "Sync Personality Provision",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "web_search",
     "label": "Web Search",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "web_search",
@@ -272,12 +272,12 @@
   {
     "actionType": "search_memory",
     "label": "Search Memory",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "suggest_field",
     "label": "Suggesting a new tracking field",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "suggest_field",
@@ -292,7 +292,7 @@
   {
     "actionType": "create_field",
     "label": "Creating custom tracking field",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "create_field",
@@ -312,7 +312,7 @@
   {
     "actionType": "delete_field",
     "label": "Removing custom tracking field",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "delete_field",
@@ -332,17 +332,17 @@
   {
     "actionType": "suggest_field_fix",
     "label": "Suggest Field Fix",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "validate_with_context",
     "label": "Validate With Context",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "explain_validation_error",
     "label": "Explain Validation Error",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "schedule_block",
@@ -475,8 +475,8 @@
     "moduleId": "forge"
   },
   {
-    "actionType": "nexus_link_command",
-    "label": "Nexus Link Command",
+    "actionType": "ara_link_command",
+    "label": "Ara Link Command",
     "moduleId": "forge"
   },
   {
@@ -572,12 +572,12 @@
   {
     "actionType": "navigate_to_module",
     "label": "Navigate To Module",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "create_module_handoff",
     "label": "Create Module Handoff",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   },
   {
     "actionType": "list_sessions",
@@ -757,6 +757,6 @@
   {
     "actionType": "create_general_request",
     "label": "Create General Request",
-    "moduleId": "nexus"
+    "moduleId": "ara"
   }
 ]

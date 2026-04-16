@@ -5,7 +5,7 @@ description: System-wide notification management and alert bridge.
 
 # Notifications Module
 
-Notifications serves as the alert bridge, managing the delivery of insights, reminders, and system alerts across the Nexus platform.
+Notifications serves as the alert bridge, managing the delivery of insights, reminders, and system alerts across the Ara platform.
 
 ## Domain
 Focuses on notification delivery, priority management, and cross-device synchronization.

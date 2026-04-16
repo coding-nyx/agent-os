@@ -18,7 +18,7 @@ import * as cortexModule from 'cortex-logic/build/dist/js/productionLibrary/cort
 
 const moduleAny: any = cortexModule as any;
 const maybeDefault = moduleAny['de' + 'fault'];
-const globalUmdRoot: any = (globalThis as any)?.['com.agnes.nexus:cortex'];
+const globalUmdRoot: any = (globalThis as any)?.['com.agnes.ara:cortex'];
 const root: any =
   moduleAny?.com
     ? moduleAny
@@ -27,8 +27,8 @@ const root: any =
       : globalUmdRoot?.com
         ? globalUmdRoot
         : moduleAny;
-const engine: Record<string, unknown> = root?.com?.agnes?.nexus?.core?.engine ?? {};
-const domainServices: Record<string, unknown> = root?.com?.agnes?.nexus?.core?.domain?.services ?? {};
+const engine: Record<string, unknown> = root?.com?.agnes?.ara?.core?.engine ?? {};
+const domainServices: Record<string, unknown> = root?.com?.agnes?.ara?.core?.domain?.services ?? {};
 
 // Build flat export map once on module load (single DFS instead of per-export BFS)
 const _exportMap = new Map<string, unknown>();
@@ -51,6 +51,11 @@ function requireEngineExport<T = any>(name: string): T {
   return value as T;
 }
 
+/** Safe variant — returns null when the KMP build doesn't yet include the export. */
+function tryLoad(name: string): (new (...args: unknown[]) => unknown) | null {
+  try { return requireEngineExport(name); } catch { return null; }
+}
+
 export const AccountAggregationJs = requireEngineExport('AccountAggregationJs');
 export const AliveEntityUtilsJs = requireEngineExport('AliveEntityUtilsJs');
 export const EmbeddingUtilsJs = requireEngineExport('EmbeddingUtilsJs');
@@ -62,9 +67,7 @@ export const AtlasPlanningEngineJs = requireEngineExport('AtlasPlanningEngineJs'
 export const AtlasPredictiveEngineJs = requireEngineExport('AtlasPredictiveEngineJs');
 export const DocumentFieldExtractorJs = requireEngineExport('DocumentFieldExtractorJs');
 // ActionHubJs is resolved lazily — the KMP build must include ActionHubJs.kt before this is non-null.
-export const ActionHubJs: (new (...args: unknown[]) => unknown) | null = (() => {
-  try { return requireEngineExport('ActionHubJs'); } catch { return null; }
-})();
+export const ActionHubJs = tryLoad('ActionHubJs');
 export const ActionCapabilityResolverJs = requireEngineExport('ActionCapabilityResolverJs');
 export const AgentRegistryJs = requireEngineExport('AgentRegistryJs');
 export const AtlasComputeUtilsJs = requireEngineExport('AtlasComputeUtilsJs');
@@ -73,9 +76,7 @@ export const BlueprintEngineJs = requireEngineExport('BlueprintEngineJs');
 export const BudgetAggregationJs = requireEngineExport('BudgetAggregationJs');
 export const CalendarAggregationJs = requireEngineExport('CalendarAggregationJs');
 // CancellableTask is only present after the cortex-logic KMP build includes CancellableTask.kt.
-export const CancellableTask: (new (...args: unknown[]) => unknown) | null = (() => {
-  try { return requireEngineExport('CancellableTask'); } catch { return null; }
-})();
+export const CancellableTask = tryLoad('CancellableTask');
 export const CognitiveEngineJs = requireEngineExport('CognitiveEngineJs');
 export const CredentialStoreJs = requireEngineExport('CredentialStoreJs');
 export const CommandIntelligenceServiceJs = requireEngineExport('CommandIntelligenceServiceJs');
@@ -83,6 +84,10 @@ export const ContextBudgeterJs = requireEngineExport('ContextBudgeterJs');
 export const CreditAggregationJs = requireEngineExport('CreditAggregationJs');
 export const CrossVerificationServiceJs = requireEngineExport('CrossVerificationServiceJs');
 export const DashboardAggregationJs = requireEngineExport('DashboardAggregationJs');
+// DelegationTrackingServiceJs — use safe lazy pattern so the app boots if the KMP build is behind.
+export const DelegationTrackingServiceJs = tryLoad('DelegationTrackingServiceJs');
+// ThreadParticipantServiceJs — use safe lazy pattern so the app boots if the KMP build is behind.
+export const ThreadParticipantServiceJs = tryLoad('ThreadParticipantServiceJs');
 export const E1rmServiceJs = requireEngineExport('E1rmServiceJs');
 export const ExerciseLibraryJs = requireEngineExport('ExerciseLibraryJs');
 export const ExtractedMutation = requireEngineExport('ExtractedMutation');
@@ -98,11 +103,12 @@ export const LlmSanitizerJs = requireEngineExport('LlmSanitizerJs');
 export const NetWorthAggregationJs = requireEngineExport('NetWorthAggregationJs');
 export const OnboardingValidationJs = requireEngineExport('OnboardingValidationJs');
 export const NeuralStateVectorJs = requireEngineExport('NeuralStateVectorJs');
-export const NexusActionDispatchServiceJs = requireEngineExport('NexusActionDispatchServiceJs');
-export const NexusActionPlannerServiceJs = requireEngineExport('NexusActionPlannerServiceJs');
-export const NexusDispatchExecutionServiceJs = requireEngineExport('NexusDispatchExecutionServiceJs');
-export const NexusRoutingServiceJs = requireEngineExport('NexusRoutingServiceJs');
-export const NexusSynthesisServiceJs = requireEngineExport('NexusSynthesisServiceJs');
+// Ara* services are added in the next cortex-logic KMP build — use safe lazy pattern until rebuilt.
+export const AraActionDispatchServiceJs = tryLoad('AraActionDispatchServiceJs');
+export const AraActionPlannerServiceJs = tryLoad('AraActionPlannerServiceJs');
+export const AraDispatchExecutionServiceJs = tryLoad('AraDispatchExecutionServiceJs');
+export const AraRoutingServiceJs = tryLoad('AraRoutingServiceJs');
+export const AraSynthesisServiceJs = tryLoad('AraSynthesisServiceJs');
 export const NsvOwnershipServiceJs = requireEngineExport('NsvOwnershipServiceJs');
 export const NsvServiceJs = requireEngineExport('NsvServiceJs');
 export const OrchestrationActionGateServiceJs = requireEngineExport('OrchestrationActionGateServiceJs');
@@ -116,9 +122,7 @@ export const OrchestrationPersistenceUtilsJs = requireEngineExport('Orchestratio
 export const OrchestrationPolicyServiceJs = requireEngineExport('OrchestrationPolicyServiceJs');
 export const OrchestrationRolloutServiceJs = requireEngineExport('OrchestrationRolloutServiceJs');
 export const PersonaFactoryJs = requireEngineExport('PersonaFactoryJs');
-export const PersonaPromptCatalogJs: (new (...args: unknown[]) => unknown) | null = (() => {
-  try { return requireEngineExport('PersonaPromptCatalogJs'); } catch { return null; }
-})();
+export const PersonaPromptCatalogJs = tryLoad('PersonaPromptCatalogJs');
 export const PortfolioAggregationJs = requireEngineExport('PortfolioAggregationJs');
 export const PrecedenceResolverJs = requireEngineExport('PrecedenceResolverJs');
 export const ProgressiveOverloadEngineJs = requireEngineExport('ProgressiveOverloadEngineJs');
@@ -136,22 +140,18 @@ export const TaxAggregationJs = requireEngineExport('TaxAggregationJs');
 export const TitanClearanceEngineJs = requireEngineExport('TitanClearanceEngineJs');
 export const TitanNsvUpdaterJs = requireEngineExport('TitanNsvUpdaterJs');
 // TitanPromptBuilderJs is only present after the cortex-logic KMP build includes TitanPromptBuilderJs.kt.
-export const TitanPromptBuilderJs: (new (...args: unknown[]) => unknown) | null = (() => {
-  try { return requireEngineExport('TitanPromptBuilderJs'); } catch { return null; }
-})();
+export const TitanPromptBuilderJs = tryLoad('TitanPromptBuilderJs');
 export const TransactionAggregationJs = requireEngineExport('TransactionAggregationJs');
 // RagChunkingServiceJs may not be in the export map if the DFS doesn't reach the rag namespace;
 // use the safe lazy pattern so the app boots even if the export is missing at load time.
-export const RagChunkingServiceJs: (new (...args: unknown[]) => unknown) | null = (() => {
-  try { return requireEngineExport('RagChunkingServiceJs'); } catch { return null; }
-})();
+export const RagChunkingServiceJs = tryLoad('RagChunkingServiceJs');
 // NotificationContentResolverJs may not be in the export map until the KMP JS library is rebuilt;
 // use the safe lazy pattern so the app boots even if the export is missing at load time.
-export const NotificationContentResolverJs: (new (...args: unknown[]) => unknown) | null = (() => {
-  try { return requireEngineExport('NotificationContentResolverJs'); } catch { return null; }
-})();
+export const NotificationContentResolverJs = tryLoad('NotificationContentResolverJs');
 export const UserIdentityJs = requireEngineExport('UserIdentityJs');
 // AutomationServiceJs is added in cortex-logic 1.6.0 — use safe lazy pattern until the dep is bumped.
-export const AutomationServiceJs: (new (...args: unknown[]) => unknown) | null = (() => {
-  try { return requireEngineExport('AutomationServiceJs'); } catch { return null; }
-})();
+export const AutomationServiceJs = tryLoad('AutomationServiceJs');
+// ScoutSessionContextAssemblerJs — added alongside the Scout RAG pipeline.
+// Use safe lazy pattern; agnes/src/modules/scout/services/scout-session-context-assembler.ts
+// provides the TypeScript fallback until the KMP bundle is rebuilt.
+export const ScoutSessionContextAssemblerJs = tryLoad('ScoutSessionContextAssemblerJs');

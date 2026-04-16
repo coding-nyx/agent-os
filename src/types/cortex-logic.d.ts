@@ -24,6 +24,55 @@ declare module '@cortex-logic' {
     cancel(): void;
   }
 
+  // ─── DelegationTrackingService ───────────────────────────────────────────
+
+  export class DelegationTrackingServiceJs {
+    /**
+     * @param jsNow Optional callback returning epoch milliseconds. Defaults to Date.now().
+     */
+    constructor(jsNow?: () => number);
+
+    // Proposed transitions
+    addProposed(moduleId: string): void;
+    acceptProposal(moduleId: string): void;
+    dismissProposal(moduleId: string): void;
+
+    // Pending transitions
+    addPending(moduleId: string): void;
+    removePending(moduleId: string): void;
+    clearAll(): void;
+
+    /** Drop entries that have exceeded their TTL. Safe to call from setInterval. */
+    pruneExpired(): void;
+
+    /**
+     * Returns current state as JSON.
+     * Shape: `{"proposed": {moduleId: epochMs}, "pending": {moduleId: epochMs}, "isBusy": bool}`
+     */
+    getStateSnapshot(): string;
+
+    /**
+     * Subscribe to state changes. [onNext] is called immediately with the current
+     * snapshot, then on every subsequent change. Cancel the returned task to unsubscribe.
+     */
+    observeState(onNext: (stateJson: string) => void): CancellableTask;
+  }
+
+  // ─── ThreadParticipantService ─────────────────────────────────────────────
+
+  export class ThreadParticipantServiceJs {
+    /** Takes JSON array of ThreadParticipant; returns updated JSON array. */
+    inviteParticipant(participantsJson: string, moduleId: string, invitedAt: string, inclusionReasonsJson?: string, stateOverride?: string | null): string;
+    /** Takes JSON array of ThreadParticipant; returns updated JSON array. */
+    joinParticipant(participantsJson: string, moduleId: string, joinedAt: string, state: string, inclusionReasonsJson?: string, lastActiveAt?: string | null): string;
+    /** Takes JSON array of ThreadParticipant; returns updated JSON array. */
+    leaveParticipant(participantsJson: string, moduleId: string, state?: string): string;
+    /** Takes JSON array of ThreadParticipant; returns filtered JSON array. */
+    pruneStaleParticipants(participantsJson: string, nowIso: string, staleInviteMs?: number): string;
+    /** Takes JSON array of ThreadParticipant; returns sorted JSON array. */
+    sortParticipants(participantsJson: string): string;
+  }
+
   // ─── LlmSanitizer ────────────────────────────────────────────────────────
 
   export interface SanitizedResult {
@@ -127,7 +176,7 @@ declare module '@cortex-logic' {
     /**
      * Build the onboarding system prompt for Titan intake.
      * @param privacyLevel       `"complete"` or `"basic"` / `"standard"`.
-     * @param userName           User's preferred name (from Nyx handoff).
+     * @param userName           User's preferred name (from Ara handoff).
      * @param pronouns           User's pronouns.
      * @param occupation         User's occupation.
      * @param typicalSleepHours  Typical sleep hours.
@@ -244,7 +293,7 @@ declare module '@cortex-logic' {
     ): CancellableTask;
   }
 
-  // ─── NexusSynthesisService ────────────────────────────────────────────────
+  // ─── AraSynthesisService ────────────────────────────────────────────────
 
   // ─── CommandIntelligenceService ──────────────────────────────────────────
 
@@ -268,7 +317,7 @@ declare module '@cortex-logic' {
     ): CancellableTask;
   }
 
-  export class NexusSynthesisServiceJs {
+  export class AraSynthesisServiceJs {
     constructor(onEvent: (type: string, dataJson: string) => void);
     /**
      * Returns JSON array of conflict result objects:
@@ -863,12 +912,12 @@ declare module '@cortex-logic' {
     buildSnapshot(actionsJson: string, failuresJson: string, silentHistoryJson: string, queueLimit: number): string;
   }
 
-  export class NexusActionDispatchServiceJs {
+  export class AraActionDispatchServiceJs {
     canDispatchDeterministically(moduleId: string, actionType: string): boolean;
     getDeterministicActions(moduleId: string): string[];
   }
 
-  export class NexusRoutingServiceJs {
+  export class AraRoutingServiceJs {
     classifyIntent(message: string): string;
     classifyIntentFromParsedCommand(parsedCommandJson: string | null | undefined): string;
     classifyIntentWithContext(message: string, parsedCommandJson: string | null | undefined): string;
@@ -877,13 +926,13 @@ declare module '@cortex-logic' {
     getRoute(moduleId: string): string;
   }
 
-  export class NexusActionPlannerServiceJs {
+  export class AraActionPlannerServiceJs {
     buildNode(intentJson: string, registryActionType: string | null | undefined, targetModuleId: string, supportingModuleIdsJson: string): string;
     shouldEnrichWithScout(intentType: string, targetModuleId: string, currentSupportingJson: string): boolean;
     isDraftActionType(actionType: string): boolean;
   }
 
-  export class NexusDispatchExecutionServiceJs {
+  export class AraDispatchExecutionServiceJs {
     detectDependencyCycles(dispatchPlanJson: string): string[];
     buildExecutionSummary(packetJson: string, resultsJson: string): string;
     buildRetryPacket(packetJson: string, resultsJson: string): string | null;
@@ -1254,5 +1303,34 @@ export class ActionHubJs {
      * @returns JSON array: `[{ index: number, text: string, startChar: number, endChar: number }]`
      */
     chunkText(text: string, chunkSize?: number, chunkOverlap?: number, minChunkSize?: number): string;
+  }
+
+  // ─── ScoutSessionContextAssembler ────────────────────────────────────────
+
+  export class ScoutSessionContextAssemblerJs {
+    /**
+     * Assembles the fused RAG context block for a Scout session prompt.
+     * @param nodesJson      JSON array: `[{ claim, confidence, similarity, status, fromSession }]`
+     * @param webResultsJson JSON array: `[{ title, url, snippet }]` — pass `"[]"` when no web search.
+     * @param sessionTopic   Active research session topic.
+     * @param userQuery      Current user query.
+     * @returns Formatted string with [SESSION_KNOWLEDGE] and optionally [FRESH_WEB_EVIDENCE] sections.
+     */
+    assembleFusedContext(nodesJson: string, webResultsJson: string, sessionTopic: string, userQuery: string): string;
+
+    /**
+     * Computes average similarity coverage of the top-5 retrieved nodes.
+     * @param nodesJson JSON array with a `similarity` field on each node.
+     * @returns 0.0–1.0; Agnes triggers web search when the result is below 0.55.
+     */
+    computeCoverageScore(nodesJson: string): number;
+
+    /**
+     * Returns true when the user query appears off-topic from the session topic.
+     * Short queries (< 3 meaningful tokens) are never classified as off-topic.
+     * @param userQuery    Raw user input.
+     * @param sessionTopic Active research session topic string.
+     */
+    isOffTopic(userQuery: string, sessionTopic: string): boolean;
   }
 }

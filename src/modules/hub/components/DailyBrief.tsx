@@ -8,7 +8,7 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { TrendArrow, type TrendDirection } from '@/core/components/TrendArrow';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import { useNsvTrends } from '@/modules/nexus/hooks/useNsvTrends';
+import { useNsvTrends } from '@/modules/ara/hooks/useNsvTrends';
 import {
   DOMAIN_PILLARS,
   DOMAIN_ORDER,

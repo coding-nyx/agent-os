@@ -11,7 +11,7 @@ The Landing module manages the initial user experience, including onboarding, va
 Focuses on user acquisition, platform setup, and the initialization of the E2EE environment.
 
 ## Key Components
-- **The Link**: Secure connection between the user and the Nexus backend.
+- **The Link**: Secure connection between the user and the Ara backend.
 - **Onboarding Flow**: Sequential data intake for Agnes, Atlas, and Titan.
 - **System Initialization**: Bootloader logic for establishing the Spine and Vault contexts.
 

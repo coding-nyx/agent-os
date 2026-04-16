@@ -10,7 +10,7 @@
  * - Validation after migration
  */
 
-import { getNexusDataLayer } from '../data-layer/provider';
+import { getAraDataLayer } from '../data-layer/provider';
 import type { BatchOperation } from '../data-layer/index';
 import { SchemaRegistry } from '../schema-registry';
 import { FieldSchema, FieldDefinition, FieldType } from '../field-system/types';
@@ -134,7 +134,7 @@ export class MigrationService {
     userId: string,
     moduleId?: string
   ): Promise<MigrationPreview> {
-    const dl = getNexusDataLayer();
+    const dl = getAraDataLayer();
     const changes: MigrationChange[] = [];
     const warnings: string[] = [];
     let totalEstimatedTime = 0;
@@ -187,7 +187,7 @@ export class MigrationService {
     encryptionKey: CryptoKey,
     moduleId?: string
   ): Promise<MigrationResult> {
-    const dl = getNexusDataLayer();
+    const dl = getAraDataLayer();
     const migrationId = `mig_${Date.now()}_${userId}`;
     const startedAt = new Date().toISOString();
     const errors: MigrationError[] = [];
@@ -298,7 +298,7 @@ export class MigrationService {
     migrationId: string,
     encryptionKey: CryptoKey
   ): Promise<void> {
-    const dl = getNexusDataLayer();
+    const dl = getAraDataLayer();
 
     try {
       // 1. Get migration record
@@ -374,7 +374,7 @@ export class MigrationService {
    * Check if migration is needed for a user
    */
   async needsMigration(userId: string): Promise<ModuleMigrationStatus[]> {
-    const dl = getNexusDataLayer();
+    const dl = getAraDataLayer();
     const statuses: ModuleMigrationStatus[] = [];
 
     for (const [moduleId, collectionName] of Object.entries(MODULE_COLLECTIONS)) {
@@ -848,7 +848,7 @@ export class MigrationService {
 
     // Save migrated profile
     const collectionName = MODULE_COLLECTIONS[moduleId];
-    await getNexusDataLayer().setDocument(collectionName, userId, finalData);
+    await getAraDataLayer().setDocument(collectionName, userId, finalData);
 
     console.log(`[MigrationService] Migrated ${moduleId} profile for user ${userId}`);
   }
@@ -861,7 +861,7 @@ export class MigrationService {
     encryptionKey: CryptoKey,
     metadata: { reason: string; migrationId?: string }
   ): Promise<string> {
-    const dl = getNexusDataLayer();
+    const dl = getAraDataLayer();
     const backupId = `backup_${Date.now()}_${userId}`;
     const snapshots: Record<string, unknown> = {};
 
@@ -905,7 +905,7 @@ export class MigrationService {
       errors: MigrationError[];
     }
   ): Promise<void> {
-    await getNexusDataLayer().setDocument(MIGRATION_COLLECTION, migrationId, {
+    await getAraDataLayer().setDocument(MIGRATION_COLLECTION, migrationId, {
       migrationId,
       userId,
       createdAt: new Date().toISOString(),

@@ -66,8 +66,9 @@ export function useScoutResearchSessions({
 
   const sessionContext = useMemo(() => {
     if (!activeSession || knowledgeNodes.length === 0) return '';
+    // Session-scoped only — global retrieval happens at query-time in useScoutPromptBuilder
     const sessionNodes = knowledgeNodes
-      .filter((n: any) => n.parentSessionId === activeSession.id || !n.parentSessionId)
+      .filter((n: any) => n.parentSessionId === activeSession.id)
       .slice(0, 15);
     if (sessionNodes.length === 0) return 'No prior findings in this session yet.';
     return sessionNodes

@@ -5,7 +5,7 @@ description: Technical execution agent specializing in code, documentation, and 
 
 # Forge Module
 
-Forge is the implementation engine of Nexus, handling technical tasks, content generation, and system configuration.
+Forge is the implementation engine of Ara, handling technical tasks, content generation, and system configuration.
 
 ## Modes
 - **Code**: Software engineering, scripting, and system automation.

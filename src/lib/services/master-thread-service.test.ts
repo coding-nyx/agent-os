@@ -51,7 +51,7 @@ const routineProposal: RoutineProposal = {
 };
 
 const planningProposal: ThreadPlanningSuggestionDraft = {
-  id: 'nexus.dashboard.planning.planning_collapse',
+  id: 'ara.dashboard.planning.planning_collapse',
   title: 'Draft a workload triage plan',
   summary: 'Deadlines are mounting while completion rate is critically low.',
   prompt: 'Build a realistic triage plan for today.',
@@ -66,20 +66,20 @@ describe('MasterThreadService', () => {
   it('creates thread state and keeps primary participants first', () => {
     const thread = MasterThreadService.createThread(createdAt, createdAt, [
       { moduleId: 'atlas', role: 'secondary', joinedAt: '2026-03-24T00:02:00.000Z', state: 'active', presence: 'online' },
-      { moduleId: 'nexus', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
+      { moduleId: 'ara', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
     ]);
 
     expect(thread.threadId).toBe(createdAt);
-    expect(thread.participants[0].moduleId).toBe('nexus');
+    expect(thread.participants[0].moduleId).toBe('ara');
   });
 
   it('deduplicates participants on join', () => {
     const base = MasterThreadService.createThread('thread-1', createdAt, [
-      { moduleId: 'nexus', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
+      { moduleId: 'ara', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
     ]);
 
     const next = MasterThreadService.joinParticipant(base, {
-      moduleId: 'nexus',
+      moduleId: 'ara',
       role: 'primary',
       joinedAt: '2026-03-24T00:10:00.000Z',
       state: 'waiting',
@@ -92,7 +92,7 @@ describe('MasterThreadService', () => {
 
   it('assigns deterministic turn sequencing and reply threading for appended messages', () => {
     const base = MasterThreadService.createThread('thread-1', createdAt, [
-      { moduleId: 'nexus', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
+      { moduleId: 'ara', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
       { moduleId: 'atlas', role: 'secondary', joinedAt: createdAt, state: 'joined', presence: 'online' },
       { moduleId: 'ledger', role: 'secondary', joinedAt: createdAt, state: 'joined', presence: 'online' },
     ]);
@@ -104,7 +104,7 @@ describe('MasterThreadService', () => {
         author: 'ledger',
         body: 'I can verify the budget impact.',
         createdAt: '2026-03-24T00:02:00.000Z',
-        participantIds: ['ledger', 'nexus'],
+        participantIds: ['ledger', 'ara'],
         replyToMessageId: 'msg-2',
       },
       {
@@ -121,7 +121,7 @@ describe('MasterThreadService', () => {
         author: 'atlas',
         body: 'Yes — I will draft the plan.',
         createdAt: '2026-03-24T00:01:00.000Z',
-        participantIds: ['atlas', 'nexus'],
+        participantIds: ['atlas', 'ara'],
         replyToMessageId: 'msg-1',
       },
     ]);
@@ -242,7 +242,7 @@ describe('MasterThreadService', () => {
 
   it('resolves threads and marks participants resolved', () => {
     const base = MasterThreadService.createThread('thread-1', createdAt, [
-      { moduleId: 'nexus', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
+      { moduleId: 'ara', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
       { moduleId: 'atlas', role: 'secondary', joinedAt: createdAt, state: 'active', presence: 'online' },
     ]);
 
@@ -257,8 +257,8 @@ describe('MasterThreadService', () => {
   });
 
   it('builds a deferred shell snapshot for dismissed routing suggestions', () => {
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
-      threadId: 'nexus.dashboard',
+    const snapshot = MasterThreadService.createAraShellSnapshot({
+      threadId: 'ara.dashboard',
       now: createdAt,
       routingSuggestion: {
         target: 'atlas',
@@ -287,8 +287,8 @@ describe('MasterThreadService', () => {
   });
 
   it('surfaces routine proposals in the shell snapshot with approval controls', () => {
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
-      threadId: 'nexus.dashboard',
+    const snapshot = MasterThreadService.createAraShellSnapshot({
+      threadId: 'ara.dashboard',
       now: createdAt,
       routineProposal,
     });
@@ -313,14 +313,14 @@ describe('MasterThreadService', () => {
   });
 
   it('surfaces anticipatory planning proposals as shell-owned draft cards', () => {
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
-      threadId: 'nexus.dashboard',
+    const snapshot = MasterThreadService.createAraShellSnapshot({
+      threadId: 'ara.dashboard',
       now: createdAt,
       planningProposal,
     });
 
     expect(snapshot.proposals[0]).toMatchObject({
-      proposalId: 'nexus.dashboard.planning.planning_collapse',
+      proposalId: 'ara.dashboard.planning.planning_collapse',
       title: 'Draft a workload triage plan',
       lifecycle: 'draft',
       kind: 'planning_heuristic',
@@ -340,9 +340,9 @@ describe('MasterThreadService', () => {
     });
   });
 
-  it('projects live Nexus chat messages into the shell snapshot deterministically', () => {
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
-      threadId: 'nexus.dashboard',
+  it('projects live Ara chat messages into the shell snapshot deterministically', () => {
+    const snapshot = MasterThreadService.createAraShellSnapshot({
+      threadId: 'ara.dashboard',
       now: createdAt,
       liveChatMessages: [
         {
@@ -357,8 +357,8 @@ describe('MasterThreadService', () => {
           content: '<analysis>hidden</analysis>Atlas can build that plan.',
           timestamp: '2026-03-24T00:00:02.000Z',
           actor: {
-            actorId: 'nexus-intake',
-            actorLabel: 'Nexus Intake',
+            actorId: 'ara-intake',
+            actorLabel: 'Ara Intake',
             actorShortLabel: 'NI',
           },
         },
@@ -377,25 +377,25 @@ describe('MasterThreadService', () => {
         actorLabel: 'You',
       },
       {
-        author: 'nexus',
+        author: 'ara',
         body: 'Atlas can build that plan.',
-        actorLabel: 'Nexus Intake',
+        actorLabel: 'Ara Intake',
       },
       {
-        author: 'nexus',
+        author: 'ara',
         body: 'Scheduling cooking at 11:00 next.',
-        actorLabel: 'Nyx',
+        actorLabel: 'Ara',
       },
     ]);
     expect(snapshot.thread.turns).toHaveLength(3);
   });
 
   it('projects consultation artifacts into attributed thread messages', () => {
-    const messages = MasterThreadService.projectConsultationArtifacts('nexus.dashboard', [
+    const messages = MasterThreadService.projectConsultationArtifacts('ara.dashboard', [
       {
         id: 'consult.atlas.1',
-        threadId: 'nexus.dashboard',
-        sourceModuleId: 'nexus',
+        threadId: 'ara.dashboard',
+        sourceModuleId: 'ara',
         targetModuleId: 'atlas',
         question: 'What is the planning bottleneck?',
         mode: 'state_only',
@@ -415,7 +415,7 @@ describe('MasterThreadService', () => {
     }))).toEqual([
       {
         id: 'consult.atlas.1.request',
-        author: 'nexus',
+        author: 'ara',
         kind: 'consultation_request',
         body: 'What is the planning bottleneck?',
       },
@@ -427,20 +427,20 @@ describe('MasterThreadService', () => {
       },
     ]);
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
-      threadId: 'nexus.dashboard',
+    const snapshot = MasterThreadService.createAraShellSnapshot({
+      threadId: 'ara.dashboard',
       now: createdAt,
       seedMessages: messages,
     });
 
-    expect(snapshot.thread.participants.map((participant) => participant.moduleId)).toEqual(['nexus', 'atlas']);
+    expect(snapshot.thread.participants.map((participant) => participant.moduleId)).toEqual(['ara', 'atlas']);
   });
 
   it('projects execution artifacts into canonical request/result thread messages', () => {
-    const messages = MasterThreadService.projectExecutionArtifacts('nexus.dashboard', [
+    const messages = MasterThreadService.projectExecutionArtifacts('ara.dashboard', [
       {
         id: 'execution.exec-1',
-        threadId: 'nexus.dashboard',
+        threadId: 'ara.dashboard',
         sourceModuleId: 'atlas',
         actionType: 'propose_reminder',
         proposalId: 'proposal-1',
@@ -453,7 +453,7 @@ describe('MasterThreadService', () => {
       },
       {
         id: 'execution.exec-2',
-        threadId: 'nexus.dashboard',
+        threadId: 'ara.dashboard',
         sourceModuleId: 'atlas',
         actionType: 'schedule_block',
         proposalId: 'proposal-2',
@@ -470,7 +470,7 @@ describe('MasterThreadService', () => {
       },
       {
         id: 'execution.exec-3',
-        threadId: 'nexus.dashboard',
+        threadId: 'ara.dashboard',
         sourceModuleId: 'atlas',
         actionType: 'schedule_block',
         proposalId: 'proposal-3',
@@ -540,7 +540,7 @@ describe('MasterThreadService', () => {
 
   it('supports participant invite, join, and leave lifecycle semantics', () => {
     const base = MasterThreadService.createThread('thread-1', createdAt, [
-      { moduleId: 'nexus', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
+      { moduleId: 'ara', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
     ]);
 
     const invited = MasterThreadService.inviteParticipant(base, {
@@ -581,7 +581,7 @@ describe('MasterThreadService', () => {
 
   it('surfaces runtime proposal lifecycle states for approval, auto-approved, and ghost execution', () => {
     const runtimeSummary = OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 5,
       historyMode: 'silent',
       activeThreadId: 'thread-1',
@@ -691,7 +691,7 @@ describe('MasterThreadService', () => {
       ],
     });
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-1',
       now: createdAt,
       lastTurnRuntime: runtimeSummary,
@@ -710,7 +710,7 @@ describe('MasterThreadService', () => {
 
   it('synthesizes deterministic cross-agent thread messages and turns from runtime summaries', () => {
     const runtimeSummary = OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 4,
       historyMode: 'standard',
       activeThreadId: 'thread-synthesis',
@@ -800,7 +800,7 @@ describe('MasterThreadService', () => {
       ],
     });
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-synthesis',
       now: createdAt,
       lastTurnRuntime: runtimeSummary,
@@ -808,9 +808,9 @@ describe('MasterThreadService', () => {
 
     expect(snapshot.thread.messages).toHaveLength(4);
     expect(snapshot.thread.messages[0]).toMatchObject({
-      author: 'nexus',
-      body: expect.stringContaining('Nexus synthesized 2 runtime actions'),
-      participantIds: ['nexus', 'atlas', 'ledger'],
+      author: 'ara',
+      body: expect.stringContaining('Ara synthesized 2 runtime actions'),
+      participantIds: ['ara', 'atlas', 'ledger'],
       turnSequence: 1,
     });
     expect(snapshot.thread.messages[1]).toMatchObject({
@@ -838,7 +838,7 @@ describe('MasterThreadService', () => {
       [snapshot.thread.messages[3].id],
     ]);
 
-    const hydrated = MasterThreadService.createNexusShellSnapshot({
+    const hydrated = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-synthesis',
       now: '2026-03-24T00:10:00.000Z',
       seedParticipants: snapshot.thread.participants,
@@ -852,12 +852,12 @@ describe('MasterThreadService', () => {
   });
 
   it('hydrates persisted participants and keeps invited lifecycle visible in shell snapshots', () => {
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-hydrated',
       now: createdAt,
       seedParticipants: [
         {
-          moduleId: 'nexus',
+          moduleId: 'ara',
           role: 'primary',
           joinedAt: '2026-03-23T23:58:00.000Z',
           state: 'active',
@@ -891,7 +891,7 @@ describe('MasterThreadService', () => {
   });
 
   it('includes explicitly mentioned agents in shell snapshots without requiring delegation', () => {
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-mentioned',
       now: createdAt,
       mentionedParticipants: ['agnes'],
@@ -902,7 +902,7 @@ describe('MasterThreadService', () => {
       presence: 'idle',
       inclusionReasons: ['mentioned'],
     });
-    expect(snapshot.thread.participants.find((participant) => participant.moduleId === 'nexus')).toMatchObject({
+    expect(snapshot.thread.participants.find((participant) => participant.moduleId === 'ara')).toMatchObject({
       state: 'active',
       presence: 'online',
     });
@@ -912,7 +912,7 @@ describe('MasterThreadService', () => {
     const consultationMessages = MasterThreadService.projectConsultationArtifacts('thread-provenance', [{
       id: 'consult-1',
       threadId: 'thread-provenance',
-      sourceModuleId: 'nexus',
+      sourceModuleId: 'ara',
       targetModuleId: 'soma',
       question: 'Should tomorrow be a rest day?',
       mode: 'state_only',
@@ -923,7 +923,7 @@ describe('MasterThreadService', () => {
       responseText: 'Take a lighter day.',
     }]);
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-provenance',
       now: createdAt,
       mentionedParticipants: ['agnes'],
@@ -971,7 +971,7 @@ describe('MasterThreadService', () => {
       ],
     });
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-analysis',
       now: createdAt,
       lastTurnRuntime: runtimeSummary,
@@ -1008,7 +1008,7 @@ describe('MasterThreadService', () => {
       decisions: [],
     });
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-alive',
       now: createdAt,
       lastTurnRuntime: runtimeSummary,

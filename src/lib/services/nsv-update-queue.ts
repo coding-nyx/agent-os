@@ -31,7 +31,7 @@ interface QueuedUpdate {
 const MAX_ATTEMPTS = 3;
 const BACKOFF_MS = [2000, 4000, 8000]; // Exponential backoff delays
 const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes — discard stale updates
-const DEAD_LETTER_KEY = 'nexus_nsv_dead_letter';
+const DEAD_LETTER_KEY = 'ara_nsv_dead_letter';
 const DEAD_LETTER_MAX = 50; // Cap stored entries to avoid unbounded localStorage growth
 
 // ---------------------------------------------------------------------------

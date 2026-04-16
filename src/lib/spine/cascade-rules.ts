@@ -121,7 +121,7 @@ export const LEDGER_CASCADE_RULES: CascadeRule[] = [
     }),
   },
 
-  // ── Cross-module rules: goal completed → notify nexus of milestone ─────────
+  // ── Cross-module rules: goal completed → notify ara of milestone ─────────
   {
     id: 'ledger-goal-completed-to-vital-update',
     trigger: 'GOAL_COMPLETED' as SpineEventType,
@@ -193,7 +193,7 @@ const CORE_ENERGY_WAVE_CASCADE_RULES: CascadeRule[] = [
       domain: 'system' as const,
       source: 'spine-cascade:core',
       priority: 'critical' as const,
-      target: 'nexus',
+      target: 'ara',
       data: {
         reason: 'high_fatigue_low_resilience',
         cnsFatigue: (event.data as Record<string, unknown>)?.cnsFatigue,

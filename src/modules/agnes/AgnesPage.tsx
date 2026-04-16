@@ -11,7 +11,7 @@ import { AgnesTelemetryHeader } from './components/AgnesTelemetryHeader';
 import { NeuralModal } from '@/core/components/NeuralModal';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { AnimatePresence, motion } from 'framer-motion';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { AgnesClosingBar } from './components/AgnesClosingBar';
 const Agnes3DEnvironment = React.lazy(() =>
@@ -74,6 +74,8 @@ function AgnesContent({
   profile,
   encryptionKey,
   setSessionActive,
+  profileError,
+  isLoading,
 }: AgnesContentProps) {
   const { user } = useAuth();
   const { isModuleAccessible } = useVault();
@@ -112,6 +114,8 @@ function AgnesContent({
     activeBeliefContext: beliefs.activeBeliefContext,
     sessionStartedAt,
     messagesRef,
+    profileError,
+    isLoading,
   });
 
   // ── 4. Session lifecycle (orchestrator) ─────────────────────────────────
@@ -351,7 +355,7 @@ function AgnesContent({
                         </div>
                       </div>
 
-                      <NexusChat
+                      <AraChat
                         ai={{ messages, setMessages: session.setMessages, isProcessing, streamingText, error, quota, handleSendMessage: handleSendMessageWithArcCheck, pendingApprovals, approveAction, dismissAction }}
                         agentName={agentAlias}
                         themeColor="indigo"

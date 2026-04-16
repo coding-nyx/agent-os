@@ -19,7 +19,7 @@ This directory contains reusable UI components and shells used across multiple m
 core/
 ├── components/         # Reusable UI components
 │   ├── ModuleLayout.tsx      # Standard module shell
-│   ├── NexusChat.tsx         # AI chat interface
+│   ├── AraChat.tsx         # AI chat interface
 │   ├── NeuralButton.tsx      # Themed button component
 │   ├── NeuralInput.tsx       # Themed input component
 │   ├── NeuralModal.tsx       # Themed modal/dialog
@@ -80,12 +80,12 @@ function MyModulePage() {
 
 ---
 
-### 2. NexusChat.tsx
+### 2. AraChat.tsx
 **Purpose:** Reusable AI chat interface with streaming, action handling, and message history.
 
 **Props:**
 ```typescript
-interface NexusChatProps {
+interface AraChatProps {
   messages: Message[];
   onSendMessage: (content: string) => Promise<void>;
   isProcessing?: boolean;
@@ -100,14 +100,14 @@ interface NexusChatProps {
 
 **Usage:**
 ```typescript
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 
 function MyPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const { sendMessage, isProcessing } = useModuleAI({ ... });
   
   return (
-    <NexusChat
+    <AraChat
       messages={messages}
       onSendMessage={async (content) => {
         const response = await sendMessage({ userMessage: content });
@@ -133,7 +133,7 @@ function MyPage() {
 ---
 
 ### 3. NeuralButton.tsx
-**Purpose:** Themed button component with Nexus visual language.
+**Purpose:** Themed button component with Ara visual language.
 
 **Props:**
 ```typescript

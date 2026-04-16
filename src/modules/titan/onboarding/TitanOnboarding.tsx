@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { Shield, Sparkles } from 'lucide-react';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { cn } from '@/lib/utils';
 import { TitanProfile, TitanPrivacyLevel, EquipmentType, BodyWeightEntry } from '@/lib/types';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
@@ -14,7 +14,7 @@ import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-serv
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
 import type { NeuralStateVectorPatch, Routine } from '@/lib/types';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import {
@@ -184,7 +184,7 @@ function TitanGuidedContent({ state, setState, messages, isProcessing, streaming
   }
 
   return (
-    <NexusChat
+    <AraChat
       ai={{ messages, isProcessing, streamingText, error, quota: null, handleSendMessage }}
       agentName="Titan Intake"
       themeColor="orange"
@@ -206,7 +206,7 @@ export function TitanOnboarding({ onComplete, onGlobalBaseContextFinalize, initi
   const buildBaseContextPrompt = (context: GlobalBaseIntakeContext) => {
     const chunks = [context.name ? `name as ${context.name}` : null, context.pronouns ? `pronouns as ${context.pronouns}` : null, context.occupation ? `occupation as ${context.occupation}` : null, typeof context.typicalSleepHours === 'number' ? `typical sleep around ${context.typicalSleepHours} hours/night` : null].filter(Boolean);
     if (chunks.length === 0) return "Let's start with nutrition: what do you typically eat and which supplements do you take?";
-    return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we continue your training intake?`;
+    return `Ara handoff received. I have your ${chunks.join(', ')}. Is that correct before we continue your training intake?`;
   };
 
   // Express complete — maps canonical field IDs to TitanProfile
@@ -357,7 +357,7 @@ export function TitanOnboarding({ onComplete, onGlobalBaseContextFinalize, initi
           await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch(console.error);
         }
         if (completed && Object.keys(vitalsPatch).length === 0) {
-          NexusHandoffService.store({ moduleId: 'titan', type: 'delegate', content: buildCalibrationPrompt('titan'), reason: 'calibration_request', sourceModuleId: 'titan', createdAt: new Date().toISOString() });
+          AraHandoffService.store({ moduleId: 'titan', type: 'delegate', content: buildCalibrationPrompt('titan'), reason: 'calibration_request', sourceModuleId: 'titan', createdAt: new Date().toISOString() });
         }
 
         return { nextState: { ...state, profile: nextProfile, accumulator: nextAccumulator, baseContext: nextBaseContext, stepProgress: nextStep, protocolViolationCount: nextViolationCount }, nextStep, completed, assistantMessage };

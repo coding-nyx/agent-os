@@ -2,7 +2,7 @@
  * Interaction gate — thin bridge over cortex-logic's InteractionGateJs.
  *
  * The decision logic lives in KMP commonMain (InteractionGate.kt) so both
- * Agnes and nexus-android apply identical autopilot enforcement rules.
+ * Agnes and ara-android apply identical autopilot enforcement rules.
  * Public API is unchanged from the caller's perspective.
  */
 

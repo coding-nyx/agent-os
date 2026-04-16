@@ -83,7 +83,7 @@ function renderChatInterface() {
       onSendMessage={vi.fn()}
       isLoading={false}
       themeColor="cyan"
-      agentName="Nexus"
+      agentName="Ara"
       enableSpeechToText
     />,
   );
@@ -170,21 +170,21 @@ describe('ChatInterface speech-to-text', () => {
         onSendMessage={vi.fn()}
         isLoading={false}
         themeColor="cyan"
-        agentName="Nexus"
-        moduleId="nexus"
+        agentName="Ara"
+        moduleId="ara"
         assistantIdentity={{
-          actorId: 'nexus-intake',
-          actorLabel: 'Nexus Intake',
+          actorId: 'ara-intake',
+          actorLabel: 'Ara Intake',
           actorShortLabel: 'NI',
         }}
       />,
     );
 
-    const icon = screen.getByLabelText(/nexus intake icon/i);
+    const icon = screen.getByLabelText(/ara intake icon/i);
     expect(icon).toBeInTheDocument();
     expect(icon.querySelector('svg')).not.toBeNull();
     expect(icon).not.toHaveTextContent('NI');
-    expect(screen.getByText('Nexus Intake')).toBeInTheDocument();
+    expect(screen.getByText('Ara Intake')).toBeInTheDocument();
   });
 
   it('falls back to module identity when chat actor identity is disabled', () => {
@@ -196,18 +196,18 @@ describe('ChatInterface speech-to-text', () => {
         onSendMessage={vi.fn()}
         isLoading={false}
         themeColor="cyan"
-        agentName="Nexus"
-        moduleId="nexus"
+        agentName="Ara"
+        moduleId="ara"
         assistantIdentity={{
-          actorId: 'nexus-intake',
-          actorLabel: 'Nexus Intake',
+          actorId: 'ara-intake',
+          actorLabel: 'Ara Intake',
           actorShortLabel: 'NI',
         }}
       />,
     );
 
-    expect(screen.queryByText('Nexus Intake')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Nexus').length).toBeGreaterThan(0);
-    expect(screen.getByLabelText(/nexus icon/i)).toBeInTheDocument();
+    expect(screen.queryByText('Ara Intake')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Ara').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/ara icon/i)).toBeInTheDocument();
   });
 });

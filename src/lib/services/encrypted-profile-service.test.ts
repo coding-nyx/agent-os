@@ -46,7 +46,7 @@ vi.mock('@/lib/data-layer/provider', () => {
   };
 
   return {
-    getNexusDataLayer: () => mockDataLayer,
+    getAraDataLayer: () => mockDataLayer,
     __mockDataLayer: mockDataLayer,
   };
 });
@@ -67,7 +67,7 @@ vi.mock('@/lib/encryption', () => ({
 }));
 
 import { createEncryptedProfileService } from './encrypted-profile-service';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 
 // ---------------------------------------------------------------------------
 // Test profile type
@@ -106,13 +106,13 @@ describe('createEncryptedProfileService', () => {
 
   beforeEach(() => {
     vi.stubGlobal('localStorage', createStorageMock());
-    const dl = getNexusDataLayer() as unknown as { _reset: () => void };
+    const dl = getAraDataLayer() as unknown as { _reset: () => void };
     dl._reset();
     vi.clearAllMocks();
 
     service = createEncryptedProfileService<TestProfile>({
       collection: 'test_profiles',
-      guestStorageKey: 'nexus_test_profile_guest',
+      guestStorageKey: 'ara_test_profile_guest',
       createEmpty,
       normalize,
       metadataProjection,
@@ -158,7 +158,7 @@ describe('createEncryptedProfileService', () => {
 
   describe('authenticated + encrypted', () => {
     it('save encrypts and persists to Firestore', async () => {
-      const dl = getNexusDataLayer();
+      const dl = getAraDataLayer();
       await service.save(
         { name: 'Encrypted', score: 99 },
         { userId: 'user-1', encryptionKey: mockKey },
@@ -213,7 +213,7 @@ describe('createEncryptedProfileService', () => {
 
   describe('authenticated + plaintext (no vault)', () => {
     it('save stores plaintext when no encryptionKey', async () => {
-      const dl = getNexusDataLayer();
+      const dl = getAraDataLayer();
       await service.save(
         { name: 'Plain', score: 55 },
         { userId: 'user-4', encryptionKey: null },

@@ -155,8 +155,8 @@ export function registerForgeActions() {
       }
     },
 
-    // NOTE: nexus_link_command, read_file, write_file stubs removed.
-    // Forge is UI-only — local daemon (NexusLink) is not implemented.
+    // NOTE: ara_link_command, read_file, write_file stubs removed.
+    // Forge is UI-only — local daemon (AraLink) is not implemented.
     // Use cloud execution (execute_code) instead.
 
     // ── COMMS ACTIONS ─────────────────────────────────────────────────────────

@@ -1,13 +1,13 @@
 import React, { useCallback, useMemo } from 'react';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { useAuth } from '@/lib/auth-context';
 import { AtlasProfile, createEmptyAtlasProfile } from '../services/atlas-profile-service';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import type { NeuralStateVectorPatch } from '@/lib/types';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 import { UnifiedOnboardingShell } from '@/core/intake/UnifiedOnboardingShell';
 import { ATLAS_BASE_SPEC } from '@/core/intake/onboarding-configs';
@@ -27,7 +27,7 @@ You are Atlas Intake Agent.
 Collect a concise cognitive scheduling baseline before Atlas active mode.
 
 OBJECTIVE:
-1. Confirm Nexus handoff context.
+1. Confirm Ara handoff context.
 2. Capture daily energy peaks and crash windows.
 3. Capture current task load and overload triggers.
 4. Capture recovery strategies and scheduling constraints.
@@ -65,7 +65,7 @@ function buildBasePrompt(context: GlobalBaseIntakeContext): string {
     typeof context.typicalSleepHours === 'number' ? `typical sleep ${context.typicalSleepHours}h` : null
   ].filter(Boolean);
   if (chunks.length === 0) return 'Atlas intake initialized. When during your day is your focus naturally strongest?';
-  return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we map your energy wave?`;
+  return `Ara handoff received. I have your ${chunks.join(', ')}. Is that correct before we map your energy wave?`;
 }
 
 const PEAK_HOURS_MAP: Record<string, string> = {
@@ -193,7 +193,7 @@ export function AtlasOnboarding({ initialProfile, initialBaseContext, onGlobalBa
           await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch(console.error);
         }
         if (completed && Object.keys(vitalsPatch).length === 0) {
-          NexusHandoffService.store({ moduleId: 'atlas', type: 'delegate', content: buildCalibrationPrompt('atlas'), reason: 'calibration_request', sourceModuleId: 'atlas', createdAt: new Date().toISOString() });
+          AraHandoffService.store({ moduleId: 'atlas', type: 'delegate', content: buildCalibrationPrompt('atlas'), reason: 'calibration_request', sourceModuleId: 'atlas', createdAt: new Date().toISOString() });
         }
 
         return { nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep }, nextStep, completed };
@@ -215,7 +215,7 @@ export function AtlasOnboarding({ initialProfile, initialBaseContext, onGlobalBa
       spec={ATLAS_BASE_SPEC}
       onExpressComplete={handleExpressComplete}
       guidedContent={
-        <NexusChat
+        <AraChat
           ai={{ messages: intake.messages, isProcessing: intake.isProcessing, streamingText: intake.streamingText, error: intake.error, quota: null, handleSendMessage: intake.handleSendMessage }}
           agentName="Atlas Intake"
           themeColor="emerald"

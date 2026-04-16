@@ -17,7 +17,7 @@ import type { AuthUser } from '@/lib/services/auth-service';
 import type { TitanProfile, GlobalProjection } from '@/lib/types';
 import type { TitanProposal } from '../components/TitanProposalCard';
 import type { RecoveryConsultResult } from '../components/RecoveryPlanModal';
-import type { NexusHandoff } from '@/lib/services/nexus-handoff-service';
+import type { AraHandoff } from '@/lib/services/ara-handoff-service';
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
@@ -90,7 +90,7 @@ export function useTitanSpineEvents({
     }
   }, []);
 
-  const handleIncomingHandoff = useCallback((handoff: NexusHandoff) => {
+  const handleIncomingHandoff = useCallback((handoff: AraHandoff) => {
     if (handoff.type === 'query_result' && handoff.content) {
       const parsed = parseRecoveryConsult(handoff.content);
       if (parsed && (handoff.sourceModuleId === 'soma' || handoff.sourceModuleId === 'agnes')) {
@@ -125,7 +125,7 @@ export function useTitanSpineEvents({
   }, [openChatAndSend, parseRecoveryConsult, setSomaConsult, setAgnesConsult, setPendingConsults]);
 
   useSpineEvent('MODULE_HANDOFF_RECEIVED', useCallback((event) => {
-    const handoff = event.data as unknown as NexusHandoff;
+    const handoff = event.data as unknown as AraHandoff;
     if (handoff && handoff.moduleId === 'titan') handleIncomingHandoff(handoff);
   }, [handleIncomingHandoff]));
 

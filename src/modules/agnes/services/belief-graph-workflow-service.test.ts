@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryDataProvider } from '@/lib/data-layer';
-import { setNexusDataLayer } from '@/lib/data-layer/provider';
+import { setAraDataLayer } from '@/lib/data-layer/provider';
 
 vi.mock('@cortex-logic', async () => await import('@/test/__mocks__/cortex-logic-mock'));
 
@@ -23,12 +23,12 @@ vi.mock('@/lib/encryption', () => ({
 
 describe('belief-graph-workflow-service', () => {
   afterEach(() => {
-    setNexusDataLayer(new InMemoryDataProvider());
+    setAraDataLayer(new InMemoryDataProvider());
   });
 
   it('keeps extracted beliefs pending until the user confirms them', async () => {
     const dataLayer = new InMemoryDataProvider();
-    setNexusDataLayer(dataLayer);
+    setAraDataLayer(dataLayer);
 
     await proposeBeliefGraphCandidate(
       {
@@ -59,7 +59,7 @@ describe('belief-graph-workflow-service', () => {
 
   it('merges confirmed beliefs into the durable graph and persists invitation runtime artifacts', async () => {
     const dataLayer = new InMemoryDataProvider();
-    setNexusDataLayer(dataLayer);
+    setAraDataLayer(dataLayer);
 
     const proposal = await proposeBeliefGraphCandidate(
       {

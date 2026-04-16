@@ -73,7 +73,7 @@ describe('AgnesBeliefWorkflowPanel', () => {
             threadId: invitationRuntime.invitation.threadId,
             participants: [
               {
-                moduleId: 'nexus',
+                moduleId: 'ara',
                 role: 'primary',
                 joinedAt: '2026-03-24T00:00:00.000Z',
                 state: 'active',

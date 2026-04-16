@@ -7,7 +7,7 @@
 
 import { decryptWithKey } from '@/lib/encryption';
 import { Spine } from '@/lib/spine/spine-event-bus';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import {
   loadSomaProfile,
   saveSomaProfile,
@@ -269,7 +269,7 @@ class SomaDataServiceImpl {
       return () => {};
     }
 
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     return dataLayer.subscribeToDocument<{ encryptedData?: string; iv?: string }>(
       COLLECTION,
       userId,

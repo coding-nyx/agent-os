@@ -1,7 +1,7 @@
 import type { NotificationSummary } from '../services/notification-service';
 
 /**
- * Builds the dynamic context block injected into the Nexus Notify system prompt.
+ * Builds the dynamic context block injected into the Ara Notify system prompt.
  * Summarises the current inbox state so the agent can give contextually relevant advice.
  */
 export function serializeNotificationContext(summary: NotificationSummary, quietHoursEnabled: boolean): string {

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export const MODULE_IDS = [
-  'nexus',
+  'ara',
   'agnes',
   'titan',
   'soma',
@@ -71,11 +71,11 @@ export interface ModuleOnboardingPolicy {
 }
 
 export const MODULE_MANIFEST: Record<ModuleId, ModuleManifestEntry> = {
-  nexus: {
-    id: 'nexus',
-    route: '/nexus',
-    title: 'Nyx',
-    alias: 'Nyx',
+  ara: {
+    id: 'ara',
+    route: '/ara',
+    title: 'Ara',
+    alias: 'Ara',
     description: 'System Orchestrator',
     colorHex: '#8B5CF6',
     themeColor: 'cyan',

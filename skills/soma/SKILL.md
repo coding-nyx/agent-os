@@ -5,7 +5,7 @@ description: Biological vitals agent specializing in physiological readiness, as
 
 # Soma Module
 
-Soma is the biological foundation of Nexus, monitoring physiological data and computing the holistic readiness baseline.
+Soma is the biological foundation of Ara, monitoring physiological data and computing the holistic readiness baseline.
 
 ## Domain
 Focuses on physiological vitals (HRV, RHR, BP, etc.), sleep quality, energy levels, and systemic stress.

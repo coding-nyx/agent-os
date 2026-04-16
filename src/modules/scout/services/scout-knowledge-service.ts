@@ -7,7 +7,7 @@
  * Overall profile (onboarding, focus) still stored at scout_knowledge/{userId}.
  */
 
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
 import { LoadContext } from '@/lib/types/encrypted-document';
@@ -96,7 +96,7 @@ export function createEmptyScoutProfile(): ScoutProfile {
 
 export async function loadScoutProfile({ userId, encryptionKey }: LoadContext): Promise<ScoutProfile | null> {
   if (!userId || !encryptionKey) return createEmptyScoutProfile();
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const data = await dataLayer.getDocument<{ encryptedData?: string; iv?: string }>('scout_knowledge', userId);
   if (!data?.encryptedData || !data?.iv) return createEmptyScoutProfile();
 
@@ -115,7 +115,7 @@ export async function saveScoutProfile(
   options?: { suppressEvent?: boolean }
 ): Promise<void> {
   if (!userId || !encryptionKey) return;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   profile.updatedAt = new Date().toISOString();
   const encrypted = await encryptWithKey(JSON.stringify(profile), encryptionKey);
 
@@ -162,7 +162,7 @@ export async function addKnowledgeNode(
   { userId, encryptionKey }: LoadContext
 ): Promise<ScoutKnowledgeNode | null> {
   if (!userId || !encryptionKey) return null;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const id = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const now = new Date().toISOString();
 
@@ -241,7 +241,7 @@ export async function queryKnowledgeNodes(
 
 export async function loadKnowledgeNodes({ userId, encryptionKey }: LoadContext): Promise<ScoutKnowledgeNode[]> {
   if (!userId || !encryptionKey) return [];
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   try {
     const docs = await dataLayer.listDocuments<{ encryptedData: string; iv: string }>(nodesCollection(userId), { limit: 500 });
     const decrypted = await Promise.allSettled(
@@ -273,7 +273,7 @@ export async function updateKnowledgeNode(
   { userId, encryptionKey }: LoadContext
 ): Promise<void> {
   if (!userId || !encryptionKey) return;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const nodes = await loadKnowledgeNodes({ userId, encryptionKey });
   const current = nodes.find(n => n.id === id);
   if (!current) return;
@@ -304,7 +304,7 @@ export async function updateKnowledgeNode(
 
 export async function deleteKnowledgeNode(id: string, { userId }: LoadContext): Promise<void> {
   if (!userId) return;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   await dataLayer.deleteDocument(nodesCollection(userId), id);
 }
 
@@ -314,7 +314,7 @@ export async function deleteKnowledgeNode(id: string, { userId }: LoadContext): 
 
 const _service = createEncryptedProfileService<ScoutProfile>({
   collection: 'scout_knowledge',
-  guestStorageKey: 'nexus_guest_scout_profile',
+  guestStorageKey: 'ara_guest_scout_profile',
   createEmpty: createEmptyScoutProfile,
   normalize: normalizeScoutProfile,
   metadataProjection: (p) => ({
@@ -355,7 +355,8 @@ export async function syncGuestScoutProfileToUser(
 
 export function subscribeScoutProfile(
   { userId, encryptionKey }: LoadContext = {},
-  onUpdate: (profile: ScoutProfile) => void
+  onUpdate: (profile: ScoutProfile) => void,
+  onError?: (error: unknown) => void,
 ): () => void {
   if (!userId || !encryptionKey) {
     onUpdate(loadGuestScoutProfile());
@@ -363,7 +364,7 @@ export function subscribeScoutProfile(
   }
 
   let lastUpdatedAt: string | null = null;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   return dataLayer.subscribeToDocument<any>('scout_knowledge', userId, async (data) => {
     if (!data?.encryptedData || !data?.iv) {
       onUpdate(createEmptyScoutProfile());
@@ -377,7 +378,11 @@ export function subscribeScoutProfile(
       onUpdate(nextProfile);
     } catch (err) {
       console.warn('[ScoutKnowledgeService] Profile decryption failed in subscription:', err);
-      onUpdate(createEmptyScoutProfile());
+      if (onError) {
+        onError(err);
+      } else {
+        onUpdate(createEmptyScoutProfile());
+      }
     }
-  });
+  }, onError);
 }

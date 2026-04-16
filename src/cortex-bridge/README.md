@@ -28,8 +28,8 @@ cortex-bridge/
 ├── credential-store-bridge.ts# CredentialStoreJs singleton; encrypts API keys in Firestore.
 │                             # Includes a legacy localStorage → vault migration path.
 │
-├── nexus-synthesis-bridge.ts # NexusSynthesisServiceJs singleton.
-├── nexus-data-layer-bridge.ts# Action-hub callback glue for the data layer.
+├── ara-synthesis-bridge.ts # AraSynthesisServiceJs singleton.
+├── ara-data-layer-bridge.ts# Action-hub callback glue for the data layer.
 ├── persona-factory.ts        # PersonaFactoryJs wrapper + fallback persona strings.
 ├── sanitize.ts               # LlmSanitizerJs wrapper.
 ├── kmp-parse.ts              # Safe JSON.parse helper for KMP JSON string returns.

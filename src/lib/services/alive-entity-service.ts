@@ -1,4 +1,4 @@
-import type { NexusDataLayer, NexusRecord } from '@/lib/data-layer';
+import type { AraDataLayer, AraRecord } from '@/lib/data-layer';
 import type { AliveEntity, AliveEntityRuntimeContext, AliveEntityRuntimeReference, SoulImpactPreset } from '@/lib/contracts/orchestration';
 import type { ModuleId } from '@/lib/module-manifest';
 import { AliveEntityUtilsJs } from '@cortex-logic';
@@ -426,25 +426,25 @@ export function adaptScoutDigestToAliveEntity(
 }
 
 export async function upsertAliveEntity(
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
   entity: AliveEntitySeed,
   options?: {
     uid?: string;
     collectionPath?: string;
   },
-): Promise<NexusRecord<AliveEntity>> {
+): Promise<AraRecord<AliveEntity>> {
   const normalized = normalizeAliveEntity(entity);
   return dataLayer.setDocument<AliveEntity>(resolveAliveEntityCollectionPath(options), normalized.id, normalized);
 }
 
 export async function listAliveEntities(
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
   sourceModule?: ModuleId,
   options?: {
     uid?: string;
     collectionPath?: string;
   },
-): Promise<Array<NexusRecord<AliveEntity>>> {
+): Promise<Array<AraRecord<AliveEntity>>> {
   const collection = resolveAliveEntityCollectionPath(options);
   if (!sourceModule) {
     return dataLayer.listDocuments<AliveEntity>(collection, { limit: 500 });
@@ -457,7 +457,7 @@ export async function listAliveEntities(
 }
 
 export async function syncAliveEntities(
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
   entities: AliveEntitySeed[],
   options?: {
     uid?: string;

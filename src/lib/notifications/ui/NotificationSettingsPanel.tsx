@@ -15,7 +15,7 @@ import { RecurrenceEditor } from './RecurrenceEditor';
 import { recurrenceSummary } from '../recurrence-summary';
 import { type NotificationSchedulePreset } from '../preset-registry';
 
-import type { NexusRecord } from '@/lib/data-layer';
+import type { AraRecord } from '@/lib/data-layer';
 import { cn } from '@/lib/utils';
 
 export type { NotificationSchedulePreset } from '../preset-registry';
@@ -205,7 +205,7 @@ export function NotificationSettingsPanel({
   const { user, isGuest } = useAuth();
   const dataLayer = useDataLayer();
   const location = useLocation();
-  const [schedules, setSchedules] = useState<NexusRecord<NotificationScheduleConfig>[]>([]);
+  const [schedules, setSchedules] = useState<AraRecord<NotificationScheduleConfig>[]>([]);
   const [hydrating, setHydrating] = useState(true);
   useEffect(() => {
     if (!user || isGuest) {

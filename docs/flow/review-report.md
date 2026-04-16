@@ -29,7 +29,7 @@ This report highlights heuristic promotions and flow risks that require human re
 
 - titan.request_clearance (Request Clearance)
 - atlas.update_energy_budget (Update Energy Budget)
-- nexus.delete_field (Removing custom tracking field)
+- ara.delete_field (Removing custom tracking field)
 - ledger.delete_field (Removing custom tracking field)
 - soma.delete_field (Removing custom tracking field)
 - titan.delete_field (Removing custom tracking field)
@@ -86,9 +86,9 @@ This report highlights heuristic promotions and flow risks that require human re
 - ledger.update_resonance_roi → "Update Resonance Roi"
 - ledger.compute_resonance_roi → "Compute Resonance Roi"
 - ledger.update_financial_friction → "Update Financial Friction"
-- nexus.detect_data_hint → "Detect Data Hint"
-- nexus.propose_draft → "Propose Draft"
-- nexus.delegate_to_module → "Delegate To Module"
+- ara.detect_data_hint → "Detect Data Hint"
+- ara.propose_draft → "Propose Draft"
+- ara.delegate_to_module → "Delegate To Module"
 
 ## Events Missing Producers (Sample)
 

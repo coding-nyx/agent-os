@@ -273,9 +273,9 @@ EMOTIONAL SIGNALS:
   Ask about impulse purchases or financial avoidance behaviour.
 `.trim(),
 
-  // ─── NEXUS (Orchestrator) ────────────────────────────────────────────────────
-  nexus: `
-[NEXUS_STATE_RULES]
+  // ─── ARA (Orchestrator) ────────────────────────────────────────────────────
+  ara: `
+[ARA_STATE_RULES]
 You are the synthesis intelligence. You see ALL NSV data. Your role is to detect
 cross-domain tensions and surface them BEFORE they become crises.
 

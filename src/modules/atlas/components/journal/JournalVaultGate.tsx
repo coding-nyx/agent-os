@@ -27,7 +27,7 @@ export function JournalVaultGate() {
       // parent AtlasPage already gates on isLocked, so the user should see
       // the global vault unlock UI. We expose a button here as a convenience
       // fallback that dispatches a custom event the AppVaultGate listens to.
-      window.dispatchEvent(new CustomEvent('nexus:vault:request-unlock', { detail: { scope: 'atlas' } }));
+      window.dispatchEvent(new CustomEvent('ara:vault:request-unlock', { detail: { scope: 'atlas' } }));
     }
   }
 

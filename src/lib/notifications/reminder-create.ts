@@ -1,4 +1,4 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import type { ModuleId } from '@/lib/module-manifest';
 import type {
   NotificationScheduleConfig,
@@ -28,7 +28,7 @@ export async function createReminderSchedule(
   draft: ReminderDraft,
   scheduleId?: string,
 ): Promise<string> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const now = new Date().toISOString();
   const fallbackId = `reminder_${Date.now()}_${Math.random().toString(16).slice(2)}`;
   const randomId =

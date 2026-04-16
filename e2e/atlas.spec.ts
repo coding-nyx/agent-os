@@ -11,9 +11,9 @@
  * dependency and mirrors how the `ProtectedRoute` evaluates isGuest.
  *
  * Key storage keys (from auth-context.tsx / atlas-profile-service.ts):
- *   sessionStorage['nexus_guest_active']       = 'true'   → sets isGuest = true
- *   sessionStorage['nexus_guest_module_atlas'] = 'true'   → bypasses GuestModePanel
- *   localStorage['nexus_atlas_profile_guest']  = <JSON>   → guest atlas profile
+ *   sessionStorage['ara_guest_active']       = 'true'   → sets isGuest = true
+ *   sessionStorage['ara_guest_module_atlas'] = 'true'   → bypasses GuestModePanel
+ *   localStorage['ara_atlas_profile_guest']  = <JSON>   → guest atlas profile
  *
  * Test isolation
  * ──────────────
@@ -27,9 +27,9 @@ import { test, expect, type Page } from '@playwright/test';
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ATLAS_PROFILE_KEY = 'nexus_atlas_profile_guest';
-const GUEST_ACTIVE_KEY  = 'nexus_guest_active';
-const GUEST_MODULE_KEY  = 'nexus_guest_module_atlas';
+const ATLAS_PROFILE_KEY = 'ara_atlas_profile_guest';
+const GUEST_ACTIVE_KEY  = 'ara_guest_active';
+const GUEST_MODULE_KEY  = 'ara_guest_module_atlas';
 
 /** Display name emitted by SpineToast for the ATLAS_TASK_BLOCKED event. */
 const BLOCKED_TOAST_LABEL = 'Task blocked';
@@ -152,7 +152,7 @@ test.describe('Atlas — fast-track onboarding + welcome card', () => {
     await page.addInitScript(({ gKey, mKey }) => {
       sessionStorage.setItem(gKey, 'true');
       sessionStorage.setItem(mKey, 'true');
-      localStorage.removeItem('nexus_atlas_profile_guest');
+      localStorage.removeItem('ara_atlas_profile_guest');
     }, { gKey: GUEST_ACTIVE_KEY, mKey: GUEST_MODULE_KEY });
 
     await page.goto('/atlas');

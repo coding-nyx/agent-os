@@ -62,7 +62,7 @@ describe('Guardrails: cross-module writes', () => {
             new RegExp(`\\bupdateDoc\\s*\\([^\\)]*['"]${collection}['"]`, 'm'),
             new RegExp(`\\baddDoc\\s*\\([^\\)]*['"]${collection}['"]`, 'm'),
             new RegExp(`batch\\.(set|update|delete)\\s*\\([^\\)]*['"]${collection}['"]`, 'm'),
-            // NexusDataLayer API calls with another module's collection string
+            // AraDataLayer API calls with another module's collection string
             new RegExp(`\\.setDocument\\s*\\(\\s*['"]${collection}['"]`, 'm'),
             new RegExp(`\\.updateDocument\\s*\\(\\s*['"]${collection}['"]`, 'm'),
             new RegExp(`\\.deleteDocument\\s*\\(\\s*['"]${collection}['"]`, 'm'),
@@ -73,7 +73,7 @@ describe('Guardrails: cross-module writes', () => {
           if (writePatterns.some((pattern) => pattern.test(content))) {
             if (content.includes('@module-guard: allow-cross-write')) return;
             offenders.push(
-              `${file} writes to ${collection} — ${moduleId} should not cross-write module stores. Route through that module's service or NexusDataLayer.`
+              `${file} writes to ${collection} — ${moduleId} should not cross-write module stores. Route through that module's service or AraDataLayer.`
             );
           }
         });
@@ -88,11 +88,11 @@ describe('Guardrails: NSV read boundaries', () => {
   const hookPath = path.join(projectRoot, 'src', 'lib', 'hooks', 'use-module-ai.ts');
   const hookContent = fs.readFileSync(hookPath, 'utf8');
 
-  it('keeps nexus-only full NSV access', () => {
-    expect(hookContent).toMatch(/moduleId === 'nexus'[^]*enhanceContext\(context\)/m);
+  it('keeps ara-only full NSV access', () => {
+    expect(hookContent).toMatch(/moduleId === 'ara'[^]*enhanceContext\(context\)/m);
   });
 
-  it('forces non-nexus modules through filtered NSV', () => {
+  it('forces non-ara modules through filtered NSV', () => {
     expect(hookContent).toMatch(/return\s+enhanceContextForModule\(context,\s*moduleId/m);
   });
 
@@ -144,7 +144,7 @@ describe('Guardrails: module profile store alignment', () => {
     path.join(projectRoot, 'src', 'modules', 'forge', 'services', 'forge-session-service.ts'),
   ];
 
-  it('keeps primary module profile stores on the NexusDataLayer boundary', () => {
+  it('keeps primary module profile stores on the AraDataLayer boundary', () => {
     const offenders: string[] = [];
 
     profileServicePaths.forEach((file) => {
@@ -152,7 +152,7 @@ describe('Guardrails: module profile store alignment', () => {
 
       if (/getFirebase\(|from ['"]firebase\/firestore['"]/.test(content)) {
         offenders.push(
-          `${file} bypasses NexusDataLayer for a primary module profile store. Use getNexusDataLayer instead.`
+          `${file} bypasses AraDataLayer for a primary module profile store. Use getAraDataLayer instead.`
         );
       }
     });
@@ -196,7 +196,7 @@ describe('Guardrails: LLM runtime boundary imports', () => {
 });
 
 describe('Guardrails: shared runtime data-layer boundary', () => {
-  it('blocks direct Firebase SDK usage in shared runtime stores that must stay on NexusDataLayer', () => {
+  it('blocks direct Firebase SDK usage in shared runtime stores that must stay on AraDataLayer', () => {
     const offenders: string[] = [];
     const runtimePaths = [
       path.join(projectRoot, 'src', 'lib', 'schema-registry.ts'),
@@ -213,7 +213,7 @@ describe('Guardrails: shared runtime data-layer boundary', () => {
     runtimePaths.forEach((file) => {
       const content = fs.readFileSync(file, 'utf8');
       if (/firebase\/firestore|getFirebase\(/.test(content)) {
-        offenders.push(`${file} bypasses NexusDataLayer. Use getNexusDataLayer() APIs.`);
+        offenders.push(`${file} bypasses AraDataLayer. Use getAraDataLayer() APIs.`);
       }
     });
 
@@ -230,7 +230,7 @@ describe('Guardrails: Firebase SDK boundary (global)', () => {
     path.join(projectRoot, 'scripts', 'migrate-data.ts'),
   ]);
 
-  // Only firestore imports need to go through NexusDataLayer.
+  // Only firestore imports need to go through AraDataLayer.
   // firebase/auth and firebase/storage are separate services with no equivalent abstraction.
   const FIREBASE_IMPORT_PATTERN = /from\s+['"]firebase\/firestore['"]/;
 
@@ -250,7 +250,7 @@ describe('Guardrails: Firebase SDK boundary (global)', () => {
         const content = fs.readFileSync(file, 'utf8');
         if (FIREBASE_IMPORT_PATTERN.test(content)) {
           offenders.push(
-            `${file} imports Firebase SDK directly. Route through NexusDataLayer (getNexusDataLayer()) or src/lib/firebase.ts.`,
+            `${file} imports Firebase SDK directly. Route through AraDataLayer (getAraDataLayer()) or src/lib/firebase.ts.`,
           );
         }
       });

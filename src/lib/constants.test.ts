@@ -4,7 +4,7 @@ import { MODULE_MANIFEST } from './module-manifest';
 
 describe('requiresModuleOnboarding', () => {
   it('returns true for modules requiring onboarding', () => {
-    expect(requiresModuleOnboarding('nexus')).toBe(true);
+    expect(requiresModuleOnboarding('ara')).toBe(true);
     expect(requiresModuleOnboarding('agnes')).toBe(true);
     expect(requiresModuleOnboarding('titan')).toBe(true);
     expect(requiresModuleOnboarding('ledger')).toBe(true);

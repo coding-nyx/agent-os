@@ -1,7 +1,7 @@
 /**
  * TaxCenter.tsx
  *
- * Tax Center — Nexus Ledger finance module (S2-L-TAX-CENTER)
+ * Tax Center — Ara Ledger finance module (S2-L-TAX-CENTER)
  *
  * Sections:
  *  1. Header          — title, tax-year selector, generate + export actions

@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils';
 import { ModuleIcon } from './ModuleIcon';
 
 interface AgentIconProps {
-  moduleId?: ModuleId | 'nexus' | null;
-  source?: ModuleId | 'nexus' | 'user' | 'system' | null;
+  moduleId?: ModuleId | 'ara' | null;
+  source?: ModuleId | 'ara' | 'user' | 'system' | null;
   actorId?: string;
   actorLabel?: string;
   actorShortLabel?: string;

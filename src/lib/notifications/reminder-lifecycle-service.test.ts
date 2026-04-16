@@ -25,7 +25,7 @@ vi.mock('@/lib/spine/spine-event-bus', () => ({
 let dataLayer: InMemoryDataProvider;
 
 vi.mock('@/lib/data-layer/provider', () => ({
-  getNexusDataLayer: () => dataLayer,
+  getAraDataLayer: () => dataLayer,
 }));
 
 // Import after mocks are set up

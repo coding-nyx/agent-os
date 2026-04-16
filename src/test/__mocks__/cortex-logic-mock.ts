@@ -13,7 +13,7 @@
 const j = JSON.stringify;
 
 const NON_MUTATING_ACTIONS = new Set([
-  'generate_summary', 'web_search', 'search_memory', 'delegate_to_module',
+  'generate_summary', 'web_search', 'expanded_web_search', 'search_memory', 'delegate_to_module',
   'deep_research', 'analyze', 'explain', 'read_nsv', 'get_status',
   'query_module', 'query_module_data', 'propose_draft', 'propose_routine',
   'confirm_routine', 'dismiss_routine', 'propose_reminder', 'navigate_to_module',
@@ -21,6 +21,8 @@ const NON_MUTATING_ACTIONS = new Set([
   'update_intake_profile', 'update_belief_graph',
   'analyze_trends', 'analyze_patterns', 'analyze_sentiment', 'cross_module_analysis',
   'generate_report', 'trend_summary',
+  // Scout read-only
+  'list_sessions', 'resume_session', 'start_deep_research', 'analyze_knowledge_gaps',
 ]);
 
 function defaultOrchestrationMetadata() {
@@ -45,10 +47,10 @@ function defaultOrchestrationMetadata() {
       id: 'mock-proposal-id',
       createdAt: new Date().toISOString(),
     },
-    proposalCard: { title: '', summary: '', proposalId: 'mock-proposal-id', source: 'nexus', status: 'pending', approvalRequirement: { required: false, reason: '' }, historyMode: 'standard' },
+    proposalCard: { title: '', summary: '', proposalId: 'mock-proposal-id', source: 'ara', status: 'pending', approvalRequirement: { required: false, reason: '' }, historyMode: 'standard' },
     execution: {
       id: 'mock-execution-id',
-      source: 'nexus',
+      source: 'ara',
       status: 'completed',
       executedAt: new Date().toISOString(),
       patientScope: 'USER',
@@ -177,7 +179,7 @@ export class OrchestrationActionGateServiceJs {
       runtime,
       proposal: {
         id: proposalId,
-        source: moduleId || 'nexus',
+        source: moduleId || 'ara',
         intent: actionType,
         confidence,
         patientScope,
@@ -189,7 +191,7 @@ export class OrchestrationActionGateServiceJs {
         proposalId,
         title: actionType,
         summary: '',
-        source: moduleId || 'nexus',
+        source: moduleId || 'ara',
         status: 'pending',
         approvalRequirement: { required: dispatchStatus === 'awaiting_approval', reason: approvalReason },
         executionMode,
@@ -198,7 +200,7 @@ export class OrchestrationActionGateServiceJs {
       execution: {
         id: execId,
         proposalId,
-        source: moduleId || 'nexus',
+        source: moduleId || 'ara',
         autopilotLevel,
         executionMode,
         historyMode: resolvedHistoryMode,
@@ -226,7 +228,7 @@ export class OrchestrationPolicyServiceJs {
   resolveWinningProposal(proposalsJson: string) {
     const arr = JSON.parse(proposalsJson);
     if (arr.length === 0) return null;
-    const RANK: Record<string, number> = { agnes: 1, atlas: 2, soma: 3, titan: 4, scout: 5, ledger: 6, forge: 7, nexus: 8 };
+    const RANK: Record<string, number> = { agnes: 1, atlas: 2, soma: 3, titan: 4, scout: 5, ledger: 6, forge: 7, ara: 8 };
     arr.sort((a: any, b: any) => {
       const ra = RANK[a.source ?? a.id] ?? 100;
       const rb = RANK[b.source ?? b.id] ?? 100;
@@ -260,16 +262,16 @@ export class OrchestrationCommandCenterServiceJs {
     const silentHistory: any[] = JSON.parse(silentJson || '[]');
     const sliced = (arr: any[]) => arr.slice(0, limit);
     const approvalItems = actions.filter((a: any) => a.dispatchStatus === 'awaiting_approval' || a.dispatchStatus === 'deferred').map((a: any, i: number) => ({
-      id: `approval-${i}`, kind: 'approval' as const, tone: 'amber' as const, title: a.label || a.actionType || '', summary: a.summary || '', source: a.source || 'nexus', timestamp: a.executedAt || null,
+      id: `approval-${i}`, kind: 'approval' as const, tone: 'amber' as const, title: a.label || a.actionType || '', summary: a.summary || '', source: a.source || 'ara', timestamp: a.executedAt || null,
     }));
     const incidentItems = failures.filter((f: any) => f.status === 'escalated').map((f: any, i: number) => ({
-      id: `incident-${i}`, kind: 'incident' as const, tone: 'rose' as const, title: f.actionType || 'Failure', summary: f.errorMessage || '', source: f.moduleId || 'nexus', timestamp: f.failedAt || null,
+      id: `incident-${i}`, kind: 'incident' as const, tone: 'rose' as const, title: f.actionType || 'Failure', summary: f.errorMessage || '', source: f.moduleId || 'ara', timestamp: f.failedAt || null,
     }));
     const debtFromFailures = failures.filter((f: any) => f.status !== 'escalated').map((f: any, i: number) => ({
-      id: `debt-fail-${i}`, kind: 'debt' as const, tone: 'cyan' as const, title: (f.actionType || 'Retry').replace(/_/g, ' '), summary: f.errorMessage || '', source: f.moduleId || 'nexus', timestamp: f.failedAt || null,
+      id: `debt-fail-${i}`, kind: 'debt' as const, tone: 'cyan' as const, title: (f.actionType || 'Retry').replace(/_/g, ' '), summary: f.errorMessage || '', source: f.moduleId || 'ara', timestamp: f.failedAt || null,
     }));
     const debtFromBlocked = actions.filter((a: any) => a.dispatchStatus === 'blocked').map((a: any, i: number) => ({
-      id: `debt-blocked-${i}`, kind: 'debt' as const, tone: 'cyan' as const, title: a.label || a.actionType || '', summary: a.summary || '', source: a.source || 'nexus', timestamp: a.executedAt || null,
+      id: `debt-blocked-${i}`, kind: 'debt' as const, tone: 'cyan' as const, title: a.label || a.actionType || '', summary: a.summary || '', source: a.source || 'ara', timestamp: a.executedAt || null,
     }));
     const debtItems = [...debtFromFailures, ...debtFromBlocked];
     const auditItems = silentHistory.map((s: any, i: number) => {
@@ -493,7 +495,7 @@ export class OrchestrationRolloutServiceJs {
 }
 
 export class OrchestrationContractsJs {
-  private _ranks: Record<string, number> = { agnes: 1, atlas: 2, soma: 3, titan: 4, scout: 5, ledger: 6, forge: 7, nexus: 8 };
+  private _ranks: Record<string, number> = { agnes: 1, atlas: 2, soma: 3, titan: 4, scout: 5, ledger: 6, forge: 7, ara: 8 };
   isAutopilotLevel(value: unknown) { return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 5; }
   isPrimaryAgentId(_value: string) { return true; }
   getAgentPrecedenceRank(source: string) { return this._ranks[source.toLowerCase()] ?? 100; }
@@ -517,8 +519,8 @@ export class OrchestrationContractsJs {
     const event = JSON.parse(eventJson);
     const opts = optionsJson ? JSON.parse(optionsJson) : {};
     const rawSource = (event.source || '').replace(/^spine-cascade:/i, '').toUpperCase();
-    const VALID = ['NEXUS', 'AGNES', 'ATLAS', 'TITAN', 'LEDGER', 'SOMA', 'SCOUT', 'FORGE'];
-    const source = VALID.includes(rawSource) ? rawSource : 'NEXUS';
+    const VALID = ['ARA', 'AGNES', 'ATLAS', 'TITAN', 'LEDGER', 'SOMA', 'SCOUT', 'FORGE'];
+    const source = VALID.includes(rawSource) ? rawSource : 'ARA';
     const priorityMap: Record<string, number> = { critical: 1, alert: 2, info: 3 };
     const priority = priorityMap[event.priority] ?? 3;
     const data = event.data || {};
@@ -638,7 +640,7 @@ export class AutopilotActionPolicyServiceJs {
 // ─── Routing & Dispatch ─────────────────────────────────────────────────────
 
 export class CommandIntelligenceServiceJs {
-  private static MODULES = ['agnes', 'atlas', 'titan', 'soma', 'ledger', 'scout', 'forge', 'nexus'];
+  private static MODULES = ['agnes', 'atlas', 'titan', 'soma', 'ledger', 'scout', 'forge', 'ara'];
 
   parse(rawInput: string, sourceModuleId: string, nowIso?: string, timezone?: string) {
     const lower = rawInput.toLowerCase();
@@ -735,7 +737,7 @@ export class CommandIntelligenceServiceJs {
   }
 }
 
-export class NexusRoutingServiceJs {
+export class AraRoutingServiceJs {
   private static KEYWORD_MAP: Record<string, { keywords: string[]; confidence: number }> = {
     agnes: { keywords: ['feel', 'emotion', 'anxious', 'anxiety', 'mood', 'relationship', 'stress', 'therapy', 'journal', 'sad', 'happy', 'angry', 'grief', 'trauma'], confidence: 0.72 },
     titan: { keywords: ['workout', 'training', 'exercise', 'gym', 'squat', 'bench', 'deadlift', 'muscle', 'sleep', 'recovery', 'run', 'cardio', 'lift'], confidence: 0.72 },
@@ -758,7 +760,7 @@ export class NexusRoutingServiceJs {
           return j({ moduleId: m.moduleId, confidence: 0.9, rationale: `mention:ownership:${m.moduleId}` });
         }
         if (m.disposition === 'consultative') {
-          return j({ moduleId: 'nexus', confidence: 0.85, rationale: `mention:consult:${m.moduleId}` });
+          return j({ moduleId: 'ara', confidence: 0.85, rationale: `mention:consult:${m.moduleId}` });
         }
       }
     }
@@ -788,20 +790,20 @@ export class NexusRoutingServiceJs {
   classifyIntentWithContext(rawInput: string, _contextJson: string | null) {
     // Keyword-only routing — parsed command intelligence is handled by classifyIntentFromParsedCommand
     const lower = rawInput.toLowerCase();
-    for (const [moduleId, { keywords, confidence }] of Object.entries(NexusRoutingServiceJs.KEYWORD_MAP)) {
+    for (const [moduleId, { keywords, confidence }] of Object.entries(AraRoutingServiceJs.KEYWORD_MAP)) {
       if (keywords.some((kw) => lower.includes(kw))) {
         return j({ moduleId, confidence, rationale: `matched:${moduleId}` });
       }
     }
-    return j({ moduleId: 'nexus', confidence: 0.45, rationale: 'default_nexus' });
+    return j({ moduleId: 'ara', confidence: 0.45, rationale: 'default_ara' });
   }
 
-  buildRouterPrompt() { return 'You are the nexus router.'; }
-  parseRoutingResponse(_responseText: string) { return j({ moduleId: 'nexus', reason: 'fallback' }); }
-  getRoute(_moduleId: string) { return '/nexus'; }
+  buildRouterPrompt() { return 'You are the ara router.'; }
+  parseRoutingResponse(_responseText: string) { return j({ moduleId: 'ara', reason: 'fallback' }); }
+  getRoute(_moduleId: string) { return '/ara'; }
 }
 
-export class NexusActionDispatchServiceJs {
+export class AraActionDispatchServiceJs {
   private static DETERMINISTIC_ACTIONS: Record<string, string[]> = {
     atlas: ['schedule_block', 'create_habit', 'update_routine', 'plan_day', 'flatten_load', 'flatten_schedule'],
     titan: ['log_workout', 'log_sleep', 'update_nsv'],
@@ -809,12 +811,12 @@ export class NexusActionDispatchServiceJs {
     scout: ['web_search', 'deep_research', 'commit_research'],
   };
   canDispatchDeterministically(moduleId: string, actionType: string) {
-    return (NexusActionDispatchServiceJs.DETERMINISTIC_ACTIONS[moduleId] ?? []).includes(actionType);
+    return (AraActionDispatchServiceJs.DETERMINISTIC_ACTIONS[moduleId] ?? []).includes(actionType);
   }
-  resolveDispatchNode(_planJson: string) { return j({ moduleId: 'nexus', actionType: 'none', payload: {} }); }
+  resolveDispatchNode(_planJson: string) { return j({ moduleId: 'ara', actionType: 'none', payload: {} }); }
 }
 
-export class NexusDispatchExecutionServiceJs {
+export class AraDispatchExecutionServiceJs {
   canExecutePacketDeterministically(_packetJson: string) { return true; }
   buildExecutionSummary(packetJson: string, resultsJson: string) {
     const packet = JSON.parse(packetJson);
@@ -866,7 +868,7 @@ export class NexusDispatchExecutionServiceJs {
       const artifact: any = {
         id: `${packet.planId}.${r.nodeId}.execution`,
         threadId: packet.sourceThreadId || null,
-        sourceModuleId: r.targetModuleId || 'nexus',
+        sourceModuleId: r.targetModuleId || 'ara',
         actionType: r.resolvedActionType || r.sourceActionType || '',
         proposalId: packet.planId || '',
         executionId: `${packet.planId}.${r.nodeId}.execution`,
@@ -903,7 +905,7 @@ export class NexusDispatchExecutionServiceJs {
   detectDependencyCycles(_planJson: string) { return []; }
 }
 
-export class NexusActionPlannerServiceJs {
+export class AraActionPlannerServiceJs {
   buildNode(intentJson: string, actionType: string | null, targetModuleId: string, supportingModuleIdsJson: string) {
     const intent = JSON.parse(intentJson);
     const supportingModuleIds = JSON.parse(supportingModuleIdsJson || '[]');
@@ -930,7 +932,7 @@ export class NexusActionPlannerServiceJs {
   getSemanticInput(rawInput: string) { return rawInput; }
 }
 
-export class NexusSynthesisServiceJs {
+export class AraSynthesisServiceJs {
   private _onEvent: (type: string, dataJson: string) => void;
   private _surfacedIds = new Set<string>();
   constructor(onEvent: (type: string, dataJson: string) => void) {
@@ -975,7 +977,7 @@ const WRITE_PERMISSIONS: Record<string, string[]> = {
   soma: ['biological.hormonalContext'],
   ledger: ['resource.financialFriction', 'resource.resonanceROI'],
   scout: ['cognitive.researchLoad', 'cognitive.interestDiversity'],
-  nexus: [],
+  ara: [],
   forge: [],
   bridge: [],
 };
@@ -989,7 +991,7 @@ const READ_PERMISSIONS: Record<string, string[]> = {
   soma: [...WRITE_PERMISSIONS.soma, 'emotional.emotionalResilience', 'emotional.stressLoad', 'biological.sleepQuality', 'biological.recoveryScore'],
   ledger: [...WRITE_PERMISSIONS.ledger, 'planning.deadlinePressure', 'cognitive.activeLoad'],
   scout: [...WRITE_PERMISSIONS.scout, 'cognitive.focusScore', 'cognitive.activeLoad'],
-  nexus: ALL_METRICS,
+  ara: ALL_METRICS,
   forge: ['biological.cnsFatigue', 'biological.sleepQuality', 'cognitive.activeLoad', 'cognitive.focusScore', 'cognitive.energyBudget'],
   bridge: [],
 };
@@ -1001,14 +1003,14 @@ export class NsvOwnershipServiceJs {
     for (const [mod, metrics] of Object.entries(WRITE_PERMISSIONS)) {
       if (metrics.includes(metric)) return mod;
     }
-    return 'nexus';
+    return 'ara';
   }
   getMetricOwners(metric: string) {
     const owners: string[] = [];
     for (const [mod, metrics] of Object.entries(WRITE_PERMISSIONS)) {
       if (metrics.includes(metric)) owners.push(mod);
     }
-    return owners.length ? owners : ['nexus'];
+    return owners.length ? owners : ['ara'];
   }
   isExclusiveOwner(moduleId: string, metric: string) {
     const owners = this.getMetricOwners(metric);
@@ -1043,7 +1045,7 @@ export class NsvOwnershipServiceJs {
   filterNsvForModule(nsvJson: string, moduleId: string) {
     const nsv = JSON.parse(nsvJson);
     const readable = new Set(READ_PERMISSIONS[moduleId] || []);
-    const isFullAccess = moduleId === 'nexus';
+    const isFullAccess = moduleId === 'ara';
     const DOMAIN_KEYS = ['biological', 'emotional', 'cognitive', 'planning', 'resource'];
     const result: Record<string, any> = {};
     for (const domain of DOMAIN_KEYS) {
@@ -1110,7 +1112,7 @@ export class GlobalProjectionServiceJs {
 
 export class SoulAuthorityServiceJs {
   canWrite(_moduleId: string, _nsvPath: string) { return true; }
-  getAuthoritativeModule(_nsvPath: string) { return 'nexus'; }
+  getAuthoritativeModule(_nsvPath: string) { return 'ara'; }
   auditPatch(_moduleId: string, _patchJson: string) { return j({ allowed: [], denied: [] }); }
 }
 
@@ -2546,6 +2548,54 @@ export class RagChunkingServiceJs {
       cursor = end;
     }
     return j(chunks);
+  }
+}
+
+// ─── Scout Session Context Assembler ─────────────────────────────────────────
+
+export class ScoutSessionContextAssemblerJs {
+  assembleFusedContext(nodesJson: string, webResultsJson: string, sessionTopic: string, _userQuery: string): string {
+    const nodes: Array<{ claim: string; confidence: number; similarity: number; status: string; fromSession: boolean }> = JSON.parse(nodesJson);
+    const webResults: Array<{ title: string; url: string; snippet: string }> = JSON.parse(webResultsJson);
+
+    const lines: string[] = ['[SESSION_KNOWLEDGE]'];
+    if (nodes.length === 0) {
+      lines.push('No prior findings for this topic yet. Search freely.');
+    } else {
+      for (const n of nodes) {
+        const origin = n.fromSession ? 'this session' : 'library';
+        const confPct = Math.round(n.confidence * 100);
+        const verified = n.status === 'verified' ? ' ✓' : '';
+        lines.push(`• ${n.claim} (confidence: ${confPct}%, ${origin}${verified})`);
+      }
+    }
+
+    if (webResults.length > 0) {
+      lines.push('', '[FRESH_WEB_EVIDENCE]');
+      for (const r of webResults) {
+        let domain = r.url;
+        try { domain = new URL(r.url).hostname.replace(/^www\./, ''); } catch { /* keep raw */ }
+        lines.push(`• ${r.title} [${domain}]: ${r.snippet.slice(0, 240)}`);
+      }
+    }
+
+    return lines.join('\n').trimEnd();
+  }
+
+  computeCoverageScore(nodesJson: string): number {
+    const nodes: Array<{ similarity: number }> = JSON.parse(nodesJson);
+    if (nodes.length === 0) return 0;
+    const top = [...nodes].sort((a, b) => b.similarity - a.similarity).slice(0, 5);
+    return top.reduce((s, n) => s + n.similarity, 0) / top.length;
+  }
+
+  isOffTopic(userQuery: string, sessionTopic: string): boolean {
+    const stopWords = new Set(['the','and','for','are','but','not','you','all','can','had','was','one','our','out','get','has','how','its','may','new','now','see','who','did','what','with','this','that','from','they','will','been','have','more','also','into','some','than','then','there','when','which','your','about','after','could','their','would','these']);
+    const tokenize = (text: string) => text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(t => t.length >= 4 && !stopWords.has(t));
+    const queryTokens = tokenize(userQuery);
+    if (queryTokens.length < 3) return false;
+    const topicSet = new Set(tokenize(sessionTopic));
+    return queryTokens.filter(t => topicSet.has(t)).length === 0;
   }
 }
 

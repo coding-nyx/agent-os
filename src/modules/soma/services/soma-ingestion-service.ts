@@ -1,6 +1,6 @@
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { SomaDataService } from './soma-data-service';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 
 /**
  * Soma IngestionService
@@ -31,7 +31,7 @@ export class SomaIngestionService {
     const analysis = this.analyzeReport(report);
 
     if (scope === 'GUEST') {
-      NexusLogger.emit('upload', {
+      AraLogger.emit('upload', {
         label: 'guest_block',
         detail: 'Patient Firewall active: GUEST data blocked from Spine.',
       });

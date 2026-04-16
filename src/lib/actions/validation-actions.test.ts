@@ -610,7 +610,7 @@ describe('Helper Functions', () => {
     registerGlobalValidationActions();
 
     expect(registerMultipleSpy).toHaveBeenCalledWith(
-      'nexus',
+      'ara',
       expect.objectContaining({
         suggest_field_fix: expect.any(Function),
         validate_with_context: expect.any(Function),

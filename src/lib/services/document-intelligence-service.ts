@@ -202,7 +202,7 @@ function toDocumentField(item: unknown): DocumentField | null {
 
 /**
  * Parses the LLM response string into a DocumentField array.
- * Uses `sanitizeJsonPayload` (alias: nexusCleaner) as the first cleaning pass,
+ * Uses `sanitizeJsonPayload` (alias: araCleaner) as the first cleaning pass,
  * then slices from the first `[` to the last `]` as a fallback.
  *
  * Returns `[]` on any parse failure.

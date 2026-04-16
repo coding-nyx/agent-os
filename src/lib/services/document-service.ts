@@ -1,4 +1,4 @@
-import { getNexusDataLayer } from '../data-layer/provider';
+import { getAraDataLayer } from '../data-layer/provider';
 import { encryptWithKey } from '../encryption';
 import type { DocumentRecord } from '../types';
 
@@ -17,7 +17,7 @@ export async function saveDocumentRecord(params: {
   text: string;
   encryptionKey: CryptoKey;
 }): Promise<DocumentRecord> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -53,7 +53,7 @@ export function subscribeDocuments(
   onUpdate: (docs: DocumentRecord[]) => void
 ): () => void {
   if (!userId || !moduleId || !threadId) return () => {};
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   return dataLayer.subscribeToQuery<DocumentRecord>(
     {
       collection: COLLECTION,
@@ -74,7 +74,7 @@ export async function deleteDocumentsByThread(
   moduleId: string,
   threadId: string,
 ): Promise<number> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const matches = await dataLayer.query<DocumentRecord>({
     collection: COLLECTION,
     where: [

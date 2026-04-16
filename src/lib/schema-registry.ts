@@ -10,7 +10,7 @@ import {
   FieldType,
 } from './field-system/types';
 import { validateFieldValue } from './field-system/field-system';
-import { getNexusDataLayer } from './data-layer/provider';
+import { getAraDataLayer } from './data-layer/provider';
 import { Spine } from './spine/spine-event-bus';
 
 /**
@@ -516,7 +516,7 @@ class SchemaRegistryService {
    */
   async loadExtensions(userId: string, moduleId: string): Promise<void> {
     try {
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
       const data = await dataLayer.getDocument<FirestoreCustomSchema>(
         `custom_schemas/${userId}/modules`,
         moduleId
@@ -556,7 +556,7 @@ class SchemaRegistryService {
     };
 
     try {
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
       await dataLayer.setDocument(`custom_schemas/${userId}/modules`, moduleId, data);
       
     } catch (error) {

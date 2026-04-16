@@ -5,7 +5,7 @@ description: Physical optimization agent specializing in fitness coaching, worko
 
 # Titan Module
 
-Titan manages the physical domain of Nexus, providing coaching, routine optimization, and physiological performance monitoring.
+Titan manages the physical domain of Ara, providing coaching, routine optimization, and physiological performance monitoring.
 
 ## Domain
 Focuses on exercise science, sleep hygiene, and physiological adaptation.

@@ -1,10 +1,10 @@
 import { ActionHub } from './action-hub';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 import { Spine } from '../spine/spine-event-bus';
 import { SpineEventType, NeuralStateVectorPatch, NeuralStateVector } from '../types';
 import type { DataHint } from '../types';
 import { CoreProfileService } from '../services/core-profile-service';
-import { NexusRoutingService } from '../services/nexus-routing-service';
+import { AraRoutingService } from '../services/ara-routing-service';
 import { EpisodicMemoryService } from '../services/episodic-memory-service';
 import { SemanticMemoryService } from '../services/semantic-memory-service';
 import { WebCrawlerService } from '../services/web-crawler-service';
@@ -12,7 +12,7 @@ import type { ModuleId } from '../module-manifest';
 import { ReminderLifecycleService } from '@/lib/notifications/reminder-lifecycle-service';
 import { ReminderLifecycleError } from '@/lib/notifications/errors';
 import type { NotificationChannelPrefs, NotificationDeepLink, NotificationPriority, Recurrence, ReminderProposal } from '@/lib/notifications/types';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import type { NotificationScheduleConfig } from '@/lib/notifications/types';
 import { RoutineRegistryService } from '@/lib/routines/routine-registry-service';
 import type { RoutineDefinition, RoutineProposal, RoutineTrigger } from '@/lib/routines/routine-types';
@@ -32,7 +32,7 @@ import {
 /**
  * HANDLER_PRECEDENCE — documents the bootstrap registration order enforced in main.tsx.
  *
- * 1. registerOrchestratorActions()  — navigate_to_module, create_module_handoff (unique to Nexus)
+ * 1. registerOrchestratorActions()  — navigate_to_module, create_module_handoff (unique to Ara)
  * 2. registerCoreActions()          — overwrites any same-key registrations from step 1
  * 3. registerAnalysisActions()      — additive (no overlapping keys with step 2)
  * 4. registerGlobalValidationActions(), registerFieldSuggestionActions() — additive
@@ -293,7 +293,7 @@ function buildCoreProfilePatch(payload: Record<string, unknown>): Record<string,
 
 export function registerCoreActions() {
   // Global / Orchestrator Actions
-  ActionHub.registerMultiple('nexus', {
+  ActionHub.registerMultiple('ara', {
     propose_draft: ({ moduleId, payload }) => {
       Spine.emit({
         type: 'DRAFT_PROPOSED',
@@ -331,7 +331,7 @@ export function registerCoreActions() {
         const reason = typeof payload?.reason === 'string' ? payload.reason : 'delegation';
         // Store the handoff context so the target module can consume it on arrival.
         // Navigation is intentionally NOT performed here — for the orchestrator the
-        // onActionParsed callback in NexusDashboard intercepts this action and shows
+        // onActionParsed callback in AraDashboard intercepts this action and shows
         // a RoutingSuggestion that the user confirms before navigating.  Other callers
         // that need immediate navigation should use the `navigate_to_module` action.
         delegateToModule(payload.moduleId, reason, content);
@@ -382,7 +382,7 @@ export function registerCoreActions() {
       try {
         Spine.emit({
           type: 'MODULE_DELEGATED',
-          source: 'nexus',
+          source: 'ara',
           target: targetModule,
           domain: 'system',
           data: { reason: 'query_module', content: question },
@@ -404,7 +404,7 @@ export function registerCoreActions() {
         Spine.emit({
           type: 'MODULE_DELEGATED',
           source: targetModule,
-          target: 'nexus',
+          target: 'ara',
           domain: 'system',
           data: {
             reason: 'query_result',
@@ -447,7 +447,7 @@ export function registerCoreActions() {
       try {
         Spine.emit({
           type: 'MODULE_DELEGATED',
-          source: 'nexus',
+          source: 'ara',
           target: targetModule,
           domain: 'system',
           data: { reason: 'query_module_data', content: question },
@@ -471,7 +471,7 @@ export function registerCoreActions() {
         Spine.emit({
           type: 'MODULE_DELEGATED',
           source: targetModule,
-          target: 'nexus',
+          target: 'ara',
           domain: 'system',
           data: {
             reason: 'query_result',
@@ -501,7 +501,7 @@ export function registerCoreActions() {
     },
   });
 
-  ActionHub.registerMultiple('nexus', {
+  ActionHub.registerMultiple('ara', {
     update_global_identity: async ({ userId, payload, pushAssistantMessage }) => {
       if (!userId || !payload || typeof payload !== 'object') { pushAssistantMessage?.('Action could not be completed — please try again.'); return; }
       const patch = buildCoreProfilePatch(payload);
@@ -520,7 +520,7 @@ export function registerCoreActions() {
     // Onboarding focus stubs — intentionally no-op.  The intake orchestrator
     // (use-intake-orchestrator.ts) intercepts these action types to advance the
     // wizard step index *before* ActionHub dispatches them.  They must be
-    // registered so ActionHub does not fall through to the nexus catch-all.
+    // registered so ActionHub does not fall through to the ara catch-all.
     focus_identity: () => {},
     focus_bio: () => {},
     focus_review: () => {},
@@ -537,7 +537,7 @@ export function registerCoreActions() {
         return;
       }
 
-      const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
+      const scopedModule = moduleId === 'ara' && typeof payload?.moduleId === 'string'
         ? payload.moduleId as ModuleId
         : (moduleId as ModuleId);
 
@@ -567,7 +567,7 @@ export function registerCoreActions() {
         pushAssistantMessage?.('Routine proposals are currently disabled.');
         return;
       }
-      const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
+      const scopedModule = moduleId === 'ara' && typeof payload?.moduleId === 'string'
         ? payload.moduleId as ModuleId
         : (moduleId as ModuleId);
 
@@ -631,7 +631,7 @@ export function registerCoreActions() {
       let proposal = proposalId ? ROUTINE_PROPOSALS.get(proposalId) : undefined;
 
       if (!proposal) {
-        const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
+        const scopedModule = moduleId === 'ara' && typeof payload?.moduleId === 'string'
           ? payload.moduleId as ModuleId
           : (moduleId as ModuleId);
         proposal = normalizeRoutinePayload(scopedModule, payload || {});
@@ -677,7 +677,7 @@ export function registerCoreActions() {
           await ReminderLifecycleService.confirm(userId, proposalId);
         } else {
           // Inline confirmation without a prior proposal (direct agent dispatch)
-          const scopedModule = moduleId === 'nexus' && typeof payload?.moduleId === 'string'
+          const scopedModule = moduleId === 'ara' && typeof payload?.moduleId === 'string'
             ? payload.moduleId as ModuleId
             : (moduleId as ModuleId);
           const draft = normalizeReminderPayload(scopedModule, payload || {});
@@ -710,7 +710,7 @@ export function registerCoreActions() {
       if (proposalId) {
         try {
           await ReminderLifecycleService.dismiss(userId, proposalId);
-        } catch (e) { NexusLogger.warn('CoreHandlers', 'Best-effort reminder dismiss failed'); }
+        } catch (e) { AraLogger.warn('CoreHandlers', 'Best-effort reminder dismiss failed'); }
       } else {
         Spine.emit({
           type: 'REMINDER_DISMISSED',
@@ -753,7 +753,7 @@ export function registerCoreActions() {
         : [];
       const entityFilter = [...entityTypes, ...sourceEntityType];
 
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
       const all = await dataLayer.listDocuments<NotificationScheduleConfig>(
         `users/${userId}/notification_schedules`,
       );
@@ -849,7 +849,7 @@ export function registerCoreActions() {
 
       const moduleIds = Array.isArray(payload?.moduleIds)
         ? payload.moduleIds.filter((id: unknown) => typeof id === 'string')
-        : ['nexus'];
+        : ['ara'];
       const topK = typeof payload?.topK === 'number' ? Math.max(1, Math.min(10, payload.topK)) : 5;
       const recencyWeight =
         typeof payload?.recencyWeight === 'number' ? Math.max(0, Math.min(1, payload.recencyWeight)) : 0.3;
@@ -886,16 +886,16 @@ export function registerCoreActions() {
   // Declared in notification-prompt-builder.ts NOTIFICATION_SCOPE_ACTIONS.
   // These enable the AI agent to manage quiet hours and snooze from conversation.
 
-  ActionHub.register('nexus', 'enable_quiet_hours', async ({ userId, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'enable_quiet_hours', async ({ userId, pushAssistantMessage }) => {
     if (!userId) { pushAssistantMessage?.('Sign in to enable quiet hours.'); return; }
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const config = await loadQuietHoursConfig(dataLayer, userId);
     config.enabled = true;
     await saveQuietHoursConfig(dataLayer, userId, config);
     pushAssistantMessage?.('Quiet hours enabled. Notifications will be suppressed during the configured window.');
     Spine.emit({
       type: 'QUIET_HOURS_UPDATED' as SpineEventType,
-      source: 'nexus',
+      source: 'ara',
       domain: 'system',
       data: { userId, enabled: true },
       cascadeDepth: 0,
@@ -903,16 +903,16 @@ export function registerCoreActions() {
     });
   });
 
-  ActionHub.register('nexus', 'disable_quiet_hours', async ({ userId, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'disable_quiet_hours', async ({ userId, pushAssistantMessage }) => {
     if (!userId) { pushAssistantMessage?.('Sign in to disable quiet hours.'); return; }
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const config = await loadQuietHoursConfig(dataLayer, userId);
     config.enabled = false;
     await saveQuietHoursConfig(dataLayer, userId, config);
     pushAssistantMessage?.('Quiet hours disabled. All notifications will come through.');
     Spine.emit({
       type: 'QUIET_HOURS_UPDATED' as SpineEventType,
-      source: 'nexus',
+      source: 'ara',
       domain: 'system',
       data: { userId, enabled: false },
       cascadeDepth: 0,
@@ -920,9 +920,9 @@ export function registerCoreActions() {
     });
   });
 
-  ActionHub.register('nexus', 'update_quiet_hours', async ({ userId, payload, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'update_quiet_hours', async ({ userId, payload, pushAssistantMessage }) => {
     if (!userId) { pushAssistantMessage?.('Sign in to update quiet hours.'); return; }
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const config = await loadQuietHoursConfig(dataLayer, userId);
     if (typeof payload?.from === 'string') config.from = payload.from;
     if (typeof payload?.to === 'string') config.to = payload.to;
@@ -931,11 +931,11 @@ export function registerCoreActions() {
     pushAssistantMessage?.(`Quiet hours updated: ${config.from} – ${config.to} (${config.enabled ? 'active' : 'paused'}).`);
   });
 
-  ActionHub.register('nexus', 'add_exempt_module', async ({ userId, payload, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'add_exempt_module', async ({ userId, payload, pushAssistantMessage }) => {
     if (!userId) { pushAssistantMessage?.('Sign in to update exemptions.'); return; }
     const moduleId = typeof payload?.moduleId === 'string' ? payload.moduleId : '';
     if (!moduleId) { pushAssistantMessage?.('Please specify a module to exempt.'); return; }
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const config = await loadQuietHoursConfig(dataLayer, userId);
     if (!config.exemptModules.includes(moduleId)) {
       config.exemptModules.push(moduleId);
@@ -944,26 +944,26 @@ export function registerCoreActions() {
     pushAssistantMessage?.(`${moduleId} is now exempt from quiet hours.`);
   });
 
-  ActionHub.register('nexus', 'snooze_notification', async ({ userId, payload, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'snooze_notification', async ({ userId, payload, pushAssistantMessage }) => {
     if (!userId) { pushAssistantMessage?.('Sign in to snooze notifications.'); return; }
     const notificationId = typeof payload?.notificationId === 'string' ? payload.notificationId : '';
     if (!notificationId) { pushAssistantMessage?.('Please specify which notification to snooze.'); return; }
     const durationKey = typeof payload?.duration === 'string' ? payload.duration : '1h';
     const option = SNOOZE_OPTIONS.find((o) => o.value === durationKey) ?? SNOOZE_OPTIONS[0];
     const snoozedUntil = computeSnoozedUntil(option);
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     await persistSnooze(dataLayer, userId, notificationId, snoozedUntil);
     pushAssistantMessage?.(`Notification snoozed for ${option.label}.`);
   });
 
-  ActionHub.register('nexus', 'snooze_all_from_source', async ({ userId, payload, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'snooze_all_from_source', async ({ userId, payload, pushAssistantMessage }) => {
     if (!userId) { pushAssistantMessage?.('Sign in to snooze notifications.'); return; }
     const source = typeof payload?.source === 'string' ? payload.source : '';
     if (!source) { pushAssistantMessage?.('Please specify a source module to snooze.'); return; }
     const durationKey = typeof payload?.duration === 'string' ? payload.duration : '3h';
     const option = SNOOZE_OPTIONS.find((o) => o.value === durationKey) ?? SNOOZE_OPTIONS[1];
     const snoozedUntil = computeSnoozedUntil(option);
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const inboxPath = `users/${userId}/notification_inbox`;
     const matches = await dataLayer.query<{ id: string; source: string }>({
       collection: inboxPath,
@@ -974,9 +974,9 @@ export function registerCoreActions() {
     pushAssistantMessage?.(`Snoozed ${matches.length} notification${matches.length !== 1 ? 's' : ''} from ${source} for ${option.label}.`);
   });
 
-  ActionHub.register('nexus', 'mark_all_read', async ({ userId, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'mark_all_read', async ({ userId, pushAssistantMessage }) => {
     if (!userId) { pushAssistantMessage?.('Sign in to manage notifications.'); return; }
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const inboxPath = `users/${userId}/notification_inbox`;
     const unread = await dataLayer.query<{ id: string; read: boolean }>({
       collection: inboxPath,
@@ -997,13 +997,13 @@ export function registerCoreActions() {
     pushAssistantMessage?.(`Marked ${unread.length} notification${unread.length !== 1 ? 's' : ''} as read.`);
   });
 
-  ActionHub.register('nexus', 'bulk_delete', async ({ userId, payload, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'bulk_delete', async ({ userId, payload, pushAssistantMessage }) => {
     if (!userId) { pushAssistantMessage?.('Sign in to manage notifications.'); return; }
     const ids = Array.isArray(payload?.notificationIds)
       ? payload.notificationIds.filter((id: unknown): id is string => typeof id === 'string')
       : [];
     if (ids.length === 0) { pushAssistantMessage?.('No notification IDs provided.'); return; }
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const inboxPath = `users/${userId}/notification_inbox`;
     await dataLayer.batchWrite(ids.map((id) => ({ type: 'delete' as const, collection: inboxPath, id })));
     pushAssistantMessage?.(`Deleted ${ids.length} notification${ids.length !== 1 ? 's' : ''}.`);
@@ -1212,7 +1212,7 @@ export function registerCoreActions() {
 
   // sync_vitals — orchestrator override with required reason and staleness guard.
   // Only used for cross-module synchronisation when modules themselves are stale or unresponsive.
-  ActionHub.register('nexus', 'sync_vitals', async ({ payload, updateGlobalSoul, getLatestNSV }) => {
+  ActionHub.register('ara', 'sync_vitals', async ({ payload, updateGlobalSoul, getLatestNSV }) => {
     if (!payload || typeof payload !== 'object') return;
 
     const VALID_SYNC_REASONS = new Set([
@@ -1310,10 +1310,10 @@ export function registerCoreActions() {
   // -------------------------------------------------------------------------
   // Contextual Inference Engine — S10-008
   // -------------------------------------------------------------------------
-  // Register under 'nexus' so it is resolved as the universal fallback
+  // Register under 'ara' so it is resolved as the universal fallback
   // for any module that dispatches detect_data_hint (Agnes, Titan, Atlas, etc.).
   // The ActionHub.execute fallback chain always checks orchestrator last.
-  ActionHub.register('nexus', 'detect_data_hint', async ({ payload }) => {
+  ActionHub.register('ara', 'detect_data_hint', async ({ payload }) => {
     const hint = (payload as unknown) as DataHint | undefined;
     if (!hint || typeof hint !== 'object') return;
     if (typeof hint.confidence !== 'number' || hint.confidence < 0.75) return;
@@ -1334,7 +1334,7 @@ export function registerCoreActions() {
   // -------------------------------------------------------------------------
   // query_module_capability — lightweight check: does a module have a handler for an action?
   // Used by orchestrator before routing to avoid unnecessary delegation.
-  ActionHub.register('nexus', 'query_module_capability', async ({ payload, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'query_module_capability', async ({ payload, pushAssistantMessage }) => {
     const targetModule = typeof payload?.moduleId === 'string' ? payload.moduleId : null;
     const actionType = typeof payload?.actionType === 'string' ? payload.actionType : null;
 
@@ -1357,7 +1357,7 @@ export function registerCoreActions() {
   // -------------------------------------------------------------------------
   // notify_turn_complete — surfaces any background action failures to the user
   // at the end of a model response turn, then clears the failure list.
-  ActionHub.register('nexus', 'notify_turn_complete', async ({ pushAssistantMessage }) => {
+  ActionHub.register('ara', 'notify_turn_complete', async ({ pushAssistantMessage }) => {
     try {
       const { useOrchestrationStore } = await import('../stores/orchestration-store');
       const store = useOrchestrationStore.getState();
@@ -1373,24 +1373,24 @@ export function registerCoreActions() {
 
       // Clear for next turn
       store.clearTurnFailures();
-    } catch (e) { NexusLogger.warn('CoreHandlers', 'Store unavailable'); }
+    } catch (e) { AraLogger.warn('CoreHandlers', 'Store unavailable'); }
   });
 
   // -------------------------------------------------------------------------
   // Phase 5 Enhancement 3 — Cross-Module State Rollback
   // -------------------------------------------------------------------------
   // capture_nsv_snapshot — call before a multi-step plan begins
-  ActionHub.register('nexus', 'capture_nsv_snapshot', async ({ getLatestNSV }) => {
+  ActionHub.register('ara', 'capture_nsv_snapshot', async ({ getLatestNSV }) => {
     try {
       const nsv = getLatestNSV?.();
       if (!nsv) return;
       const { useOrchestrationStore } = await import('../stores/orchestration-store');
       useOrchestrationStore.getState().captureNSVSnapshot(nsv as Record<string, unknown>);
-    } catch (e) { NexusLogger.warn('CoreHandlers', 'Store unavailable'); }
+    } catch (e) { AraLogger.warn('CoreHandlers', 'Store unavailable'); }
   });
 
   // execute_rollback — restore NSV to the snapshot
-  ActionHub.register('nexus', 'execute_rollback', async ({ updateGlobalSoul, pushAssistantMessage }) => {
+  ActionHub.register('ara', 'execute_rollback', async ({ updateGlobalSoul, pushAssistantMessage }) => {
     try {
       const { useOrchestrationStore } = await import('../stores/orchestration-store');
       const snapshot = useOrchestrationStore.getState().nsvSnapshot;

@@ -7,7 +7,7 @@ export class MockAuthService implements IAuthService {
 
   constructor() {
       // Check for local session mock
-      const saved = localStorage.getItem('nexus_mock_user');
+      const saved = localStorage.getItem('ara_mock_user');
       if (saved) {
           this.user = JSON.parse(saved);
       }
@@ -15,21 +15,21 @@ export class MockAuthService implements IAuthService {
 
   async login(email: string, password: string): Promise<AuthUser> {
     this.user = { uid: 'mock_user_' + email, email, emailVerified: true };
-    localStorage.setItem('nexus_mock_user', JSON.stringify(this.user));
+    localStorage.setItem('ara_mock_user', JSON.stringify(this.user));
     this.notify();
     return this.user;
   }
 
   async register(email: string, password: string): Promise<AuthUser> {
     this.user = { uid: 'mock_user_' + email, email, emailVerified: true };
-    localStorage.setItem('nexus_mock_user', JSON.stringify(this.user));
+    localStorage.setItem('ara_mock_user', JSON.stringify(this.user));
     this.notify();
     return this.user;
   }
 
   async logout(): Promise<void> {
     this.user = null;
-    localStorage.removeItem('nexus_mock_user');
+    localStorage.removeItem('ara_mock_user');
     this.notify();
   }
 

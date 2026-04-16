@@ -1,4 +1,4 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
@@ -149,7 +149,7 @@ export function createEmptyAtlasProfile(): AtlasProfile {
 
 const _service = createEncryptedProfileService<AtlasProfile>({
   collection: 'atlas_profiles',
-  guestStorageKey: 'nexus_atlas_profile_guest',
+  guestStorageKey: 'ara_atlas_profile_guest',
   createEmpty: createEmptyAtlasProfile,
   normalize: normalizeAtlasProfile,
   metadataProjection: (p) => ({
@@ -168,6 +168,7 @@ export const loadAtlasProfile: (ctx: LoadContext) => Promise<AtlasProfile | null
 export const subscribeAtlasProfile: (
   ctx: LoadContext,
   onUpdate: (profile: AtlasProfile | null) => void,
+  onError?: (error: unknown) => void,
 ) => () => void = _service.subscribe.bind(_service);
 
 export const syncGuestAtlasProfileToUser: (ctx: LoadContext) => Promise<boolean> =
@@ -212,7 +213,7 @@ async function _doSaveAtlasProfile(profile: AtlasProfile, { userId, encryptionKe
   // Side effects are independent (different Firestore collections) — run in parallel.
   const results = await Promise.allSettled([
     syncAliveEntities(
-      getNexusDataLayer(),
+      getAraDataLayer(),
       bootstrapAliveEntities({
         goals: normalized.goals,
         habits: normalized.habits,

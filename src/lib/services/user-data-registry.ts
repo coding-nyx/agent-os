@@ -3,7 +3,7 @@ export interface UserDataDeletionTarget {
   documentId: string;
 }
 
-const MODULE_IDS = ['nexus', 'agnes', 'titan', 'ledger', 'atlas', 'scout', 'forge'] as const;
+const MODULE_IDS = ['ara', 'agnes', 'titan', 'ledger', 'atlas', 'scout', 'forge'] as const;
 
 const DIRECT_USER_COLLECTIONS = [
   'users',

@@ -6,8 +6,8 @@ import type {
   ResumableActionSnapshot,
   RuntimeSemantics,
 } from '@/lib/contracts/orchestration';
-import type { NexusDataLayer } from '@/lib/data-layer';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import type { AraDataLayer } from '@/lib/data-layer';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { ActionHub, type ActionContext } from '@/lib/actions/action-hub';
@@ -97,12 +97,12 @@ export class OrchestrationExecutionService {
       error: unknown;
       errorCode?: ExecutionFailureCode;
       resumableSnapshot?: ResumableActionSnapshot | null;
-      dataLayer?: NexusDataLayer;
+      dataLayer?: AraDataLayer;
     },
   ): Promise<ExecutionFailure | null> {
     if (!uid || input.metadata.patientScope === 'GUEST') return null;
 
-    const dataLayer = input.dataLayer ?? getNexusDataLayer();
+    const dataLayer = input.dataLayer ?? getAraDataLayer();
     const previousFailures = await OrchestrationPersistenceService.listExecutionFailures(
       uid,
       { executionId: input.metadata.execution.id },
@@ -152,7 +152,7 @@ export class OrchestrationExecutionService {
       moduleId: string;
       actionType: string;
       metadata: ActionOrchestrationMetadata;
-      dataLayer?: NexusDataLayer;
+      dataLayer?: AraDataLayer;
     },
   ): Promise<ExecutionFailure | null> {
     return this.recordFailure(uid, {
@@ -207,7 +207,7 @@ export class OrchestrationExecutionService {
   static async markFailureResolved(
     uid: string,
     failureId: string,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     await OrchestrationPersistenceService.updateExecutionFailure(uid, failureId, {
       status: 'resolved',
@@ -223,7 +223,7 @@ export class OrchestrationExecutionService {
       proposalId?: string;
       limit?: number;
     },
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<Array<PersistedExecutionFailureRecord>> {
     return OrchestrationPersistenceService.listExecutionFailures(uid, options, dataLayer);
   }
@@ -234,7 +234,7 @@ export class OrchestrationExecutionService {
       now?: string;
       limit?: number;
     },
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<Array<PersistedExecutionFailureRecord>> {
     const now = options?.now ?? new Date().toISOString();
     const failures = await this.listFailures(uid, { limit: options?.limit }, dataLayer);
@@ -250,12 +250,12 @@ export class OrchestrationExecutionService {
     options?: {
       now?: string;
       limit?: number;
-      dataLayer?: NexusDataLayer;
+      dataLayer?: AraDataLayer;
     },
   ): Promise<{ attempted: number; succeeded: number; failed: number }> {
     if (!uid) return { attempted: 0, succeeded: 0, failed: 0 };
 
-    const dataLayer = options?.dataLayer ?? getNexusDataLayer();
+    const dataLayer = options?.dataLayer ?? getAraDataLayer();
     const dueFailures = await this.listDueRetries(uid, { now: options?.now, limit: options?.limit }, dataLayer);
     let attempted = 0;
     let succeeded = 0;

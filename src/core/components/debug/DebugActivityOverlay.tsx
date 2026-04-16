@@ -12,10 +12,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bug, ChevronDown, Copy, Filter } from 'lucide-react';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
 import { useDebugEventStream, useDebugEventCount } from '@/lib/hooks/use-debug-event-stream';
-import type { DebugEvent, DebugEventCategory } from '@/lib/nexus-logger';
+import type { DebugEvent, DebugEventCategory } from '@/lib/ara-logger';
 import { cn } from '@/lib/utils';
 
-const STORAGE_KEY = 'nexus_debug_overlay_expanded';
+const STORAGE_KEY = 'ara_debug_overlay_expanded';
 
 const CATEGORY_COLORS: Record<DebugEventCategory, string> = {
   action: 'text-violet-400',

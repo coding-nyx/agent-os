@@ -16,7 +16,7 @@ import { reconnectFirestore } from './firebase';
 //   • Tab close:    sessionStorage is cleared → cannot decrypt → re-prompt ✓
 //   • Explicit lock: clearVaultWrapKey() deletes the IDB key → cannot decrypt ✓
 // STRICT mode bypasses this path entirely and never touches IDB.
-const IDB_DB_NAME = 'nexus_vault_keystore';
+const IDB_DB_NAME = 'ara_vault_keystore';
 const IDB_STORE   = 'wrap_keys';
 const IDB_KEY_ID  = 'session_wrap_v1';
 
@@ -148,9 +148,9 @@ interface VaultContextType {
 }
 
 const VaultContext = createContext<VaultContextType | null>(null);
-const PERSISTENCE_KEY = 'nexus_vault_mode';
-const SESSION_PWD_KEY = 'nexus_vault_session';
-const SESSION_TS_KEY = 'nexus_vault_session_ts';
+const PERSISTENCE_KEY = 'ara_vault_mode';
+const SESSION_PWD_KEY = 'ara_vault_session';
+const SESSION_TS_KEY = 'ara_vault_session_ts';
 const VAULT_COLLECTION = 'vaults';
 
 // Redirect hook to make `initializeVault()` testable in jsdom (where
@@ -359,14 +359,14 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         if (canary) {
             try {
                 const decrypted = await decryptWithKey(canary, key);
-                if (decrypted !== 'NEXUS') throw new Error("Invalid Vault Password.");
+                if (decrypted !== 'ARA') throw new Error("Invalid Vault Password.");
             } catch (e) {
                 // Re-throw with a stable sentinel so auto-unlock can distinguish
                 // a wrong password (permanent) from a transient error (retryable).
                 throw new Error("Invalid Vault Password.");
             }
         } else {
-            const newCanary = await encryptWithKey('NEXUS', key);
+            const newCanary = await encryptWithKey('ARA', key);
             await dataLayer.updateDocument(VAULT_COLLECTION, user.uid, { canary: newCanary });
         }
 
@@ -439,12 +439,12 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   // ── Vault setup nudge ────────────────────────────────────────────────────
   const [nudgeSeen, setNudgeSeen] = useState<boolean>(() =>
     typeof window !== 'undefined'
-      ? localStorage.getItem('nexus_vault_nudge_seen') === 'true'
+      ? localStorage.getItem('ara_vault_nudge_seen') === 'true'
       : false
   );
 
   const dismissVaultSetupNudge = useCallback(() => {
-    localStorage.setItem('nexus_vault_nudge_seen', 'true');
+    localStorage.setItem('ara_vault_nudge_seen', 'true');
     setNudgeSeen(true);
   }, []);
 
@@ -479,7 +479,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     //    This also triggers the onboardingComplete: false reset inside SoulTerminationService.
     try {
       await SoulTerminationService.purgeUserData(user.uid);
-      SoulTerminationService.clearLocalArtifacts(); // clears nexus_vault_nudge_seen + session keys
+      SoulTerminationService.clearLocalArtifacts(); // clears ara_vault_nudge_seen + session keys
       await clearVaultWrapKey(); // remove the IDB wrap key so ciphertext is unrecoverable
     } catch (err) {
       console.error('[Vault] Purge failed during destruction:', err);

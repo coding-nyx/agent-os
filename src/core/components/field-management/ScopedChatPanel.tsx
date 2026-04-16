@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useComponentSelection } from '@/lib/stores/component-selection-store';
 import { useScopedConversation } from '@/lib/hooks/use-scoped-conversation';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { X, Sparkles, Target, Zap, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ModuleTheme } from '@/lib/module-manifest';
@@ -121,7 +121,7 @@ Maintain a professional, high-fidelity tone. Be concise.
 
           {/* Chat Integration */}
           <div className="flex-1 min-h-0 flex flex-col bg-transparent">
-            <NexusChat
+            <AraChat
               ai={{
                 messages,
                 isProcessing: isLoading,
@@ -132,7 +132,7 @@ Maintain a professional, high-fidelity tone. Be concise.
                   await sendMessage(content);
                 }
               }}
-              agentName="Nexus Scope"
+              agentName="Ara Scope"
               themeColor={themeColor}
               placeholder={`Analyze ${selectedEntity.id}...`}
               showInternalSignals={false}

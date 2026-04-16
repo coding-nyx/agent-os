@@ -32,11 +32,11 @@ Generated: 2026-03-29T20:02:05.161Z
 - scout.create_research_request
 
 ### ActionHub Registrations Missing Registry Specs
-- nexus.query_module_capability
-- nexus.notify_turn_complete
-- nexus.capture_nsv_snapshot
-- nexus.execute_rollback
-- nexus.mutate_module_data
+- ara.query_module_capability
+- ara.notify_turn_complete
+- ara.capture_nsv_snapshot
+- ara.execute_rollback
+- ara.mutate_module_data
 - titan.propose_routine
 - atlas.create_field
 - atlas.delete_field

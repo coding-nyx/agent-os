@@ -5,7 +5,7 @@ import { useDiagnosis } from '@/core/diagnosis/use-diagnosis';
 import { DiagnosisToolbar } from '@/core/diagnosis/components/DiagnosisToolbar';
 import { DiagnosisMergeDialog } from '@/core/diagnosis/components/DiagnosisMergeDialog';
 import { DiagnosisSidebar } from '@/core/diagnosis/components/DiagnosisSidebar';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import type { TitanProfile } from '@/lib/types';
@@ -81,7 +81,7 @@ export function TitanDiagnosisPanel({ encryptionKey, profile }: TitanDiagnosisPa
     [handleUpload],
   );
 
-  // Toolbar rendered via NexusChat's headerActions
+  // Toolbar rendered via AraChat's headerActions
   const toolbar = dx.phase !== 'idle' ? (
     <DiagnosisToolbar
       spec={dx.spec}
@@ -157,7 +157,7 @@ export function TitanDiagnosisPanel({ encryptionKey, profile }: TitanDiagnosisPa
 
         {/* Chat — always rendered so the user can type symptoms or upload */}
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          <NexusChat
+          <AraChat
             moduleId="titan"
             ai={{
               messages: dx.messages,

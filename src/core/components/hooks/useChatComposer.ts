@@ -31,7 +31,7 @@ export function useChatComposer({
   enableSpeechToText = false,
   isLoading,
 }: UseChatComposerParams) {
-  const draftKey = `nexus_input_draft_${moduleId ?? 'default'}`;
+  const draftKey = `ara_input_draft_${moduleId ?? 'default'}`;
   const [input, setInput] = useState<string>(() => {
     try { return localStorage.getItem(draftKey) ?? ''; } catch { return ''; }
   });

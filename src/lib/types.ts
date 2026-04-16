@@ -258,6 +258,10 @@ export type SpineEventType =
   | 'SESSION_ENDED'
   | 'MODULE_DELEGATED'
   | 'MODULE_HANDOFF_RECEIVED'
+  // Routing proposal lifecycle (proposed → accepted | dismissed)
+  | 'ROUTING_PROPOSED'
+  | 'ROUTING_ACCEPTED'
+  | 'ROUTING_DISMISSED'
   | 'TITAN_PROPOSAL'
   | 'PLANNING_OVERLOAD'
   | 'DEADLINE_CRUNCH'
@@ -422,6 +426,7 @@ export type SpineEventType =
   | 'SCOUT_KNOWLEDGE_ENRICHED'
   | 'SCOUT_QUERY_RESULT_READY'
   | 'SCOUT_CROSS_MODULE_QUERY'
+  | 'SCOUT_OFF_TOPIC_DETECTED'
   | 'SESSION_STARTED'
   | 'HABIT_SUGGESTED'
   | 'RESEARCH_SEARCHING'

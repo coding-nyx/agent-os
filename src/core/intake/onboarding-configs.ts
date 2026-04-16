@@ -12,18 +12,18 @@ import { FieldType } from '@/lib/field-system/types';
 import type { ModuleOnboardingSpec } from './onboarding-types';
 import { AGENT_GENDER_OPTIONS } from './agent-gender';
 
-export const NEXUS_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
-  moduleId: 'nexus',
-  displayName: 'Nyx',
+export const ARA_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
+  moduleId: 'ara',
+  displayName: 'Ara',
   themeColor: 'indigo',
   icon: Sparkles,
-  goal: 'Capture identity baseline so the Nyx orchestrator can personalise every cross-module interaction.',
+  goal: 'Capture identity baseline so the Ara orchestrator can personalise every cross-module interaction.',
   context:
-    'Nyx is the system orchestrator. It routes between Agnes (therapy), Titan (fitness), Soma (health), Ledger (finance), Atlas (productivity), Scout (research), and Forge (dev). Knowing the user\'s name, pronouns, occupation, and sleep patterns lets Nyx tailor tone, timing, and recommendations across every module.',
+    'Ara is the system orchestrator. It routes between Agnes (therapy), Titan (fitness), Soma (health), Ledger (finance), Atlas (productivity), Scout (research), and Forge (dev). Knowing the user\'s name, pronouns, occupation, and sleep patterns lets Ara tailor tone, timing, and recommendations across every module.',
   fastTrackEnabled: true,
   fastTrackRequiredIds: ['preferred_name'],
   dataPoints: [
-    { id: 'preferred_name', label: 'Preferred name', type: FieldType.TEXT, required: true },
+    { id: 'preferred_name', label: 'Preferred name', type: FieldType.TEXT, required: true, section: 'Identity' },
     {
       id: 'pronouns',
       label: 'Pronouns',
@@ -31,10 +31,11 @@ export const NEXUS_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
       required: false,
       hint: 'e.g. he/him, she/her, they/them — freeform',
       autocomplete: ['he/him', 'she/her', 'they/them', 'ze/zir', 'xe/xem', 'fae/faer', 'any'],
+      section: 'Identity',
     },
-    { id: 'occupation', label: 'Occupation or role', type: FieldType.TEXT, required: false },
-    { id: 'typical_sleep_hours', label: 'Typical nightly sleep (hours)', type: FieldType.NUMBER, required: false, hint: 'Integer 4–12' },
-    { id: 'age', label: 'Age', type: FieldType.NUMBER, required: false, hint: 'Integer 13–120' },
+    { id: 'occupation', label: 'Occupation or role', type: FieldType.TEXT, required: false, section: 'Lifestyle' },
+    { id: 'typical_sleep_hours', label: 'Typical nightly sleep (hours)', type: FieldType.NUMBER, required: false, hint: 'Integer 4–12', section: 'Lifestyle' },
+    { id: 'age', label: 'Age', type: FieldType.NUMBER, required: false, hint: 'Integer 13–120', section: 'Lifestyle' },
     {
       id: 'agent_gender',
       label: 'Preferred agent presentation',
@@ -42,6 +43,7 @@ export const NEXUS_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
       required: false,
       hint: 'How all agents should present — affects pronoun usage across the entire system',
       options: AGENT_GENDER_OPTIONS,
+      section: 'Preferences',
     },
   ],
 };
@@ -57,9 +59,9 @@ export const AGNES_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
   fastTrackEnabled: true,
   fastTrackRequiredIds: ['background', 'goals'],
   dataPoints: [
-    { id: 'background', label: 'Personal or emotional background', type: FieldType.TEXTAREA, required: true, hint: 'Free-form — what context should Agnes know before the first session?' },
-    { id: 'current_struggles', label: 'Current struggles or concerns', type: FieldType.TEXTAREA, required: false },
-    { id: 'goals', label: 'Therapy goals', type: FieldType.TEXTAREA, required: true, hint: 'What does the user want to achieve?' },
+    { id: 'background', label: 'Personal or emotional background', type: FieldType.TEXTAREA, required: true, hint: 'Free-form — what context should Agnes know before the first session?', section: 'Context' },
+    { id: 'current_struggles', label: 'Current struggles or concerns', type: FieldType.TEXTAREA, required: false, section: 'Context' },
+    { id: 'goals', label: 'Therapy goals', type: FieldType.TEXTAREA, required: true, hint: 'What does the user want to achieve?', section: 'Goals' },
     {
       id: 'tone_preference',
       label: 'Preferred conversational tone',
@@ -71,6 +73,7 @@ export const AGNES_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'direct/analytical', label: 'Direct / Analytical' },
         { value: 'balanced', label: 'Balanced' },
       ],
+      section: 'Preferences',
     },
   ],
 };
@@ -100,6 +103,7 @@ export const TITAN_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'athletic', label: 'Athletic Performance' },
         { value: 'maintenance', label: 'Maintenance' },
       ],
+      section: 'Training',
     },
     {
       id: 'experience_level',
@@ -112,8 +116,9 @@ export const TITAN_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'intermediate', label: 'Intermediate (1–3 years)' },
         { value: 'advanced', label: 'Advanced (3+ years)' },
       ],
+      section: 'Training',
     },
-    { id: 'days_per_week', label: 'Available training days per week', type: FieldType.NUMBER, required: true, hint: 'Integer 1–7' },
+    { id: 'days_per_week', label: 'Available training days per week', type: FieldType.NUMBER, required: true, hint: 'Integer 1–7', section: 'Training' },
     {
       id: 'equipment',
       label: 'Available equipment',
@@ -128,11 +133,12 @@ export const TITAN_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'bodyweight', label: 'Bodyweight' },
         { value: 'bands', label: 'Resistance Bands' },
       ],
+      section: 'Training',
     },
-    { id: 'weight_kg', label: 'Bodyweight (kg)', type: FieldType.NUMBER, required: false },
-    { id: 'height_cm', label: 'Height (cm)', type: FieldType.NUMBER, required: false },
-    { id: 'injuries', label: 'Injuries or movement restrictions', type: FieldType.TEXTAREA, required: false, hint: 'List joints or movements to avoid' },
-    { id: 'supplements', label: 'Current supplements', type: FieldType.TEXT, required: false },
+    { id: 'weight_kg', label: 'Bodyweight (kg)', type: FieldType.NUMBER, required: false, section: 'Biometrics' },
+    { id: 'height_cm', label: 'Height (cm)', type: FieldType.NUMBER, required: false, section: 'Biometrics' },
+    { id: 'injuries', label: 'Injuries or movement restrictions', type: FieldType.TEXTAREA, required: false, hint: 'List joints or movements to avoid', section: 'Health' },
+    { id: 'supplements', label: 'Current supplements', type: FieldType.TEXT, required: false, section: 'Health' },
   ],
 };
 
@@ -148,9 +154,9 @@ export const SOMA_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
   fastTrackRequiredIds: [],
   optional: true,
   dataPoints: [
-    { id: 'conditions', label: 'Chronic conditions or diagnoses', type: FieldType.TEXTAREA, required: false, hint: 'e.g. hypertension, type 2 diabetes, asthma' },
-    { id: 'allergies', label: 'Known allergies', type: FieldType.TEXT, required: false },
-    { id: 'medications', label: 'Current medications', type: FieldType.TEXTAREA, required: false, hint: 'Name, dose, frequency' },
+    { id: 'conditions', label: 'Chronic conditions or diagnoses', type: FieldType.TEXTAREA, required: false, hint: 'e.g. hypertension, type 2 diabetes, asthma', section: 'Medical' },
+    { id: 'allergies', label: 'Known allergies', type: FieldType.TEXT, required: false, section: 'Medical' },
+    { id: 'medications', label: 'Current medications', type: FieldType.TEXTAREA, required: false, hint: 'Name, dose, frequency', section: 'Medical' },
   ],
 };
 
@@ -183,12 +189,13 @@ export const LEDGER_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'MXN', label: 'MXN — Mexican Peso' },
         { value: 'other', label: 'Other' },
       ],
+      section: 'Income',
     },
-    { id: 'monthly_income', label: 'Monthly net income', type: FieldType.NUMBER, required: true },
-    { id: 'fixed_expenses', label: 'Fixed monthly expenses', type: FieldType.TEXTAREA, required: false, hint: 'Comma-separated categories with amounts e.g. Rent 1200, Insurance 150' },
-    { id: 'variable_expenses', label: 'Variable monthly expenses', type: FieldType.TEXTAREA, required: false, hint: 'Categories like groceries, dining, entertainment' },
-    { id: 'debts', label: 'Debt obligations', type: FieldType.TEXTAREA, required: false, hint: 'Loan/card name, balance, interest rate' },
-    { id: 'savings_goals', label: 'Savings goals', type: FieldType.TEXTAREA, required: false, hint: 'Goal name and target amount' },
+    { id: 'monthly_income', label: 'Monthly net income', type: FieldType.NUMBER, required: true, section: 'Income' },
+    { id: 'fixed_expenses', label: 'Fixed monthly expenses', type: FieldType.TEXTAREA, required: false, hint: 'Comma-separated categories with amounts e.g. Rent 1200, Insurance 150', section: 'Expenses' },
+    { id: 'variable_expenses', label: 'Variable monthly expenses', type: FieldType.TEXTAREA, required: false, hint: 'Categories like groceries, dining, entertainment', section: 'Expenses' },
+    { id: 'debts', label: 'Debt obligations', type: FieldType.TEXTAREA, required: false, hint: 'Loan/card name, balance, interest rate', section: 'Expenses' },
+    { id: 'savings_goals', label: 'Savings goals', type: FieldType.TEXTAREA, required: false, hint: 'Goal name and target amount', section: 'Planning' },
     {
       id: 'planning_horizon',
       label: 'Preferred planning horizon',
@@ -200,6 +207,7 @@ export const LEDGER_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'quarterly', label: 'Quarterly' },
         { value: 'yearly', label: 'Yearly' },
       ],
+      section: 'Planning',
     },
   ],
 };
@@ -227,8 +235,9 @@ export const ATLAS_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'afternoon (14–18)', label: 'Afternoon (14–18)' },
         { value: 'evening (18–22)', label: 'Evening (18–22)' },
       ],
+      section: 'Schedule',
     },
-    { id: 'load_pressure', label: 'Current workload pressure (1–10)', type: FieldType.RANGE, required: false, hint: 'Slider 1 (very light) to 10 (overwhelming)' },
+    { id: 'load_pressure', label: 'Current workload pressure (1–10)', type: FieldType.RANGE, required: false, hint: 'Slider 1 (very light) to 10 (overwhelming)', section: 'Schedule' },
     {
       id: 'task_focus',
       label: 'Preferred task focus style',
@@ -241,8 +250,9 @@ export const ATLAS_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'time_boxing', label: 'Time Boxing' },
         { value: 'flexible', label: 'Flexible' },
       ],
+      section: 'Schedule',
     },
-    { id: 'recovery_constraints', label: 'Recovery constraints', type: FieldType.TEXTAREA, required: false, hint: 'e.g. caregiver duties, chronic fatigue, hard stop at 18:00' },
+    { id: 'recovery_constraints', label: 'Recovery constraints', type: FieldType.TEXTAREA, required: false, hint: 'e.g. caregiver duties, chronic fatigue, hard stop at 18:00', section: 'Constraints' },
   ],
 };
 
@@ -272,6 +282,7 @@ export const SCOUT_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'history', label: 'History' },
         { value: 'current_events', label: 'Current Events' },
       ],
+      section: 'Research',
     },
     {
       id: 'evidence_quality',
@@ -285,6 +296,7 @@ export const SCOUT_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'balanced', label: 'Balanced' },
         { value: 'broad_sweep', label: 'Broad sweep' },
       ],
+      section: 'Research',
     },
     {
       id: 'output_format',
@@ -298,6 +310,7 @@ export const SCOUT_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'bullet_list', label: 'Bullet list' },
         { value: 'structured_data', label: 'Structured data' },
       ],
+      section: 'Research',
     },
   ],
 };
@@ -313,7 +326,7 @@ export const FORGE_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
   fastTrackEnabled: false,
   fastTrackRequiredIds: [],
   dataPoints: [
-    { id: 'execution_context', label: 'Primary language or stack', type: FieldType.TEXT, required: false, hint: 'e.g. TypeScript/React, Python/FastAPI, Go, Rust' },
+    { id: 'execution_context', label: 'Primary language or stack', type: FieldType.TEXT, required: false, hint: 'e.g. TypeScript/React, Python/FastAPI, Go, Rust', section: 'Dev Context' },
     {
       id: 'safety_mode',
       label: 'Safety mode',
@@ -325,6 +338,7 @@ export const FORGE_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'cautious', label: 'Cautious (confirm before execute)' },
         { value: 'production', label: 'Production (trust and run)' },
       ],
+      section: 'Dev Context',
     },
     {
       id: 'report_style',
@@ -337,6 +351,7 @@ export const FORGE_BASE_SPEC: Omit<ModuleOnboardingSpec, never> = {
         { value: 'standard', label: 'Standard (summary + diff)' },
         { value: 'verbose', label: 'Verbose (full context)' },
       ],
+      section: 'Dev Context',
     },
   ],
 };

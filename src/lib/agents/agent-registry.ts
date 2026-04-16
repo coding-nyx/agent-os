@@ -14,7 +14,7 @@ export const AgentRegistryService = {
     return JSON.parse(_service.listProviders()) as AgentProviderDescriptor[];
   },
 
-  getProviderByModule(moduleId: ModuleId | 'nexus'): AgentProviderDescriptor | null {
+  getProviderByModule(moduleId: ModuleId | 'ara'): AgentProviderDescriptor | null {
     const result = _service.getProviderByModule(moduleId);
     return result === '' || result === 'null' ? null : (JSON.parse(result) as AgentProviderDescriptor);
   },
@@ -28,13 +28,13 @@ export const AgentRegistryService = {
     _providerAdapterRegistry.set(provider.moduleId, provider.actionPayloadAdapters);
   },
 
-  getCapabilitiesForModule(moduleId: ModuleId | 'nexus'): AgentCapability[] {
+  getCapabilitiesForModule(moduleId: ModuleId | 'ara'): AgentCapability[] {
     return Array.from(_service.getCapabilitiesForModule(moduleId)) as AgentCapability[];
   },
 
   getProvidersForCapability(
     capability: AgentCapability,
-    options?: { preferredModuleIds?: Array<ModuleId | 'nexus'> },
+    options?: { preferredModuleIds?: Array<ModuleId | 'ara'> },
   ): AgentProviderDescriptor[] {
     const preferredJson = options?.preferredModuleIds
       ? JSON.stringify(options.preferredModuleIds)
@@ -46,7 +46,7 @@ export const AgentRegistryService = {
 
   resolveProvidersForCapabilities(
     capabilities: AgentCapability[],
-    options?: { preferredModuleIds?: Array<ModuleId | 'nexus'> },
+    options?: { preferredModuleIds?: Array<ModuleId | 'ara'> },
   ): AgentProviderDescriptor[] {
     const preferredJson = options?.preferredModuleIds
       ? JSON.stringify(options.preferredModuleIds)
@@ -58,7 +58,7 @@ export const AgentRegistryService = {
 
   resolvePrimaryProvider(
     capabilities: AgentCapability[],
-    options?: { preferredModuleIds?: Array<ModuleId | 'nexus'> },
+    options?: { preferredModuleIds?: Array<ModuleId | 'ara'> },
   ): AgentProviderDescriptor | null {
     const preferredJson = options?.preferredModuleIds
       ? JSON.stringify(options.preferredModuleIds)
@@ -67,7 +67,7 @@ export const AgentRegistryService = {
     return result === '' || result === 'null' ? null : (JSON.parse(result) as AgentProviderDescriptor);
   },
 
-  resolveActionAlias(moduleId: ModuleId | 'nexus', actionType: string): string {
+  resolveActionAlias(moduleId: ModuleId | 'ara', actionType: string): string {
     return _service.resolveActionAlias(moduleId, actionType) as string;
   },
 
@@ -79,7 +79,7 @@ export const AgentRegistryService = {
    * This method applies them on the TS side, after obtaining the alias from KMP.
    */
   resolveActionForProvider(
-    moduleId: ModuleId | 'nexus',
+    moduleId: ModuleId | 'ara',
     actionType: string,
     payload: Record<string, unknown>,
   ): { actionType: string; payload: Record<string, unknown> } {

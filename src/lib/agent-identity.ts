@@ -8,19 +8,19 @@ export interface ActorIdentityRef {
 
 export interface ConversationalActorIdentity {
   id: string;
-  moduleId?: ModuleId | 'nexus';
+  moduleId?: ModuleId | 'ara';
   label: string;
   shortLabel: string;
   toneClassName: string;
 }
 
-type ActorSource = ModuleId | 'nexus' | 'user' | 'system';
+type ActorSource = ModuleId | 'ara' | 'user' | 'system';
 
 const DEFAULT_ACTOR_IDENTITIES: Record<ActorSource, ConversationalActorIdentity> = {
-  nexus: {
-    id: 'nexus-core',
-    moduleId: 'nexus',
-    label: 'Nyx',
+  ara: {
+    id: 'ara-core',
+    moduleId: 'ara',
+    label: 'Ara',
     shortLabel: 'NX',
     toneClassName: 'border-cyan-400/25 bg-cyan-400/15 text-cyan-100',
   },
@@ -114,7 +114,7 @@ function resolveBaseIdentity(source?: ActorSource | null): ConversationalActorId
 }
 
 export function resolveConversationalActorIdentity(input: {
-  moduleId?: ModuleId | 'nexus' | null;
+  moduleId?: ModuleId | 'ara' | null;
   source?: ActorSource | null;
   actorId?: string | null;
   actorLabel?: string | null;

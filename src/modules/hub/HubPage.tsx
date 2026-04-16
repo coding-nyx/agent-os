@@ -30,7 +30,7 @@ export default function HubPage() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('global');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    const saved = localStorage.getItem('nexus-hub-view');
+    const saved = localStorage.getItem('ara-hub-view');
     return (saved === '3D' || saved === 'GRAPH' || saved === 'CARDS') ? saved : 'CARDS';
   });
   const [webglError, setWebglError] = useState(false);
@@ -43,7 +43,7 @@ export default function HubPage() {
     if (viewMode === '3D' && webglError) {
       setViewMode('CARDS');
     }
-    localStorage.setItem('nexus-hub-view', viewMode);
+    localStorage.setItem('ara-hub-view', viewMode);
   }, [viewMode, webglError]);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [edgePulse, setEdgePulse] = useState(0);
@@ -153,7 +153,7 @@ export default function HubPage() {
   const wellnessGauge = coreModulesAccessible ? globalSoul?.overallWellnessScore ?? null : null;
 
   return (
-    <ModuleLayout title="Neural Hub" themeColor="violet" hideBack={false} onExit={() => navigate('/nexus')}>
+    <ModuleLayout title="Neural Hub" themeColor="violet" hideBack={false} onExit={() => navigate('/ara')}>
       <div className="flex-1 relative flex flex-col w-full h-full min-h-0 bg-[#020205]">
 
         {/* Breathing ambient background */}

@@ -20,7 +20,7 @@ import { usePendingRecovery } from './use-pending-recovery';
 import { useSessionPersistence } from './use-session-persistence';
 import { useSessionSummary } from './use-session-summary';
 import { MODULE_MANIFEST } from '../module-manifest';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
 import { parseDocumentUploadMessage, summarizeDocumentUploadMessage } from '@/lib/services/document-upload-message';
 import { useOrchestrationStore } from '@/lib/stores/orchestration-store';
@@ -36,8 +36,8 @@ const _kmpCommandParser = new CommandIntelligenceServiceJs();
 import { MasterThreadService } from '@/lib/services/master-thread-service';
 import { ModuleAIActionExecutionService, type DeferredApproval } from '@/lib/services/module-ai-action-execution-service';
 export type { DeferredApproval };
-import { NexusActionPlannerService } from '@/lib/services/nexus-action-planner-service';
-import { NexusActionDispatchExecutionService } from '@/lib/services/nexus-action-dispatch-execution-service';
+import { AraActionPlannerService } from '@/lib/services/ara-action-planner-service';
+import { AraActionDispatchExecutionService } from '@/lib/services/ara-action-dispatch-execution-service';
 import { isOpenRouterAuthError } from '@/lib/services/openrouter-key';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual' | 'ephemeral';
@@ -48,7 +48,7 @@ interface UseModuleAIOptions {
    * Optional base system prompt. When omitted, KMP's PersonaPromptCatalog supplies
    * the persona for the moduleId automatically — module pages should not pass this.
    * Only provide for inline/utility conversations that need an explicit prompt
-   * (e.g. NexusOverlay, CollapsibleAIPanel, diagnosis mode).
+   * (e.g. AraOverlay, CollapsibleAIPanel, diagnosis mode).
    */
   systemPrompt?: string;
   encryptionKey?: CryptoKey | null;
@@ -224,7 +224,7 @@ function buildRelativeReminderOverride(text: string): { dueAt: string; recurrenc
 }
 
 function buildPendingContextHash(moduleId: string, contextPolicy: ContextPolicy, content: MessageContent): string {
-  const text = NexusActionPlannerService.getSemanticInput(contentToText(content)).trim().slice(0, 512);
+  const text = AraActionPlannerService.getSemanticInput(contentToText(content)).trim().slice(0, 512);
   return `${moduleId}:${contextPolicy}:${text}`;
 }
 
@@ -284,7 +284,7 @@ export function useModuleAI({
   // Keep baseRole (the enriched system prompt) in a ref so that handleSendMessage
   // does not need to list it as a useCallback dep. Without this, every profile update
   // rebuilds the system prompt string → handleSendMessage gets a new reference →
-  // NexusChat + ChatInterface rerender → scroll effects fire mid-conversation.
+  // AraChat + ChatInterface rerender → scroll effects fire mid-conversation.
   const baseRoleRef = useRef(baseRole);
   baseRoleRef.current = baseRole;
   // Keep auth profile in a ref so handleSendMessage doesn't recreate when
@@ -309,11 +309,11 @@ export function useModuleAI({
   const resolvedContextPolicy: ContextPolicy = contextPolicy ?? 'base-context';
 
   // Resolve which context enhancer to use:
-  // - orchestrator (Nexus) gets full NSV via enhanceContext
+  // - orchestrator (Ara) gets full NSV via enhanceContext
   // - all other modules get filtered NSV via enhanceContextForModule
   const resolvedEnhanceContext = useCallback((context: Parameters<typeof enhanceContext>[0]) => {
     if (resolvedContextPolicy === 'doc-only') return context;
-    if (moduleId === 'nexus') {
+    if (moduleId === 'ara') {
       return enhanceContext(context);
     }
     return enhanceContextForModule(context, moduleId as import('@/lib/module-manifest').ModuleId);
@@ -368,7 +368,7 @@ export function useModuleAI({
   const pendingAIStateRef = useRef<{ isThinking: boolean; isActing: boolean; currentActionType: string | null }>({ isThinking: false, isActing: false, currentActionType: null });
   const streamRafRef = useRef<number>(0);
   const idleConsolidationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent }) => void) | null>(null);
+  const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; hideUserMessage?: boolean }) => void) | null>(null);
   const recoveryReplayKeyRef = useRef<string | null>(null);
 
   // ── Session persistence sub-hook ────────────────────────────────────
@@ -467,7 +467,7 @@ export function useModuleAI({
     prewarmedMemoryRef.current = null;
     retrieveMemoryContext(seedQuery).then((ctx) => {
       prewarmedMemoryRef.current = ctx;
-    }).catch((e) => { NexusLogger.warn('ModuleAI', 'Memory prewarm failed (non-critical)'); });
+    }).catch((e) => { AraLogger.warn('ModuleAI', 'Memory prewarm failed (non-critical)'); });
   }, [resolvedContextPolicy, isGuest, user, retrieveMemoryContext]);
 
 
@@ -508,7 +508,7 @@ export function useModuleAI({
     };
     const onStorage = (event: StorageEvent) => {
       if (
-        event.key === 'nexus_debug_provider' ||
+        event.key === 'ara_debug_provider' ||
         event.key === 'preferred_model' ||
         event.key === 'VITE_OPENROUTER_API_KEY' ||
         event.key === 'openrouter_api_key' ||
@@ -517,10 +517,10 @@ export function useModuleAI({
         clearAuthBlock();
       }
     };
-    window.addEventListener('nexus_model_changed', clearAuthBlock);
+    window.addEventListener('ara_model_changed', clearAuthBlock);
     window.addEventListener('storage', onStorage);
     return () => {
-      window.removeEventListener('nexus_model_changed', clearAuthBlock);
+      window.removeEventListener('ara_model_changed', clearAuthBlock);
       window.removeEventListener('storage', onStorage);
     };
   }, []);
@@ -565,9 +565,9 @@ export function useModuleAI({
 
       const contentText = contentToText(content);
       const executionPacket = typeof contentText === 'string'
-        ? NexusActionPlannerService.extractExecutionPacket(contentText)
+        ? AraActionPlannerService.extractExecutionPacket(contentText)
         : null;
-      const semanticContentText = NexusActionPlannerService.getSemanticInput(contentText);
+      const semanticContentText = AraActionPlannerService.getSemanticInput(contentText);
       const nowIso = new Date().toISOString().slice(0, 10);
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let parserAuthError: string | null = null;
@@ -607,7 +607,7 @@ export function useModuleAI({
         } catch (llmParseError) {
           // Keep chat alive if LLM-assisted parsing fails (regex/runtime/provider issues).
           // Use deterministic phase-1 parser as fallback and continue the turn.
-          NexusLogger.emit('ai', {
+          AraLogger.emit('ai', {
             moduleId,
             label: 'command_parse_fallback',
             detail: llmParseError instanceof Error ? llmParseError.message : String(llmParseError),
@@ -620,7 +620,7 @@ export function useModuleAI({
             const envelopeJson = _kmpCommandParser.parse(semanticContentText, moduleId, nowIso, timezone);
             return JSON.parse(envelopeJson) as ParsedCommandEnvelope;
           } catch (phase1Error) {
-            NexusLogger.emit('ai', {
+            AraLogger.emit('ai', {
               moduleId,
               label: 'command_parse_failed',
               detail: phase1Error instanceof Error ? phase1Error.message : String(phase1Error),
@@ -652,7 +652,7 @@ export function useModuleAI({
       }
       setLastParsedCommand(parsedCommand);
       if (debugModeRef.current) {
-        NexusLogger.emit('ai', {
+        AraLogger.emit('ai', {
           moduleId,
           label: 'command_parse',
           detail: {
@@ -664,7 +664,7 @@ export function useModuleAI({
         });
       }
 
-      NexusLogger.emit('ai', {
+      AraLogger.emit('ai', {
         moduleId,
         label: 'send',
         detail: typeof content === 'string' ? content.slice(0, 200) : '[multipart]',
@@ -734,7 +734,7 @@ export function useModuleAI({
         if (
           executionPacket &&
           !isGuest &&
-          NexusActionDispatchExecutionService.canExecutePacketDeterministically(executionPacket)
+          AraActionDispatchExecutionService.canExecutePacketDeterministically(executionPacket)
         ) {
           let canExecuteFastPath = true;
           for (const node of executionPacket.nodes) {
@@ -757,7 +757,7 @@ export function useModuleAI({
 
           if (canExecuteFastPath) {
             const deterministicSoulUpdates: NeuralStateVectorPatch = {};
-            const results = await NexusActionDispatchExecutionService.executePacket(executionPacket, {
+            const results = await AraActionDispatchExecutionService.executePacket(executionPacket, {
             userId: user?.uid,
             isGuest: false,
             encryptionKey,
@@ -794,7 +794,7 @@ export function useModuleAI({
 
           if (activeThreadId) {
             const existingThreadMessages = useOrchestrationStore.getState().threadMessagesByThreadId[activeThreadId] ?? [];
-            const executionArtifacts = NexusActionDispatchExecutionService.buildExecutionArtifacts(
+            const executionArtifacts = AraActionDispatchExecutionService.buildExecutionArtifacts(
               executionPacket,
               results,
               new Date().toISOString(),
@@ -811,7 +811,7 @@ export function useModuleAI({
 
           const assistantMessage: Message = {
             role: 'assistant',
-            content: NexusActionDispatchExecutionService.buildExecutionSummary(executionPacket, results),
+            content: AraActionDispatchExecutionService.buildExecutionSummary(executionPacket, results),
             timestamp: new Date().toISOString(),
             threadId: threadIdRef.current,
           };
@@ -1150,7 +1150,7 @@ export function useModuleAI({
           }
         }
 
-        NexusLogger.emit('ai', {
+        AraLogger.emit('ai', {
           moduleId,
           label: 'receive',
           detail: {
@@ -1170,7 +1170,7 @@ export function useModuleAI({
             }
             if (!reminderClaimGuardRef.current) {
               reminderClaimGuardRef.current = true;
-              NexusLogger.warn('ReminderGuard', 'Reminder claim rewritten: no action tags emitted.', {
+              AraLogger.warn('ReminderGuard', 'Reminder claim rewritten: no action tags emitted.', {
                 moduleId,
                 original: visibleAssistantText.slice(0, 200),
                 rewritten: adjustedPublicText.slice(0, 200),
@@ -1254,7 +1254,7 @@ export function useModuleAI({
 
           // Populate debugMeta when debug mode is active
           if (debugModeRef.current) {
-            const spineEventsSlice = NexusLogger.getRecentSpineEvents()
+            const spineEventsSlice = AraLogger.getRecentSpineEvents()
               .filter((e) => e.timestamp >= sendStartTime)
               .map((e) => e.eventType);
             assistantMessage.debugMeta = {
@@ -1299,7 +1299,7 @@ export function useModuleAI({
 
         // Background: refresh session summary if history has overflowed the window.
         // Runs entirely off the critical path — TTFT is not affected.
-        refreshSessionSummaryIfNeeded(localHistory).catch((e) => { NexusLogger.warn('ModuleAI', 'Session summary refresh failed'); });
+        refreshSessionSummaryIfNeeded(localHistory).catch((e) => { AraLogger.warn('ModuleAI', 'Session summary refresh failed'); });
         
         clearPendingRequest();
 
@@ -1341,7 +1341,7 @@ export function useModuleAI({
               contextPolicy: resolvedContextPolicy,
               _writeNonce: nonce
             }).catch((e) => console.error('Failed to save trimmed session:', e));
-          }).catch(() => NexusLogger.warn('ModuleAI', 'Background consolidation failed'));
+          }).catch(() => AraLogger.warn('ModuleAI', 'Background consolidation failed'));
         }
       } catch (e: unknown) {
         if (e instanceof DOMException && e.name === 'AbortError') {
@@ -1384,7 +1384,7 @@ export function useModuleAI({
           priority: 'critical'
         });
 
-        NexusLogger.emit('ai', {
+        AraLogger.emit('ai', {
           moduleId,
           label: 'error',
           detail: e instanceof Error ? e.message : String(e),
@@ -1505,7 +1505,7 @@ export function useModuleAI({
     setMessages([]);
     sessionStartRef.current = new Date().toISOString();
     resetConsolidation();  // M-6: reset retry counter on clear
-    try { sessionStorage.removeItem(`nexus_session_${moduleId}_${activeSessionId}`); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(`ara_session_${moduleId}_${activeSessionId}`); } catch { /* ignore */ }
     if (user && !isGuest) {
       await ModuleMemoryService.clearActiveSession(user.uid, moduleId, activeSessionId);
       Spine.emit({

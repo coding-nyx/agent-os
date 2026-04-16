@@ -11,7 +11,7 @@ const dataLayerSpies = vi.hoisted(() => ({
 }));
 
 vi.mock('../data-layer/provider', () => ({
-  getNexusDataLayer: vi.fn(() => dataLayerSpies)
+  getAraDataLayer: vi.fn(() => dataLayerSpies)
 }));
 
 vi.mock('./embedding-service', () => ({

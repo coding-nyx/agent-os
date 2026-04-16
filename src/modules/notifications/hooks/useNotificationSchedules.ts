@@ -9,7 +9,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { AuthUser } from '@/lib/services/auth-service';
 import { useDataLayer } from '@/lib/data-layer/provider';
-import type { NexusRecord } from '@/lib/data-layer';
+import type { AraRecord } from '@/lib/data-layer';
 import type { NotificationScheduleConfig } from '@/lib/notifications/types';
 import { buildAllPresets } from '@/lib/notifications/preset-registry';
 import { BridgeService } from '@/lib/services/bridge-service';
@@ -23,7 +23,7 @@ interface UseNotificationSchedulesParams {
 
 export function useNotificationSchedules({ user, isGuest }: UseNotificationSchedulesParams) {
   const dataLayer = useDataLayer();
-  const [schedules, setSchedules] = useState<NexusRecord<NotificationScheduleConfig>[]>([]);
+  const [schedules, setSchedules] = useState<AraRecord<NotificationScheduleConfig>[]>([]);
   const [deleteScheduleTarget, setDeleteScheduleTarget] = useState<{ id: string; title: string } | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -51,7 +51,7 @@ export function useNotificationSchedules({ user, isGuest }: UseNotificationSched
   const PRESET_IDS = useMemo(() => new Set(allPresets.map((p) => p.scheduleId)), [allPresets]);
 
   const scheduleMap = useMemo(() => {
-    const m = new Map<string, NexusRecord<NotificationScheduleConfig>>();
+    const m = new Map<string, AraRecord<NotificationScheduleConfig>>();
     for (const s of schedules) m.set(s.id, s);
     return m;
   }, [schedules]);

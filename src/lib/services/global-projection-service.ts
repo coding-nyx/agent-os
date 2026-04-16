@@ -1,8 +1,8 @@
 import { GlobalProjection, CoreUserProfile, NeuralStateVector, NeuralStateVectorPatch, SoulWriteRequest } from '../types';
 import { createDefaultNSV, normalizeNSV } from './nsv-service';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
-import { getNexusDataLayer } from '../data-layer/provider';
-import { NexusDataLayer } from '../data-layer';
+import { getAraDataLayer } from '../data-layer/provider';
+import { AraDataLayer } from '../data-layer';
 import { Spine } from '../spine/spine-event-bus';
 import { GlobalProjectionServiceJs } from '@cortex-logic';
 
@@ -43,7 +43,7 @@ function buildNSVUpdatePayload(updates: NeuralStateVectorPatch, timestamp: strin
 export const GlobalProjectionService = {
   async getProjection(
     uid: string,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<GlobalProjection | null> {
     if (!uid) return null;
     const projection = await dataLayer.getDocument<GlobalProjection>(COLLECTION, uid);
@@ -57,7 +57,7 @@ export const GlobalProjectionService = {
 
   async syncFromProfile(
     profile: CoreUserProfile,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<GlobalProjection | null> {
     if (!profile?.uid) {
       console.warn('syncFromProfile called with no profile UID');
@@ -66,7 +66,7 @@ export const GlobalProjectionService = {
 
     // Robustness: Handle partially initialized profiles
     const provision = profile.agentPersonalityProvision || {
-      orchestratorAlias: 'Nyx',
+      orchestratorAlias: 'Ara',
       moduleAliases: {
         agnes: 'Agnes',
         titan: 'Titan',
@@ -92,7 +92,7 @@ export const GlobalProjectionService = {
     }, {});
 
     const displayNames: Record<string, string> = {
-      nexus: provision.orchestratorAlias,
+      ara: provision.orchestratorAlias,
       ...manifestDefaults,
       ...provision.moduleAliases
     };
@@ -145,7 +145,7 @@ export const GlobalProjectionService = {
   async updateTherapeuticBaseline(
     uid: string,
     baseline: GlobalProjection['therapeuticBaseline'],
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     if (!uid) return;
     try {
@@ -161,7 +161,7 @@ export const GlobalProjectionService = {
   async updateCrossFunctionalState(
     uid: string,
     updates: NeuralStateVectorPatch,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
     soulWriteOptions?: {
       /**
        * Module ID of the domain-authoritative agent to route the write through.
@@ -273,7 +273,7 @@ export const GlobalProjectionService = {
   async approveSoulWrite(
     requestId: string,
     userId: string,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     if (!requestId || !userId) {
       throw new Error('[GlobalProjectionService] approveSoulWrite: requestId and userId are required');
@@ -333,7 +333,7 @@ export const GlobalProjectionService = {
   async rejectSoulWrite(
     requestId: string,
     userId: string,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     if (!requestId || !userId) {
       throw new Error('[GlobalProjectionService] rejectSoulWrite: requestId and userId are required');

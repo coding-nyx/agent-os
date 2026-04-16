@@ -1,10 +1,10 @@
 /**
  * in-memory-provider.test.ts
  *
- * Parity test suite for InMemoryDataLayer — the zero-dependency NexusDataLayer
+ * Parity test suite for InMemoryDataLayer — the zero-dependency AraDataLayer
  * implementation used in tests, Storybook, and offline-first workflows.
  *
- * Covers every method mandated by the NexusDataLayer interface:
+ * Covers every method mandated by the AraDataLayer interface:
  *   getDocument · listDocuments · createDocument · setDocument
  *   updateDocument · deleteDocument · query · batchWrite
  *   subscribeToDocument · subscribeToQuery
@@ -15,9 +15,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InMemoryDataLayer } from './in-memory-data-layer';
 import type {
-  NexusDataLayer,
-  NexusQuery,
-  NexusRecord,
+  AraDataLayer,
+  AraQuery,
+  AraRecord,
   BatchOperation,
 } from './index';
 
@@ -30,10 +30,10 @@ function makeLayer(seed?: ConstructorParameters<typeof InMemoryDataLayer>[0]): I
   return new InMemoryDataLayer(seed);
 }
 
-// ─── Type-check: InMemoryDataLayer satisfies NexusDataLayer ─────────────────
+// ─── Type-check: InMemoryDataLayer satisfies AraDataLayer ─────────────────
 // This is a compile-time assertion — if the class drifts from the interface
 // TypeScript will surface the error here before any test runs.
-const _typeCheck: NexusDataLayer = new InMemoryDataLayer();
+const _typeCheck: AraDataLayer = new InMemoryDataLayer();
 void _typeCheck;
 
 // ─── getDocument ─────────────────────────────────────────────────────────────
@@ -491,7 +491,7 @@ describe('subscribeToDocument', () => {
 
   it('notifies on setDocument', async () => {
     const layer = makeLayer();
-    const listener = vi.fn<[NexusRecord<{ title: string }> | null]>();
+    const listener = vi.fn<[AraRecord<{ title: string }> | null]>();
     const unsub = layer.subscribeToDocument<{ title: string }>('notes', 'n1', listener);
 
     await layer.setDocument('notes', 'n1', { title: 'First' });
@@ -502,7 +502,7 @@ describe('subscribeToDocument', () => {
 
   it('notifies on updateDocument', async () => {
     const layer = makeLayer({ notes: [{ id: 'n1', title: 'Old' }] });
-    const listener = vi.fn<[NexusRecord<{ title: string }> | null]>();
+    const listener = vi.fn<[AraRecord<{ title: string }> | null]>();
     const unsub = layer.subscribeToDocument<{ title: string }>('notes', 'n1', listener);
 
     await layer.updateDocument('notes', 'n1', { title: 'New' });
@@ -559,7 +559,7 @@ describe('subscribeToDocument', () => {
 
   it('delivers an isolated clone so listener mutations cannot corrupt the store', async () => {
     const layer = makeLayer();
-    const captured: Array<NexusRecord<{ count: number }> | null> = [];
+    const captured: Array<AraRecord<{ count: number }> | null> = [];
     const unsub = layer.subscribeToDocument<{ count: number }>('stats', 's1', (doc) => {
       captured.push(doc);
     });
@@ -581,7 +581,7 @@ describe('subscribeToQuery', () => {
   it('emits an empty array immediately for an empty collection', async () => {
     const layer = makeLayer();
     const listener = vi.fn();
-    const query: NexusQuery = { collection: 'tasks' };
+    const query: AraQuery = { collection: 'tasks' };
 
     const unsub = layer.subscribeToQuery(query, listener);
     await flush();
@@ -594,7 +594,7 @@ describe('subscribeToQuery', () => {
   it('re-emits when a matching document is created', async () => {
     const layer = makeLayer();
     const listener = vi.fn();
-    const query: NexusQuery = {
+    const query: AraQuery = {
       collection: 'tasks',
       where: [{ field: 'done', op: '==', value: false }],
     };
@@ -612,7 +612,7 @@ describe('subscribeToQuery', () => {
   it('does not re-emit when the mutation is in a different collection', async () => {
     const layer = makeLayer();
     const listener = vi.fn();
-    const query: NexusQuery = { collection: 'tasks' };
+    const query: AraQuery = { collection: 'tasks' };
 
     const unsub = layer.subscribeToQuery(query, listener);
     await flush();
@@ -627,7 +627,7 @@ describe('subscribeToQuery', () => {
   it('applies filter to emitted snapshots — non-matching docs are excluded', async () => {
     const layer = makeLayer();
     const listener = vi.fn();
-    const query: NexusQuery = {
+    const query: AraQuery = {
       collection: 'items',
       where: [{ field: 'active', op: '==', value: true }],
     };
@@ -650,7 +650,7 @@ describe('subscribeToQuery', () => {
   it('respects orderBy in live snapshots', async () => {
     const layer = makeLayer();
     const snapshots: number[][] = [];
-    const query: NexusQuery = {
+    const query: AraQuery = {
       collection: 'q',
       orderBy: [{ field: 'rank', direction: 'asc' }],
     };
@@ -675,7 +675,7 @@ describe('subscribeToQuery', () => {
   it('unsubscribe stops further emissions', async () => {
     const layer = makeLayer();
     const listener = vi.fn();
-    const query: NexusQuery = { collection: 'events' };
+    const query: AraQuery = { collection: 'events' };
 
     const unsub = layer.subscribeToQuery(query, listener);
     await flush();

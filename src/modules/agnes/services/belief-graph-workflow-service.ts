@@ -1,7 +1,7 @@
 import { BeliefGraphServiceJs } from '@cortex-logic';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import type { NexusRecord } from '@/lib/data-layer';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import type { AraRecord } from '@/lib/data-layer';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import type { HistoryMode } from '@/lib/contracts/orchestration';
 import type { NeuralStateVector } from '@/lib/types';
 import {
@@ -157,7 +157,7 @@ async function saveBeliefGraphWorkflowDocument(
   if (!userId || !encryptionKey) return;
   const normalized = normalizeWorkflow(workflow);
   const encrypted = await encryptWithKey(JSON.stringify(normalized), encryptionKey);
-  await getNexusDataLayer().setDocument(BELIEF_GRAPH_WORKFLOW_COLLECTION, userId, {
+  await getAraDataLayer().setDocument(BELIEF_GRAPH_WORKFLOW_COLLECTION, userId, {
     encryptedData: encrypted.ciphertext,
     iv: encrypted.iv,
     salt: VAULT_SALT_MARKER,
@@ -173,7 +173,7 @@ export async function loadBeliefGraphWorkflow(
   { userId, encryptionKey }: BeliefGraphLoadContext,
 ): Promise<BeliefGraphWorkflow | null> {
   if (!userId || !encryptionKey) return null;
-  const record = await getNexusDataLayer().getDocument<{ encryptedData?: string; iv?: string }>(
+  const record = await getAraDataLayer().getDocument<{ encryptedData?: string; iv?: string }>(
     BELIEF_GRAPH_WORKFLOW_COLLECTION,
     userId,
   );
@@ -197,10 +197,10 @@ export function subscribeBeliefGraphWorkflow(
     return () => {};
   }
 
-  return getNexusDataLayer().subscribeToDocument<{ encryptedData?: string; iv?: string }>(
+  return getAraDataLayer().subscribeToDocument<{ encryptedData?: string; iv?: string }>(
     BELIEF_GRAPH_WORKFLOW_COLLECTION,
     userId,
-    async (record: NexusRecord<{ encryptedData?: string; iv?: string }> | null) => {
+    async (record: AraRecord<{ encryptedData?: string; iv?: string }> | null) => {
       if (!record?.encryptedData || !record.iv) {
         onUpdate(null);
         return;

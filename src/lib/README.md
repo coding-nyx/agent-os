@@ -7,7 +7,7 @@
 
 ## Quick Reference
 
-This directory contains the shared runtime infrastructure for Nexus. All cross-cutting concerns and platform-level services live here.
+This directory contains the shared runtime infrastructure for Ara. All cross-cutting concerns and platform-level services live here.
 
 **Key Principle:** Module-specific logic should NOT be here. This is only for shared, reusable platform code.
 
@@ -162,7 +162,7 @@ Each service encapsulates specific business logic:
 |---------|---------|
 | `core-profile-service.ts` | User identity and profile persistence |
 | `global-soul-service.ts` | GlobalSoul CRUD and synthesis |
-| `nexus-handoff-service.ts` | Cross-module delegations and handoffs |
+| `ara-handoff-service.ts` | Cross-module delegations and handoffs |
 | `global-projection-service.ts` | Neural State Vector calculations |
 | `nsv-service.ts` | NSV aggregation and updates |
 | `session-persistence-service.ts` | Chat history persistence |

@@ -1,6 +1,6 @@
 # Neural Viz Library
 
-Reusable, SVG-based data visualization components with Neural styling for the Agnes Nexus platform.
+Reusable, SVG-based data visualization components with Neural styling for the Agnes Ara platform.
 
 ## Overview
 
@@ -329,4 +329,4 @@ Potential additions:
 
 ---
 
-**Built with ❤️ for Agnes Nexus**
+**Built with ❤️ for Agnes Ara**

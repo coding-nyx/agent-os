@@ -1,10 +1,10 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import type { NexusRecord } from '@/lib/data-layer/index';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
+import type { AraRecord } from '@/lib/data-layer/index';
 
 /**
  * Read a single document once from the data layer (non-reactive).
- * Routes through NexusDataLayer — no direct Firestore dependency.
+ * Routes through AraDataLayer — no direct Firestore dependency.
  */
-export function readDocOnce<T>(collection: string, id: string): Promise<NexusRecord<T> | null> {
-  return getNexusDataLayer().getDocument<T>(collection, id);
+export function readDocOnce<T>(collection: string, id: string): Promise<AraRecord<T> | null> {
+  return getAraDataLayer().getDocument<T>(collection, id);
 }

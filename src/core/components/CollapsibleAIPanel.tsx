@@ -2,7 +2,7 @@
  * CollapsibleAIPanel — Reusable slide-out AI chat panel for module dashboards.
  *
  * Collapsed: floating button (bottom-right) with module-themed pulse animation.
- * Expanded:  slide-out panel (~400 px, right edge) wrapping NexusChat.
+ * Expanded:  slide-out panel (~400 px, right edge) wrapping AraChat.
  *
  * • Uses `useModuleAI` internally for conversation state.
  * • Keyboard shortcut: Cmd/Ctrl+K toggles the panel.
@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { useFocusTrap } from '@/lib/hooks/use-focus-trap';
-import { NexusChat } from './NexusChat';
+import { AraChat } from './AraChat';
 import type { ModuleTheme, ModuleId } from '@/lib/module-manifest';
 import type { AuthMode } from './UnifiedAuthModal';
 import type { MessageContent } from '@/lib/types';
@@ -52,7 +52,7 @@ export interface CollapsibleAIPanelProps {
   /** If provided, rendered as the first assistant message when the
    *  conversation history is empty. */
   greeting?: string;
-  /** Auth mode forwarded to NexusChat → UnifiedAuthModal. */
+  /** Auth mode forwarded to AraChat → UnifiedAuthModal. */
   authMode?: AuthMode;
 }
 
@@ -384,7 +384,7 @@ export const CollapsibleAIPanel = forwardRef<CollapsibleAIPanelRef, CollapsibleA
 
                 {/* ── Chat body ─────────────────────────────────────────────── */}
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <NexusChat
+                  <AraChat
                     ai={{
                       messages,
                       setMessages,

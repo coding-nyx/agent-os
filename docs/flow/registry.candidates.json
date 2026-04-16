@@ -3,57 +3,57 @@
     {
       "intentType": "plan_day",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "schedule_item",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "update_schedule",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "recovery_day",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "emotional_support",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "fitness",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "medical",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "financial",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "research",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "technical",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     },
     {
       "intentType": "general",
       "capabilities": [],
-      "primaryModule": "nexus"
+      "primaryModule": "ara"
     }
   ],
   "actions": [
@@ -70,7 +70,7 @@
     {
       "actionType": "enable_quiet_hours",
       "label": "Enable Quiet Hours",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -80,7 +80,7 @@
     {
       "actionType": "disable_quiet_hours",
       "label": "Disable Quiet Hours",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -90,7 +90,7 @@
     {
       "actionType": "update_quiet_hours",
       "label": "Update Quiet Hours",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -100,7 +100,7 @@
     {
       "actionType": "add_exempt_module",
       "label": "Add Exempt Module",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -110,7 +110,7 @@
     {
       "actionType": "snooze_notification",
       "label": "Snooze Notification",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -120,7 +120,7 @@
     {
       "actionType": "snooze_all_from_source",
       "label": "Snooze All From Source",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -130,7 +130,7 @@
     {
       "actionType": "mark_all_read",
       "label": "Mark All Read",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -140,7 +140,7 @@
     {
       "actionType": "bulk_delete",
       "label": "Bulk Delete",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "high",
       "emits": [],
@@ -320,7 +320,7 @@
     {
       "actionType": "sync_vitals",
       "label": "Synchronizing neural state vectors",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -360,7 +360,7 @@
     {
       "actionType": "detect_data_hint",
       "label": "Detect Data Hint",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -370,7 +370,7 @@
     {
       "actionType": "query_module_capability",
       "label": "Query Module Capability",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -380,7 +380,7 @@
     {
       "actionType": "notify_turn_complete",
       "label": "Notify Turn Complete",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -390,7 +390,7 @@
     {
       "actionType": "capture_nsv_snapshot",
       "label": "Capture Nsv Snapshot",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -400,7 +400,7 @@
     {
       "actionType": "execute_rollback",
       "label": "Execute Rollback",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -410,7 +410,7 @@
     {
       "actionType": "propose_draft",
       "label": "Propose Draft",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -420,7 +420,7 @@
     {
       "actionType": "create_general_request",
       "label": "Creating general request",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -430,7 +430,7 @@
     {
       "actionType": "delegate_to_module",
       "label": "Delegate To Module",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -440,7 +440,7 @@
     {
       "actionType": "broadcast_spine_event",
       "label": "Broadcast Spine Event",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -450,7 +450,7 @@
     {
       "actionType": "query_module",
       "label": "Query Module",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -460,7 +460,7 @@
     {
       "actionType": "query_module_data",
       "label": "Query Module Data",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -470,7 +470,7 @@
     {
       "actionType": "mutate_module_data",
       "label": "Mutate Module Data",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -480,7 +480,7 @@
     {
       "actionType": "update_global_identity",
       "label": "Update Global Identity",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -490,7 +490,7 @@
     {
       "actionType": "update_orchestrator_intake",
       "label": "Update Orchestrator Intake",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -500,7 +500,7 @@
     {
       "actionType": "focus_identity",
       "label": "Focus Identity",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -510,7 +510,7 @@
     {
       "actionType": "focus_bio",
       "label": "Focus Bio",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -520,7 +520,7 @@
     {
       "actionType": "focus_review",
       "label": "Focus Review",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -530,7 +530,7 @@
     {
       "actionType": "complete_orchestrator_onboarding",
       "label": "Complete Orchestrator Onboarding",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -540,7 +540,7 @@
     {
       "actionType": "propose_reminder",
       "label": "Proposing a reminder",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -550,7 +550,7 @@
     {
       "actionType": "propose_routine",
       "label": "Propose Routine",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -560,7 +560,7 @@
     {
       "actionType": "confirm_routine",
       "label": "Confirm Routine",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -570,7 +570,7 @@
     {
       "actionType": "dismiss_routine",
       "label": "Dismiss Routine",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -580,7 +580,7 @@
     {
       "actionType": "confirm_reminder",
       "label": "Scheduling reminder",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -590,7 +590,7 @@
     {
       "actionType": "dismiss_reminder",
       "label": "Dismissing reminder",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -600,7 +600,7 @@
     {
       "actionType": "query_reminders",
       "label": "Listing reminders",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -610,7 +610,7 @@
     {
       "actionType": "sync_personality_provision",
       "label": "Sync Personality Provision",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -620,7 +620,7 @@
     {
       "actionType": "web_search",
       "label": "Web Search",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -630,7 +630,7 @@
     {
       "actionType": "search_memory",
       "label": "Search Memory",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -640,7 +640,7 @@
     {
       "actionType": "suggest_field",
       "label": "Suggesting a new tracking field",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -670,7 +670,7 @@
     {
       "actionType": "create_field",
       "label": "Creating custom tracking field",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "medium",
       "emits": [],
@@ -720,7 +720,7 @@
     {
       "actionType": "delete_field",
       "label": "Removing custom tracking field",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "write",
       "risk": "high",
       "emits": [],
@@ -770,7 +770,7 @@
     {
       "actionType": "suggest_field_fix",
       "label": "Suggest Field Fix",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -780,7 +780,7 @@
     {
       "actionType": "validate_with_context",
       "label": "Validate With Context",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -790,7 +790,7 @@
     {
       "actionType": "explain_validation_error",
       "label": "Explain Validation Error",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -2090,7 +2090,7 @@
     {
       "actionType": "navigate_to_module",
       "label": "Navigate To Module",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -2100,7 +2100,7 @@
     {
       "actionType": "create_module_handoff",
       "label": "Create Module Handoff",
-      "moduleId": "nexus",
+      "moduleId": "ara",
       "mutability": "read",
       "risk": "medium",
       "emits": [],
@@ -2438,7 +2438,7 @@
       ],
       "consumedBy": [
         "atlas",
-        "nexus"
+        "ara"
       ],
       "source": "heuristic"
     },
@@ -2447,7 +2447,7 @@
       "description": "",
       "visibility": "standard",
       "producedBy": [
-        "nexus"
+        "ara"
       ],
       "consumedBy": [
         "titan"
@@ -2634,7 +2634,7 @@
       "visibility": "standard",
       "producedBy": [],
       "consumedBy": [
-        "nexus"
+        "ara"
       ],
       "source": "heuristic"
     },
@@ -2644,11 +2644,11 @@
       "visibility": "standard",
       "producedBy": [
         "atlas",
-        "nexus",
+        "ara",
         "titan"
       ],
       "consumedBy": [
-        "nexus"
+        "ara"
       ],
       "source": "heuristic"
     },

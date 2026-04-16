@@ -5,22 +5,23 @@ import type { IntakeThemeColor } from './types';
 
 /**
  * A canonical data point that the module needs from the user.
- * The LLM enriches this into a full FieldDefinition during onboarding.
  */
 export interface OnboardingDataPoint {
   /** Stable canonical ID — used as the key in onComplete(values) */
   id: string;
-  /** Human-readable label — context hint for LLM field generation */
+  /** Human-readable label */
   label: string;
-  /** Type hint for the LLM */
+  /** Field type — drives the form control rendered for this data point */
   type: FieldType;
   required: boolean;
-  /** Extra hint for the LLM (e.g. "use select with ISO country codes") */
+  /** Placeholder / help text shown inside the form control */
   hint?: string;
-  /** Explicit options for SELECT / MULTI_SELECT fields — used in fallback and passed to FieldDefinition */
+  /** Explicit options for SELECT / MULTI_SELECT fields */
   options?: Array<{ value: string; label: string }>;
   /** Autocomplete suggestions for TEXT fields — rendered as a datalist */
   autocomplete?: string[];
+  /** Section/group name for multi-section form layout — defaults to 'General' if omitted */
+  section?: string;
 }
 
 /**
@@ -34,9 +35,9 @@ export interface ModuleOnboardingSpec {
   themeColor: IntakeThemeColor;
   /** Lucide icon class (not an instance — pass the icon constructor) */
   icon: LucideIcon;
-  /** One-sentence goal for LLM schema generation */
+  /** One-sentence goal shown in the onboarding header */
   goal: string;
-  /** Paragraph of context fed to the LLM to enrich field definitions */
+  /** Paragraph of context describing this module's purpose */
   context: string;
   dataPoints: OnboardingDataPoint[];
   /** Whether to show the Express / Guided mode selector */

@@ -1,7 +1,7 @@
 import { GlobalProjection, NeuralStateVectorPatch, SpineEventType, Message } from '../types';
 import { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 import type { ActionOrchestrationMetadata, SpecialistConsultationArtifact } from '@/lib/contracts/orchestration';
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
@@ -158,7 +158,7 @@ class ModuleActionHub {
         ...context.orchestration,
         execution: {
           ...context.orchestration.execution,
-          source: resolvedModuleId as ModuleId | 'nexus',
+          source: resolvedModuleId as ModuleId | 'ara',
         },
         failure: context.orchestration.failure
           ? {
@@ -179,10 +179,10 @@ class ModuleActionHub {
     const resolvedContext = this.rewriteExecutionOwner(resolvedModuleId, context);
     try {
       await handler(resolvedContext);
-      NexusLogger.action(resolvedModuleId, actionType, resolvedContext.payload);
+      AraLogger.action(resolvedModuleId, actionType, resolvedContext.payload);
       return true;
     } catch (error) {
-      NexusLogger.warn(
+      AraLogger.warn(
         'ActionHub',
         `[ActionHub] Action "${actionType}" failed in module "${resolvedModuleId}": ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -201,7 +201,7 @@ class ModuleActionHub {
             ),
           });
         } catch (persistenceError) {
-          NexusLogger.warn(
+          AraLogger.warn(
             'ActionHub',
             `[ActionHub] Failed to persist execution failure: ${persistenceError instanceof Error ? persistenceError.message : String(persistenceError)}`,
           );
@@ -211,7 +211,7 @@ class ModuleActionHub {
       try {
         const { useOrchestrationStore } = await import('../stores/orchestration-store');
         useOrchestrationStore.getState().recordActionFailure(actionType);
-      } catch (e) { NexusLogger.warn('ActionHub', 'Orchestration store unavailable'); }
+      } catch (e) { AraLogger.warn('ActionHub', 'Orchestration store unavailable'); }
 
       return false;
     }
@@ -245,9 +245,9 @@ class ModuleActionHub {
     });
   }
 
-  registerProvider(moduleId: ModuleId | 'nexus', options: ProviderRegistrationOptions): void {
+  registerProvider(moduleId: ModuleId | 'ara', options: ProviderRegistrationOptions): void {
     const existing = AgentRegistryService.getProviderByModule(moduleId);
-    const manifest = moduleId === 'nexus' ? MODULE_MANIFEST.nexus : MODULE_MANIFEST[moduleId];
+    const manifest = moduleId === 'ara' ? MODULE_MANIFEST.ara : MODULE_MANIFEST[moduleId];
     AgentRegistryService.registerProvider({
       id: options.id ?? existing?.id ?? `${moduleId}-provider`,
       moduleId,
@@ -266,11 +266,11 @@ class ModuleActionHub {
     const capabilities = ActionCapabilityResolver.resolve(actionType);
     if (capabilities.length === 0) return null;
 
-    const preferredModuleIds: Array<ModuleId | 'nexus'> = [];
+    const preferredModuleIds: Array<ModuleId | 'ara'> = [];
     if (moduleId in MODULE_MANIFEST) {
       preferredModuleIds.push(moduleId as ModuleId);
-    } else if (moduleId === 'nexus') {
-      preferredModuleIds.push('nexus');
+    } else if (moduleId === 'ara') {
+      preferredModuleIds.push('ara');
     }
 
     const providers = AgentRegistryService.resolveProvidersForCapabilities(capabilities, {
@@ -301,7 +301,7 @@ class ModuleActionHub {
   async execute(moduleId: string, actionType: string, context: ActionContext): Promise<boolean> {
     // Hard guard: read-only modules must never dispatch explicit NSV-write actions.
     if (_actionGate.isNsvReadOnlyModule(moduleId) && _actionGate.isNsvWriteActionType(actionType)) {
-      NexusLogger.warn(
+      AraLogger.warn(
         'ActionHub',
         `[ActionHub] Module "${moduleId}" is NSV read-only — action "${actionType}" ignored`,
       );
@@ -309,7 +309,7 @@ class ModuleActionHub {
     }
 
     if ((context.isGuest || context.orchestration?.patientScope === 'GUEST') && inferMutatesState(actionType, context)) {
-      NexusLogger.warn(
+      AraLogger.warn(
         'ActionHub',
         `[ActionHub] Guest firewall blocked mutating action "${actionType}" for module "${moduleId}"`,
       );
@@ -322,11 +322,11 @@ class ModuleActionHub {
       try {
         const { AutopilotActionPolicyService } = await import('../services/autopilot-action-policy-service');
         if (!AutopilotActionPolicyService.isAllowed(actionType, autopilotLevel)) {
-          NexusLogger.warn('ActionHub', `[ActionHub] Action "${actionType}" blocked by autopilot policy at level ${autopilotLevel}`);
+          AraLogger.warn('ActionHub', `[ActionHub] Action "${actionType}" blocked by autopilot policy at level ${autopilotLevel}`);
           // Don't surface to user — just block silently and log
           return true;
         }
-      } catch (e) { NexusLogger.warn('ActionHub', 'Policy service unavailable, allowing through'); }
+      } catch (e) { AraLogger.warn('ActionHub', 'Policy service unavailable, allowing through'); }
     }
 
     const scopedContext: ActionContext = {
@@ -357,7 +357,7 @@ class ModuleActionHub {
                 context.userId ?? null,
                 (wasHandled: boolean) => resolve(wasHandled),
                 (err: string) => {
-                  NexusLogger.warn('ActionHub', `[KMP] ${moduleId}.${actionType} failed: ${err}`);
+                  AraLogger.warn('ActionHub', `[KMP] ${moduleId}.${actionType} failed: ${err}`);
                   resolve(false);
                 },
               );
@@ -367,7 +367,7 @@ class ModuleActionHub {
               void task;
             });
             if (handled) {
-              NexusLogger.action(moduleId, actionType, context.payload);
+              AraLogger.action(moduleId, actionType, context.payload);
               return true;
             }
           } finally {
@@ -375,7 +375,7 @@ class ModuleActionHub {
           }
         }
       } catch (e) {
-        NexusLogger.warn('ActionHub', `[KMP] Bridge unavailable for ${moduleId}.${actionType}: ${e}`);
+        AraLogger.warn('ActionHub', `[KMP] Bridge unavailable for ${moduleId}.${actionType}: ${e}`);
       }
     }
 
@@ -407,13 +407,13 @@ class ModuleActionHub {
       return capabilityFallback;
     }
 
-    // 3. Fallback to nexus — nexus handlers remain the last coordinator-owned escape hatch
-    const orchestratorHandlers = this.registry.get('nexus');
+    // 3. Fallback to ara — ara handlers remain the last coordinator-owned escape hatch
+    const orchestratorHandlers = this.registry.get('ara');
     if (orchestratorHandlers && orchestratorHandlers.has(actionType)) {
-      return this.executeHandler('nexus', actionType, orchestratorHandlers.get(actionType)!, context);
+      return this.executeHandler('ara', actionType, orchestratorHandlers.get(actionType)!, context);
     }
 
-    NexusLogger.warn('ActionHub', `No handler for "${actionType}" in module "${moduleId}"`);
+    AraLogger.warn('ActionHub', `No handler for "${actionType}" in module "${moduleId}"`);
     if (context.userId && context.orchestration) {
       try {
         await OrchestrationExecutionService.recordMissingHandlerFailure(context.userId, {
@@ -422,7 +422,7 @@ class ModuleActionHub {
           metadata: context.orchestration,
         });
       } catch (persistenceError) {
-        NexusLogger.warn(
+        AraLogger.warn(
           'ActionHub',
           `[ActionHub] Failed to persist missing-handler failure: ${persistenceError instanceof Error ? persistenceError.message : String(persistenceError)}`,
         );
@@ -455,8 +455,8 @@ class ModuleActionHub {
       }
     }
 
-    // Nexus actions
-    const orchestratorHandlers = this.registry.get('nexus');
+    // Ara actions
+    const orchestratorHandlers = this.registry.get('ara');
     if (orchestratorHandlers) {
       for (const action of orchestratorHandlers.keys()) {
         actions.add(action);
@@ -469,21 +469,21 @@ class ModuleActionHub {
     return this.registry.get(moduleId)?.has(actionType) ?? false;
   }
 
-  getModuleCapabilities(moduleId: ModuleId | 'nexus'): AgentCapability[] {
+  getModuleCapabilities(moduleId: ModuleId | 'ara'): AgentCapability[] {
     return AgentRegistryService.getCapabilitiesForModule(moduleId);
   }
 
   resolveProvidersForCapability(
     capability: AgentCapability,
-    options?: { preferredModuleIds?: Array<ModuleId | 'nexus'> },
-  ): Array<ModuleId | 'nexus'> {
+    options?: { preferredModuleIds?: Array<ModuleId | 'ara'> },
+  ): Array<ModuleId | 'ara'> {
     return AgentRegistryService
       .getProvidersForCapability(capability, options)
       .map((provider) => provider.moduleId);
   }
 
   resolveActionForProvider(
-    moduleId: ModuleId | 'nexus',
+    moduleId: ModuleId | 'ara',
     actionType: string,
     payload: Record<string, unknown>,
   ): { actionType: string; payload: Record<string, unknown> } {

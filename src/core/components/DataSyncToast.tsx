@@ -5,7 +5,7 @@
  * been detected and verified as discrepant from the stored profile value.
  *
  * Design:
- *  - Glassmorphism card matching the Nexus dark UI aesthetic.
+ *  - Glassmorphism card matching the Ara dark UI aesthetic.
  *  - Framer Motion enter/exit animations.
  *  - 10-second auto-dismiss with a shrinking progress bar.
  *  - Three actions: Update (confirm), Ignore (dismiss), Ask [Module] (handoff).

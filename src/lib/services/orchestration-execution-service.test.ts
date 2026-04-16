@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { InMemoryDataLayer } from '@/lib/data-layer/in-memory-data-layer';
-import { setNexusDataLayer } from '@/lib/data-layer/provider';
+import { setAraDataLayer } from '@/lib/data-layer/provider';
 import type { ActionOrchestrationMetadata } from '@/lib/contracts/orchestration';
 import { ActionHub } from '@/lib/actions/action-hub';
 import { OrchestrationExecutionService } from './orchestration-execution-service';
@@ -169,7 +169,7 @@ describe('OrchestrationExecutionService', () => {
 
   it('replays due retries and resolves the original failure on success', async () => {
     const dataLayer = new InMemoryDataLayer();
-    setNexusDataLayer(dataLayer);
+    setAraDataLayer(dataLayer);
     const metadata = makeMetadata();
     const handler = vi.fn();
     ActionHub.register('ledger', 'record_transaction_retry_success', handler);
@@ -215,7 +215,7 @@ describe('OrchestrationExecutionService', () => {
 
   it('creates a follow-up failure when a due retry fails again', async () => {
     const dataLayer = new InMemoryDataLayer();
-    setNexusDataLayer(dataLayer);
+    setAraDataLayer(dataLayer);
     const metadata = makeMetadata();
     ActionHub.register('ledger', 'record_transaction_retry_fail', async () => {
       throw new Error('Network timeout');

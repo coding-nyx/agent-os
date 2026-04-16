@@ -1,10 +1,10 @@
 /**
  * supabase-data-layer.ts
  *
- * NexusDataLayer implementation backed by Supabase (Postgres + Realtime).
+ * AraDataLayer implementation backed by Supabase (Postgres + Realtime).
  *
  * Schema (see supabase-schema.sql):
- *   nexus_documents (collection TEXT, id TEXT, data JSONB, updated_at TIMESTAMPTZ)
+ *   ara_documents (collection TEXT, id TEXT, data JSONB, updated_at TIMESTAMPTZ)
  *
  * Collection names may include "/" path segments for subcollection-style
  * namespacing (e.g. "sessions/s1/messages") — they are stored as plain strings,
@@ -22,31 +22,31 @@
 
 import { createClient, type SupabaseClient, type RealtimeChannel } from '@supabase/supabase-js';
 import type {
-  NexusDataLayer,
-  NexusDocumentId,
-  NexusRecord,
-  NexusQuery,
-  NexusQueryFilter,
+  AraDataLayer,
+  AraDocumentId,
+  AraRecord,
+  AraQuery,
+  AraQueryFilter,
   BatchOperation,
-  NexusDocumentListener,
-  NexusQueryListener,
-  NexusUnsubscribe,
+  AraDocumentListener,
+  AraQueryListener,
+  AraUnsubscribe,
 } from './index';
 
-const TABLE = 'nexus_documents';
+const TABLE = 'ara_documents';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function toRecord<T>(row: { collection: string; id: string; data: Record<string, unknown> }): NexusRecord<T> {
+function toRecord<T>(row: { collection: string; id: string; data: Record<string, unknown> }): AraRecord<T> {
   return { ...(row.data as T), id: row.id };
 }
 
 /**
- * Translates a NexusQueryFilter to a Supabase PostgREST filter applied on
+ * Translates a AraQueryFilter to a Supabase PostgREST filter applied on
  * the JSONB `data` column.  Returns null for operators handled client-side.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toPostgrestFilter(query: any, filter: NexusQueryFilter): any | null {
+function toPostgrestFilter(query: any, filter: AraQueryFilter): any | null {
   // PostgREST JSONB path syntax — no SQL quotes around field names:
   //   data->>field  text extraction  — for equality checks (== != in)
   //   data->field   JSONB extraction — for range comparisons (< <= > >=) so that
@@ -87,7 +87,7 @@ function toPostgrestFilter(query: any, filter: NexusQueryFilter): any | null {
   }
 }
 
-function applyClientFilter<T>(records: NexusRecord<T>[], filter: NexusQueryFilter): NexusRecord<T>[] {
+function applyClientFilter<T>(records: AraRecord<T>[], filter: AraQueryFilter): AraRecord<T>[] {
   return records.filter((rec) => {
     const value = (rec as Record<string, unknown>)[filter.field];
     switch (filter.op) {
@@ -103,7 +103,7 @@ function applyClientFilter<T>(records: NexusRecord<T>[], filter: NexusQueryFilte
   });
 }
 
-const CLIENT_SIDE_OPS = new Set<NexusQueryFilter['op']>(['not-in', 'contains']);
+const CLIENT_SIDE_OPS = new Set<AraQueryFilter['op']>(['not-in', 'contains']);
 
 function compareValues(a: unknown, b: unknown): number {
   if (a === b) return 0;
@@ -115,7 +115,7 @@ function compareValues(a: unknown, b: unknown): number {
 
 // ── Adapter ──────────────────────────────────────────────────────────────────
 
-export class SupabaseDataLayer implements NexusDataLayer {
+export class SupabaseDataLayer implements AraDataLayer {
   private readonly db: SupabaseClient;
 
   constructor(supabaseUrl: string, supabaseAnonKey: string);
@@ -130,7 +130,7 @@ export class SupabaseDataLayer implements NexusDataLayer {
 
   // ── Read ────────────────────────────────────────────────────────────────────
 
-  async getDocument<T>(collection: string, id: NexusDocumentId): Promise<NexusRecord<T> | null> {
+  async getDocument<T>(collection: string, id: AraDocumentId): Promise<AraRecord<T> | null> {
     const { data, error } = await this.db
       .from(TABLE)
       .select('collection, id, data')
@@ -143,13 +143,13 @@ export class SupabaseDataLayer implements NexusDataLayer {
     return toRecord<T>(data as { collection: string; id: string; data: Record<string, unknown> });
   }
 
-  async listDocuments<T>(collection: string, options?: { limit?: number }): Promise<NexusRecord<T>[]> {
+  async listDocuments<T>(collection: string, options?: { limit?: number }): Promise<AraRecord<T>[]> {
     const cap = options?.limit ?? 100;
     return this.query<T>({ collection, ...(cap > 0 ? { limit: cap } : {}) });
   }
 
-  async query<T>(nexusQuery: NexusQuery): Promise<NexusRecord<T>[]> {
-    const { collection, where, orderBy, limit } = nexusQuery;
+  async query<T>(araQuery: AraQuery): Promise<AraRecord<T>[]> {
+    const { collection, where, orderBy, limit } = araQuery;
 
     let q = this.db
       .from(TABLE)
@@ -157,7 +157,7 @@ export class SupabaseDataLayer implements NexusDataLayer {
       .eq('collection', collection);
 
     // Separate server-side and client-side filters
-    const clientFilters: NexusQueryFilter[] = [];
+    const clientFilters: AraQueryFilter[] = [];
     for (const filter of where ?? []) {
       if (CLIENT_SIDE_OPS.has(filter.op)) {
         clientFilters.push(filter);
@@ -188,7 +188,7 @@ export class SupabaseDataLayer implements NexusDataLayer {
     const { data, error } = await q;
     if (error) throw new Error(`[SupabaseDataLayer] query failed: ${error.message}`);
 
-    let records: NexusRecord<T>[] = (data as Array<{ collection: string; id: string; data: Record<string, unknown> }>).map(
+    let records: AraRecord<T>[] = (data as Array<{ collection: string; id: string; data: Record<string, unknown> }>).map(
       (row) => toRecord<T>(row),
     );
 
@@ -222,15 +222,15 @@ export class SupabaseDataLayer implements NexusDataLayer {
 
   async createDocument<T>(
     collection: string,
-    docData: Omit<NexusRecord<T>, 'id'> & Partial<Pick<NexusRecord<T>, 'id'>>,
-  ): Promise<NexusRecord<T>> {
+    docData: Omit<AraRecord<T>, 'id'> & Partial<Pick<AraRecord<T>, 'id'>>,
+  ): Promise<AraRecord<T>> {
     const id = docData.id ?? crypto.randomUUID();
     const { id: _drop, ...payload } = docData as Record<string, unknown>;
     void _drop;
     return this.setDocument<T>(collection, id, payload as T);
   }
 
-  async setDocument<T>(collection: string, id: NexusDocumentId, docData: T): Promise<NexusRecord<T>> {
+  async setDocument<T>(collection: string, id: AraDocumentId, docData: T): Promise<AraRecord<T>> {
     const { id: _drop, ...payload } = { ...(docData as Record<string, unknown>) };
     void _drop;
 
@@ -240,14 +240,14 @@ export class SupabaseDataLayer implements NexusDataLayer {
     );
 
     if (error) throw new Error(`[SupabaseDataLayer] setDocument failed: ${error.message}`);
-    return { ...docData, id } as NexusRecord<T>;
+    return { ...docData, id } as AraRecord<T>;
   }
 
   async updateDocument<T>(
     collection: string,
-    id: NexusDocumentId,
+    id: AraDocumentId,
     updates: Partial<T>,
-  ): Promise<NexusRecord<T> | null> {
+  ): Promise<AraRecord<T> | null> {
     const existing = await this.getDocument<T>(collection, id);
     if (!existing) return null;
 
@@ -263,7 +263,7 @@ export class SupabaseDataLayer implements NexusDataLayer {
     return this.setDocument<T>(collection, id, merged as T);
   }
 
-  async deleteDocument(collection: string, id: NexusDocumentId): Promise<void> {
+  async deleteDocument(collection: string, id: AraDocumentId): Promise<void> {
     const { error } = await this.db
       .from(TABLE)
       .delete()
@@ -293,9 +293,9 @@ export class SupabaseDataLayer implements NexusDataLayer {
 
   subscribeToDocument<T>(
     collection: string,
-    id: NexusDocumentId,
-    listener: NexusDocumentListener<T>,
-  ): NexusUnsubscribe {
+    id: AraDocumentId,
+    listener: AraDocumentListener<T>,
+  ): AraUnsubscribe {
     // Track whether the subscription is still active so we never call listener
     // after unsubscribe.
     let active = true;
@@ -377,14 +377,14 @@ export class SupabaseDataLayer implements NexusDataLayer {
     };
   }
 
-  subscribeToQuery<T>(nexusQuery: NexusQuery, listener: NexusQueryListener<T>): NexusUnsubscribe {
-    const { collection } = nexusQuery;
+  subscribeToQuery<T>(araQuery: AraQuery, listener: AraQueryListener<T>): AraUnsubscribe {
+    const { collection } = araQuery;
     let active = true;
     let currentChannel: RealtimeChannel | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
     const requery = () => {
-      this.query<T>(nexusQuery)
+      this.query<T>(araQuery)
         .then((docs) => { if (active) listener(docs); })
         .catch(() => { if (active) listener([]); });
     };
@@ -426,7 +426,7 @@ export class SupabaseDataLayer implements NexusDataLayer {
     };
 
     // Emit initial snapshot immediately (async)
-    this.query<T>(nexusQuery).then(listener).catch(() => listener([]));
+    this.query<T>(araQuery).then(listener).catch(() => listener([]));
 
     startChannel();
 

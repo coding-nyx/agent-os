@@ -1,9 +1,9 @@
 /**
  * scout-handoff-consumer.ts
  *
- * Enables Scout to receive and respond to `query`-type handoffs from Nexus.
+ * Enables Scout to receive and respond to `query`-type handoffs from Ara.
  *
- * When Nexus (or another module) dispatches a `query` handoff targeting `scout`,
+ * When Ara (or another module) dispatches a `query` handoff targeting `scout`,
  * this consumer picks it up, runs a cross-module query against the Scout knowledge
  * base, and stores the result as a `query_result` handoff so the originating
  * module can read it.
@@ -12,7 +12,7 @@
  * Called at: module bootstrap (e.g., ScoutPage mount or app init)
  */
 
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { ScoutCrossModuleQueryService } from './scout-cross-module-query-service';
 
@@ -45,14 +45,14 @@ export function registerScoutHandoffConsumer(context: HandoffConsumerContext): (
     const result = await ScoutCrossModuleQueryService.query(query, {
       userId: activeContext.userId,
       encryptionKey: activeContext.encryptionKey,
-      requestingModule: data.sourceModuleId ?? 'nexus',
+      requestingModule: data.sourceModuleId ?? 'ara',
     });
 
     if (!result) return;
 
     // Store result so the requesting module can consume it
-    const responseModuleId = data.sourceModuleId ?? 'nexus';
-    NexusHandoffService.store({
+    const responseModuleId = data.sourceModuleId ?? 'ara';
+    AraHandoffService.store({
       moduleId: responseModuleId,
       type: 'query_result',
       content: JSON.stringify({
@@ -80,7 +80,7 @@ export function registerScoutHandoffConsumer(context: HandoffConsumerContext): (
  * The result will be stored as a `query_result` handoff for `fromModuleId`.
  */
 function dispatchScoutQuery(query: string, fromModuleId: string): void {
-  NexusHandoffService.store({
+  AraHandoffService.store({
     moduleId: 'scout',
     type: 'query',
     content: query,

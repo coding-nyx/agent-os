@@ -44,7 +44,7 @@ describe('GuestQuotaService', () => {
 
   it('persists quota to localStorage', () => {
     GuestQuotaService.incrementTurn();
-    const stored = JSON.parse(localStorage.getItem('nexus_guest_quota')!);
+    const stored = JSON.parse(localStorage.getItem('ara_guest_quota')!);
     expect(stored.totalTurnsUsed).toBe(1);
   });
 
@@ -63,7 +63,7 @@ describe('GuestQuotaService', () => {
   it('reset clears the quota from localStorage', () => {
     GuestQuotaService.incrementTurn();
     GuestQuotaService.reset();
-    expect(localStorage.getItem('nexus_guest_quota')).toBeNull();
+    expect(localStorage.getItem('ara_guest_quota')).toBeNull();
 
     const fresh = GuestQuotaService.getQuota();
     expect(fresh.totalTurnsUsed).toBe(0);

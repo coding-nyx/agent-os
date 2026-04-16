@@ -1,11 +1,11 @@
 /**
  * supabase-data-layer.test.ts
  *
- * Runs the shared NexusDataLayer contract suite against a real Supabase instance.
+ * Runs the shared AraDataLayer contract suite against a real Supabase instance.
  *
  * Prerequisites:
  *   1. Apply supabase-schema.sql to your database.
- *   2. Enable Realtime on the nexus_documents table.
+ *   2. Enable Realtime on the ara_documents table.
  *   3. Set env vars (e.g. in .env.test.local):
  *        SUPABASE_URL=https://<project>.supabase.co
  *        SUPABASE_ANON_KEY=<anon-key>
@@ -38,10 +38,10 @@ import { describeAdapterContract } from './adapter-contract';
 const SUPABASE_URL = import.meta.env.SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY as string | undefined;
 
-const TABLE = 'nexus_documents';
+const TABLE = 'ara_documents';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  describe('SupabaseDataLayer — NexusDataLayer contract', () => {
+  describe('SupabaseDataLayer — AraDataLayer contract', () => {
     it.skip('skipped — set SUPABASE_URL and SUPABASE_ANON_KEY to run against a live Supabase instance', () => {});
   });
 } else {

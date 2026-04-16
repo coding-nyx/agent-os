@@ -55,7 +55,7 @@ function ModelBadgeInner() {
 
   const preferredProvider = (() => {
     try {
-      return localStorage.getItem('nexus_debug_provider');
+      return localStorage.getItem('ara_debug_provider');
     } catch {
       return null;
     }

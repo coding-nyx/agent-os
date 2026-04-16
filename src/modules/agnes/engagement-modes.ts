@@ -21,7 +21,7 @@ export interface AgnesPromptContinuity {
 }
 
 export const DEFAULT_AGNES_ENGAGEMENT_MODE: AgnesPersistentEngagementMode = 'deep';
-export const GUEST_AGNES_PREFERRED_MODE_KEY = 'nexus_agnes_preferred_mode_guest';
+export const GUEST_AGNES_PREFERRED_MODE_KEY = 'ara_agnes_preferred_mode_guest';
 
 export const AGNES_ENGAGEMENT_MODE_DEFINITIONS: Record<AgnesEngagementMode, AgnesEngagementModeDefinition> = {
   casual: {

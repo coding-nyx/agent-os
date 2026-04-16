@@ -98,7 +98,7 @@
     "create_financial_plan",
     "create_financial_plan_request"
   ],
-  "nexus": [
+  "ara": [
     "sync_vitals",
     "detect_data_hint",
     "propose_draft",
@@ -154,7 +154,7 @@
   ],
   "forge": [
     "execute_code",
-    "nexus_link_command",
+    "ara_link_command",
     "read_file",
     "write_file",
     "draft_email",

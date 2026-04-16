@@ -32,7 +32,7 @@ export interface Persona {
 }
 
 export interface ConversationContext {
-  /** Module that owns this conversation (e.g. 'agnes', 'titan'). Defaults to 'nexus' in the engine. */
+  /** Module that owns this conversation (e.g. 'agnes', 'titan'). Defaults to 'ara' in the engine. */
   moduleId?: string;
   systemPrompt: string;
   memoryContext: string[]; // Generic strings representing processed facts/history

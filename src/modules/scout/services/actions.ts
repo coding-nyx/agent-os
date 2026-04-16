@@ -1,5 +1,5 @@
 import { ActionHub } from '@/lib/actions/action-hub';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 import {
   loadScoutProfile,
   saveScoutProfile,
@@ -235,7 +235,7 @@ export function registerScoutActions() {
     },
 
     /**
-     * Global web search capability (shared with Nexus/Forge).
+     * Global web search capability (shared with Ara/Forge).
      */
     web_search: async (context) => {
       const { userId, encryptionKey, payload, pushAssistantMessage, emitSpineEvent } = context;
@@ -1044,7 +1044,7 @@ Return JSON: {
           topResults.map((src) =>
             addSource(src, { userId, encryptionKey })
           )
-        ).catch((e) => { NexusLogger.warn('ScoutActions', 'Source indexing failed', e); });
+        ).catch((e) => { AraLogger.warn('ScoutActions', 'Source indexing failed', e); });
       }
 
       pushAssistantMessage?.(`**Search Results (${merged.length} unique sources):**\n\n${formatted}`);

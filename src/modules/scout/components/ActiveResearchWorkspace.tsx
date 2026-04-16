@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { BookOpen, FileText, History, Loader2, Search, Sparkles, Zap } from 'lucide-react';
+import { BookOpen, FileText, History, Loader2, RefreshCw, Search, Sparkles, Zap } from 'lucide-react';
 import { getActionLabel } from '@/lib/actions/action-labels';
 import { ChatInterface } from '@/core/components/ChatInterface';
 import { NeuralButton } from '@/core/components/NeuralButton';
@@ -32,6 +32,7 @@ interface ActiveResearchWorkspaceProps {
   artifactsMode?: 'hidden' | 'sheet' | 'docked';
   artifactsPanel?: React.ReactNode;
   onToggleArtifacts?: () => void;
+  onReload?: () => void;
 }
 
 const ACTIVE_SESSION_STATUSES = new Set<ResearchSession['status']>([
@@ -56,6 +57,7 @@ export function ActiveResearchWorkspace({
   artifactsMode = 'hidden',
   artifactsPanel,
   onToggleArtifacts,
+  onReload,
 }: ActiveResearchWorkspaceProps) {
   // Stable no-op used when setMessages is not provided (edit/retry will be disabled)
   const noopSetMessages = useCallback((_msgs: Message[]) => { /* noop */ }, []);
@@ -254,6 +256,19 @@ export function ActiveResearchWorkspace({
               >
                 <History className="h-4 w-4" aria-hidden="true" />
                 <span>{artifactsLabel}</span>
+              </NeuralButton>
+            )}
+            {onReload && (
+              <NeuralButton
+                type="button"
+                onClick={onReload}
+                variant="ghost"
+                size="sm"
+                className="min-h-11"
+                aria-label="Reload session data"
+              >
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                <span>Reload</span>
               </NeuralButton>
             )}
             <NeuralButton

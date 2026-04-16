@@ -1,4 +1,4 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { ModuleId } from '@/lib/module-manifest';
 import type {
@@ -40,7 +40,7 @@ function generateId(): string {
 
 class ReminderLifecycleServiceImpl {
   async propose(userId: string, draft: ReminderProposalDraft): Promise<ReminderProposal> {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const now = new Date().toISOString();
     const id = generateId();
 
@@ -81,7 +81,7 @@ class ReminderLifecycleServiceImpl {
   }
 
   async confirm(userId: string, proposalId: string): Promise<{ scheduleId: string }> {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
 
     const record = await dataLayer.getDocument<PersistedReminderProposal>(
       proposalPath(userId),
@@ -144,7 +144,7 @@ class ReminderLifecycleServiceImpl {
   }
 
   async dismiss(userId: string, proposalId: string): Promise<void> {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     await dataLayer.updateDocument<PersistedReminderProposal>(proposalPath(userId), proposalId, {
       status: 'dismissed',
       updatedAt: new Date().toISOString(),
@@ -161,7 +161,7 @@ class ReminderLifecycleServiceImpl {
   }
 
   async cancel(userId: string, scheduleId: string): Promise<void> {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     await dataLayer.updateDocument<NotificationScheduleConfig>(
       `users/${userId}/${NOTIFICATION_COLLECTIONS.schedules}`,
       scheduleId,
@@ -179,7 +179,7 @@ class ReminderLifecycleServiceImpl {
   }
 
   async listProposals(userId: string): Promise<PersistedReminderProposal[]> {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const records = await dataLayer.query<PersistedReminderProposal>({
       collection: proposalPath(userId),
       where: [{ field: 'status', op: '==', value: 'pending' }],

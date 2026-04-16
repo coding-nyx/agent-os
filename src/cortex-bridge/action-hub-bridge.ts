@@ -1,10 +1,10 @@
 import { ActionHubJs, NsvOwnershipServiceJs, OrchestrationActionGateServiceJs } from '@cortex-logic';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
+import { AraLogger } from '@/lib/ara-logger';
 import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { SpineDomain, SpineEventPriority, SpineEventType } from '@/lib/types';
-import { createActionHubCallbacks } from './nexus-data-layer-bridge';
+import { createActionHubCallbacks } from './ara-data-layer-bridge';
 
 type ActionHubJsInstance = InstanceType<typeof ActionHubJs>;
 
@@ -38,7 +38,7 @@ export function getActionHubJs(encryptionKey?: CryptoKey | null): ActionHubJsIns
   if (_instance !== null && encryptionKey === _currentKey) return _instance;
   try {
     if (!ActionHubJs) return null; // KMP build not yet updated with ActionHubJs.kt
-    const callbacks = createActionHubCallbacks(getNexusDataLayer(), encryptionKey ?? null);
+    const callbacks = createActionHubCallbacks(getAraDataLayer(), encryptionKey ?? null);
 
     const updateNsv = (
       patchJson: string,
@@ -58,7 +58,7 @@ export function getActionHubJs(encryptionKey?: CryptoKey | null): ActionHubJsIns
         if (moduleId && _actionGate.isNsvReadOnlyModule(moduleId)) {
           const filteredJson = _nsvOwnership.filterWritePatch(moduleId, String(patchJson));
           if (!filteredJson) {
-            NexusLogger.warn('ActionHubBridge', `[NSV] Read-only module "${moduleId}" attempted NSV write — blocked`);
+            AraLogger.warn('ActionHubBridge', `[NSV] Read-only module "${moduleId}" attempted NSV write — blocked`);
             onComplete();
             return;
           }
@@ -110,7 +110,7 @@ export function getActionHubJs(encryptionKey?: CryptoKey | null): ActionHubJsIns
           cascadeDepth: ev.cascadeDepth ?? 0,
         });
       } catch (e) {
-        NexusLogger.warn('ActionHubBridge', `Spine emit failed: ${e}`);
+        AraLogger.warn('ActionHubBridge', `Spine emit failed: ${e}`);
       }
     };
 
@@ -128,7 +128,7 @@ export function getActionHubJs(encryptionKey?: CryptoKey | null): ActionHubJsIns
     _currentKey = encryptionKey;
     return _instance;
   } catch (e) {
-    NexusLogger.warn('ActionHubBridge', `Failed to initialize ActionHubJs: ${e}`);
+    AraLogger.warn('ActionHubBridge', `Failed to initialize ActionHubJs: ${e}`);
     return null;
   }
 }

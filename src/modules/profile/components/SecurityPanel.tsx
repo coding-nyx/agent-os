@@ -60,7 +60,7 @@ export function SecurityPanel() {
 
       const bundle = await exportUserData(user.uid, vaultKey);
       const isoDate = new Date().toISOString().slice(0, 10);
-      downloadAsJSON(bundle, `nexus-export-${isoDate}.json`);
+      downloadAsJSON(bundle, `ara-export-${isoDate}.json`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Export failed';
       setExportError(message);

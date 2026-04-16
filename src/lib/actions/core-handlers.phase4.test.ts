@@ -8,7 +8,7 @@ function makeContext(overrides: Partial<ActionContext> = {}): ActionContext {
   return {
     userId: 'user-1',
     isGuest: false,
-    moduleId: 'nexus',
+    moduleId: 'ara',
     payload: {},
     emitSpineEvent: vi.fn(),
     updateGlobalSoul: vi.fn().mockResolvedValue(undefined),
@@ -17,7 +17,7 @@ function makeContext(overrides: Partial<ActionContext> = {}): ActionContext {
   };
 }
 
-describe('core-handlers Phase 4 Nexus actions', () => {
+describe('core-handlers Phase 4 Ara actions', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     registerCoreActions();
@@ -27,7 +27,7 @@ describe('core-handlers Phase 4 Nexus actions', () => {
     const updateProfile = vi.spyOn(CoreProfileService, 'updateProfile').mockResolvedValue(undefined);
     const markProfileDirty = vi.fn();
 
-    const executed = await ActionHub.execute('nexus', 'update_orchestrator_intake', makeContext({
+    const executed = await ActionHub.execute('ara', 'update_orchestrator_intake', makeContext({
       payload: {
         preferredName: ' Alice ',
         pronouns: ' she/her ',
@@ -51,12 +51,12 @@ describe('core-handlers Phase 4 Nexus actions', () => {
     expect(markProfileDirty).toHaveBeenCalledTimes(1);
   });
 
-  it('marks onboarding complete through the Nexus completion action', async () => {
+  it('marks onboarding complete through the Ara completion action', async () => {
     const updateProfile = vi.spyOn(CoreProfileService, 'updateProfile').mockResolvedValue(undefined);
     const markProfileDirty = vi.fn();
 
     const executed = await ActionHub.execute(
-      'nexus',
+      'ara',
       'complete_orchestrator_onboarding',
       makeContext({ markProfileDirty }),
     );
@@ -79,7 +79,7 @@ describe('core-handlers Phase 4 Nexus actions', () => {
       updatedHistory: [],
     });
 
-    const executed = await ActionHub.execute('nexus', 'query_module', makeContext({
+    const executed = await ActionHub.execute('ara', 'query_module', makeContext({
       payload: {
         moduleId: 'atlas',
         question: 'What is the main planning bottleneck?',
@@ -92,14 +92,14 @@ describe('core-handlers Phase 4 Nexus actions', () => {
     expect(executed).toBe(true);
     expect(spineEmit).toHaveBeenCalledWith(expect.objectContaining({
       type: 'MODULE_DELEGATED',
-      source: 'nexus',
+      source: 'ara',
       target: 'atlas',
       data: expect.objectContaining({ reason: 'query_module' }),
     }));
     expect(spineEmit).toHaveBeenCalledWith(expect.objectContaining({
       type: 'MODULE_DELEGATED',
       source: 'atlas',
-      target: 'nexus',
+      target: 'ara',
       data: expect.objectContaining({ reason: 'query_result' }),
     }));
     expect(pushAssistantMessage).toHaveBeenCalledWith(expect.stringContaining('Specialist Report: Atlas'));

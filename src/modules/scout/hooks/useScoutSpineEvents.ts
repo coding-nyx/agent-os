@@ -43,6 +43,11 @@ interface UseScoutSpineEventsReturn {
   setDeepResearchOpen: React.Dispatch<React.SetStateAction<boolean>>;
   deepResearchInitialQuery: string;
   setDeepResearchInitialQuery: React.Dispatch<React.SetStateAction<string>>;
+  /** Set when the LLM detected an off-topic query inside an active session. */
+  offTopicRouting: { query: string; sessionTopic: string; sessionId: string } | null;
+  setOffTopicRouting: React.Dispatch<
+    React.SetStateAction<{ query: string; sessionTopic: string; sessionId: string } | null>
+  >;
 }
 
 // ---------------------------------------------------------------------------
@@ -72,6 +77,11 @@ export function useScoutSpineEvents(params: UseScoutSpineEventsParams): UseScout
     query: string;
     reason: string;
     mode: 'web' | 'deep';
+  } | null>(null);
+  const [offTopicRouting, setOffTopicRouting] = useState<{
+    query: string;
+    sessionTopic: string;
+    sessionId: string;
   } | null>(null);
 
   // ---- Hide global FAB while deep-research panel is open ----
@@ -179,12 +189,20 @@ export function useScoutSpineEvents(params: UseScoutSpineEventsParams): UseScout
       if (query) setResearchProposal({ query, reason, mode });
     });
 
+    const unsubOffTopic = Spine.subscribe('SCOUT_OFF_TOPIC_DETECTED', (event) => {
+      const query = typeof event.data?.query === 'string' ? event.data.query : '';
+      const sessionTopic = typeof event.data?.sessionTopic === 'string' ? event.data.sessionTopic : '';
+      const sessionId = typeof event.data?.sessionId === 'string' ? event.data.sessionId : '';
+      if (query && sessionTopic) setOffTopicRouting({ query, sessionTopic, sessionId });
+    });
+
     return () => {
       unsubDeepResearch();
       unsubExport();
       unsubDigest();
       unsubSession();
       unsubProposal();
+      unsubOffTopic();
     };
   }, [openDeepResearch, presentExportDialog, userId, encryptionKey, setSelectedView, setActiveSessionId]);
 
@@ -202,5 +220,7 @@ export function useScoutSpineEvents(params: UseScoutSpineEventsParams): UseScout
     setDeepResearchOpen,
     deepResearchInitialQuery,
     setDeepResearchInitialQuery,
+    offTopicRouting,
+    setOffTopicRouting,
   };
 }

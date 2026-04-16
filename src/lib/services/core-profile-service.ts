@@ -1,13 +1,13 @@
 import { CoreUserProfile, AgentPersonalityProvision, OrchestrationPreferences, UserSecurityPreferences } from '../types';
 import { buildDefaultVaultLocks, MODULE_MANIFEST } from '@/lib/module-manifest';
-import { getNexusDataLayer } from '../data-layer/provider';
-import { NexusDataLayer } from '../data-layer';
+import { getAraDataLayer } from '../data-layer/provider';
+import { AraDataLayer } from '../data-layer';
 import { Spine } from '@/lib/spine/spine-event-bus';
 
 const COLLECTION = 'users';
 
 const DEFAULT_PERSONALITY: AgentPersonalityProvision = {
-  orchestratorAlias: 'Nyx',
+  orchestratorAlias: 'Ara',
   moduleAliases: {
     agnes: 'Agnes',
     titan: 'Titan',
@@ -79,10 +79,10 @@ const normalizeOrchestrationPreferences = (
 };
 
 /**
- * One-time migration: rename orchestratorAlias from "Nexus" to "Nyx".
+ * One-time migration: rename orchestratorAlias from "Ara" to "Ara".
  * Runs on read and persists the change asynchronously so subsequent reads
  * skip the migration. Idempotent — only fires when the stored value is
- * exactly "Nexus".
+ * exactly "Ara".
  */
 const _aliasMigrationFired = new Set<string>();
 // Cap consecutive write failures per uid so a rules-denied migration doesn't
@@ -93,10 +93,10 @@ const ALIAS_MIGRATION_MAX_FAILURES = 3;
 function migrateOrchestratorAlias(
   uid: string,
   profile: CoreUserProfile,
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
 ): CoreUserProfile {
   const currentAlias = profile.agentPersonalityProvision?.orchestratorAlias;
-  if (currentAlias !== 'Nexus') return profile;
+  if (currentAlias !== 'Ara') return profile;
   if (_aliasMigrationFired.has(uid)) return profile;
   const failures = _aliasMigrationFailures.get(uid) ?? 0;
   if (failures >= ALIAS_MIGRATION_MAX_FAILURES) return profile;
@@ -105,7 +105,7 @@ function migrateOrchestratorAlias(
   // Fire-and-forget write to persist the rename.
   dataLayer
     .updateDocument(COLLECTION, uid, {
-      'agentPersonalityProvision.orchestratorAlias': 'Nyx',
+      'agentPersonalityProvision.orchestratorAlias': 'Ara',
       updatedAt: new Date().toISOString(),
     } as any)
     .catch((err) => {
@@ -126,13 +126,13 @@ function migrateOrchestratorAlias(
     ...profile,
     agentPersonalityProvision: {
       ...profile.agentPersonalityProvision,
-      orchestratorAlias: 'Nyx',
+      orchestratorAlias: 'Ara',
     },
   };
 }
 
 export const CoreProfileService = {
-  async getProfile(uid: string, dataLayer: NexusDataLayer = getNexusDataLayer()): Promise<CoreUserProfile | null> {
+  async getProfile(uid: string, dataLayer: AraDataLayer = getAraDataLayer()): Promise<CoreUserProfile | null> {
     if (!uid) return null;
     const record = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);
     if (!record) return null;
@@ -149,7 +149,7 @@ export const CoreProfileService = {
   subscribeProfile(
     uid: string,
     onUpdate: (profile: CoreUserProfile | null) => void,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): () => void {
     if (!uid) return () => {};
     return dataLayer.subscribeToDocument<CoreUserProfile>(COLLECTION, uid, (record) => {
@@ -171,7 +171,7 @@ export const CoreProfileService = {
   async initializeProfile(
     uid: string,
     email: string,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<CoreUserProfile> {
     if (!uid || !email) throw new Error('Missing UID or email');
     const existing = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);
@@ -210,7 +210,7 @@ export const CoreProfileService = {
   async updateProfile(
     uid: string,
     updates: Partial<CoreUserProfile>,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     if (!uid) return;
     const patch = Object.fromEntries(
@@ -229,7 +229,7 @@ export const CoreProfileService = {
   async updatePersonality(
     uid: string,
     personality: Partial<AgentPersonalityProvision>,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     if (!uid) return;
     const existing = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);
@@ -267,7 +267,7 @@ export const CoreProfileService = {
   async updateSecurityPreferences(
     uid: string,
     prefs: Partial<UserSecurityPreferences>,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     if (!uid) return;
     const existing = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);
@@ -290,7 +290,7 @@ export const CoreProfileService = {
       await dataLayer.setDocument(COLLECTION, uid, nextProfile);
       Spine.emit({
         type: 'SECURITY_POLICY_UPDATED',
-        source: 'nexus',
+        source: 'ara',
         domain: 'system',
         data: {
           updatedKeys: Object.keys(prefs ?? {}),
@@ -308,7 +308,7 @@ export const CoreProfileService = {
   async updateOrchestrationPreferences(
     uid: string,
     prefs: Partial<OrchestrationPreferences>,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     if (!uid) return;
     const existing = await dataLayer.getDocument<CoreUserProfile>(COLLECTION, uid);

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryDataProvider } from '@/lib/data-layer';
-import { setNexusDataLayer } from '@/lib/data-layer/provider';
+import { setAraDataLayer } from '@/lib/data-layer/provider';
 
 const updateCrossFunctionalState = vi.fn().mockResolvedValue(undefined);
 
@@ -23,12 +23,12 @@ const { createEmptyAtlasProfile, saveAtlasProfile } = await import('./atlas-prof
 describe('atlas-profile-service alive entity wiring', () => {
   afterEach(() => {
     updateCrossFunctionalState.mockClear();
-    setNexusDataLayer(new InMemoryDataProvider());
+    setAraDataLayer(new InMemoryDataProvider());
   });
 
   it('syncs goal and habit alive entities when an authenticated profile is saved', async () => {
     const dataLayer = new InMemoryDataProvider();
-    setNexusDataLayer(dataLayer);
+    setAraDataLayer(dataLayer);
 
     const profile = createEmptyAtlasProfile();
     profile.goals = [

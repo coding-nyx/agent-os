@@ -13,7 +13,7 @@ export interface AuditTrailEntry {
   soul_snapshot: string;   // The state of the GlobalSoul before the action
 }
 
-const DB_NAME = 'nexus_audit_trail';
+const DB_NAME = 'ara_audit_trail';
 const STORE_NAME = 'events';
 const DB_VERSION = 2;
 /** Entries older than this are pruned during writes. */

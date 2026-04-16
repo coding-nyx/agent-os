@@ -17,7 +17,7 @@ export class OrchestrationInteractionAutomationService {
       autopilotLevel: input.autopilotLevel,
       candidate: {
         kind: input.kind,
-        sourceModuleId: 'nexus',
+        sourceModuleId: 'ara',
         confidence: input.confidence,
         requiresApproval: input.requiresApproval,
         highRisk: input.highRisk,

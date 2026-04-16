@@ -9,7 +9,7 @@
  *
  * Rules:
  *   - A module may only write paths it owns according to NSV_OWNERSHIP.
- *   - The 'nexus' is a special super-authority: it may write any path.
+ *   - The 'ara' is a special super-authority: it may write any path.
  *   - Modules with an empty ownership list (scout, forge, soma, bridge)
  *     cannot write any NSV fields directly.
  *
@@ -17,7 +17,7 @@
  *   SoulAuthorityGuard.canWrite('agnes', 'emotional.traumaMarkers')  → true
  *   SoulAuthorityGuard.canWrite('titan', 'emotional.traumaMarkers')  → false
  *   SoulAuthorityGuard.canWrite('forge', 'cognitive.focusScore')     → false
- *   SoulAuthorityGuard.canWrite('nexus', 'biological.cnsFatigue') → true
+ *   SoulAuthorityGuard.canWrite('ara', 'biological.cnsFatigue') → true
  */
 
 import { ModuleId } from '@/lib/module-manifest';
@@ -68,7 +68,7 @@ export const SoulAuthorityGuard = {
 
   /**
    * Returns the module ID that holds write authority over `nsvPath`.
-   * Returns 'nexus' for unrecognized paths.
+   * Returns 'ara' for unrecognized paths.
    */
   getAuthoritativeModule(nsvPath: NSVMetricPath): ModuleId {
     return _service.getAuthoritativeModule(nsvPath) as ModuleId;

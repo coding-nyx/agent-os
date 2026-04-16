@@ -205,7 +205,7 @@ async function main() {
   const unlabeledActions = allActions.filter(a => !actionLabels.has(a));
   const orphanLabels = Array.from(actionLabels).filter(a => !actionRegistry.has(a));
 
-  const plannerText = await fs.readFile(path.join(ROOT, 'src', 'lib', 'services', 'nexus-action-planner-service.ts'), 'utf8');
+  const plannerText = await fs.readFile(path.join(ROOT, 'src', 'lib', 'services', 'ara-action-planner-service.ts'), 'utf8');
   const plannerIntents = Array.from(new Set(Array.from(plannerText.matchAll(/case\s+'([^']+)'/g)).map(m => m[1])));
   const intentNotPlanned = intentTypes.filter(i => !plannerIntents.includes(i));
 

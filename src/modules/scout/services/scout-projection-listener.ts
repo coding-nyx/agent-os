@@ -7,7 +7,7 @@
  */
 
 import { Spine } from '@/lib/spine/spine-event-bus';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import type { ScoutDigest, ScoutKnowledgeNode } from '../types';
 import { ScoutExternalSignalService } from './scout-external-signal-service';
@@ -45,7 +45,7 @@ export function registerScoutProjectionListeners() {
     if (!data?.userId || !data.node) return;
 
     try {
-      await ScoutExternalSignalService.syncKnowledgeNode(getNexusDataLayer(), data.userId, data.node);
+      await ScoutExternalSignalService.syncKnowledgeNode(getAraDataLayer(), data.userId, data.node);
     } catch (err) {
       console.error('[ScoutProjectionListener] Failed to sync knowledge node into memory surfaces:', err);
     }
@@ -56,7 +56,7 @@ export function registerScoutProjectionListeners() {
     if (!data?.userId || !data.digest) return;
 
     try {
-      await ScoutExternalSignalService.syncDigest(getNexusDataLayer(), data.userId, data.digest);
+      await ScoutExternalSignalService.syncDigest(getAraDataLayer(), data.userId, data.digest);
     } catch (err) {
       console.error('[ScoutProjectionListener] Failed to sync digest into memory surfaces:', err);
     }

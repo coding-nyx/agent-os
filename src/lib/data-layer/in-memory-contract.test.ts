@@ -1,7 +1,7 @@
 /**
  * in-memory-contract.test.ts
  *
- * Runs the shared NexusDataLayer contract suite against InMemoryDataLayer.
+ * Runs the shared AraDataLayer contract suite against InMemoryDataLayer.
  * This is the baseline: every other adapter must pass the same suite.
  */
 

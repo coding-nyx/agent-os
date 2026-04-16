@@ -15,7 +15,7 @@ const MAX_RECOVERY_ATTEMPTS = 3;
 export function usePendingRecovery(moduleId: string) {
   const [pendingRequest, setPendingRequest] = useState<PendingRequestState | null>(null);
   
-  const storageKey = `nexus_pending_${moduleId}`;
+  const storageKey = `ara_pending_${moduleId}`;
 
   useEffect(() => {
     try {

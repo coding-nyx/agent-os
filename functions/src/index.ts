@@ -145,37 +145,37 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
     // --- Health & Body ---
     case 'BURNOUT_WARNING':
       return {
-        title: 'Nexus Alert \u2014 Burnout Risk Detected',
+        title: 'Ara Alert \u2014 Burnout Risk Detected',
         body: payloadData?.reason === 'high_fatigue_low_resilience'
           ? 'High CNS fatigue combined with low emotional resilience detected. Consider rest.'
           : 'Your system is showing signs of burnout. Take a break.'
       };
     case 'BURNOUT_TRAJECTORY_WARNING':
       return {
-        title: 'Nexus Alert \u2014 Burnout Trajectory Rising',
+        title: 'Ara Alert \u2014 Burnout Trajectory Rising',
         body: payloadData?.note ?? 'Rising burnout trajectory detected. Proactive intervention recommended.'
       };
     case 'BLOCK_HIGH_INTENSITY':
       return {
-        title: 'Nexus Alert \u2014 High-Intensity Training Blocked',
+        title: 'Ara Alert \u2014 High-Intensity Training Blocked',
         body: String(payloadData?.reason || '').includes('cns')
           ? 'CNS fatigue is too high for intense training today.'
           : String(payloadData?.reason || '').includes('clearance')
             ? 'Medical clearance is required before high-intensity activity.'
             : payloadData?.activity
               ? `High-intensity training has been blocked for ${payloadData.activity}.`
-              : 'High-intensity training has been blocked by Nexus.'
+              : 'High-intensity training has been blocked by Ara.'
       };
     case 'MEDICAL_ALERT':
       return {
-        title: 'Nexus Alert \u2014 Medical Alert',
+        title: 'Ara Alert \u2014 Medical Alert',
         body: payloadData?.note ? String(payloadData.note)
           : payloadData?.alertCount ? `${payloadData.alertCount} severe biomarker flag(s) detected. Check Soma for details.`
           : 'A medical alert has been issued. Check Soma/Titan for details.'
       };
     case 'WELLNESS_ALERT':
       return {
-        title: 'Nexus Alert \u2014 Wellness Alert',
+        title: 'Ara Alert \u2014 Wellness Alert',
         body: payloadData?.reason === 'high_fatigue_low_resilience'
           ? 'High CNS fatigue combined with low emotional resilience detected. Consider rest.'
           : 'Your system is showing signs of burnout. Take a break.'
@@ -184,12 +184,12 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
     // --- Financial ---
     case 'FINANCIAL_STRESS':
       return {
-        title: 'Nexus Alert \u2014 Financial Stress Detected',
+        title: 'Ara Alert \u2014 Financial Stress Detected',
         body: 'Resource friction is critically high. Ledger recommends reviewing your budget.'
       };
     case 'BUDGET_ALERT':
       return {
-        title: 'Nexus Alert \u2014 Budget Warning',
+        title: 'Ara Alert \u2014 Budget Warning',
         body: payloadData?.category && payloadData?.percentUsed
           ? `Budget category '${payloadData.category}' is at ${Math.round(payloadData.percentUsed)}% usage.`
           : payloadData?.overspendRatio
@@ -198,21 +198,21 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
       };
     case 'OVERSPEND_DETECTED':
       return {
-        title: 'Nexus Alert \u2014 Overspend Detected',
+        title: 'Ara Alert \u2014 Overspend Detected',
         body: payloadData?.categoryName && payloadData?.overspendPercent
           ? `Category '${payloadData.categoryName}' is ${Math.round(payloadData.overspendPercent)}% over budget.`
           : 'Spending has exceeded budget allocation. Check Ledger.'
       };
     case 'EXPENSE_SPIKE':
       return {
-        title: 'Nexus Alert \u2014 Expense Spike',
+        title: 'Ara Alert \u2014 Expense Spike',
         body: payloadData?.percentChange
           ? `Expenses increased by ${Math.round(payloadData.percentChange)}% compared to the previous period.`
           : 'An unusual spike in expenses has been detected.'
       };
     case 'CASHFLOW_NEGATIVE':
       return {
-        title: 'Nexus Alert \u2014 Negative Cash Flow',
+        title: 'Ara Alert \u2014 Negative Cash Flow',
         body: payloadData?.deficit
           ? `Cash flow is negative with a deficit of ${payloadData.deficit}.`
           : 'Cash flow has turned negative. Review your income and expenses.'
@@ -221,21 +221,21 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
     // --- Cognitive & Planning ---
     case 'COGNITIVE_OVERLOAD':
       return {
-        title: 'Nexus Alert \u2014 Cognitive Overload',
+        title: 'Ara Alert \u2014 Cognitive Overload',
         body: payloadData?.activeLoad
           ? `Active cognitive load is at ${Math.round(payloadData.activeLoad)}. Consider deferring non-urgent decisions.`
           : 'Cognitive load is critically high. Consider deferring non-urgent decisions.'
       };
     case 'PLANNING_OVERLOAD':
       return {
-        title: 'Nexus Alert \u2014 Planning Overload',
+        title: 'Ara Alert \u2014 Planning Overload',
         body: payloadData?.planningLoad && payloadData?.deadlinePressure
           ? `Planning load (${Math.round(payloadData.planningLoad)}) and deadline pressure (${Math.round(payloadData.deadlinePressure)}) are critically high.`
           : 'Planning load is critically high. Atlas recommends simplifying your schedule.'
       };
     case 'DEADLINE_APPROACHING':
       return {
-        title: 'Nexus Alert \u2014 Deadline Approaching',
+        title: 'Ara Alert \u2014 Deadline Approaching',
         body: payloadData?.label
           ? `Deadline "${payloadData.label}" is approaching soon.`
           : payloadData?.hoursRemaining
@@ -244,7 +244,7 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
       };
     case 'DEADLINE_CRUNCH':
       return {
-        title: 'Nexus Alert \u2014 Deadline Pressure Critical',
+        title: 'Ara Alert \u2014 Deadline Pressure Critical',
         body: payloadData?.deadlinePressure
           ? `Deadline pressure is at ${Math.round(payloadData.deadlinePressure)}. Atlas suggests re-prioritising tasks.`
           : 'Deadline pressure is at critical levels. Atlas suggests re-prioritising tasks.'
@@ -253,14 +253,14 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
     // --- System-wide Critical ---
     case 'CRISIS_MODE':
       return {
-        title: 'Nexus Alert \u2014 Crisis Mode Activated',
+        title: 'Ara Alert \u2014 Crisis Mode Activated',
         body: payloadData?.note ? String(payloadData.note)
           : payloadData?.reason ? `Crisis mode activated: ${payloadData.reason}.`
           : 'Multiple domains are in critical state simultaneously. Immediate attention recommended.'
       };
     case 'CRISIS_DETECTED':
       return {
-        title: 'Nexus Alert \u2014 Crisis Detected',
+        title: 'Ara Alert \u2014 Crisis Detected',
         body: payloadData?.trigger && payloadData?.severity
           ? `A ${payloadData.severity} crisis has been flagged (trigger: ${payloadData.trigger}).`
           : 'A crisis-level event has been detected. Immediate review recommended.'
@@ -269,7 +269,7 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
     // --- Atlas Overload ---
     case 'ATLAS_ENERGY_OVERLOAD':
       return {
-        title: 'Nexus Alert \u2014 Energy Overload',
+        title: 'Ara Alert \u2014 Energy Overload',
         body: payloadData?.activeLoad
           ? `Active load is at ${Math.round(payloadData.activeLoad)}. Consider reducing scheduled intensity.`
           : payloadData?.loadPct
@@ -278,14 +278,14 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
       };
     case 'ATLAS_OVERLOAD_DETECTED':
       return {
-        title: 'Nexus Alert \u2014 System Overload',
+        title: 'Ara Alert \u2014 System Overload',
         body: payloadData?.state
           ? `Atlas has entered ${payloadData.state} state. Recovery measures recommended.`
           : 'Atlas has detected system overload. Recovery measures recommended.'
       };
     case 'ATLAS_PREDICTIVE_ALERT':
       return {
-        title: 'Nexus Alert \u2014 Predictive Risk Alert',
+        title: 'Ara Alert \u2014 Predictive Risk Alert',
         body: payloadData?.note ? String(payloadData.note)
           : payloadData?.reason ? `Predictive alert: ${payloadData.reason}.`
           : payloadData?.riskScore ? `Risk score is at ${payloadData.riskScore}. Proactive adjustment recommended.`
@@ -295,12 +295,12 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
     // --- Goals & Habits ---
     case 'STREAK_BROKEN':
       return {
-        title: 'Nexus Alert \u2014 Habit Streak At Risk',
+        title: 'Ara Alert \u2014 Habit Streak At Risk',
         body: 'Your habit streak health is critically low. Check Atlas to recover it.'
       };
     case 'COMMITMENT_MISSED':
       return {
-        title: 'Nexus Alert \u2014 Commitments Missed',
+        title: 'Ara Alert \u2014 Commitments Missed',
         body: payloadData?.overdueCount
           ? `${Math.round(payloadData.overdueCount)} task(s) are overdue. Review Atlas to get back on track.`
           : 'Tracked commitments have been missed. Check Atlas.'
@@ -309,14 +309,14 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
     // --- Other ---
     case 'SCOUT_KNOWLEDGE_ENRICHED':
       return {
-        title: 'Nexus Knowledge Enriched',
+        title: 'Ara Knowledge Enriched',
         body: payloadData?.claim
           ? `Auto-indexed discovery: "${String(payloadData.claim).slice(0, 60)}..."`
           : 'Scout has auto-indexed new research into your library.'
       };
     case 'MODULE_REMINDER_DUE':
       return {
-        title: 'Nexus Reminder',
+        title: 'Ara Reminder',
         body: payloadData?.note ? String(payloadData.note) : 'A scheduled reminder is due.'
       };
     case 'AI_LINK_FAILURE':
@@ -329,7 +329,7 @@ function deriveNotificationContent(eventType: string, payloadData: any): { title
     default:
       // Generic fallback — should rarely be reached now that all allowlisted types are handled.
       return {
-        title: 'Nexus Alert',
+        title: 'Ara Alert',
         body: payloadData?.note || payloadData?.body || payloadData?.message || payloadData?.reason || 'A system event occurred.'
       };
   }

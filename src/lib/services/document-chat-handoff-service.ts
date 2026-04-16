@@ -6,8 +6,8 @@ import {
   type DocumentPipelineStage,
 } from './document-pipeline';
 
-export type DocumentChatModuleId = 'soma' | 'ledger' | 'scout' | 'nexus';
-export type DocumentRouteModuleId = 'soma' | 'ledger' | 'scout' | 'nexus';
+export type DocumentChatModuleId = 'soma' | 'ledger' | 'scout' | 'ara';
+export type DocumentRouteModuleId = 'soma' | 'ledger' | 'scout' | 'ara';
 
 export interface DocumentClassificationResult {
   docType: string;
@@ -72,14 +72,14 @@ const MODULE_ANALYST_PROMPTS: Record<DocumentChatModuleId, string> = {
   soma: 'You triage and summarize medical documents for a health-focused assistant. Detect items like x-rays, prescriptions, lab reports, medical reports, discharge notes, and hospital bills.',
   ledger: 'You triage and summarize financial documents for a money-focused assistant. Detect items like receipts, invoices, statements, hospital bills, claims, balances, due dates, and anomalies.',
   scout: 'You triage and summarize research and evidence documents for a research assistant. Detect items like papers, notes, reports, memos, datasets, articles, and evidence bundles.',
-  nexus: 'You triage and summarize general documents for an orchestrator assistant. Detect likely topic, likely owning domain, and the most useful discussion path for the user.',
+  ara: 'You triage and summarize general documents for an orchestrator assistant. Detect likely topic, likely owning domain, and the most useful discussion path for the user.',
 };
 
 const MODULE_CONVERSATION_GUIDANCE: Record<DocumentChatModuleId, string> = {
   soma: 'Discuss the uploaded medical document set in plain language. Identify what each document is, connect related findings across files, call out contradictions or missing context, and explain what matters medically right now. If a billing document appears, mention its administrative relevance separately from clinical meaning. Do not emit action tags.',
   ledger: 'Discuss the uploaded financial document set in plain language. Explain charges, balances, due dates, line items, suspicious patterns, and any next review questions. If multiple files relate to the same event, connect them. Do not emit action tags.',
   scout: 'Discuss the uploaded research or evidence document set in plain language. Summarize what each file contributes, highlight corroboration or disagreement across files, and suggest the most useful follow-up questions. Do not emit action tags.',
-  nexus: 'Discuss the uploaded document set in plain language. Explain what the files appear to be about, how they relate, and which module or line of inquiry is most relevant. Do not emit action tags.',
+  ara: 'Discuss the uploaded document set in plain language. Explain what the files appear to be about, how they relate, and which module or line of inquiry is most relevant. Do not emit action tags.',
 };
 
 const SOMA_TYPE_INSTRUCTIONS: Record<string, string> = {
@@ -166,7 +166,7 @@ function inferDocTypeFallback(parsed: DocumentParsed, moduleId: DocumentChatModu
 }
 
 function inferTargetModule(docType: string, sourceModuleId: DocumentChatModuleId): DocumentRouteModuleId {
-  if (sourceModuleId !== 'nexus') return sourceModuleId;
+  if (sourceModuleId !== 'ara') return sourceModuleId;
 
   if (['xray', 'mri', 'ct', 'ultrasound', 'lab_report', 'medical_report', 'prescription', 'other_medical', 'medical_document'].includes(docType)) {
     return 'soma';
@@ -177,7 +177,7 @@ function inferTargetModule(docType: string, sourceModuleId: DocumentChatModuleId
   if (['research_paper', 'research_document', 'report'].includes(docType)) {
     return 'scout';
   }
-  return 'nexus';
+  return 'ara';
 }
 
 function isLikelyOcrFailureText(text: string): boolean {
@@ -258,7 +258,7 @@ function buildClassificationPrompt(moduleId: DocumentChatModuleId, parsed: Docum
     'Return ONLY valid JSON with this exact shape:',
     '{',
     '  "docType": "snake_case type",',
-    '  "targetModule": "soma|ledger|scout|nexus",',
+    '  "targetModule": "soma|ledger|scout|ara",',
     '  "confidence": 0.0,',
     '  "reasons": ["short reason", "short reason"]',
     '}',
@@ -299,7 +299,7 @@ function parseClassificationResponse(response: string, parsed: DocumentParsed, m
 
     const targetRaw = typeof data.targetModule === 'string' ? data.targetModule.trim() : '';
     const targetModule: DocumentRouteModuleId =
-      targetRaw === 'soma' || targetRaw === 'ledger' || targetRaw === 'scout' || targetRaw === 'nexus'
+      targetRaw === 'soma' || targetRaw === 'ledger' || targetRaw === 'scout' || targetRaw === 'ara'
         ? targetRaw
         : inferTargetModule(docType, moduleId);
 

@@ -167,7 +167,7 @@ export function useMasterThreadProposals({
   const editableTargetModules = useMemo(
     () =>
       Object.keys(MODULE_MANIFEST).filter(
-        (moduleId): moduleId is ModuleId => moduleId !== 'nexus',
+        (moduleId): moduleId is ModuleId => moduleId !== 'ara',
       ),
     [],
   );

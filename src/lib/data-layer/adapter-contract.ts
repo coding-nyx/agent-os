@@ -1,7 +1,7 @@
 /**
  * adapter-contract.ts
  *
- * Parameterised NexusDataLayer contract suite.
+ * Parameterised AraDataLayer contract suite.
  *
  * Usage:
  *   describeAdapterContract('MyAdapter', () => ({
@@ -9,7 +9,7 @@
  *     teardown: async () => { ... },   // wipe test data
  *   }));
  *
- * Every NexusDataLayer implementation must pass this suite for the abstraction
+ * Every AraDataLayer implementation must pass this suite for the abstraction
  * to be considered portable.  The suite covers:
  *
  *   getDocument · listDocuments · createDocument · setDocument
@@ -19,11 +19,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { NexusDataLayer, NexusRecord, BatchOperation } from './index';
+import type { AraDataLayer, AraRecord, BatchOperation } from './index';
 
 export interface AdapterHarness {
   /** Fresh adapter instance for the test.  Must start empty. */
-  adapter: NexusDataLayer;
+  adapter: AraDataLayer;
   /**
    * Called after each test group that writes data.
    * Must remove every document written during the test.
@@ -61,7 +61,7 @@ async function waitUntil(
 }
 
 export function describeAdapterContract(suiteName: string, factory: HarnessFactory): void {
-  describe(`${suiteName} — NexusDataLayer contract`, () => {
+  describe(`${suiteName} — AraDataLayer contract`, () => {
     // ── getDocument ───────────────────────────────────────────────────────────
 
     describe('getDocument', () => {
@@ -515,7 +515,7 @@ export function describeAdapterContract(suiteName: string, factory: HarnessFacto
       beforeEach(async () => { h = await factory(); });
 
       it('emits null immediately for a non-existent document', async () => {
-        const calls: Array<NexusRecord<unknown> | null> = [];
+        const calls: Array<AraRecord<unknown> | null> = [];
         const unsub = h.adapter.subscribeToDocument('users', 'u1', (d) => calls.push(d));
         await flush();
         await waitUntil(() => calls.length >= 1);
@@ -526,7 +526,7 @@ export function describeAdapterContract(suiteName: string, factory: HarnessFacto
 
       it('emits the current document immediately when it exists', async () => {
         await h.adapter.setDocument('users', 'u1', { name: 'Ada' });
-        const calls: Array<NexusRecord<{ name: string }> | null> = [];
+        const calls: Array<AraRecord<{ name: string }> | null> = [];
         const unsub = h.adapter.subscribeToDocument<{ name: string }>('users', 'u1', (d) => calls.push(d));
         await flush();
         await waitUntil(() => calls.length >= 1);
@@ -536,7 +536,7 @@ export function describeAdapterContract(suiteName: string, factory: HarnessFacto
       });
 
       it('notifies on setDocument', async () => {
-        const calls: Array<NexusRecord<{ title: string }> | null> = [];
+        const calls: Array<AraRecord<{ title: string }> | null> = [];
         const unsub = h.adapter.subscribeToDocument<{ title: string }>('notes', 'n1', (d) => calls.push(d));
         await flush();
         await waitUntil(() => calls.length >= 1);
@@ -551,7 +551,7 @@ export function describeAdapterContract(suiteName: string, factory: HarnessFacto
 
       it('notifies with null after deleteDocument', async () => {
         await h.adapter.setDocument('notes', 'n1', { title: 'Bye' });
-        const calls: Array<NexusRecord<unknown> | null> = [];
+        const calls: Array<AraRecord<unknown> | null> = [];
         const unsub = h.adapter.subscribeToDocument('notes', 'n1', (d) => calls.push(d));
         await flush();
         await waitUntil(() => calls.length >= 1);

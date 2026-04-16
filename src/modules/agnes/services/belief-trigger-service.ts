@@ -233,7 +233,7 @@ export function buildBeliefSessionInvitationSnapshot(
   invitation: BeliefSessionInvitation | null | undefined,
 ): MasterThreadShellSnapshot | null {
   if (!invitation || invitation.status !== 'pending') return null;
-  return MasterThreadService.createNexusShellSnapshot({
+  return MasterThreadService.createAraShellSnapshot({
     threadId: invitation.threadId,
     now: invitation.triggeredAt,
     pendingTargets: ['agnes'],

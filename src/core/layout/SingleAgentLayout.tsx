@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn, throttle } from '@/lib/utils';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { NeuralThemeColor } from '@/core/components/NeuralTabGroup';
 import { RoutingSuggestion } from '@/core/components/RoutingSuggestion';
 import { FloatingChatPanel } from '@/core/layout/FloatingChatPanel';
@@ -97,7 +97,7 @@ export function SingleAgentLayout({
   const setChatOverlayOpen = useUIStore((s) => s.setChatOverlayOpen);
   const setActiveLayout = useUIStore((s) => s.setActiveLayout);
 
-  // Sync overlay state to global store so NexusOverlay FAB hides
+  // Sync overlay state to global store so AraOverlay FAB hides
   const isOverlayChatOpen = !canDockChat && !isChatCollapsed;
   useEffect(() => {
     setChatOverlayOpen(isOverlayChatOpen);
@@ -317,7 +317,7 @@ export function SingleAgentLayout({
           </div>
           <div className="flex-1 min-w-0 w-full h-full flex flex-col">
             {topContent}
-            <NexusChat
+            <AraChat
               moduleId={moduleId}
               ai={ai}
               agentName={agentName}
@@ -397,7 +397,7 @@ export function SingleAgentLayout({
                     className="flex min-h-0 flex-1 flex-col pb-safe"
                   >
                     {topContent}
-                    <NexusChat                      moduleId={moduleId}
+                    <AraChat                      moduleId={moduleId}
                       ai={ai}
                       agentName={agentName}
                       themeColor={themeColor as any}

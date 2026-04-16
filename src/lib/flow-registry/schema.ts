@@ -29,7 +29,7 @@ export interface FlowActionSpec {
 
 export interface FlowProposalSpec {
   proposalType: string;
-  sourceModule: ModuleId | 'nexus';
+  sourceModule: ModuleId | 'ara';
   requiresApproval: boolean;
   lifecycleEvents: SpineEventType[];
 }

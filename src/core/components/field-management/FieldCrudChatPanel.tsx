@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useScopedConversation } from '@/lib/hooks/use-scoped-conversation';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { X, Plus, Database, Wand2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ModuleTheme } from '@/lib/module-manifest';
@@ -125,7 +125,7 @@ You are in a FIELD-CRUD scope. Do not discuss personal wellness data unless it r
           {/* Chat Workspace */}
           <div className="flex-1 min-h-0 flex flex-col bg-transparent p-2">
             <div className="flex-1 rounded-[2rem] overflow-hidden border border-white/[0.09] bg-white/[0.045]">
-              <NexusChat
+              <AraChat
                 ai={{
                   messages,
                   isProcessing: isLoading,

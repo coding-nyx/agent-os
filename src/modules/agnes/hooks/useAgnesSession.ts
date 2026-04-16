@@ -127,7 +127,7 @@ export function useAgnesSession({
     setSessionActive?.(currentState === 'session');
   }, [currentState, setSessionActive]);
 
-  // Hide Nexus FAB universally in Agnes
+  // Hide Ara FAB universally in Agnes
   useEffect(() => {
     setHideGlobalFAB(true);
     return () => setHideGlobalFAB(false);
@@ -227,7 +227,7 @@ export function useAgnesSession({
     }
 
     if (type === 'impromptu') {
-      sessionStorage.removeItem(`nexus_session_agnes_impromptu`);
+      sessionStorage.removeItem(`ara_session_agnes_impromptu`);
       const quickSupportGreetings = [
         "You reached out, and that matters. This is Impromptu mode \u2014 private, off the record, and focused on what you need right now. Take a breath, and whenever you're ready, tell me what's happening.",
         "This is a quiet, off-the-record space. We can keep it immediate and simple for as long as you need. What's coming up for you right now?",
@@ -352,7 +352,7 @@ export function useAgnesSession({
 
   const finalizeClose = useCallback(async () => {
     if (isImpromptu) {
-      try { sessionStorage.removeItem('nexus_session_agnes_impromptu'); } catch { /* ignore */ }
+      try { sessionStorage.removeItem('ara_session_agnes_impromptu'); } catch { /* ignore */ }
       setMessages([]);
     } else {
       await clearSession();

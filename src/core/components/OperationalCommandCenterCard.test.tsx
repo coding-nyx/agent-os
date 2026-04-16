@@ -17,7 +17,7 @@ import { OperationalCommandCenterCard } from './OperationalCommandCenterCard';
 
 function makeRuntimeSummary(): OrchestrationTurnRuntimeSummary {
   return {
-    moduleId: 'nexus',
+    moduleId: 'ara',
     autopilotLevel: 4,
     historyMode: 'silent',
     activeThreadId: 'thread-1',
@@ -69,7 +69,7 @@ const silentHistoryEntries: SilentHistoryEntry[] = [
     executionId: 'exec-ghost',
     proposalId: 'proposal-ghost',
     summary: 'Ghost reconciliation completed',
-    source: 'nexus',
+    source: 'ara',
     timestamp: '2026-03-24T14:15:00.000Z',
     patientScope: 'USER',
     metadata: {},

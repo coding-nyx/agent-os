@@ -3,7 +3,7 @@
  *
  * ProtectedRoute encodes ?returnTo=<path> when it redirects an unauthenticated
  * user to `/`. LandingPage must honour that param and navigate there after a
- * successful auth instead of unconditionally going to /nexus.
+ * successful auth instead of unconditionally going to /ara.
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -54,7 +54,7 @@ function renderAt(initialUrl: string) {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         {/* Dummy target routes so navigate doesn't 404 in the tree */}
-        <Route path="/nexus" element={<div data-testid="nexus" />} />
+        <Route path="/ara" element={<div data-testid="ara" />} />
         <Route path="/atlas" element={<div data-testid="atlas" />} />
       </Routes>
     </MemoryRouter>,
@@ -70,20 +70,20 @@ describe('LandingPage — returnTo deep-link (S22-017)', () => {
     mockAuth.isGuest = false;
   });
 
-  it('navigates to /nexus when authenticated and no returnTo param is present', () => {
+  it('navigates to /ara when authenticated and no returnTo param is present', () => {
     mockAuth.isAuthenticated = true;
 
     const { container } = render(
       <MemoryRouter initialEntries={['/']}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/nexus" element={<div data-testid="nexus-page" />} />
+          <Route path="/ara" element={<div data-testid="ara-page" />} />
         </Routes>
       </MemoryRouter>,
     );
 
-    // After the effect fires the router replaces / with /nexus.
-    expect(container.querySelector('[data-testid="nexus-page"]')).not.toBeNull();
+    // After the effect fires the router replaces / with /ara.
+    expect(container.querySelector('[data-testid="ara-page"]')).not.toBeNull();
   });
 
   it('navigates to returnTo path when authenticated and returnTo is a valid relative path', () => {
@@ -94,44 +94,44 @@ describe('LandingPage — returnTo deep-link (S22-017)', () => {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/atlas" element={<div data-testid="atlas-page" />} />
-          <Route path="/nexus" element={<div data-testid="nexus-page" />} />
+          <Route path="/ara" element={<div data-testid="ara-page" />} />
         </Routes>
       </MemoryRouter>,
     );
 
     expect(container.querySelector('[data-testid="atlas-page"]')).not.toBeNull();
-    // Must NOT have landed on /nexus
-    expect(container.querySelector('[data-testid="nexus-page"]')).toBeNull();
+    // Must NOT have landed on /ara
+    expect(container.querySelector('[data-testid="ara-page"]')).toBeNull();
   });
 
-  it('falls back to /nexus when returnTo is an absolute URL (open-redirect guard)', () => {
+  it('falls back to /ara when returnTo is an absolute URL (open-redirect guard)', () => {
     mockAuth.isAuthenticated = true;
 
     const { container } = render(
       <MemoryRouter initialEntries={['/?returnTo=http%3A%2F%2Fevil.com']}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/nexus" element={<div data-testid="nexus-page" />} />
+          <Route path="/ara" element={<div data-testid="ara-page" />} />
         </Routes>
       </MemoryRouter>,
     );
 
-    expect(container.querySelector('[data-testid="nexus-page"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="ara-page"]')).not.toBeNull();
   });
 
-  it('falls back to /nexus when returnTo starts with // (protocol-relative open-redirect)', () => {
+  it('falls back to /ara when returnTo starts with // (protocol-relative open-redirect)', () => {
     mockAuth.isAuthenticated = true;
 
     const { container } = render(
       <MemoryRouter initialEntries={['/?returnTo=%2F%2Fevil.com%2Fhijack']}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/nexus" element={<div data-testid="nexus-page" />} />
+          <Route path="/ara" element={<div data-testid="ara-page" />} />
         </Routes>
       </MemoryRouter>,
     );
 
-    expect(container.querySelector('[data-testid="nexus-page"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="ara-page"]')).not.toBeNull();
   });
 
   it('does not redirect when not authenticated', () => {
@@ -141,12 +141,12 @@ describe('LandingPage — returnTo deep-link (S22-017)', () => {
       <MemoryRouter initialEntries={['/']}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/nexus" element={<div data-testid="nexus-page" />} />
+          <Route path="/ara" element={<div data-testid="ara-page" />} />
         </Routes>
       </MemoryRouter>,
     );
 
     // LandingPage itself should still be rendered (not replaced).
-    expect(container.querySelector('[data-testid="nexus-page"]')).toBeNull();
+    expect(container.querySelector('[data-testid="ara-page"]')).toBeNull();
   });
 });

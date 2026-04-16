@@ -10,7 +10,11 @@ export interface UseModuleProfileOptions<TProfile> {
   /** Optional alias for loadProfile; used to trigger an explicit profile reload from outside the hook. */
   refreshProfile?: (params: { userId: string; encryptionKey: CryptoKey | null }) => Promise<TProfile | null>;
   saveProfile?: (profile: TProfile, params: { userId: string; encryptionKey: CryptoKey | null }) => Promise<void>;
-  subscribeProfile?: (params: { userId: string; encryptionKey: CryptoKey }, onUpdate: (profile: TProfile | null) => void) => () => void;
+  subscribeProfile?: (
+    params: { userId: string; encryptionKey: CryptoKey },
+    onUpdate: (profile: TProfile | null) => void,
+    onError?: (error: unknown) => void,
+  ) => () => void;
   syncGuestProfile?: (params: { userId: string; encryptionKey: CryptoKey }) => Promise<boolean>;
 }
 
@@ -31,6 +35,9 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
   const [hasSyncedGuest, setHasSyncedGuest] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
+  /** Set when the Firestore subscription fails (e.g. auth token expiry, permission denied).
+   *  Distinct from profile being null due to "document does not exist." */
+  const [profileError, setProfileError] = useState<'subscription_failed' | null>(null);
   const hasLoadedOnce = useRef(false);
   // True while a real-time Firestore subscription is active for this module.
   const hasActiveSubscriptionRef = useRef(false);
@@ -96,16 +103,28 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
 
       if (user && !isGuest && key && subscribeProfileRef.current) {
         hasActiveSubscriptionRef.current = true;
-        const unsub = subscribeProfileRef.current({ userId: user.uid, encryptionKey: key }, (nextProfile) => {
-          if (!mounted) return;
-          // React 18 automatic batching handles these synchronous updates in one
-          // render pass. Do NOT wrap in startTransition — that defers the render
-          // into a separate pass, causing visible layout shifts mid-agent-flow.
-          setProfile(nextProfile);
-          setIsOnboarding(resolveOnboardingGate(nextProfile));
-          setIsLoading(false);
-          hasLoadedOnce.current = true;
-        });
+        const unsub = subscribeProfileRef.current(
+          { userId: user.uid, encryptionKey: key },
+          (nextProfile) => {
+            if (!mounted) return;
+            // React 18 automatic batching handles these synchronous updates in one
+            // render pass. Do NOT wrap in startTransition — that defers the render
+            // into a separate pass, causing visible layout shifts mid-agent-flow.
+            setProfileError(null); // clear any prior error on successful update
+            setProfile(nextProfile);
+            setIsOnboarding(resolveOnboardingGate(nextProfile));
+            setIsLoading(false);
+            hasLoadedOnce.current = true;
+          },
+          (err) => {
+            if (!mounted) return;
+            console.error(`[useModuleProfile] ${moduleId} subscription error:`, err);
+            setProfileError('subscription_failed');
+            setIsLoading(false);
+            // Do NOT setProfile(null) — preserve the last known good profile
+            // so the agent keeps working with stale-but-valid data.
+          },
+        );
 
         if (!mounted) {
           hasActiveSubscriptionRef.current = false;
@@ -191,6 +210,7 @@ export function useModuleProfile<TProfile extends { onboardingComplete?: boolean
     setIsOnboarding,
     isLoading,
     encryptionKey,
+    profileError,
     persistProfile,
     reloadProfile,
   };

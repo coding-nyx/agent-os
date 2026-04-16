@@ -41,10 +41,12 @@ registerDiagnosisSpec(somaDiagnosisSpec);
 interface SomaContentProps {
   profile: SomaProfile | null;
   encryptionKey: CryptoKey | null;
+  profileError: 'subscription_failed' | null;
+  isLoading: boolean;
   agentAlias: string;
 }
 
-function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
+function SomaContent({ profile, encryptionKey, profileError, isLoading, agentAlias }: SomaContentProps) {
   const { user } = useAuth();
   const { sendMessage, analyzeImage } = useAI();
   const globalSoul = useGlobalSoulStore(s => s.globalSoul);
@@ -100,6 +102,13 @@ function SomaContent({ profile, encryptionKey, agentAlias }: SomaContentProps) {
         readinessScore: profile?.readinessScore,
         biomarkers: profile?.biomarkers,
       },
+      soma_profile_status: profile !== null
+        ? 'loaded'
+        : profileError === 'subscription_failed'
+          ? 'unavailable'
+          : isLoading
+            ? 'loading'
+            : 'empty',
     },
   });
 
@@ -389,8 +398,8 @@ export default function SomaPage() {
         refreshProfile: loadSomaProfile,
         syncGuestProfile: syncGuestSomaProfileToUser
       }}
-      renderContent={({ profile, encryptionKey }) => (
-        <SomaContent profile={profile} encryptionKey={encryptionKey} agentAlias={agentAlias} />
+      renderContent={({ profile, encryptionKey, profileError, isLoading }) => (
+        <SomaContent profile={profile} encryptionKey={encryptionKey} profileError={profileError} isLoading={isLoading} agentAlias={agentAlias} />
       )}
     />
   );

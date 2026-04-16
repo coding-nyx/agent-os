@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Zap, MessageSquare, ChevronLeft } from 'lucide-react';
 import type { ModuleOnboardingSpec } from './onboarding-types';
-import { useOnboardingSchema } from './use-onboarding-schema';
 import { useKeyboardAware } from './use-keyboard-aware';
 import { OnboardingFieldSet } from './OnboardingFieldSet';
 
@@ -24,7 +23,7 @@ export interface UnifiedOnboardingShellProps {
   /** Callback for Express mode completion. Receives field values keyed by canonical ID. */
   onExpressComplete: (values: Record<string, unknown>) => Promise<void>;
   /**
-   * Guided-mode content — render the existing GuidedIntakeFrame / NexusChat here.
+   * Guided-mode content — render the existing GuidedIntakeFrame / AraChat here.
    * When not provided the mode selector will hide the "Guided" card.
    */
   guidedContent?: React.ReactNode;
@@ -129,7 +128,29 @@ export function UnifiedOnboardingShell({
 }: UnifiedOnboardingShellProps) {
   const theme = THEME_ACCENT[spec.themeColor] ?? THEME_ACCENT.indigo;
   const keyboard = useKeyboardAware();
-  const { fields, sections, isLoading: schemaLoading } = useOnboardingSchema(spec);
+
+  const { fields, sections } = useMemo(() => {
+    const fields = spec.dataPoints.map((dp) => ({
+      id: dp.id,
+      name: dp.label,
+      type: dp.type,
+      required: dp.required,
+      options: dp.options,
+      metadata: {
+        section: dp.section ?? 'General',
+        placeholder: dp.hint ?? dp.label,
+        helpText: dp.hint,
+        ...(dp.autocomplete?.length ? { autocomplete: dp.autocomplete } : {}),
+      },
+    }));
+    const seen = new Set<string>();
+    const sections: string[] = [];
+    for (const f of fields) {
+      const s = (f.metadata?.section as string) || 'General';
+      if (!seen.has(s)) { seen.add(s); sections.push(s); }
+    }
+    return { fields, sections };
+  }, [spec]);
 
   const initialMode = defaultMode ?? (spec.fastTrackEnabled ? 'select' : 'guided');
   const [mode, setMode] = useState<'select' | 'express' | 'guided'>(initialMode);
@@ -259,11 +280,6 @@ export function UnifiedOnboardingShell({
               )}
               {mode === 'express' && (
                 <ProgressRing percent={progress} themeColor={spec.themeColor} />
-              )}
-              {schemaLoading && mode !== 'guided' && (
-                <span className="text-[11px] uppercase tracking-widest text-white/30 animate-pulse">
-                  Calibrating…
-                </span>
               )}
             </div>
           </div>

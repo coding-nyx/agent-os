@@ -1,11 +1,11 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
 import { LoadContext } from '@/lib/types/encrypted-document';
 import { TitanProfile, CustomField, TitanRecoveryPlan, TitanRecoveryCheckin } from '@/lib/types';
 import { normalizeRoutines } from '../utils';
 
-const GUEST_PROFILE_KEY = 'nexus_titan_profile_guest';
+const GUEST_PROFILE_KEY = 'ara_titan_profile_guest';
 
 export function createEmptyTitanProfile(): TitanProfile {
   const now = new Date().toISOString();
@@ -165,7 +165,7 @@ export async function saveTitanProfile(profile: TitanProfile, ctx: LoadContext):
 
   try {
     await syncAliveEntities(
-      getNexusDataLayer(),
+      getAraDataLayer(),
       bootstrapAliveEntities({
         titanWorkoutSessions: normalized.workoutSessions,
         titanSleepEntries: normalized.sleepLog,
@@ -181,6 +181,7 @@ export async function saveTitanProfile(profile: TitanProfile, ctx: LoadContext):
 export const subscribeTitanProfile: (
   ctx: LoadContext,
   onUpdate: (profile: TitanProfile | null) => void,
+  onError?: (error: unknown) => void,
 ) => () => void = _service.subscribe.bind(_service);
 
 export const syncGuestTitanProfileToUser: (ctx: LoadContext) => Promise<boolean> =

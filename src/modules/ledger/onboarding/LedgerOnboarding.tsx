@@ -1,13 +1,13 @@
 import React, { useCallback, useMemo } from 'react';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { useAuth } from '@/lib/auth-context';
 import { LedgerIntakeProfile, createEmptyLedgerProfile } from '../services/ledger-intake-service';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 import type { NeuralStateVectorPatch } from '@/lib/types';
 import { UnifiedOnboardingShell } from '@/core/intake/UnifiedOnboardingShell';
@@ -33,7 +33,7 @@ You collect a concise financial baseline before planning mode begins.
 
 OBJECTIVE:
 Collect in sequence:
-1. Confirm Nexus handoff context (name/pronouns/occupation/sleep) if present.
+1. Confirm Ara handoff context (name/pronouns/occupation/sleep) if present.
 2. Monthly income and preferred currency.
 3. Fixed and variable expense categories.
 4. Debt obligations and savings goals.
@@ -71,7 +71,7 @@ function buildBasePrompt(context: GlobalBaseIntakeContext): string {
   ].filter(Boolean);
 
   if (chunks.length === 0) return 'Ledger intake initialized. What is your monthly income and preferred currency?';
-  return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we start financial intake?`;
+  return `Ara handoff received. I have your ${chunks.join(', ')}. Is that correct before we start financial intake?`;
 }
 
 function parseLineItems(text: string): Array<{ id: string; label: string; amount: number }> {
@@ -222,7 +222,7 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
           await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch(console.error);
         }
         if (completed && Object.keys(vitalsPatch).length === 0) {
-          NexusHandoffService.store({ moduleId: 'ledger', type: 'delegate', content: buildCalibrationPrompt('ledger'), reason: 'calibration_request', sourceModuleId: 'ledger', createdAt: new Date().toISOString() });
+          AraHandoffService.store({ moduleId: 'ledger', type: 'delegate', content: buildCalibrationPrompt('ledger'), reason: 'calibration_request', sourceModuleId: 'ledger', createdAt: new Date().toISOString() });
         }
 
         return { nextState: { profile: nextProfile, baseContext: nextBaseContext, stepProgress: nextStep }, nextStep, completed };
@@ -244,7 +244,7 @@ ${hasBaseContext(state.baseContext) ? '- IMPORTANT: Do NOT ask for name or prono
       spec={LEDGER_BASE_SPEC}
       onExpressComplete={handleExpressComplete}
       guidedContent={
-        <NexusChat
+        <AraChat
           ai={{
             messages: intake.messages,
             isProcessing: intake.isProcessing,

@@ -16,7 +16,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { useAuth } from '@/lib/auth-context';
 import { useVault } from '@/lib/vault-context';
 import { encryptWithKey, decryptWithKey } from '@/lib/encryption';
@@ -97,7 +97,7 @@ export function useExtensionFieldValues(
     setError(null);
 
     try {
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
       const data = await dataLayer.getDocument<FirestoreFieldValues>(
         `extension_field_values/${user.uid}/modules`,
         moduleId
@@ -151,7 +151,7 @@ export function useExtensionFieldValues(
       if (!user?.uid) {
         throw new Error('User must be authenticated to save field values');
       }
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
 
       const version = ++saveVersionRef.current;
 

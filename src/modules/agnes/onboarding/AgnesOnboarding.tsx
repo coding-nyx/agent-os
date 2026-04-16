@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { GuidedIntakeStep, IntakeModuleConfig } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
 import { useIntakeOrchestrator } from '@/core/intake/use-intake-orchestrator';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { useAuth } from '@/lib/auth-context';
 import { BaseContext } from '../types';
 import { THERAPY_ONBOARDING_PERSONA } from '../personas';
@@ -10,7 +10,7 @@ import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-serv
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
 import { mergeNSVPatch } from '@/lib/services/nsv-service';
 import type { NeuralStateVectorPatch } from '@/lib/types';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
 import { buildCalibrationPrompt } from '@/lib/services/nsv-ownership';
 import { UnifiedOnboardingShell } from '@/core/intake/UnifiedOnboardingShell';
 import { AGNES_BASE_SPEC } from '@/core/intake/onboarding-configs';
@@ -153,7 +153,7 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
           await GlobalProjectionService.updateCrossFunctionalState(user.uid, vitalsPatch).catch(console.error);
         }
         if (result.completed && Object.keys(vitalsPatch).length === 0) {
-          NexusHandoffService.store({ moduleId: 'agnes', type: 'delegate', content: buildCalibrationPrompt('agnes'), reason: 'calibration_request', sourceModuleId: 'agnes', createdAt: new Date().toISOString() });
+          AraHandoffService.store({ moduleId: 'agnes', type: 'delegate', content: buildCalibrationPrompt('agnes'), reason: 'calibration_request', sourceModuleId: 'agnes', createdAt: new Date().toISOString() });
         }
         return result;
       }
@@ -166,7 +166,7 @@ ${(resolveIdentity(initialContextState.identity).name || resolveIdentity(initial
       spec={AGNES_BASE_SPEC}
       onExpressComplete={handleExpressComplete}
       guidedContent={
-        <NexusChat
+        <AraChat
           ai={{ messages: intake.messages, isProcessing: intake.isProcessing, streamingText: intake.streamingText, error: intake.error, quota: null, handleSendMessage: intake.handleSendMessage }}
           agentName="Agnes Intake"
           themeColor="violet"

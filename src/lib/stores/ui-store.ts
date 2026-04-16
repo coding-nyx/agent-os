@@ -15,7 +15,7 @@ interface UIStore {
   isRightRailVisible: boolean;
   setLeftRailVisible: (val: boolean) => void;
   setRightRailVisible: (val: boolean) => void;
-  // Module chat overlay state (used to hide NexusOverlay FAB)
+  // Module chat overlay state (used to hide AraOverlay FAB)
   isChatOverlayOpen: boolean;
   setChatOverlayOpen: (val: boolean) => void;
   // Layout mode for dynamic positioning

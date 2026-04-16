@@ -9,7 +9,7 @@ import { EncryptedData, encryptWithKey, decryptWithKey } from '../encryption';
 import { MODULE_MANIFEST, ModuleId } from '../module-manifest';
 import { GlobalProjection, ModuleMemoryEnvelope } from '../types';
 import { Spine } from '../spine/spine-event-bus';
-import { getNexusDataLayer } from '../data-layer/provider';
+import { getAraDataLayer } from '../data-layer/provider';
 import { BatchOperation } from '../data-layer/index';
 
 // ============================================================================
@@ -131,7 +131,7 @@ export async function exportModuleData(
 ): Promise<ModuleExportData | null> {
   const { includeMemory = false } = options;
   
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   const collectionName = MODULE_COLLECTIONS[moduleId];
   if (!collectionName) {
@@ -250,7 +250,7 @@ export async function exportAllData(
   encryptionKey: CryptoKey,
   options: ExportOptions = {}
 ): Promise<DataExport> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   const modulesToExport = options.modules || Object.keys(MODULE_COLLECTIONS) as ModuleId[];
   const modules: Record<string, ModuleExportData> = {};
@@ -452,7 +452,7 @@ export async function previewImport(
     return preview;
   }
 
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   // Check userId match
   if (importData.userId !== userId) {
@@ -492,7 +492,7 @@ async function createBackup(
   userId: string,
   encryptionKey: CryptoKey
 ): Promise<string> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   const backupData = await exportAllData(userId, encryptionKey, { includeMemory: true });
   const backupId = `backup_${Date.now()}`;
@@ -517,7 +517,7 @@ export async function importModuleData(
   options: ImportOptions = {}
 ): Promise<void> {
   const { dryRun = false, conflictResolution = 'replace' } = options;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   if (dryRun) {
     console.log(`[DataTransfer] DRY RUN: Would import ${moduleId}`);
@@ -595,7 +595,7 @@ export async function importAllData(
     }
   }
 
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   // Import modules
   for (const [moduleId, moduleData] of Object.entries(importData.modules)) {

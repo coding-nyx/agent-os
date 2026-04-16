@@ -1,7 +1,7 @@
 /**
  * in-memory-data-layer.ts
  *
- * A zero-dependency, in-memory implementation of the NexusDataLayer contract.
+ * A zero-dependency, in-memory implementation of the AraDataLayer contract.
  * Suitable for unit tests, Storybook, offline-first workflows, and CI pipelines
  * that should not touch Firebase.
  *
@@ -9,7 +9,7 @@
  * ─────────
  * • Full CRUD via in-memory Maps (per-collection)
  * • Real-time listeners (subscribeToDocument / subscribeToQuery) via pub/sub
- * • NexusQuery support: where (all operators), orderBy, limit
+ * • AraQuery support: where (all operators), orderBy, limit
  * • Dot-notation field paths for filters, ordering, and partial updates
  * • Proper unsubscribe / cleanup
  * • Deep-clone on every read/write so external mutations never corrupt the store
@@ -17,15 +17,15 @@
 
 import type {
   BatchOperation,
-  NexusDataLayer,
-  NexusDocumentId,
-  NexusDocumentListener,
-  NexusOrderBy,
-  NexusQuery,
-  NexusQueryFilter,
-  NexusQueryListener,
-  NexusRecord,
-  NexusUnsubscribe,
+  AraDataLayer,
+  AraDocumentId,
+  AraDocumentListener,
+  AraOrderBy,
+  AraQuery,
+  AraQueryFilter,
+  AraQueryListener,
+  AraRecord,
+  AraUnsubscribe,
 } from './index';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -47,12 +47,12 @@ const cloneValue = <T>(value: T): T => {
 
 // ─── InMemoryDataLayer ────────────────────────────────────────────────────────
 
-type AnyDocListener = NexusDocumentListener<any>;
-type AnyQueryEntry = { query: NexusQuery; listener: NexusQueryListener<any> };
+type AnyDocListener = AraDocumentListener<any>;
+type AnyQueryEntry = { query: AraQuery; listener: AraQueryListener<any> };
 
-export class InMemoryDataLayer implements NexusDataLayer {
+export class InMemoryDataLayer implements AraDataLayer {
   /** Per-collection document stores: collectionName → (id → record) */
-  private store = new Map<string, Map<string, NexusRecord<any>>>();
+  private store = new Map<string, Map<string, AraRecord<any>>>();
 
   /** Document listeners keyed by "collection:id" */
   private docListeners = new Map<string, Set<AnyDocListener>>();
@@ -66,7 +66,7 @@ export class InMemoryDataLayer implements NexusDataLayer {
    * @example
    *   new InMemoryDataLayer({ profiles: [{ id: 'u1', name: 'Ada' }] })
    */
-  constructor(seed?: Record<string, Array<NexusRecord<any>>>) {
+  constructor(seed?: Record<string, Array<AraRecord<any>>>) {
     if (seed) {
       for (const [collection, records] of Object.entries(seed)) {
         const map = this.ensureCollection(collection);
@@ -79,18 +79,18 @@ export class InMemoryDataLayer implements NexusDataLayer {
 
   // ── Read ────────────────────────────────────────────────────────────────────
 
-  async getDocument<T>(collection: string, id: NexusDocumentId): Promise<NexusRecord<T> | null> {
+  async getDocument<T>(collection: string, id: AraDocumentId): Promise<AraRecord<T> | null> {
     const record = this.ensureCollection(collection).get(id);
     return record ? cloneValue(record) : null;
   }
 
-  async listDocuments<T>(collection: string, options?: { limit?: number }): Promise<NexusRecord<T>[]> {
+  async listDocuments<T>(collection: string, options?: { limit?: number }): Promise<AraRecord<T>[]> {
     const cap = options?.limit ?? 100;
     return this.query<T>({ collection, ...(cap > 0 ? { limit: cap } : {}) });
   }
 
-  async query<T>(nexusQuery: NexusQuery): Promise<NexusRecord<T>[]> {
-    const { collection, where, orderBy, limit } = nexusQuery;
+  async query<T>(araQuery: AraQuery): Promise<AraRecord<T>[]> {
+    const { collection, where, orderBy, limit } = araQuery;
     let records = Array.from(this.ensureCollection(collection).values());
 
     if (where?.length) {
@@ -105,17 +105,17 @@ export class InMemoryDataLayer implements NexusDataLayer {
       records = records.slice(0, limit);
     }
 
-    return cloneValue(records) as NexusRecord<T>[];
+    return cloneValue(records) as AraRecord<T>[];
   }
 
   // ── Write ───────────────────────────────────────────────────────────────────
 
   async createDocument<T>(
     collection: string,
-    data: Omit<NexusRecord<T>, 'id'> & Partial<Pick<NexusRecord<T>, 'id'>>,
-  ): Promise<NexusRecord<T>> {
+    data: Omit<AraRecord<T>, 'id'> & Partial<Pick<AraRecord<T>, 'id'>>,
+  ): Promise<AraRecord<T>> {
     const id = (data as { id?: string }).id ?? generateId();
-    const record: NexusRecord<T> = { ...(data as T), id };
+    const record: AraRecord<T> = { ...(data as T), id };
     this.ensureCollection(collection).set(id, cloneValue(record));
     this.emitChanges(collection, id);
     return cloneValue(record);
@@ -123,10 +123,10 @@ export class InMemoryDataLayer implements NexusDataLayer {
 
   async setDocument<T>(
     collection: string,
-    id: NexusDocumentId,
+    id: AraDocumentId,
     data: T,
-  ): Promise<NexusRecord<T>> {
-    const record: NexusRecord<T> = { ...(data as T), id };
+  ): Promise<AraRecord<T>> {
+    const record: AraRecord<T> = { ...(data as T), id };
     this.ensureCollection(collection).set(id, cloneValue(record));
     this.emitChanges(collection, id);
     return cloneValue(record);
@@ -134,18 +134,18 @@ export class InMemoryDataLayer implements NexusDataLayer {
 
   async updateDocument<T>(
     collection: string,
-    id: NexusDocumentId,
+    id: AraDocumentId,
     updates: Partial<T>,
-  ): Promise<NexusRecord<T> | null> {
+  ): Promise<AraRecord<T> | null> {
     const current = this.ensureCollection(collection).get(id);
     if (!current) return null;
-    const updated = this.applyUpdates<T>(current as NexusRecord<T>, updates);
+    const updated = this.applyUpdates<T>(current as AraRecord<T>, updates);
     this.ensureCollection(collection).set(id, cloneValue(updated));
     this.emitChanges(collection, id);
     return cloneValue(updated);
   }
 
-  async deleteDocument(collection: string, id: NexusDocumentId): Promise<void> {
+  async deleteDocument(collection: string, id: AraDocumentId): Promise<void> {
     this.ensureCollection(collection).delete(id);
     this.emitChanges(collection, id);
   }
@@ -175,9 +175,9 @@ export class InMemoryDataLayer implements NexusDataLayer {
 
   subscribeToDocument<T>(
     collection: string,
-    id: NexusDocumentId,
-    listener: NexusDocumentListener<T>,
-  ): NexusUnsubscribe {
+    id: AraDocumentId,
+    listener: AraDocumentListener<T>,
+  ): AraUnsubscribe {
     const key = this.docKey(collection, id);
     if (!this.docListeners.has(key)) {
       this.docListeners.set(key, new Set());
@@ -187,7 +187,7 @@ export class InMemoryDataLayer implements NexusDataLayer {
 
     // Emit current state immediately (synchronous, mirroring Firestore behaviour)
     const snapshot = this.ensureCollection(collection).get(id) ?? null;
-    listener(cloneValue(snapshot) as NexusRecord<T> | null);
+    listener(cloneValue(snapshot) as AraRecord<T> | null);
 
     return () => {
       listeners.delete(listener as AnyDocListener);
@@ -196,14 +196,14 @@ export class InMemoryDataLayer implements NexusDataLayer {
   }
 
   subscribeToQuery<T>(
-    nexusQuery: NexusQuery,
-    listener: NexusQueryListener<T>,
-  ): NexusUnsubscribe {
-    const entry: AnyQueryEntry = { query: nexusQuery, listener: listener as NexusQueryListener<any> };
+    araQuery: AraQuery,
+    listener: AraQueryListener<T>,
+  ): AraUnsubscribe {
+    const entry: AnyQueryEntry = { query: araQuery, listener: listener as AraQueryListener<any> };
     this.queryListeners.add(entry);
 
     // Emit current state asynchronously (mirrors Firestore one-tick delay)
-    this.query<T>(nexusQuery).then((snapshot) => listener(snapshot));
+    this.query<T>(araQuery).then((snapshot) => listener(snapshot));
 
     return () => {
       this.queryListeners.delete(entry);
@@ -212,23 +212,23 @@ export class InMemoryDataLayer implements NexusDataLayer {
 
   // ── Private helpers ─────────────────────────────────────────────────────────
 
-  private ensureCollection(collection: string): Map<string, NexusRecord<any>> {
+  private ensureCollection(collection: string): Map<string, AraRecord<any>> {
     if (!this.store.has(collection)) {
       this.store.set(collection, new Map());
     }
     return this.store.get(collection)!;
   }
 
-  private docKey(collection: string, id: NexusDocumentId): string {
+  private docKey(collection: string, id: AraDocumentId): string {
     return `${collection}:${id}`;
   }
 
-  private emitChanges(collection: string, id: NexusDocumentId): void {
+  private emitChanges(collection: string, id: AraDocumentId): void {
     this.emitDocumentChange(collection, id);
     this.emitQueryChanges(collection);
   }
 
-  private emitDocumentChange(collection: string, id: NexusDocumentId): void {
+  private emitDocumentChange(collection: string, id: AraDocumentId): void {
     const key = this.docKey(collection, id);
     const listeners = this.docListeners.get(key);
     if (!listeners || listeners.size === 0) return;
@@ -250,7 +250,7 @@ export class InMemoryDataLayer implements NexusDataLayer {
 
   // ── Filter / sort helpers ───────────────────────────────────────────────────
 
-  private matchesFilter(record: NexusRecord<any>, filter: NexusQueryFilter): boolean {
+  private matchesFilter(record: AraRecord<any>, filter: AraQueryFilter): boolean {
     const value = this.getFieldValue(record, filter.field);
     const target = filter.value;
 
@@ -287,9 +287,9 @@ export class InMemoryDataLayer implements NexusDataLayer {
   }
 
   private compareWithOrder(
-    a: NexusRecord<any>,
-    b: NexusRecord<any>,
-    orderBy: NexusOrderBy[],
+    a: AraRecord<any>,
+    b: AraRecord<any>,
+    orderBy: AraOrderBy[],
   ): number {
     for (const rule of orderBy) {
       const direction = rule.direction === 'desc' ? -1 : 1;
@@ -333,14 +333,14 @@ export class InMemoryDataLayer implements NexusDataLayer {
 
   // ── Update helpers ──────────────────────────────────────────────────────────
 
-  private applyUpdates<T>(current: NexusRecord<T>, updates: Partial<T>): NexusRecord<T> {
+  private applyUpdates<T>(current: AraRecord<T>, updates: Partial<T>): AraRecord<T> {
     const next = cloneValue(current);
     for (const [path, value] of Object.entries(updates as Record<string, unknown>)) {
       this.setFieldValue(next as Record<string, unknown>, path, value);
     }
     // Prevent accidental id overwrites
-    (next as NexusRecord<T>).id = current.id;
-    return next as NexusRecord<T>;
+    (next as AraRecord<T>).id = current.id;
+    return next as AraRecord<T>;
   }
 
   private setFieldValue(

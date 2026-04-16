@@ -1,7 +1,7 @@
 /**
  * validation-service.ts — AI Validation Enhancements (S10-005)
  *
- * Top-level validation orchestrator for the Nexus/Agnes platform.
+ * Top-level validation orchestrator for the Ara/Agnes platform.
  *
  * Responsibilities (Single Responsibility per layer):
  *   1. getValidatorPersona   — maps moduleId → LLM system-prompt prefix
@@ -12,7 +12,7 @@
  *
  * Architecture notes:
  *   - Does NOT import Firebase directly; all persistence goes through
- *     getNexusDataLayer() which is already abstracted in field-validation-service.
+ *     getAraDataLayer() which is already abstracted in field-validation-service.
  *   - Does NOT import from src/bridge/. LLM transport is injected via the
  *     optional `sendMessage` parameter (filled from useAI() at the call-site).
  *   - Open/Closed: add new module personas to MODULE_VALIDATOR_PERSONAS without
@@ -109,7 +109,7 @@ const DEFAULT_VALIDATOR_PERSONA =
  * Used as the opening segment of every batch validation prompt so the LLM
  * applies module-appropriate domain knowledge and tolerance levels.
  *
- * @param moduleId - Nexus module identifier (e.g. 'ledger', 'agnes', 'titan')
+ * @param moduleId - Ara module identifier (e.g. 'ledger', 'agnes', 'titan')
  * @returns System-prompt prefix string (never throws, never returns empty)
  */
 export function getValidatorPersona(moduleId: string): string {
@@ -137,7 +137,7 @@ export function getValidatorPersona(moduleId: string): string {
  *   - If sendMessage is omitted, keyword-heuristic fallback is used.
  *   - If userId is empty, feedback enrichment is skipped (no Firestore read).
  *
- * @param moduleId    - Nexus module identifier
+ * @param moduleId    - Ara module identifier
  * @param patch       - Map of field names → proposed values
  * @param userId      - Authenticated user ID (used for feedback retrieval)
  * @param sendMessage - Optional LLM transport adapter (from useAI().sendMessage).

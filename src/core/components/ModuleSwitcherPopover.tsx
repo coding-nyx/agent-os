@@ -9,7 +9,7 @@ interface ModuleSwitcherPopoverProps {
   currentModuleId?: ModuleId | string;
 }
 
-// Modules shown in the popover grid — orchestrator (Nexus) is handled
+// Modules shown in the popover grid — orchestrator (Ara) is handled
 // separately as the HOME button above, so exclude it here.
 const POPOVER_MODULE_IDS: ModuleId[] = [
   ...HUB_MODULE_ORDER,
@@ -87,19 +87,19 @@ export function ModuleSwitcherPopover({ currentModuleId }: ModuleSwitcherPopover
             role="menu"
             aria-label="Module navigation"
           >
-            {/* Nexus — home base, hidden when already on orchestrator */}
-            {!isActiveModule('/nexus') && (
+            {/* Ara — home base, hidden when already on orchestrator */}
+            {!isActiveModule('/ara') && (
               <>
                 <button
                   type="button"
-                  onClick={() => handleNavigate('/nexus')}
+                  onClick={() => handleNavigate('/ara')}
                   role="menuitem"
                   className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl w-full text-left transition-colors hover:bg-violet-500/10 mb-1 min-h-[44px]"
                 >
                   <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#8B5CF620', border: '1px solid #8B5CF640' }}>
                     <Sparkles className="w-3 h-3" style={{ color: '#8B5CF6' }} />
                   </div>
-                  <span className="text-xs font-semibold text-violet-400">Nexus</span>
+                  <span className="text-xs font-semibold text-violet-400">Ara</span>
                   <span className="ml-auto text-[11px] text-white/25 uppercase tracking-wider">Home</span>
                 </button>
                 <div className="my-1.5 border-t border-white/[0.09]" />

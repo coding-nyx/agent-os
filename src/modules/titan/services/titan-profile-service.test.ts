@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryDataProvider } from '@/lib/data-layer';
-import { setNexusDataLayer } from '@/lib/data-layer/provider';
+import { setAraDataLayer } from '@/lib/data-layer/provider';
 
 vi.mock('@/lib/encryption', () => ({
   decryptWithKey: vi.fn(),
@@ -14,12 +14,12 @@ const { createEmptyTitanProfile, saveTitanProfile } = await import('./titan-prof
 
 describe('titan-profile-service alive entity wiring', () => {
   afterEach(() => {
-    setNexusDataLayer(new InMemoryDataProvider());
+    setAraDataLayer(new InMemoryDataProvider());
   });
 
   it('syncs workout and sleep alive entities when an authenticated profile is saved', async () => {
     const dataLayer = new InMemoryDataProvider();
-    setNexusDataLayer(dataLayer);
+    setAraDataLayer(dataLayer);
 
     const profile = createEmptyTitanProfile();
     profile.workoutSessions = [

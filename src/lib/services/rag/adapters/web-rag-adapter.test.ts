@@ -4,7 +4,7 @@ import { InMemoryDataProvider } from '@/lib/data-layer';
 // Mock the data layer provider to return our in-memory store
 let dataLayer: InMemoryDataProvider;
 vi.mock('@/lib/data-layer/provider', () => ({
-  getNexusDataLayer: () => dataLayer,
+  getAraDataLayer: () => dataLayer,
 }));
 
 // Mock EmbeddingService to avoid real API calls
@@ -184,7 +184,7 @@ describe('WebRagAdapter', () => {
     expect(res.facts[0].score).toBeGreaterThan(res.facts[1].score);
   });
 
-  it('filters by moduleId when not nexus', async () => {
+  it('filters by moduleId when not ara', async () => {
     await dataLayer.createDocument('rag_chunks', makeChunk(
       'atlas-chunk',
       'planning strategies for better sleep',
@@ -210,7 +210,7 @@ describe('WebRagAdapter', () => {
     expect(moduleIds.every(id => id === 'atlas')).toBe(true);
   });
 
-  it('searches all modules when moduleId is nexus', async () => {
+  it('searches all modules when moduleId is ara', async () => {
     await dataLayer.createDocument('rag_chunks', makeChunk(
       'atlas-chunk',
       'planning strategies for better sleep',
@@ -225,7 +225,7 @@ describe('WebRagAdapter', () => {
     ));
 
     const res = await WebRagAdapter.retrieve({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       query: 'sleep strategies tracking',
       userId: 'user-1',
       requiresVault: false,

@@ -1,6 +1,6 @@
 /**
  * e1RM & PR calculations — thin bridge over cortex-logic's E1rmServiceJs.
- * Algorithm lives in KMP commonMain so both Agnes and nexus-android produce
+ * Algorithm lives in KMP commonMain so both Agnes and ara-android produce
  * identical values.
  */
 

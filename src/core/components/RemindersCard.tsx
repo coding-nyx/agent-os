@@ -3,7 +3,7 @@ import { Bell, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
-import type { NexusRecord } from '@/lib/data-layer';
+import type { AraRecord } from '@/lib/data-layer';
 import type { ModuleId } from '@/lib/module-manifest';
 import { useNotifications } from '@/lib/notifications/NotificationContext';
 import { ModuleIcon } from '@/core/components/ModuleIcon';
@@ -20,7 +20,7 @@ interface ReminderItem {
   };
 }
 
-type ReminderRecord = NexusRecord<ReminderItem>;
+type ReminderRecord = AraRecord<ReminderItem>;
 
 function timeAgo(isoStr: string): string {
   const diff = Date.now() - new Date(isoStr).getTime();

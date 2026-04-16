@@ -3,7 +3,7 @@
  *
  * All five composite vectors (resilience, bandwidth, vitality, output, friction)
  * are computed in KMP commonMain (SpecVectorCalculator.kt) so both Agnes and
- * nexus-android produce identical values from the same NeuralStateVector.
+ * ara-android produce identical values from the same NeuralStateVector.
  *
  * Public API is unchanged: callers pass a plain TS NeuralStateVector and receive
  * plain JS objects. The JSON string round-trip is contained here.

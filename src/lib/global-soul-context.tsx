@@ -12,7 +12,7 @@ import { Spine, useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { useDataLayer } from './data-layer/provider';
 import { composeBoundedContext } from './services/context/context-budgeter';
 
-const MAX_NEXUS_CONTEXT_CHARS = 4_200;
+const MAX_ARA_CONTEXT_CHARS = 4_200;
 const MAX_MODULE_CONTEXT_CHARS = 2_600;
 
 interface GlobalSoulStore {
@@ -96,7 +96,7 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
       setSoulStale(true);
       Spine.emit({
         type: 'HEALTH_CONTEXT_STALE',
-        source: 'nexus',
+        source: 'ara',
         domain: 'system',
         data: { reason: 'refresh_failed' },
         cascadeDepth: 0,
@@ -119,7 +119,7 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
       // the failure. The 500ms Spine debounce also limits duplicate emissions.
       Spine.emit({
         type: 'SOUL_STALE',
-        source: 'nexus',
+        source: 'ara',
         domain: 'system',
         data: { reason: 'nsv_write_failed', error: e instanceof Error ? e.message : String(e) },
         cascadeDepth: 0,
@@ -266,7 +266,7 @@ export function GlobalSoulProvider({ children }: { children: ReactNode }) {
       ],
       nsvBlock: formatNSVForPrompt(state),
       insightLines: safeInsights,
-      maxChars: MAX_NEXUS_CONTEXT_CHARS,
+      maxChars: MAX_ARA_CONTEXT_CHARS,
       minNsvChars: 420,
     });
     return {

@@ -18,7 +18,7 @@ describe('CoreProfileService orchestration preferences', () => {
       pronouns: 'they/them',
       onboardingComplete: true,
       agentPersonalityProvision: {
-        orchestratorAlias: 'Nexus',
+        orchestratorAlias: 'Ara',
         moduleAliases: { agnes: 'Agnes', titan: 'Titan', ledger: 'Ledger' },
         agentGenders: {
           orchestrator: 'female',

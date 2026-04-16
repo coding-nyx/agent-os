@@ -24,7 +24,7 @@ describe('OrchestrationActionGateService', () => {
 
   it('allows non-mutating analysis actions to proceed without approval', () => {
     const decision = OrchestrationActionGateService.evaluate({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       actionType: 'generate_summary',
       payload: {},
       autopilotLevel: 2,
@@ -41,7 +41,7 @@ describe('OrchestrationActionGateService', () => {
 
   it('treats delegate_to_module as non-mutating so routing is not held for approval', () => {
     const decision = OrchestrationActionGateService.evaluate({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       actionType: 'delegate_to_module',
       payload: { moduleId: 'atlas', reason: 'planning support' },
       autopilotLevel: 2,
@@ -58,7 +58,7 @@ describe('OrchestrationActionGateService', () => {
 
   it('keeps search_memory silent at level 5 even if recovered payload requests approval', () => {
     const decision = OrchestrationActionGateService.evaluate({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       actionType: 'search_memory',
       payload: { query: 'sleep', requiresApproval: true },
       autopilotLevel: 5,

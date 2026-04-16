@@ -12,7 +12,7 @@ describe('OrchestrationRolloutService', () => {
       rawInput: 'plan my day tomorrow',
       normalizedInput: 'plan my day tomorrow',
       parserVersion: 'phase1-v1',
-      sourceModuleId: 'nexus',
+      sourceModuleId: 'ara',
       generatedAt: '2026-03-24T00:00:00.000Z',
       timezone: 'UTC',
       confidence: 0.84,
@@ -26,7 +26,7 @@ describe('OrchestrationRolloutService', () => {
       rawInput: 'move it',
       normalizedInput: 'move it',
       parserVersion: 'phase1-v1',
-      sourceModuleId: 'nexus',
+      sourceModuleId: 'ara',
       generatedAt: '2026-03-24T00:00:00.000Z',
       timezone: 'UTC',
       confidence: 0.41,
@@ -39,7 +39,7 @@ describe('OrchestrationRolloutService', () => {
     OrchestrationRolloutService.recordRoutingDecision({ target: 'atlas', confidence: 0.9, reason: 'command:planning' });
     OrchestrationRolloutService.recordRoutingDecision({ target: 'scout', confidence: 0.78, reason: 'capability:scout-default' });
     OrchestrationRolloutService.recordRoutingDecision({ target: 'agnes', confidence: 0.72, reason: 'matched:anxiety(1)' });
-    OrchestrationRolloutService.recordRoutingDecision({ target: 'nexus', confidence: 0.45, reason: 'default_nexus' });
+    OrchestrationRolloutService.recordRoutingDecision({ target: 'ara', confidence: 0.45, reason: 'default_ara' });
     OrchestrationRolloutService.recordPlanningAttempt(true);
     OrchestrationRolloutService.recordPlanningAttempt(false);
 
@@ -57,7 +57,7 @@ describe('OrchestrationRolloutService', () => {
 
   it('tracks approval interruptions and execution failures per action', () => {
     OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 4,
       historyMode: 'standard',
       decisions: [

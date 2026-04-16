@@ -35,9 +35,9 @@ function todayISO(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-/** localStorage key matching the spec key pattern: nexus_evening_checkin_date. */
+/** localStorage key matching the spec key pattern: ara_evening_checkin_date. */
 function eveningKey(userId?: string | null): string {
-  return `nexus_evening_checkin_date_${userId ?? 'guest'}`;
+  return `ara_evening_checkin_date_${userId ?? 'guest'}`;
 }
 
 /**

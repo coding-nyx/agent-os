@@ -5,7 +5,7 @@
  * Firestore path: scout_digests/{userId}/digests/{digestId}
  */
 
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { ScoutDigest, ScoutKnowledgeNode } from '../types';
@@ -290,7 +290,7 @@ async function saveDigest(
   { userId }: DigestContext,
 ): Promise<void> {
   if (!userId) return;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const col = digestsCollection(userId);
 
   const existing = await dataLayer.listDocuments<{ id: string; generatedAt?: string; createdAt?: string }>(col);
@@ -307,7 +307,7 @@ export async function loadDigests(
   { userId, encryptionKey }: DigestContext,
 ): Promise<ScoutDigestDecrypted[]> {
   if (!userId || !encryptionKey) return [];
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   try {
     const docs = await dataLayer.listDocuments<{ id: string; encryptedData: string; iv: string }>(digestsCollection(userId));
     if (!docs || docs.length === 0) return [];
@@ -335,6 +335,6 @@ export async function loadDigests(
 
 export async function deleteDigest(id: string, { userId }: DigestContext): Promise<void> {
   if (!userId) return;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   await dataLayer.deleteDocument(digestsCollection(userId), id);
 }

@@ -10,7 +10,7 @@ function makeContext(overrides: Partial<ActionContext> = {}): ActionContext {
   return {
     userId: 'user-1',
     isGuest: false,
-    moduleId: 'nexus',
+    moduleId: 'ara',
     payload: {},
     emitSpineEvent: vi.fn(),
     updateGlobalSoul: vi.fn().mockResolvedValue(undefined),
@@ -30,7 +30,7 @@ describe('core-handlers Phase 4 routine actions', () => {
     const emitSpy = vi.spyOn(Spine, 'emit');
     const pushAssistantMessage = vi.fn();
 
-    const executed = await ActionHub.execute('nexus', 'propose_routine', makeContext({
+    const executed = await ActionHub.execute('ara', 'propose_routine', makeContext({
       payload: {
         moduleId: 'atlas',
         name: 'Morning planning',
@@ -79,7 +79,7 @@ describe('core-handlers Phase 4 routine actions', () => {
       updatedAt: '2026-03-24T00:00:00.000Z',
     });
 
-    const executed = await ActionHub.execute('nexus', 'confirm_routine', makeContext({
+    const executed = await ActionHub.execute('ara', 'confirm_routine', makeContext({
       payload: {
         moduleId: 'atlas',
         name: 'Evening reset',
@@ -118,8 +118,8 @@ describe('core-handlers Phase 4 routine actions', () => {
       },
     };
 
-    await ActionHub.execute('nexus', 'propose_routine', makeContext({ payload }));
-    await ActionHub.execute('nexus', 'propose_routine', makeContext({ payload }));
+    await ActionHub.execute('ara', 'propose_routine', makeContext({ payload }));
+    await ActionHub.execute('ara', 'propose_routine', makeContext({ payload }));
 
     expect(emitSpy.mock.calls.filter(([event]) => event.type === 'ROUTINE_PROPOSED')).toHaveLength(1);
   });
@@ -129,7 +129,7 @@ describe('core-handlers Phase 4 routine actions', () => {
     const emitSpy = vi.spyOn(Spine, 'emit');
     const pushAssistantMessage = vi.fn();
 
-    await ActionHub.execute('nexus', 'propose_routine', makeContext({
+    await ActionHub.execute('ara', 'propose_routine', makeContext({
       payload: {
         moduleId: 'atlas',
         name: 'Morning planning',
@@ -158,7 +158,7 @@ describe('core-handlers Phase 4 routine actions', () => {
     });
     const pushAssistantMessage = vi.fn();
     const orchestration = OrchestrationActionGateService.evaluate({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       actionType: 'propose_routine',
       payload: {
         moduleId: 'atlas',
@@ -168,10 +168,10 @@ describe('core-handlers Phase 4 routine actions', () => {
       autopilotLevel: 5,
       historyMode: 'silent',
       isGuest: false,
-      activeThreadId: 'nexus.dashboard',
+      activeThreadId: 'ara.dashboard',
     }).metadata;
 
-    const executed = await ActionHub.execute('nexus', 'propose_routine', makeContext({
+    const executed = await ActionHub.execute('ara', 'propose_routine', makeContext({
       payload: {
         moduleId: 'atlas',
         name: 'Ghost planning',

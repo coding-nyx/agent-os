@@ -5,7 +5,7 @@ import { InMemoryDataProvider } from '@/lib/data-layer';
 
 let dataLayer: InMemoryDataProvider;
 vi.mock('@/lib/data-layer/provider', () => ({
-  getNexusDataLayer: () => dataLayer,
+  getAraDataLayer: () => dataLayer,
 }));
 
 vi.mock('@/lib/services/embedding-service', () => ({

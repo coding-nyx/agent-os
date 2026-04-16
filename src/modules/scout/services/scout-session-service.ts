@@ -5,7 +5,7 @@
  * Firestore path: scout_sessions/{userId}/sessions/{sessionId}
  */
 
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { ResearchSession } from '../types';
 
 type SessionContext = {
@@ -23,7 +23,7 @@ export async function createSession(
 ): Promise<ResearchSession | null> {
   if (!userId) return null;
 
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const id = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const now = new Date().toISOString();
 
@@ -45,7 +45,7 @@ export async function createSession(
 
 export async function loadSessions({ userId }: SessionContext): Promise<ResearchSession[]> {
   if (!userId) return [];
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   try {
     const docs = await dataLayer.listDocuments<ResearchSession>(sessionsCollection(userId), { limit: 50 });
     return (docs || []).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -57,7 +57,7 @@ export async function loadSessions({ userId }: SessionContext): Promise<Research
 
 export async function getSession(id: string, { userId }: SessionContext): Promise<ResearchSession | null> {
   if (!userId) return null;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   return dataLayer.getDocument<ResearchSession>(sessionsCollection(userId), id);
 }
 
@@ -67,7 +67,7 @@ export async function updateSession(
   { userId }: SessionContext
 ): Promise<void> {
   if (!userId) return;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const current = await getSession(id, { userId });
   if (!current) return;
 
@@ -82,6 +82,6 @@ export async function updateSession(
 
 export async function deleteSession(id: string, { userId }: SessionContext): Promise<void> {
   if (!userId) return;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   await dataLayer.deleteDocument(sessionsCollection(userId), id);
 }

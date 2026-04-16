@@ -1,4 +1,4 @@
-import { getNexusDataLayer } from '../data-layer/provider';
+import { getAraDataLayer } from '../data-layer/provider';
 import { ModuleMemoryEnvelope, SessionEventSummary, ActiveSessionState } from '../types';
 import { EmbeddingService } from './embedding-service';
 import { encryptWithKey, decryptWithKey } from '../encryption';
@@ -135,7 +135,7 @@ function getActiveSessionDocId(uid: string, moduleId: string, sessionId?: string
 export const ModuleMemoryService = {
   async getEnvelope(uid: string, moduleId: string, encryptionKey?: CryptoKey | null): Promise<ModuleMemoryEnvelope | null> {
     if (!uid || !moduleId) return null;
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
 
     const data = await dataLayer.getDocument<ModuleMemoryEnvelope & {
       encryptedPayload?: { ciphertext: string; iv: string };
@@ -200,7 +200,7 @@ export const ModuleMemoryService = {
     encryptionKey?: CryptoKey | null
   ): () => void {
     if (!uid || !moduleId) return () => {};
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
 
     const unsubscribe = dataLayer.subscribeToDocument<ModuleMemoryEnvelope & { encryptedPayload?: { ciphertext: string; iv: string } }>(
       COLLECTION_PREFIX,
@@ -262,7 +262,7 @@ export const ModuleMemoryService = {
 
   async initializeEnvelope(uid: string, moduleId: string, encryptionKey?: CryptoKey | null): Promise<ModuleMemoryEnvelope> {
     if (!uid || !moduleId) throw new Error('Missing UID or Module ID');
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const manifestPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
     const requiresVault = manifestPolicy ? (manifestPolicy.mandatory || manifestPolicy.defaultLocked) : false;
 
@@ -304,7 +304,7 @@ export const ModuleMemoryService = {
     // ensures those three steps are never interleaved with another caller's steps.
     const queueKey = `${uid}_${moduleId}`;
     return enqueueMemoryWrite(queueKey, async () => {
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
 
       const now = new Date().toISOString();
       const encryptionKey = options?.encryptionKey || null;
@@ -499,7 +499,7 @@ export const ModuleMemoryService = {
     const encryptionKey = options?.encryptionKey || null;
     if (!encryptionKey) return { compacted: false, reason: 'missing_encryption_key' };
 
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const docId = `${uid}_${moduleId}`;
     const now = new Date().toISOString();
     const maxHistoryEvents = Math.max(1, Math.min(100, options?.maxHistoryEvents ?? 50));
@@ -629,7 +629,7 @@ export const ModuleMemoryService = {
 
   async saveActiveSession(uid: string, session: ActiveSessionState): Promise<void> {
     if (!uid || !session?.moduleId) return;
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const docId = getActiveSessionDocId(uid, session.moduleId, session.sessionId);
     try {
       await dataLayer.setDocument(ACTIVE_SESSION_COLLECTION, docId, session);
@@ -640,7 +640,7 @@ export const ModuleMemoryService = {
 
   async getActiveSession(uid: string, moduleId: string, sessionId?: string): Promise<ActiveSessionState | null> {
     if (!uid || !moduleId) return null;
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const docId = getActiveSessionDocId(uid, moduleId, sessionId);
     const data = await dataLayer.getDocument<ActiveSessionState>(ACTIVE_SESSION_COLLECTION, docId);
     return data ?? null;
@@ -653,7 +653,7 @@ export const ModuleMemoryService = {
     onUpdate: (session: ActiveSessionState | null) => void
   ): () => void {
     if (!uid || !moduleId) return () => {};
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const docId = getActiveSessionDocId(uid, moduleId, sessionId);
     const unsubscribe = dataLayer.subscribeToDocument<ActiveSessionState>(
       ACTIVE_SESSION_COLLECTION,
@@ -667,7 +667,7 @@ export const ModuleMemoryService = {
 
   async clearActiveSession(uid: string, moduleId: string, sessionId?: string): Promise<void> {
     if (!uid || !moduleId) return;
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     const docId = getActiveSessionDocId(uid, moduleId, sessionId);
     try {
       await dataLayer.deleteDocument(ACTIVE_SESSION_COLLECTION, docId);

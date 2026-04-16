@@ -47,8 +47,8 @@ export default function TitanPage() {
           }}
         />
       )}
-      renderContent={({ profile, encryptionKey }) => (
-        <TitanContent profile={profile} encryptionKey={encryptionKey} />
+      renderContent={({ profile, encryptionKey, profileError, isLoading }) => (
+        <TitanContent profile={profile} encryptionKey={encryptionKey} profileError={profileError} isLoading={isLoading} />
       )}
     />
   );

@@ -96,8 +96,8 @@ export function ForgeModel({ scale = 1, ...props }: Omit<ModelProps, 'soul'>) {
   return <group ref={group}><primitive object={clone} scale={scale * 0.03} {...props} /></group>;
 }
 
-export function NexusModel({ scale = 0.05, ...props }: Omit<ModelProps, 'soul'>) {
-  const { scene } = useGLTF('/assets/models/nexus.glb');
+export function AraModel({ scale = 0.05, ...props }: Omit<ModelProps, 'soul'>) {
+  const { scene } = useGLTF('/assets/models/ara.glb');
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const group = useRef<THREE.Group>(null);
   
@@ -143,4 +143,4 @@ useGLTF.preload('/assets/models/walle.glb');
 useGLTF.preload('/assets/models/eve.glb');
 useGLTF.preload('/assets/models/atlas.glb');
 useGLTF.preload('/assets/models/forge.glb');
-useGLTF.preload('/assets/models/nexus.glb');
+useGLTF.preload('/assets/models/ara.glb');

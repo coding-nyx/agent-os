@@ -1,7 +1,7 @@
 /**
  * RetirementPlanner.tsx
  *
- * Nexus Ledger — Retirement Planning module.
+ * Ara Ledger — Retirement Planning module.
  *
  * Responsibilities (one per section, single-responsibility throughout):
  *   1. Header — title + "Add Plan" CTA

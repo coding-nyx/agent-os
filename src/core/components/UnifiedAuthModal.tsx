@@ -65,7 +65,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
     violet: { color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' }
   };
 
-  const globalTheme = { color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', icon: Shield, title: 'Nexus Master Portal' };
+  const globalTheme = { color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', icon: Shield, title: 'Ara Master Portal' };
   const moduleTheme = mode !== 'global' ? MODULE_MANIFEST[mode] : null;
   const moduleClasses = moduleTheme ? themeClasses[moduleTheme.themeColor] : null;
   const activeTheme = mode === 'global'
@@ -246,7 +246,7 @@ export function UnifiedAuthModal({ isOpen, onClose, mode }: UnifiedAuthModalProp
                                         <p className="text-[11px] text-white/60 leading-relaxed">
                                             {hasVault 
                                                 ? 'Identify verified. Provide your Master Password to decrypt your soul.' 
-                                                : 'Define your Master Password to generate your permanent E2EE keys. Nexus cannot reset this.'}
+                                                : 'Define your Master Password to generate your permanent E2EE keys. Ara cannot reset this.'}
                                         </p>
                                     </div>
                                 </div>

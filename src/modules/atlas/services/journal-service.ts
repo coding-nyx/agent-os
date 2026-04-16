@@ -12,7 +12,7 @@
  */
 
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import type { JournalEntry } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ export async function saveJournalEntry(
   opts: { userId: string; encryptionKey: CryptoKey },
 ): Promise<boolean> {
   const { userId, encryptionKey } = opts;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   if (!journalEntryHasSignificantContent(entry)) {
     console.info('[JournalService] Skipping save — entry has no significant content.', {
@@ -137,7 +137,7 @@ export async function loadJournalEntry(
   opts: { userId: string; encryptionKey: CryptoKey },
 ): Promise<JournalEntry | null> {
   const { userId, encryptionKey } = opts;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const raw = await dataLayer.getDocument<PersistedJournalDoc>(entriesColPath(userId), date);
   if (!raw) return null;
   return decryptEntry(raw, encryptionKey);
@@ -155,7 +155,7 @@ export async function loadJournalEntries(opts: {
   limit?: number;
 }): Promise<JournalEntry[]> {
   const { userId, encryptionKey, limit = 30 } = opts;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const docs = await dataLayer.query<PersistedJournalDoc>({
     collection: entriesColPath(userId),
     orderBy: [{ field: 'metadata.date', direction: 'desc' }],
@@ -183,7 +183,7 @@ export function subscribeJournalEntries(opts: {
   limit?: number;
 }): () => void {
   const { userId, encryptionKey, onUpdate, limit = 30 } = opts;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const unsubscribe = dataLayer.subscribeToQuery<PersistedJournalDoc>(
     {
       collection: entriesColPath(userId),
@@ -211,7 +211,7 @@ export async function deleteJournalEntry(
   opts: { userId: string },
 ): Promise<void> {
   const { userId } = opts;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   await dataLayer.deleteDocument(entriesColPath(userId), date);
 }
 

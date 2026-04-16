@@ -7,7 +7,7 @@ import { CoreProfileService } from './services/core-profile-service';
 import { GlobalProjectionService } from './services/global-projection-service';
 import { CoreUserProfile } from './types';
 import { useDataLayer } from './data-layer/provider';
-import { NexusHandoffService } from './services/nexus-handoff-service';
+import { AraHandoffService } from './services/ara-handoff-service';
 import { CognitiveAgent } from '@/cortex-bridge/engine/CognitiveAgent';
 import { invalidateCredentialStore } from '@/cortex-bridge/credential-store-bridge';
 
@@ -30,7 +30,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-const GUEST_SESSION_KEY = 'nexus_guest_active';
+const GUEST_SESSION_KEY = 'ara_guest_active';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authService: IAuthService = useMemo(() => new FirebaseAuthService(), []);
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsGuest(false);
         sessionStorage.removeItem(GUEST_SESSION_KEY);
         setLoading(true);
-        NexusHandoffService.init(currentUser.uid);
+        AraHandoffService.init(currentUser.uid);
       } else {
         setProfile(null);
         setLoading(false);
@@ -178,16 +178,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setIsGuest(false);
     sessionStorage.removeItem(GUEST_SESSION_KEY);
-    sessionStorage.removeItem('nexus_vault_session');
-    // Clear all nexus-prefixed keys AND legacy credential keys that are
-    // not nexus-prefixed (e.g., VITE_OPENROUTER_API_KEY).
+    sessionStorage.removeItem('ara_vault_session');
+    // Clear all ara-prefixed keys AND legacy credential keys that are
+    // not ara-prefixed (e.g., VITE_OPENROUTER_API_KEY).
     const legacyCredentialKeys = [
       'VITE_OPENROUTER_API_KEY', 'openrouter_api_key', 'OPENROUTER_API_KEY',
       'VITE_GOOGLE_API_KEY', 'VITE_GROK_API_KEY',
     ];
     const legacySet = new Set(legacyCredentialKeys);
     Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('nexus_') || key.includes('integrity') || legacySet.has(key)) {
+        if (key.startsWith('ara_') || key.includes('integrity') || legacySet.has(key)) {
             localStorage.removeItem(key);
         }
     });

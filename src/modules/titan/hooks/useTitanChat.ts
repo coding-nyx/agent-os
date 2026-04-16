@@ -18,13 +18,15 @@ import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { TITAN_PROMPT_FALLBACK } from '../prompts/titan-prompt-fallback';
 import { useNavigate } from 'react-router-dom';
 import { getCalibrationPrompt, getMetricOwner, NSVMetricPath } from '@/lib/services/nsv-ownership';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
-import { NexusRoutingService } from '@/lib/services/nexus-routing-service';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
+import { AraRoutingService } from '@/lib/services/ara-routing-service';
 import type { ModuleId } from '@/lib/module-manifest';
 
 interface UseTitanChatParams {
   profile: TitanProfile | null;
   encryptionKey: CryptoKey | null;
+  profileError?: 'subscription_failed' | null;
+  isLoading?: boolean;
   user: AuthUser | null;
   somaProfile: SomaProfile | null;
   globalSoul: GlobalProjection | null;
@@ -37,6 +39,8 @@ interface UseTitanChatParams {
 export function useTitanChat({
   profile,
   encryptionKey,
+  profileError,
+  isLoading,
   user,
   somaProfile,
   globalSoul,
@@ -64,6 +68,13 @@ export function useTitanChat({
       titan_recovery_score: globalSoul?.crossFunctionalState?.biological?.recoveryScore ?? null,
       titan_hormonal_context: globalSoul?.crossFunctionalState?.biological?.hormonalContext ?? null,
       titan_soma_profile: somaProfile,
+      titan_profile_status: profile !== null
+        ? 'loaded'
+        : profileError === 'subscription_failed'
+          ? 'unavailable'
+          : isLoading
+            ? 'loading'
+            : 'empty',
     },
   });
 
@@ -132,7 +143,7 @@ export function useTitanChat({
     const key = metricKey as NSVMetricPath;
     const owner = getMetricOwner(key);
     const prompt = getCalibrationPrompt(key);
-    NexusHandoffService.store({
+    AraHandoffService.store({
       moduleId: owner,
       type: 'delegate',
       content: prompt,
@@ -140,7 +151,7 @@ export function useTitanChat({
       sourceModuleId: 'titan',
       createdAt: new Date().toISOString(),
     });
-    const route = NexusRoutingService.getRoute(owner as ModuleId);
+    const route = AraRoutingService.getRoute(owner as ModuleId);
     if (route) navigate(route);
   }, [navigate]);
 

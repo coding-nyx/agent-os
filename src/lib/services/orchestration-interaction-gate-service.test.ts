@@ -26,7 +26,7 @@ describe('OrchestrationInteractionGateService', () => {
         autopilotLevel: 3,
         candidate: {
           kind: 'routing',
-          sourceModuleId: 'nexus',
+          sourceModuleId: 'ara',
           confidence: 0.84,
           canAutoDispatch: true,
         },
@@ -38,7 +38,7 @@ describe('OrchestrationInteractionGateService', () => {
         autopilotLevel: 4,
         candidate: {
           kind: 'planning',
-          sourceModuleId: 'nexus',
+          sourceModuleId: 'ara',
           confidence: 0.72,
           canAutoDispatch: true,
         },
@@ -56,7 +56,7 @@ describe('OrchestrationInteractionGateService', () => {
         autopilotLevel: 5,
         candidate: {
           kind: 'routine',
-          sourceModuleId: 'nexus',
+          sourceModuleId: 'ara',
           canAutoDispatch: true,
         },
       }),
@@ -89,7 +89,7 @@ describe('OrchestrationInteractionGateService', () => {
         autopilotLevel: 5,
         candidate: {
           kind: 'planning',
-          sourceModuleId: 'nexus',
+          sourceModuleId: 'ara',
           canAutoDispatch: true,
           requiresApproval: true,
         },

@@ -73,7 +73,7 @@ You are a senior clinical psychologist and experienced therapeutic practitioner 
 
 # Persistent Agent Memory
 
-You have a persistent, file-based memory system at `/Users/raj-13766/Desktop/nexus/agnes/.claude/agent-memory/therapeutic-psychology-guide/`. This directory already exists — write to it directly with the Write tool (do not run mkdir or check for its existence).
+You have a persistent, file-based memory system at `/Users/raj-13766/Desktop/ara/agnes/.claude/agent-memory/therapeutic-psychology-guide/`. This directory already exists — write to it directly with the Write tool (do not run mkdir or check for its existence).
 
 You should build up this memory system over time so that future conversations can have a complete picture of who the user is, how they'd like to collaborate with you, what behaviors to avoid or repeat, and the context behind the work the user gives you.
 
@@ -189,11 +189,11 @@ Memory is one of several persistence mechanisms available to you as you assist t
 When looking for past context:
 1. Search topic files in your memory directory:
 ```
-Grep with pattern="<search term>" path="/Users/raj-13766/Desktop/nexus/agnes/.claude/agent-memory/therapeutic-psychology-guide/" glob="*.md"
+Grep with pattern="<search term>" path="/Users/raj-13766/Desktop/ara/agnes/.claude/agent-memory/therapeutic-psychology-guide/" glob="*.md"
 ```
 2. Session transcript logs (last resort — large files, slow):
 ```
-Grep with pattern="<search term>" path="/Users/raj-13766/.claude/projects/-Users-raj-13766-Desktop-nexus-agnes/" glob="*.jsonl"
+Grep with pattern="<search term>" path="/Users/raj-13766/.claude/projects/-Users-raj-13766-Desktop-ara-agnes/" glob="*.jsonl"
 ```
 Use narrow search terms (error messages, file paths, function names) rather than broad keywords.
 

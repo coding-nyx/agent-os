@@ -1,7 +1,7 @@
 /**
  * ConflictResolutionOverlay — Global shell component
  *
- * Renders a non-blocking slide-up overlay when NexusSynthesisService detects
+ * Renders a non-blocking slide-up overlay when AraSynthesisService detects
  * one or more active conflicts that should be surfaced to the user.
  *
  * Placement: src/core/components/ — rendered inside App.tsx so it is visible
@@ -12,7 +12,7 @@
  *  - block-level: pulsing red border
  *  - warn-level:  amber border
  *  - Framer Motion AnimatePresence, slides up from the bottom
- *  - Three CTA buttons: "Proceed Anyway" | "Defer 1 Hour" | "Let Nyx Reroute"
+ *  - Three CTA buttons: "Proceed Anyway" | "Defer 1 Hour" | "Let Ara Reroute"
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -36,8 +36,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalSoulStore } from '@/lib/global-soul-context';
-import { NexusSynthesisService } from '@/cortex-bridge/nexus-synthesis-bridge';
-import type { ConflictResult, ConflictSeverity } from '@/cortex-bridge/nexus-synthesis-bridge';
+import { AraSynthesisService } from '@/cortex-bridge/ara-synthesis-bridge';
+import type { ConflictResult, ConflictSeverity } from '@/cortex-bridge/ara-synthesis-bridge';
 import type { ModuleId } from '@/lib/module-manifest';
 
 // ---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ const DEBOUNCE_MS = 800;
 // ---------------------------------------------------------------------------
 
 const MODULE_ICON_MAP: Record<ModuleId, LucideIcon> = {
-  nexus: Sparkles,
+  ara: Sparkles,
   agnes:        Brain,
   titan:        Activity,
   soma:         HeartPulse,
@@ -63,7 +63,7 @@ const MODULE_ICON_MAP: Record<ModuleId, LucideIcon> = {
 };
 
 const MODULE_COLOUR_MAP: Record<ModuleId, string> = {
-  nexus: 'bg-violet-500/20 text-violet-300 ring-violet-500/30',
+  ara: 'bg-violet-500/20 text-violet-300 ring-violet-500/30',
   agnes:        'bg-indigo-500/20 text-indigo-300 ring-indigo-500/30',
   titan:        'bg-orange-500/20 text-orange-300 ring-orange-500/30',
   soma:         'bg-emerald-500/20 text-emerald-300 ring-emerald-500/30',
@@ -80,7 +80,7 @@ const MODULE_COLOUR_MAP: Record<ModuleId, string> = {
 
 function ModuleBadge({ moduleId }: { moduleId: ModuleId }) {
   const Icon = MODULE_ICON_MAP[moduleId] ?? Sparkles;
-  const colour = MODULE_COLOUR_MAP[moduleId] ?? MODULE_COLOUR_MAP.nexus;
+  const colour = MODULE_COLOUR_MAP[moduleId] ?? MODULE_COLOUR_MAP.ara;
 
   return (
     <span
@@ -205,7 +205,7 @@ function ConflictCard({
           )}
         >
           <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-          Let Nyx Reroute
+          Let Ara Reroute
         </button>
       </div>
     </div>
@@ -245,8 +245,8 @@ export function ConflictResolutionOverlay() {
     debounceRef.current = setTimeout(() => {
       debounceRef.current = null;
 
-      const detected   = NexusSynthesisService.detectConflicts(nsv);
-      const surfaceable = detected.filter((c) => NexusSynthesisService.shouldSurface(c));
+      const detected   = AraSynthesisService.detectConflicts(nsv);
+      const surfaceable = detected.filter((c) => AraSynthesisService.shouldSurface(c));
 
       if (surfaceable.length === 0) return;
 
@@ -275,7 +275,7 @@ export function ConflictResolutionOverlay() {
     const [head, ...rest] = queue;
     setQueue(rest);
     // Mark surfaced before showing so shouldSurface won't re-fire this one
-    NexusSynthesisService.markSurfaced(head);
+    AraSynthesisService.markSurfaced(head);
     setCurrent(head);
     setVisible(true);
   }, [queue, current]);
@@ -292,19 +292,19 @@ export function ConflictResolutionOverlay() {
 
   const handleProceed = useCallback(() => {
     if (!current) return;
-    NexusSynthesisService.resolveConflict(current.id, 'proceed');
+    AraSynthesisService.resolveConflict(current.id, 'proceed');
     dismiss();
   }, [current, dismiss]);
 
   const handleDefer = useCallback(() => {
     if (!current) return;
-    NexusSynthesisService.resolveConflict(current.id, 'defer');
+    AraSynthesisService.resolveConflict(current.id, 'defer');
     dismiss();
   }, [current, dismiss]);
 
   const handleReroute = useCallback(() => {
     if (!current) return;
-    NexusSynthesisService.resolveConflict(current.id, 'reroute');
+    AraSynthesisService.resolveConflict(current.id, 'reroute');
     dismiss();
   }, [current, dismiss]);
 

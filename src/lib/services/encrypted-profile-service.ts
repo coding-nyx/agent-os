@@ -18,7 +18,7 @@
  *   own locked-state UI without receiving a spurious `null`.
  */
 
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { encryptWithKey, decryptWithKey } from '@/lib/encryption';
 import {
   LoadContext,
@@ -94,10 +94,16 @@ export interface EncryptedProfileService<TProfile> {
    * Vault-locked state (userId present but no encryptionKey): the returned
    * unsubscribe is a no-op and `onUpdate` is **never** called, letting the
    * caller render its own vault-locked UI.
+   *
+   * @param onError Optional callback invoked when the underlying Firestore
+   *   subscription errors (e.g. auth token expiry, permission denial). When
+   *   provided, the profile is NOT set to null on error — allowing the caller
+   *   to distinguish "subscription failed" from "document does not exist."
    */
   subscribe(
     ctx: LoadContext,
     onUpdate: (profile: TProfile | null) => void,
+    onError?: (error: unknown) => void,
   ): () => void;
 
   /**
@@ -127,7 +133,7 @@ export interface EncryptedProfileService<TProfile> {
  * ```typescript
  * const service = createEncryptedProfileService<TitanProfile>({
  *   collection: 'titan_profiles',
- *   guestStorageKey: 'nexus_titan_profile_guest',
+ *   guestStorageKey: 'ara_titan_profile_guest',
  *   createEmpty: createEmptyTitanProfile,
  *   normalize: normalizeTitanProfile,
  *   metadataProjection: (p) => ({ onboardingComplete: p.onboardingComplete }),
@@ -266,10 +272,10 @@ export function createEncryptedProfileService<
   return {
     async load({ userId, encryptionKey }) {
       if (userId) {
-        const dataLayer = getNexusDataLayer();
+        const dataLayer = getAraDataLayer();
         const record = await dataLayer.getDocument<ProfileDocument>(collection, userId);
         if (!record) return null;
-        // NexusRecord<T> = T & { id }, so the record is structurally a ProfileDocument.
+        // AraRecord<T> = T & { id }, so the record is structurally a ProfileDocument.
         return readDoc(record as ProfileDocument, encryptionKey ?? null);
       }
       return loadGuestInternal();
@@ -277,7 +283,7 @@ export function createEncryptedProfileService<
 
     async save(profile, { userId, encryptionKey }) {
       if (userId) {
-        const dataLayer = getNexusDataLayer();
+        const dataLayer = getAraDataLayer();
         const doc = await buildDoc(profile, encryptionKey ?? null);
         try {
           await dataLayer.setDocument(collection, userId, doc);
@@ -289,22 +295,36 @@ export function createEncryptedProfileService<
       saveGuestInternal(profile);
     },
 
-    subscribe({ userId, encryptionKey }, onUpdate) {
+    subscribe({ userId, encryptionKey }, onUpdate, onError) {
       if (userId && encryptionKey) {
         const key = encryptionKey; // capture for the async listener closure
-        const dataLayer = getNexusDataLayer();
+        const dataLayer = getAraDataLayer();
         return dataLayer.subscribeToDocument<ProfileDocument>(
           collection,
           userId,
           (record) => {
-            // The listener must be synchronous per NexusDocumentListener<T>, but we
-            // need an async decryption step. Fire-and-forget the Promise; errors are
-            // caught inside readDoc and surface as null to the caller.
-            void readDoc(
-              record as ProfileDocument | null,
-              key,
-            ).then(onUpdate);
+            if (!record) {
+              // Document does not exist in Firestore — user has no profile yet.
+              // This is a legitimate "empty" state, not a decryption error.
+              onUpdate(null);
+              return;
+            }
+            // The listener must be synchronous per AraDocumentListener<T>, but we
+            // need an async decryption step. Fire-and-forget the Promise; when
+            // readDoc returns null (decryption failure, corrupted doc, missing fields)
+            // we signal onError so the hook preserves the last valid profile state
+            // instead of replacing it with null.
+            void readDoc(record as ProfileDocument, key).then((profile) => {
+              if (profile === null) {
+                // Document exists but could not be decrypted — treat as a
+                // subscription-level error to preserve the last good profile.
+                onError?.(new Error(`[EncryptedProfileService:${collection}] Decryption failed or document is malformed`));
+              } else {
+                onUpdate(profile);
+              }
+            });
           },
+          onError,
         );
       }
 
@@ -326,11 +346,11 @@ export function createEncryptedProfileService<
       const guest = loadGuestInternal();
       if (!guest) return false;
 
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
       const existing = await dataLayer.getDocument<ProfileDocument>(collection, userId);
 
       if (existing) {
-        // Cast is safe: NexusRecord<ProfileDocument> = ProfileDocument & { id }
+        // Cast is safe: AraRecord<ProfileDocument> = ProfileDocument & { id }
         const existingDoc = existing as ProfileDocument;
         const hasData = isEncryptedDoc(existingDoc)
           ? !!existingDoc.encryptedData

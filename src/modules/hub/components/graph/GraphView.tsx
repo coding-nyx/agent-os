@@ -157,11 +157,11 @@ export const GraphView = React.memo(function GraphView({
   orchestratorNodes, moduleStats, moduleAccess, hoveredNodeId, edgeIntensity,
   onModuleNavigate, setHoveredNodeId
 }: GraphViewProps) {
-  const [showNexusStats, setShowNexusStats] = useState(false);
+  const [showAraStats, setShowAraStats] = useState(false);
   const isMobile = useIsMobile(1024);
   
-  // Aggregate stats from core modules for nexus display
-  const nexusStats = ['agnes', 'titan', 'ledger']
+  // Aggregate stats from core modules for ara display
+  const araStats = ['agnes', 'titan', 'ledger']
     .map(id => ({ id, stat: moduleStats[id] }))
     .filter(item => item.stat)
     .map(item => item.stat as ModuleStat);
@@ -220,7 +220,7 @@ export const GraphView = React.memo(function GraphView({
           })}
         </svg>
 
-        {/* Central Nexus — clickable, opens Nexus chat */}
+        {/* Central Ara — clickable, opens Ara chat */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 flex items-center justify-center">
           <div className="absolute inset-0 bg-violet-500/5 rounded-full blur-[100px] animate-pulse" />
           {/* Pulsing rings animating toward center */}
@@ -244,16 +244,16 @@ export const GraphView = React.memo(function GraphView({
 
           <NeuralButton
             variant="indigo"
-            onClick={() => window.dispatchEvent(new CustomEvent('open-nexus'))}
-            onMouseEnter={() => setShowNexusStats(true)}
-            onMouseLeave={() => setShowNexusStats(false)}
+            onClick={() => window.dispatchEvent(new CustomEvent('open-ara'))}
+            onMouseEnter={() => setShowAraStats(true)}
+            onMouseLeave={() => setShowAraStats(false)}
             className="relative overflow-hidden border border-violet-500/30 bg-violet-950/60 flex items-center justify-center shadow-[0_0_60px_rgba(139,92,246,0.25)] cursor-pointer hover:border-violet-400/50 hover:bg-violet-900/70 hover:shadow-[0_0_100px_rgba(139,92,246,0.4)] transition-all duration-500 group pointer-events-auto focus:outline-none focus:ring-2 focus:ring-violet-500/50"
             style={{
               width: '128px',
               height: '128px',
               borderRadius: '50%'
             }}
-            aria-label="Open Nexus"
+            aria-label="Open Ara"
           >
             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.07] to-transparent pointer-events-none" />
             
@@ -277,12 +277,12 @@ export const GraphView = React.memo(function GraphView({
               <circle cx="79" cy="89" r="1" fill="#c4b5fd" opacity="0.6" />
             </svg>
             
-            {/* Nexus icon in center */}
+            {/* Ara icon in center */}
             <Orbit className="relative w-8 h-8 text-violet-300/80 group-hover:text-violet-200 transition-colors" />
             
             {/* Stats tooltip on hover */}
             <AnimatePresence>
-              {showNexusStats && nexusStats.length > 0 && (
+              {showAraStats && araStats.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -291,7 +291,7 @@ export const GraphView = React.memo(function GraphView({
                   className="absolute top-full mt-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900/90 backdrop-blur-md border border-violet-500/50 rounded-lg px-3 py-2 shadow-lg pointer-events-none"
                 >
                   <div className="space-y-1 text-xs">
-                    {nexusStats.map((stat, idx) => (
+                    {araStats.map((stat, idx) => (
                       <div key={idx} className="flex items-center gap-2">
                         <div className={cn("w-1.5 h-1.5 rounded-full", toneClass(stat.tone).split(' ')[0])} />
                         <span className="text-white/80">{stat.label}:</span>

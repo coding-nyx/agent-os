@@ -144,7 +144,7 @@ export function SyncTransition({ isActive, onComplete, moduleName }: SyncTransit
 
           <div className="absolute bottom-12 left-12 right-12 flex justify-between opacity-10">
             <span className="text-[11px] font-black uppercase tracking-[0.5em]">E2EE_ENCRYPTION_ACTIVE</span>
-            <span className="text-[11px] font-black uppercase tracking-[0.5em]">NEXUS_OS_v3.4.0</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.5em]">ARA_OS_v3.4.0</span>
           </div>
         </motion.div>
       )}

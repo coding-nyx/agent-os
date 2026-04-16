@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { ForgeProfile, createEmptyForgeProfile } from '../services/forge-session-service';
@@ -23,7 +23,7 @@ You are Forge Intake Agent.
 Collect minimal execution preferences before Forge active mode.
 
 OBJECTIVE:
-1. Confirm Nexus handoff context.
+1. Confirm Ara handoff context.
 2. Capture preferred execution environment (local/cloud/hybrid).
 3. Capture safety strictness for command execution.
 4. Capture preferred reporting format.
@@ -55,7 +55,7 @@ const FORGE_STEPS = [
 function buildBasePrompt(context: GlobalBaseIntakeContext): string {
   const chunks = [context.name ? `name as ${context.name}` : null, context.occupation ? `occupation as ${context.occupation}` : null].filter(Boolean);
   if (chunks.length === 0) return 'Forge intake initialized. Should I default to local execution with strict safety mode?';
-  return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we configure execution defaults?`;
+  return `Ara handoff received. I have your ${chunks.join(', ')}. Is that correct before we configure execution defaults?`;
 }
 
 export function ForgeOnboarding({ initialProfile, initialBaseContext, onGlobalBaseContextFinalize, onComplete }: ForgeOnboardingProps) {
@@ -164,7 +164,7 @@ export function ForgeOnboarding({ initialProfile, initialBaseContext, onGlobalBa
       spec={FORGE_BASE_SPEC}
       onExpressComplete={handleExpressComplete}
       guidedContent={
-        <NexusChat
+        <AraChat
           ai={{ messages: intake.messages, isProcessing: intake.isProcessing, streamingText: intake.streamingText, error: intake.error, quota: null, handleSendMessage: intake.handleSendMessage }}
           agentName="Forge Intake"
           themeColor="lime"

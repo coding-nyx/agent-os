@@ -2,7 +2,7 @@
  * Precedence Engine — thin bridge over cortex-logic's PrecedenceResolverJs.
  *
  * The stateful, time-windowed conflict resolution logic lives in KMP so both
- * Agnes and nexus-android apply identical precedence rules.
+ * Agnes and ara-android apply identical precedence rules.
  *
  * The `prioritize` method is local-only (batch sort) and doesn't need KMP.
  * The `resolveConflicts` method delegates to the KMP PrecedenceResolverJs
@@ -20,7 +20,7 @@ export const PrecedenceMap: Record<string, number> = {
   "SOMA": 3,
   "TITAN": 4,
   "LEDGER": 5,
-  "NEXUS": 99,
+  "ARA": 99,
   "SYSTEM": 0
 };
 

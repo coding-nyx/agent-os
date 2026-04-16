@@ -1,6 +1,6 @@
 [
   {
-    "origin": ["https://agent-nexus.web.app", "https://agent-nexus.firebaseapp.com"],
+    "origin": ["https://agent-ara.web.app", "https://agent-ara.firebaseapp.com"],
     "method": ["GET"],
     "maxAgeSeconds": 3600
   }

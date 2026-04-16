@@ -14,7 +14,7 @@ describe('MasterThreadStatusCard', () => {
 
   it('renders runtime summary chips and lifecycle proposal details', () => {
     const runtimeSummary = OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 5,
       historyMode: 'silent',
       decisions: [
@@ -89,7 +89,7 @@ describe('MasterThreadStatusCard', () => {
       ],
     });
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-1',
       now: createdAt,
       pendingTargets: ['atlas'],
@@ -117,7 +117,7 @@ describe('MasterThreadStatusCard', () => {
     const consultationMessages = MasterThreadService.projectConsultationArtifacts('thread-provenance-ui', [{
       id: 'consult-ui-1',
       threadId: 'thread-provenance-ui',
-      sourceModuleId: 'nexus',
+      sourceModuleId: 'ara',
       targetModuleId: 'soma',
       question: 'Should tomorrow be recovery focused?',
       mode: 'state_only',
@@ -128,7 +128,7 @@ describe('MasterThreadStatusCard', () => {
       responseText: 'Yes.',
     }]);
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-provenance-ui',
       now: createdAt,
       mentionedParticipants: ['agnes'],
@@ -168,11 +168,11 @@ describe('MasterThreadStatusCard', () => {
       errorMessage: 'Blocked by dependency.',
       retryable: true,
       retrySummary: 'Retry attempt 1 available.',
-      retryPrompt: '[NEXUS_ACTION_PLAN]\n{}\n[/NEXUS_ACTION_PLAN]',
+      retryPrompt: '[ARA_ACTION_PLAN]\n{}\n[/ARA_ACTION_PLAN]',
       retryAttempt: 1,
     }]);
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-retry-ui',
       now: createdAt,
       seedMessages: executionMessages,
@@ -202,7 +202,7 @@ describe('MasterThreadStatusCard', () => {
       retryParentExecutionId: 'plan-7.node-cooking.execution',
     }]);
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-retry-success',
       now: createdAt,
       seedMessages: executionMessages,
@@ -231,12 +231,12 @@ describe('MasterThreadStatusCard', () => {
       errorMessage: 'Blocked by dependency.',
       retryable: true,
       retrySummary: 'Retry attempt 1 available.',
-      retryPrompt: '[NEXUS_ACTION_PLAN]\n{}\n[/NEXUS_ACTION_PLAN]',
+      retryPrompt: '[ARA_ACTION_PLAN]\n{}\n[/ARA_ACTION_PLAN]',
       retryVisibleContent: 'Retry failed steps.',
       retryAttempt: 1,
     }]);
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-retry-ui',
       now: createdAt,
       seedMessages: executionMessages,
@@ -248,13 +248,13 @@ describe('MasterThreadStatusCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /retry failed steps .* attempt 1/i }));
     expect(onRetryExecution).toHaveBeenCalledWith(expect.objectContaining({
       executionId: 'exec-retry',
-      retryPrompt: '[NEXUS_ACTION_PLAN]\n{}\n[/NEXUS_ACTION_PLAN]',
+      retryPrompt: '[ARA_ACTION_PLAN]\n{}\n[/ARA_ACTION_PLAN]',
       retryAttempt: 1,
     }));
   });
 
   it('allows inline defer and restore for shell-owned routing drafts', () => {
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-route',
       now: createdAt,
       routingSuggestion: {
@@ -278,7 +278,7 @@ describe('MasterThreadStatusCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /^defer$/i }));
     expect(onProposalLifecycleChange).toHaveBeenCalledWith('thread-route.proposal.route.atlas', 'deferred');
 
-    const deferredSnapshot = MasterThreadService.createNexusShellSnapshot({
+    const deferredSnapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-route',
       now: createdAt,
       routingSuggestion: {
@@ -303,7 +303,7 @@ describe('MasterThreadStatusCard', () => {
   });
 
   it('surfaces thread-native approve, dismiss, reroute, and inline edit controls for routing suggestions', () => {
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-route-controls',
       now: createdAt,
       routingSuggestion: {
@@ -359,7 +359,7 @@ describe('MasterThreadStatusCard', () => {
 
   it('shows an empty proposal state when the thread has no proposal', () => {
     const thread = MasterThreadService.createThread('thread-1', createdAt, [
-      { moduleId: 'nexus', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
+      { moduleId: 'ara', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
     ]);
 
     render(<MasterThreadStatusCard thread={thread} compact />);
@@ -445,7 +445,7 @@ describe('MasterThreadStatusCard', () => {
   it('renders participant lifecycle and presence badges', () => {
     const thread = MasterThreadService.createThread('thread-2', createdAt, [
       {
-        moduleId: 'nexus',
+        moduleId: 'ara',
         role: 'primary',
         joinedAt: createdAt,
         state: 'active',
@@ -471,7 +471,7 @@ describe('MasterThreadStatusCard', () => {
 
     render(<MasterThreadStatusCard thread={thread} compact />);
 
-    expect(screen.getByTestId('master-thread-participant-nexus')).toHaveTextContent('Nyx');
+    expect(screen.getByTestId('master-thread-participant-ara')).toHaveTextContent('Ara');
     expect(screen.getByTestId('master-thread-participant-atlas')).toHaveTextContent('Atlas');
     expect(screen.getByTestId('master-thread-participants')).toHaveTextContent('Invited');
     expect(screen.getByTestId('master-thread-participants')).toHaveTextContent('Idle');
@@ -481,7 +481,7 @@ describe('MasterThreadStatusCard', () => {
 
   it('renders synthesized cross-agent thread activity replies', () => {
     const runtimeSummary = OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 4,
       historyMode: 'standard',
       activeThreadId: 'thread-activity',
@@ -557,7 +557,7 @@ describe('MasterThreadStatusCard', () => {
       ],
     });
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-activity',
       now: createdAt,
       lastTurnRuntime: runtimeSummary,
@@ -573,16 +573,16 @@ describe('MasterThreadStatusCard', () => {
     );
 
     expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Thread activity');
-    expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Nexus synthesized 2 runtime actions');
+    expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Ara synthesized 2 runtime actions');
     expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Atlas');
-    expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Reply to Nyx');
+    expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Reply to Ara');
     expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Ledger');
     expect(screen.getByTestId('master-thread-activity')).toHaveTextContent('Waiting for approval because high risk');
   });
 
   it('renders review surfaces for silent history, ghost traces, and playback timeline', () => {
     const runtimeSummary = OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 5,
       historyMode: 'silent',
       activeThreadId: 'thread-review',
@@ -624,7 +624,7 @@ describe('MasterThreadStatusCard', () => {
       ],
     });
 
-    const snapshot = MasterThreadService.createNexusShellSnapshot({
+    const snapshot = MasterThreadService.createAraShellSnapshot({
       threadId: 'thread-review',
       now: createdAt,
       lastTurnRuntime: runtimeSummary,
@@ -688,7 +688,7 @@ describe('MasterThreadStatusCard', () => {
     };
 
     render(<MasterThreadStatusCard compact silentHistoryEntries={[entry]} thread={MasterThreadService.createThread('thread-audit', createdAt, [
-      { moduleId: 'nexus', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
+      { moduleId: 'ara', role: 'primary', joinedAt: createdAt, state: 'active', presence: 'online' },
     ])} />);
 
     fireEvent.click(screen.getByRole('button', { name: /ledger/i }));

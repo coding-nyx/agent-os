@@ -1,4 +1,4 @@
-import type { NexusDataLayer, BatchOperation } from '@/lib/data-layer';
+import type { AraDataLayer, BatchOperation } from '@/lib/data-layer';
 import type { ModuleId } from '@/lib/module-manifest';
 import type { NotificationOccurrenceRecord } from '@/lib/notifications/types';
 import { upsertAliveEntity } from '@/lib/services/alive-entity-service';
@@ -43,7 +43,7 @@ export class ReminderOutcomeService {
   }
 
   static async recordOutcome(
-    dataLayer: NexusDataLayer,
+    dataLayer: AraDataLayer,
     uid: string | undefined,
     record: ReminderOutcomeInboxRecord | null | undefined,
     outcome: ReminderOutcomeStatus,
@@ -153,7 +153,7 @@ export class ReminderOutcomeService {
    *   to the inbox docs (useful when the caller already batch-updated them).
    */
   static async recordOutcomeBatch(
-    dataLayer: NexusDataLayer,
+    dataLayer: AraDataLayer,
     uid: string | undefined,
     records: Array<ReminderOutcomeInboxRecord | null | undefined>,
     outcome: ReminderOutcomeStatus,

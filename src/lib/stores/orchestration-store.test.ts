@@ -47,7 +47,7 @@ describe('orchestration-store', () => {
 
   it('clears runtime summaries when the shell resets', () => {
     useOrchestrationStore.getState().setLastTurnRuntime({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 3,
       historyMode: 'standard',
       activeThreadId: null,
@@ -73,7 +73,7 @@ describe('orchestration-store', () => {
   it('stores participant rosters by thread id for master thread hydration', () => {
     useOrchestrationStore.getState().setThreadParticipants('thread-1', [
       {
-        moduleId: 'nexus',
+        moduleId: 'ara',
         role: 'primary',
         joinedAt: '2026-03-24T00:00:00.000Z',
         state: 'active',
@@ -91,7 +91,7 @@ describe('orchestration-store', () => {
 
     expect(useOrchestrationStore.getState().threadParticipantsByThreadId['thread-1']).toEqual([
       {
-        moduleId: 'nexus',
+        moduleId: 'ara',
         role: 'primary',
         joinedAt: '2026-03-24T00:00:00.000Z',
         state: 'active',
@@ -151,7 +151,7 @@ describe('orchestration-store', () => {
     useOrchestrationStore.getState().applyThreadSnapshot('thread-1', {
       participants: [
         {
-          moduleId: 'nexus',
+          moduleId: 'ara',
           role: 'primary',
           joinedAt: '2026-03-24T00:00:00.000Z',
           state: 'active',
@@ -196,7 +196,7 @@ describe('orchestration-store', () => {
     const snapshot = {
       participants: [
         {
-          moduleId: 'nexus',
+          moduleId: 'ara',
           role: 'primary',
           joinedAt: '2026-03-24T00:00:00.000Z',
           state: 'active',

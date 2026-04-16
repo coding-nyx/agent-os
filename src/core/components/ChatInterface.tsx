@@ -239,7 +239,7 @@ export const ChatInterface = React.memo(function ChatInterface({
 
   const theme = THEMES[themeColor];
   const isAgnes = moduleId === 'agnes';
-  const isOrchestrator = moduleId === 'orchestrator' || moduleId === 'nexus';
+  const isOrchestrator = moduleId === 'orchestrator' || moduleId === 'ara';
   const hasMessages = messages.some((msg) => msg.role !== 'system');
 
   // Per-message internal signal panel open state (keyed by message index)
@@ -413,7 +413,7 @@ export const ChatInterface = React.memo(function ChatInterface({
                               <DeferredApprovalCard
                                 key={approval.executionId}
                                 approval={approval}
-                                moduleId={moduleId ?? 'nexus'}
+                                moduleId={moduleId ?? 'ara'}
                                 onApprove={(id) => onApproveAction?.(id)}
                                 onDismiss={(id) => onDismissAction?.(id)}
                               />

@@ -1,7 +1,7 @@
 /**
  * Data Import Service — S10-006
  *
- * Restores a user's Nexus data from a v2.0 NexusExport JSON string.
+ * Restores a user's Ara data from a v2.0 AraExport JSON string.
  *
  * Merge strategy (field-level safety):
  *   For each module, the importer reads the live document's `updatedAt`
@@ -17,8 +17,8 @@
  * to avoid partial-write races on a single document.
  */
 
-import type { NexusDataLayer } from '@/lib/data-layer/index';
-import type { NexusExport } from './data-export-service';
+import type { AraDataLayer } from '@/lib/data-layer/index';
+import type { AraExport } from './data-export-service';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -37,12 +37,12 @@ export interface ImportResult {
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 /**
- * Collection → NexusExport modules key mapping.
+ * Collection → AraExport modules key mapping.
  * Must stay in sync with the same constant in data-export-service.ts.
  */
 const MODULE_COLLECTION_MAP: ReadonlyArray<{
   collection: string;
-  key: keyof NexusExport['modules'];
+  key: keyof AraExport['modules'];
 }> = [
   { collection: 'agnes_profiles', key: 'agnes' },
   { collection: 'titan_profiles', key: 'titan' },
@@ -85,7 +85,7 @@ function toEpochMs(timestamp: unknown): number {
 
 /**
  * Strips the synthetic `id` field that the data-layer attaches to every
- * NexusRecord before writing the document back. The document ID is passed
+ * AraRecord before writing the document back. The document ID is passed
  * as a separate argument to `setDocument`, so having it inside the payload
  * is redundant and may confuse some adapters.
  */
@@ -95,9 +95,9 @@ function stripRecordId(data: unknown): Record<string, unknown> {
   return rest;
 }
 
-// ─── Type guard for NexusExport ───────────────────────────────────────────────
+// ─── Type guard for AraExport ───────────────────────────────────────────────
 
-function isNexusExport(value: unknown): value is NexusExport {
+function isAraExport(value: unknown): value is AraExport {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -111,7 +111,7 @@ function isNexusExport(value: unknown): value is NexusExport {
 // ─── Core import logic ────────────────────────────────────────────────────────
 
 /**
- * Parses a NexusExport JSON string and restores data into Firestore for the
+ * Parses a AraExport JSON string and restores data into Firestore for the
  * given userId.
  *
  * For each module:
@@ -130,7 +130,7 @@ function isNexusExport(value: unknown): value is NexusExport {
 export async function importData(
   jsonString: string,
   userId: string,
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
 ): Promise<ImportResult> {
   const modulesRestored: string[] = [];
   const errors: string[] = [];
@@ -144,7 +144,7 @@ export async function importData(
   }
 
   // ── Version guard ──────────────────────────────────────────────────────────
-  if (!isNexusExport(parsed)) {
+  if (!isAraExport(parsed)) {
     const foundVersion =
       typeof parsed === 'object' && parsed !== null
         ? String((parsed as Record<string, unknown>).version ?? 'missing')
@@ -154,12 +154,12 @@ export async function importData(
       modulesRestored,
       errors: [
         `Unsupported export version "${foundVersion}". ` +
-          'Only v2.0 exports are accepted. Re-export from the current version of Nexus.',
+          'Only v2.0 exports are accepted. Re-export from the current version of Ara.',
       ],
     };
   }
 
-  const bundle: NexusExport = parsed;
+  const bundle: AraExport = parsed;
   const exportedAtMs = Date.parse(bundle.exportedAt);
 
   // ── Module profiles ────────────────────────────────────────────────────────

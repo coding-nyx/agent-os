@@ -369,7 +369,7 @@ async function main() {
     }
     proposalTypes.add(proposal.proposalType);
 
-    if (proposal.sourceModule !== 'nexus' && !moduleIds.has(proposal.sourceModule)) {
+    if (proposal.sourceModule !== 'ara' && !moduleIds.has(proposal.sourceModule)) {
       errors.push(`Proposal ${proposal.proposalType} uses unknown sourceModule: ${proposal.sourceModule}`);
     }
     for (const eventType of proposal.lifecycleEvents ?? []) {

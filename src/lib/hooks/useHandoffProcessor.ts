@@ -3,8 +3,8 @@ import type { Message, MessageContent } from '../types';
 import type { ConversationContext } from '@/lib/ai-adapters/engine-types';
 import type { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import type { ParsedCommandEnvelope } from '@/lib/ai-adapters/engine-types';
-import { NexusHandoffService } from '../services/nexus-handoff-service';
-import { NexusRoutingService } from '../services/nexus-routing-service';
+import { AraHandoffService } from '../services/ara-handoff-service';
+import { AraRoutingService } from '../services/ara-routing-service';
 import { Spine } from '../spine/spine-event-bus';
 
 function trimToCharLimit(text: string, limit: number): string {
@@ -25,7 +25,7 @@ interface UseHandoffProcessorOptions {
   messagesCount: number;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   /** Ref to the parent's handleSendMessage — set after definition to avoid circular deps */
-  onSendMessageRef: React.MutableRefObject<((content: import('@/lib/types').MessageContent) => void) | null>;
+  onSendMessageRef: React.MutableRefObject<((content: import('@/lib/types').MessageContent, onActionParsed?: unknown, options?: { hideUserMessage?: boolean }) => void) | null>;
   sendMessage: (
     content: MessageContent,
     context: ConversationContext,
@@ -70,7 +70,7 @@ export function useHandoffProcessor({
     parsedCommand?: ParsedCommandEnvelope | null,
   ): Promise<RoutingResult> => {
     // Specialized modules handle their own routing; skip the LLM classifier entirely
-    if (moduleId === 'nexus' || moduleId === 'scout') return { shouldDelegate: false };
+    if (moduleId === 'ara' || moduleId === 'scout') return { shouldDelegate: false };
 
     if (skipRoutingRef.current) {
       skipRoutingRef.current = false;
@@ -78,8 +78,8 @@ export function useHandoffProcessor({
     }
 
     // 1. FAST PATH: Keyword-based classification
-    const fastDecision = NexusRoutingService.classifyIntent(content, parsedCommand);
-    if (fastDecision.target !== 'nexus' && fastDecision.target !== moduleId && fastDecision.confidence >= 0.7) {
+    const fastDecision = AraRoutingService.classifyIntent(content, parsedCommand);
+    if (fastDecision.target !== 'ara' && fastDecision.target !== moduleId && fastDecision.confidence >= 0.7) {
       return {
         shouldDelegate: true,
         target: fastDecision.target,
@@ -91,7 +91,7 @@ export function useHandoffProcessor({
     // No actionable routing signal — skip LLM call entirely.
     // If fast path defaulted to orchestrator (no keywords) or matched the current module,
     // the answer is always shouldDelegate: false. Avoid a costly 10s LLM timeout.
-    if (fastDecision.target === 'nexus' || fastDecision.target === moduleId) {
+    if (fastDecision.target === 'ara' || fastDecision.target === moduleId) {
       return { shouldDelegate: false };
     }
 
@@ -134,7 +134,7 @@ export function useHandoffProcessor({
       }
     } catch (e) {
       if ((e as Error).name !== 'AbortError') {
-        console.warn('Nexus routing gate failed or timed out, continuing in current module.', e);
+        console.warn('Ara routing gate failed or timed out, continuing in current module.', e);
       }
     }
 
@@ -149,7 +149,7 @@ export function useHandoffProcessor({
     confidence?: number
   ) => {
     const contentText = contentToText(content);
-    NexusHandoffService.store({
+    AraHandoffService.store({
       moduleId: target,
       type: 'delegate',
       content: contentText,
@@ -175,9 +175,9 @@ export function useHandoffProcessor({
 
     const queryContext = pendingQueryRef.current;
     pendingQueryRef.current = null;
-    const origin = queryContext.origin || 'nexus';
+    const origin = queryContext.origin || 'ara';
 
-    NexusHandoffService.store({
+    AraHandoffService.store({
       moduleId: origin,
       type: 'query_result',
       content: trimToCharLimit(visibleAssistantText, 1200),
@@ -202,12 +202,12 @@ export function useHandoffProcessor({
     if (handoffProcessedRef.current) return;
     if (isHydrating) return;
 
-    const processHandoff = (handoff: import('../services/nexus-handoff-service').NexusHandoff) => {
+    const processHandoff = (handoff: import('../services/ara-handoff-service').AraHandoff) => {
       // Fire a synthetic spine event so local components (like TitanContent) can intercept it
       // before it gets dumped into the generic chat history.
       const eventId = Spine.emit({
         type: 'MODULE_HANDOFF_RECEIVED',
-        source: handoff.sourceModuleId || 'nexus',
+        source: handoff.sourceModuleId || 'ara',
         domain: 'system',
         data: { ...handoff } as Record<string, unknown>,
         cascadeDepth: 0,
@@ -218,15 +218,18 @@ export function useHandoffProcessor({
       // (We assume the component will handle the UI representation).
       
       const handoffNote = handoff.content
-        ? `Nexus handoff: ${handoff.content}`
-        : 'Nexus handoff received.';
+        ? `Ara handoff: ${handoff.content}`
+        : 'Ara handoff received.';
 
       if (handoff.type === 'delegate') {
-        setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: handoffNote }] : prev));
+        const isCalibration = handoff.reason === 'calibration_request';
+        if (!isCalibration) {
+          setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: handoffNote }] : prev));
+        }
         if (handoff.content) {
           queueMicrotask(() => {
             skipRoutingRef.current = true;
-            onSendMessageRef.current?.(handoff.content);
+            onSendMessageRef.current?.(handoff.content, undefined, isCalibration ? { hideUserMessage: true } : undefined);
           });
         }
         return;
@@ -235,7 +238,7 @@ export function useHandoffProcessor({
       if (handoff.type === 'query' && handoff.content) {
         setMessages((prev) => (prev.length === 0 ? [{ role: 'assistant', content: handoffNote }] : prev));
         pendingQueryRef.current = {
-          origin: handoff.sourceModuleId || 'nexus',
+          origin: handoff.sourceModuleId || 'ara',
           issuedAt: handoff.createdAt
         };
         queueMicrotask(() => {
@@ -247,7 +250,7 @@ export function useHandoffProcessor({
 
       if (handoff.type === 'query_result' && handoff.content) {
         const sourceLabel = handoff.sourceModuleId ? ` from ${handoff.sourceModuleId}` : '';
-        const note = `Nexus query result${sourceLabel}: ${handoff.content}`;
+        const note = `Ara query result${sourceLabel}: ${handoff.content}`;
         setMessages((prev) =>
           prev.length === 0
             ? [{ role: 'assistant', content: note }]
@@ -257,7 +260,7 @@ export function useHandoffProcessor({
     };
 
     // 1. Process anything waiting (same-tab cache or Firestore for cross-tab / refresh)
-    void NexusHandoffService.consume(moduleId).then((handoff) => {
+    void AraHandoffService.consume(moduleId).then((handoff) => {
       if (!handoff) return;
       handoffProcessedRef.current = true;
       processHandoff(handoff);

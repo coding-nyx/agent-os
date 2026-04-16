@@ -5,7 +5,7 @@
  * Firestore path: scout_sources/{userId}/sources/{sourceId}
  */
 
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey, encryptWithKey } from '@/lib/encryption';
 import { SourceEntry } from '../types';
 
@@ -163,7 +163,7 @@ export async function addSource(
 ): Promise<SourceEntryDecrypted | null> {
   if (!userId || !encryptionKey) return null;
 
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const normalizedUrl = normalizeUrl(input.url);
   const domain = input.domain ?? extractDomain(input.url);
   const now = input.savedAt ?? new Date().toISOString();
@@ -215,7 +215,7 @@ export async function loadSources(
 ): Promise<SourceEntryDecrypted[]> {
   if (!userId || !encryptionKey) return [];
 
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   try {
     const docs = await dataLayer.listDocuments<any>(sourcesCollection(userId), { limit: 200 });
@@ -252,7 +252,7 @@ export async function updateSource(
 ): Promise<void> {
   if (!userId || !encryptionKey) return;
 
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const col = sourcesCollection(userId);
   const raw = await dataLayer.getDocument<any>(col, id);
   if (!raw) return;
@@ -302,7 +302,7 @@ export async function archiveSource(
   { userId }: SourceContext,
 ): Promise<void> {
   if (!userId) return;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const col = sourcesCollection(userId);
   const raw = await dataLayer.getDocument<any>(col, id);
   if (!raw) return;

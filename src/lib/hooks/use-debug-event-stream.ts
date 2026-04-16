@@ -1,11 +1,11 @@
 /**
- * useDebugEventStream — subscribes to NexusLogger's observable event stream.
+ * useDebugEventStream — subscribes to AraLogger's observable event stream.
  *
  * Returns an auto-updating array of the most recent debug events.
  * Only active when debugMode is ON — zero overhead otherwise.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { NexusLogger, type DebugEvent, type DebugEventCategory } from '@/lib/nexus-logger';
+import { AraLogger, type DebugEvent, type DebugEventCategory } from '@/lib/ara-logger';
 
 const MAX_VISIBLE = 150;
 
@@ -22,7 +22,7 @@ export function useDebugEventStream(
       setEvents([]);
       return;
     }
-    const seed = NexusLogger.getRecentEvents(MAX_VISIBLE);
+    const seed = AraLogger.getRecentEvents(MAX_VISIBLE);
     setEvents(category === '*' ? seed : seed.filter((e) => e.category === category));
   }, [debugMode, category]);
 
@@ -30,7 +30,7 @@ export function useDebugEventStream(
   useEffect(() => {
     if (!debugMode) return;
 
-    const unsub = NexusLogger.subscribe(category, (event) => {
+    const unsub = AraLogger.subscribe(category, (event) => {
       setEvents((prev) => {
         const next = [...prev, event];
         return next.length > MAX_VISIBLE ? next.slice(-MAX_VISIBLE) : next;
@@ -58,7 +58,7 @@ export function useDebugEventCount(debugMode: boolean): {
       return;
     }
 
-    const unsub = NexusLogger.subscribe('*', () => {
+    const unsub = AraLogger.subscribe('*', () => {
       counterRef.current += 1;
       setSinceLastOpen(counterRef.current);
     });
@@ -72,7 +72,7 @@ export function useDebugEventCount(debugMode: boolean): {
   }, []);
 
   return {
-    total: NexusLogger.events.length,
+    total: AraLogger.events.length,
     sinceLastOpen,
     resetCounter,
   };

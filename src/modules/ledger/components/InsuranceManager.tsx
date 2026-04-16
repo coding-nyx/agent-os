@@ -352,7 +352,7 @@ function PolicyCard({ policy, currency, onEdit, onDelete }: PolicyCardProps) {
 // ─── InsuranceManager ─────────────────────────────────────────────────────────
 
 /**
- * InsuranceManager — primary UI for the Nexus Ledger insurance sub-module.
+ * InsuranceManager — primary UI for the Ara Ledger insurance sub-module.
  *
  * Responsibilities (Single Responsibility boundaries):
  *  • Aggregates summary data via pure service functions (no business logic inline).

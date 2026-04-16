@@ -47,8 +47,8 @@ export default function LedgerPage() {
           }}
         />
       )}
-      renderContent={({ profile, encryptionKey }) => (
-        <LedgerContent profile={profile} encryptionKey={encryptionKey} />
+      renderContent={({ profile, encryptionKey, profileError, isLoading }) => (
+        <LedgerContent profile={profile} encryptionKey={encryptionKey} profileError={profileError} isLoading={isLoading} />
       )}
     />
   );

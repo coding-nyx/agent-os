@@ -1,4 +1,4 @@
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 
 /**
  * BridgeService — Headless Spine subscriber / FCM push-notification daemon.
@@ -14,7 +14,7 @@ import { NexusLogger } from '@/lib/nexus-logger';
 
 import { getToken, onMessage, getMessaging } from 'firebase/messaging';
 import { getFirebase } from '@/lib/firebase';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 
 // ---------------------------------------------------------------------------
 // Bridge notification icon
@@ -159,7 +159,7 @@ class BridgeServiceClass {
         this.swRegistration = existing;
         // Trigger a background update check so a stale SW (e.g. cached with wrong
         // Firebase config) gets replaced without requiring manual unregistration.
-        void existing.update().catch((e) => { NexusLogger.warn('BridgeService', `SW update failed: ${e}`); });
+        void existing.update().catch((e) => { AraLogger.warn('BridgeService', `SW update failed: ${e}`); });
         return;
       }
 
@@ -239,7 +239,7 @@ class BridgeServiceClass {
       this.fcmUnsubscribe = onMessage(messaging, (payload) => {
         // Show OS notification for all foreground/hidden-tab FCM messages.
         // (True background/closed-app messages are handled by the SW's onBackgroundMessage.)
-        const title = payload.notification?.title ?? 'Nexus Alert';
+        const title = payload.notification?.title ?? 'Ara Alert';
         const body = payload.notification?.body ?? '';
         this.showNativeNotification(title, body, (payload.data as Record<string, string> | undefined) ?? {});
       });
@@ -322,7 +322,7 @@ class BridgeServiceClass {
 
   private async persistFCMToken(token: string): Promise<void> {
     if (!this.userId) return;
-    const dl = getNexusDataLayer();
+    const dl = getAraDataLayer();
 
     await dl.setDocument(`users/${this.userId}/fcm_tokens`, 'primary', {
       token,
@@ -354,7 +354,7 @@ class BridgeServiceClass {
    */
   private async ensureBridgeConfig(): Promise<void> {
     if (!this.userId) return;
-    const dl = getNexusDataLayer();
+    const dl = getAraDataLayer();
     const existing = await dl.getDocument<any>('bridge_config', this.userId);
     
     // Only initialize if it doesn't exist yet
@@ -382,7 +382,7 @@ class BridgeServiceClass {
         icon: NOTIFICATION_ICON,
         badge: NOTIFICATION_ICON,
         data,
-        tag: data['type'] || 'nexus-alert',
+        tag: data['type'] || 'ara-alert',
         renotify: true,
       } as NotificationOptions);
     } else {

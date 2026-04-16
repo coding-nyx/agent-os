@@ -240,6 +240,7 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   SCOUT_KNOWLEDGE_ENRICHED: 'Knowledge base enriched',
   SCOUT_QUERY_RESULT_READY: 'Scout query result ready',
   SCOUT_CROSS_MODULE_QUERY: 'Cross-module knowledge query dispatched',
+  SCOUT_OFF_TOPIC_DETECTED: 'Off-topic query detected in research session',
   HABIT_SUGGESTED: 'New habit suggested by Scout',
   RESEARCH_SEARCHING: 'Web research in progress',
   RESEARCH_RESULTS: 'Research results gathered',
@@ -287,6 +288,10 @@ export const EVENT_DISPLAY_NAMES: Record<SpineEventType, string> = {
   FORGE_EXECUTION_COMPLETED: 'Code execution completed',
   FORGE_EXECUTION_FAILED: 'Code execution failed',
   FORGE_ARTIFACT_CREATED: 'Forge artifact created',
+  // Routing proposal lifecycle
+  ROUTING_PROPOSED: 'Routing proposal shown',
+  ROUTING_ACCEPTED: 'Routing accepted',
+  ROUTING_DISMISSED: 'Routing dismissed',
 };
 
 // ---------------------------------------------------------------------------

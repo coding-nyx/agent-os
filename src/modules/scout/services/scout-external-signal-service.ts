@@ -1,4 +1,4 @@
-import type { NexusDataLayer } from '@/lib/data-layer';
+import type { AraDataLayer } from '@/lib/data-layer';
 import { upsertAliveEntity, adaptScoutDigestToAliveEntity, adaptScoutKnowledgeNodeToAliveEntity } from '@/lib/services/alive-entity-service';
 import { SemanticMemoryService } from '@/lib/services/semantic-memory-service';
 import type { ScoutDigest, ScoutKnowledgeNode } from '../types';
@@ -22,7 +22,7 @@ function buildDigestSummaryFact(digest: Pick<ScoutDigest, 'synthesizedContent' |
 
 export const ScoutExternalSignalService = {
   async syncKnowledgeNode(
-    dataLayer: NexusDataLayer,
+    dataLayer: AraDataLayer,
     uid: string,
     node: ScoutKnowledgeNode,
   ): Promise<boolean> {
@@ -60,7 +60,7 @@ export const ScoutExternalSignalService = {
   },
 
   async syncDigest(
-    dataLayer: NexusDataLayer,
+    dataLayer: AraDataLayer,
     uid: string,
     digest: Pick<ScoutDigest, 'id' | 'generatedAt' | 'generationType' | 'summary' | 'topClaims' | 'trendingInterests' | 'synthesizedContent'>,
   ): Promise<boolean> {

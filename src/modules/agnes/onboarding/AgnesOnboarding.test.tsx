@@ -15,10 +15,10 @@ vi.mock('@/lib/auth-context', () => ({
   useAuth: vi.fn()
 }));
 
-// Mock NexusChat
-vi.mock('@/core/components/NexusChat', () => ({
-  NexusChat: ({ ai, agentName }: any) => (
-    <div data-testid="nexus-chat">
+// Mock AraChat
+vi.mock('@/core/components/AraChat', () => ({
+  AraChat: ({ ai, agentName }: any) => (
+    <div data-testid="ara-chat">
       <span>Agent: {agentName}</span>
       <div data-testid="chat-messages">
         {ai.messages.map((m: any, i: number) => (

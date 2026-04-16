@@ -2,7 +2,7 @@
  * NSV Service — thin bridge over cortex-logic's NsvServiceJs.
  *
  * Core algorithms (normalize, merge, format) live in KMP commonMain so both
- * Agnes and nexus-android produce identical results. This bridge adapts the
+ * Agnes and ara-android produce identical results. This bridge adapts the
  * JSON boundary to typed TypeScript objects.
  *
  * Type coercion (e.g. string-in-numeric-field from corrupted Firestore data)

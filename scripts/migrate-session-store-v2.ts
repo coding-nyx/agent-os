@@ -17,7 +17,7 @@ import {
   orderBy as fbOrderBy,
   limit as fbLimit,
 } from 'firebase/firestore';
-import type { BatchOperation, NexusDataLayer, NexusDocumentId, NexusQuery, NexusRecord } from '@/lib/data-layer';
+import type { BatchOperation, AraDataLayer, AraDocumentId, AraQuery, AraRecord } from '@/lib/data-layer';
 import type { ActiveSessionState } from '@/lib/types';
 import { ChunkedSessionStore } from '@/lib/storage/adapters/chunked-session-store';
 
@@ -66,28 +66,28 @@ function buildFirebaseConfig(): FirebaseWebConfig {
   };
 }
 
-class FirestoreScriptDataLayer implements NexusDataLayer {
+class FirestoreScriptDataLayer implements AraDataLayer {
   constructor(private readonly db: ReturnType<typeof getFirestore>) {}
 
-  async getDocument<T>(collectionName: string, id: NexusDocumentId): Promise<NexusRecord<T> | null> {
+  async getDocument<T>(collectionName: string, id: AraDocumentId): Promise<AraRecord<T> | null> {
     const snap = await getDoc(doc(this.db, collectionName, id));
     if (!snap.exists()) return null;
     return { ...(snap.data() as T), id };
   }
 
-  async listDocuments<T>(collectionName: string): Promise<NexusRecord<T>[]> {
+  async listDocuments<T>(collectionName: string): Promise<AraRecord<T>[]> {
     const snap = await getDocs(collection(this.db, collectionName));
     return snap.docs.map((d) => ({ ...(d.data() as T), id: d.id }));
   }
 
   async createDocument<T>(
     _collection: string,
-    _data: Omit<NexusRecord<T>, 'id'> & Partial<Pick<NexusRecord<T>, 'id'>>,
-  ): Promise<NexusRecord<T>> {
+    _data: Omit<AraRecord<T>, 'id'> & Partial<Pick<AraRecord<T>, 'id'>>,
+  ): Promise<AraRecord<T>> {
     throw new Error('Not implemented for migration script');
   }
 
-  async setDocument<T>(collectionName: string, id: NexusDocumentId, data: T): Promise<NexusRecord<T>> {
+  async setDocument<T>(collectionName: string, id: AraDocumentId, data: T): Promise<AraRecord<T>> {
     const payload = { ...(data as Record<string, unknown>) };
     delete (payload as { id?: unknown }).id;
     await setDoc(doc(this.db, collectionName, id), payload);
@@ -96,17 +96,17 @@ class FirestoreScriptDataLayer implements NexusDataLayer {
 
   async updateDocument<T>(
     _collection: string,
-    _id: NexusDocumentId,
+    _id: AraDocumentId,
     _updates: Partial<T>,
-  ): Promise<NexusRecord<T> | null> {
+  ): Promise<AraRecord<T> | null> {
     throw new Error('Not implemented for migration script');
   }
 
-  async deleteDocument(collectionName: string, id: NexusDocumentId): Promise<void> {
+  async deleteDocument(collectionName: string, id: AraDocumentId): Promise<void> {
     await deleteDoc(doc(this.db, collectionName, id));
   }
 
-  async query<T>(query: NexusQuery): Promise<NexusRecord<T>[]> {
+  async query<T>(query: AraQuery): Promise<AraRecord<T>[]> {
     let ref = collection(this.db, query.collection);
     let q: ReturnType<typeof fbQuery> = fbQuery(ref);
     for (const filter of query.where ?? []) {
@@ -124,15 +124,15 @@ class FirestoreScriptDataLayer implements NexusDataLayer {
 
   subscribeToDocument<T>(
     _collection: string,
-    _id: NexusDocumentId,
-    _listener: (document: NexusRecord<T> | null) => void,
+    _id: AraDocumentId,
+    _listener: (document: AraRecord<T> | null) => void,
   ): () => void {
     throw new Error('Not implemented for migration script');
   }
 
   subscribeToQuery<T>(
-    _query: NexusQuery,
-    _listener: (documents: NexusRecord<T>[]) => void,
+    _query: AraQuery,
+    _listener: (documents: AraRecord<T>[]) => void,
   ): () => void {
     throw new Error('Not implemented for migration script');
   }

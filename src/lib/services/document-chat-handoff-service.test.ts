@@ -70,14 +70,14 @@ describe('prepareDocumentChatPrompt', () => {
     const sendMessage = vi.fn<(_: string) => Promise<string>>().mockResolvedValue(
       JSON.stringify({
         docType: 'unknown',
-        targetModule: 'nexus',
+        targetModule: 'ara',
         confidence: 0.2,
         reasons: ['Insufficient signal'],
       }),
     );
 
     const result = await prepareDocumentChatPrompt({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       files: [new File(['ambiguous content'], 'ambiguous.txt', { type: 'text/plain' })],
       sendMessage,
     });
@@ -93,7 +93,7 @@ describe('prepareDocumentChatPrompt', () => {
       if (prompt.includes('Pass 1 (classification)')) {
         return JSON.stringify({
           docType: 'medical_image',
-          targetModule: 'nexus',
+          targetModule: 'ara',
           confidence: 0.91,
           reasons: ['Image upload with minimal OCR'],
         });
@@ -111,7 +111,7 @@ describe('prepareDocumentChatPrompt', () => {
       }));
 
     const result = await prepareDocumentChatPrompt({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       files: [new File(['fake'], 'image.png', { type: 'image/png' })],
       sendMessage,
       analyzeImage,

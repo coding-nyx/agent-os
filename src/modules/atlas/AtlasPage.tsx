@@ -34,7 +34,7 @@ import { useExtensionFieldValues } from '@/lib/hooks/use-extension-field-values'
 import { AtlasOnboarding } from './onboarding/AtlasOnboarding';
 import { PostOnboardingWelcome, hasSeenWelcome, markWelcomeSeen } from './components/PostOnboardingWelcome';
 import { CoreProfileService } from '@/lib/services/core-profile-service';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
 import {
   loadJournalEntry,
   saveJournalEntry,
@@ -61,12 +61,14 @@ function buildRecoveryWindow(reason: string): RecoveryWindow {
 interface AtlasContentProps {
   profile: AtlasProfile | null;
   encryptionKey: CryptoKey | null;
+  profileError: 'subscription_failed' | null;
+  isLoading: boolean;
   user: ReturnType<typeof useAuth>['user'];
   isGuest: boolean;
   isLocked: boolean;
 }
 
-function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: AtlasContentProps) {
+function AtlasContent({ profile, encryptionKey, profileError, isLoading, user, isGuest, isLocked }: AtlasContentProps) {
   const { updateCrossFunctionalState } = useGlobalSoulActions();
   const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const agentAlias = globalSoul?.displayNames?.atlas || 'Atlas';
@@ -265,8 +267,15 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     encryptionKey,
     persistencePolicy: 'atlas-planning',
     moduleContext: {
-      atlas_profile: profile,
+      atlas_profile: effectiveProfile,
       atlas_mode: 'general',
+      atlas_profile_status: effectiveProfile !== null
+        ? 'loaded'
+        : profileError === 'subscription_failed'
+          ? 'unavailable'
+          : isLoading
+            ? 'loading'
+            : 'empty',
     },
   });
 
@@ -332,7 +341,7 @@ function AtlasContent({ profile, encryptionKey, user, isGuest, isLocked }: Atlas
     updateGlobalSoul: updateCrossFunctionalState,
     delegateToModule: (target: string, reason: string, delegationContent: string) => {
       if (isGuest || !user?.uid) return;
-      NexusHandoffService.store({
+      AraHandoffService.store({
         moduleId: target,
         type: 'delegate',
         content: delegationContent,
@@ -904,10 +913,12 @@ export default function AtlasPage() {
           }}
         />
       )}
-      renderContent={({ profile, encryptionKey }) => (
+      renderContent={({ profile, encryptionKey, profileError, isLoading }) => (
         <AtlasContent
           profile={profile}
           encryptionKey={encryptionKey}
+          profileError={profileError}
+          isLoading={isLoading}
           user={user}
           isGuest={!!isGuest}
           isLocked={isLocked}

@@ -41,12 +41,12 @@ export function LedgerDashboard({
   const [activeView, setActiveView] = useState<'overview' | 'cashflow' | 'debt'>('overview');
   // FIX-P9: Behavioral insights toggle persisted to localStorage
   const [behavioralEnabled, setBehavioralEnabled] = useState(
-    () => localStorage.getItem('nexus:ledger:behavioral') === 'true'
+    () => localStorage.getItem('ara:ledger:behavioral') === 'true'
   );
   const handleToggleBehavioral = () => {
     const next = !behavioralEnabled;
     setBehavioralEnabled(next);
-    localStorage.setItem('nexus:ledger:behavioral', String(next));
+    localStorage.setItem('ara:ledger:behavioral', String(next));
   };
 
   const hasSoul = Boolean(soul);

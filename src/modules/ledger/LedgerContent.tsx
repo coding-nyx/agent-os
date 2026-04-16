@@ -81,7 +81,7 @@ const LEDGER_TABS: { id: LedgerTab; label: string }[] = [
   { id: 'receipts', label: 'Receipts' },
 ];
 
-export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntakeProfile | null; encryptionKey: CryptoKey | null }) {
+export function LedgerContent({ profile, encryptionKey, profileError, isLoading }: { profile: LedgerIntakeProfile | null; encryptionKey: CryptoKey | null; profileError?: 'subscription_failed' | null; isLoading?: boolean }) {
   const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const { user, isGuest } = useAuth();
   const { isModuleAccessible } = useVault();
@@ -106,6 +106,13 @@ export function LedgerContent({ profile, encryptionKey }: { profile: LedgerIntak
     moduleContext: {
       ledger_profile: profile,
       ledger_mode: 'general',
+      ledger_profile_status: profile !== null
+        ? 'loaded'
+        : profileError === 'subscription_failed'
+          ? 'unavailable'
+          : isLoading
+            ? 'loading'
+            : 'empty',
     },
   });
 

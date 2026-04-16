@@ -9,7 +9,7 @@ describe('AnticipatoryPlanningService', () => {
 
   it('creates an atlas triage proposal for planning collapse with alive context', () => {
     const proposal = AnticipatoryPlanningService.buildProposal({
-      threadId: 'nexus.dashboard',
+      threadId: 'ara.dashboard',
       conversationDepth: 0,
       alerts: [
         {
@@ -53,7 +53,7 @@ describe('AnticipatoryPlanningService', () => {
 
   it('does not surface a proactive draft deep into an active conversation', () => {
     const proposal = AnticipatoryPlanningService.buildProposal({
-      threadId: 'nexus.dashboard',
+      threadId: 'ara.dashboard',
       conversationDepth: 3,
       alerts: [
         {
@@ -76,7 +76,7 @@ describe('AnticipatoryPlanningService', () => {
     AutonomyFeatureFlags.setTestOverrides({ anticipatoryPlanning: false });
 
     const proposal = AnticipatoryPlanningService.buildProposal({
-      threadId: 'nexus.dashboard',
+      threadId: 'ara.dashboard',
       conversationDepth: 0,
       alerts: [
         {

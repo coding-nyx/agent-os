@@ -18,7 +18,7 @@ import { Spine } from '@/lib/spine/spine-event-bus';
 import type { FieldDefinition } from '@/lib/field-system/types';
 import { FieldType } from '@/lib/field-system/types';
 import type { SpineEventType } from '@/lib/types';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { encryptWithKey, decryptWithKey } from '@/lib/encryption';
 import { loadProfile, persistProfile } from '../services/actions/shared';
 
@@ -300,7 +300,7 @@ export function registerAtlasFieldActions(): void {
 
       // Clean up any stored field values from the extension_field_values store
       try {
-        const dataLayer = getNexusDataLayer();
+        const dataLayer = getAraDataLayer();
         type FieldValuesDoc = {
           moduleId: string;
           lastModified: string;

@@ -20,7 +20,7 @@ describe('agnes engagement modes', () => {
 
     saveGuestAgnesPreferredMode('somatic', { setItem });
 
-    expect(setItem).toHaveBeenCalledWith('nexus_agnes_preferred_mode_guest', 'somatic');
+    expect(setItem).toHaveBeenCalledWith('ara_agnes_preferred_mode_guest', 'somatic');
     expect(loadGuestAgnesPreferredMode({ getItem })).toBe('somatic');
   });
 

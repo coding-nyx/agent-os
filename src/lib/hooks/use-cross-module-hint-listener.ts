@@ -15,7 +15,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useSpineEvent } from '@/lib/spine/spine-event-bus';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { ActionHub } from '@/lib/actions/action-hub';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 import { useAuth } from '@/lib/auth-context';
 import { verifyHintAgainstProfile, incrementHintCount } from '@/lib/services/context-inference-service';
 import type { DataHint, HintVerificationResult } from '@/lib/types';
@@ -136,7 +136,7 @@ export function useCrossModuleHintListener(): CrossModuleHintListenerResult {
       };
 
       // Fire and forget — errors must not block the UI update.
-      ActionHub.execute(hint.targetModule, confirmActionType, ctx).catch((e) => { NexusLogger.warn('CrossModuleHint', 'Hint action execution failed', e); });
+      ActionHub.execute(hint.targetModule, confirmActionType, ctx).catch((e) => { AraLogger.warn('CrossModuleHint', 'Hint action execution failed', e); });
     }
 
     Spine.publish({

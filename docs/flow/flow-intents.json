@@ -119,7 +119,7 @@
     "capabilities": [
       "general-orchestration"
     ],
-    "primaryModule": "nexus",
+    "primaryModule": "ara",
     "defaultActionTypes": [
       "create_general_request"
     ],

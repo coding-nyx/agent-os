@@ -8,8 +8,8 @@ import type {
   ThreadExecutionArtifact,
 } from '@/lib/contracts/orchestration';
 import type { ParsedCommandEnvelope } from '@/lib/contracts/command-intelligence';
-import { NexusLogger } from '@/lib/nexus-logger';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { AraLogger } from '@/lib/ara-logger';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
 import { OrchestrationActionGateService } from '@/lib/services/orchestration-action-gate-service';
 import { OrchestrationRuntimeService } from '@/lib/services/orchestration-runtime-service';
 import { Spine } from '@/lib/spine/spine-event-bus';
@@ -147,7 +147,7 @@ export class ModuleAIActionExecutionService {
 
     const delegateToModule = (target: string, reason: string, delegationContent: string) => {
       if (persistencePolicy === 'ephemeral') return;
-      NexusHandoffService.store({
+      AraHandoffService.store({
         moduleId: target,
         type: 'delegate',
         content: delegationContent,
@@ -155,6 +155,12 @@ export class ModuleAIActionExecutionService {
         sourceModuleId: moduleId,
         createdAt: new Date().toISOString(),
       });
+      // Ara orchestrator delegations go through ROUTING_PROPOSED (emitted by
+      // useAraCoordination.handleActionParsed → presentRoutingSuggestion). Emitting
+      // MODULE_DELEGATED here would race with ROUTING_PROPOSED and set the participant
+      // to 'waiting' before the routing banner even appears. Other modules still need
+      // MODULE_DELEGATED so they can track their own cross-module delegations.
+      if (moduleId === 'ara') return;
       Spine.emit({
         type: 'MODULE_DELEGATED',
         source: moduleId,
@@ -197,7 +203,7 @@ export class ModuleAIActionExecutionService {
       // Auto-translate hallucinated action types to real ones
       const translation = HALLUCINATED_ACTION_MAP[type];
       if (translation) {
-        NexusLogger.emit('ai', {
+        AraLogger.emit('ai', {
           moduleId,
           label: 'hallucinated_action_translated',
           detail: { originalType: type, translatedType: translation.type },
@@ -213,7 +219,7 @@ export class ModuleAIActionExecutionService {
         : { ...safePayload };
       const signature = `${type}|${stableSerialize(adjustedPayload)}`;
       if (executedActionSignatures.has(signature)) {
-        NexusLogger.emit('ai', {
+        AraLogger.emit('ai', {
           moduleId,
           label: 'action_deduped',
           detail: { actionType: type },
@@ -223,7 +229,7 @@ export class ModuleAIActionExecutionService {
       executedActionSignatures.add(signature);
 
       if (!allowedActions.includes(type)) {
-        NexusLogger.emit('ai', {
+        AraLogger.emit('ai', {
           moduleId,
           label: 'schema_guard_blocked',
           detail: { actionType: type },
@@ -244,7 +250,7 @@ export class ModuleAIActionExecutionService {
         moduleSessionActive,
       });
 
-      NexusLogger.emit('ai', {
+      AraLogger.emit('ai', {
         moduleId,
         label: 'orchestration_gate',
         detail: {

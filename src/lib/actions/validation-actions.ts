@@ -120,10 +120,10 @@ async function loadUserContext(
   if (!userId || !encryptionKey) return null;
 
   try {
-    const { getNexusDataLayer } = await import('@/lib/data-layer/provider');
+    const { getAraDataLayer } = await import('@/lib/data-layer/provider');
     const { decryptWithKey } = await import('@/lib/encryption');
 
-    const record = await getNexusDataLayer().getDocument<Record<string, unknown>>(
+    const record = await getAraDataLayer().getDocument<Record<string, unknown>>(
       'intake_profiles',
       `${userId}_${moduleId}`
     );
@@ -607,7 +607,7 @@ export function registerValidationActions(moduleId: string): void {
  * Register validation actions globally (available to all modules)
  */
 export function registerGlobalValidationActions(): void {
-  ActionHub.registerMultiple('nexus', {
+  ActionHub.registerMultiple('ara', {
     suggest_field_fix: suggestFieldFix,
     validate_with_context: validateWithContext,
     explain_validation_error: explainValidationError

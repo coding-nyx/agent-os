@@ -49,7 +49,7 @@ export type SoulImpactPreset = Partial<Record<SpecVectorKey, number>>;
 
 export interface MutationProposal {
   id: string;
-  source: ModuleId | PrimaryAgentId | 'nexus';
+  source: ModuleId | PrimaryAgentId | 'ara';
   intent: string;
   patch?: NeuralStateVectorPatch;
   vectorMutations?: Partial<Record<SpecVectorKey, number>>;
@@ -70,7 +70,7 @@ export interface ProposalCard {
   proposalId: string;
   title: string;
   summary: string;
-  source: ModuleId | 'nexus';
+  source: ModuleId | 'ara';
   status: 'draft' | 'pending_approval' | 'approved' | 'executed' | 'deferred' | 'blocked' | 'failed' | 'incident';
   approvalRequirement: ApprovalRequirement;
   executionMode: ExecutionMode;
@@ -98,7 +98,7 @@ export interface ActionOrchestrationMetadata {
 export interface ExecutionRecord {
   id: string;
   proposalId: string;
-  source: ModuleId | 'nexus';
+  source: ModuleId | 'ara';
   autopilotLevel: AutopilotLevel;
   executionMode: ExecutionMode;
   historyMode: HistoryMode;
@@ -203,7 +203,7 @@ export interface OrchestrationActionRuntimeEntry {
   proposalId: string;
   label: string;
   summary: string;
-  source: ModuleId | 'nexus';
+  source: ModuleId | 'ara';
   status: ProposalCard['status'];
   approvalRequirement: ApprovalRequirement;
   dispatchStatus: ActionOrchestrationMetadata['dispatchStatus'];
@@ -242,7 +242,7 @@ export interface SilentHistoryEntry {
   executionId: string;
   proposalId: string;
   summary: string;
-  source: ModuleId | 'nexus';
+  source: ModuleId | 'ara';
   timestamp: string;
   patientScope: PatientScope;
   metadata?: Record<string, unknown>;
@@ -263,7 +263,7 @@ export type ThreadParticipantState =
   | 'dismissed'
   | 'left';
 export type ThreadParticipantPresence = 'online' | 'idle' | 'offline';
-export type MasterThreadAuthor = ModuleId | 'nexus' | 'user' | 'system';
+export type MasterThreadAuthor = ModuleId | 'ara' | 'user' | 'system';
 export type SpecialistConsultationMode = 'state_only' | 'state_plus_persisted_data';
 export type SpecialistConsultationStatus = 'completed' | 'unavailable' | 'failed';
 export type ThreadExecutionStatus = ExecutionRecord['status'];
@@ -295,7 +295,7 @@ export interface SpecialistConsultationArtifact {
 export interface ThreadExecutionArtifact {
   id: string;
   threadId: string | null;
-  sourceModuleId: ModuleId | 'nexus';
+  sourceModuleId: ModuleId | 'ara';
   actionType: string;
   proposalId: string;
   executionId: string;
@@ -315,7 +315,7 @@ export interface ThreadExecutionArtifact {
 }
 
 export interface ThreadParticipant {
-  moduleId: ModuleId | 'nexus';
+  moduleId: ModuleId | 'ara';
   role: ThreadParticipantRole;
   joinedAt: string;
   state: ThreadParticipantState;
@@ -334,7 +334,7 @@ export interface MasterThreadTurn {
   threadId: string;
   sequence: number;
   startedBy: MasterThreadAuthor;
-  participantIds: Array<ModuleId | 'nexus'>;
+  participantIds: Array<ModuleId | 'ara'>;
   createdAt: string;
   updatedAt: string;
   messageIds: string[];
@@ -349,7 +349,7 @@ export interface MasterThreadMessage {
   kind?: MasterThreadMessageKind;
   body: string;
   createdAt: string;
-  participantIds: Array<ModuleId | 'nexus'>;
+  participantIds: Array<ModuleId | 'ara'>;
   actor?: ActorIdentityRef;
   consultation?: SpecialistConsultationArtifact;
   execution?: ThreadExecutionArtifact;
@@ -415,7 +415,7 @@ export interface AliveEntityRuntimeContext {
 export interface SpecSpineEvent {
   header: {
     id: string;
-    source: 'NEXUS' | 'AGNES' | 'ATLAS' | 'TITAN' | 'LEDGER' | 'SOMA';
+    source: 'ARA' | 'AGNES' | 'ATLAS' | 'TITAN' | 'LEDGER' | 'SOMA';
     timestamp: number;
     priority: 1 | 2 | 3;
   };
@@ -452,13 +452,13 @@ export function isPrimaryAgentId(value: string): value is PrimaryAgentId {
   return _contracts.isPrimaryAgentId(value);
 }
 
-export function getAgentPrecedenceRank(source: ModuleId | PrimaryAgentId | 'nexus' | string): number {
+export function getAgentPrecedenceRank(source: ModuleId | PrimaryAgentId | 'ara' | string): number {
   return _contracts.getAgentPrecedenceRank(source);
 }
 
 export function compareAgentPrecedence(
-  left: ModuleId | PrimaryAgentId | 'nexus' | string,
-  right: ModuleId | PrimaryAgentId | 'nexus' | string,
+  left: ModuleId | PrimaryAgentId | 'ara' | string,
+  right: ModuleId | PrimaryAgentId | 'ara' | string,
 ): number {
   return _contracts.compareAgentPrecedence(left, right);
 }
@@ -477,7 +477,7 @@ export function compareMasterThreadMessages(left: MasterThreadMessage, right: Ma
 
 // Author precedence includes 'user' and 'system' which are not in PRIMARY_AGENT_PRECEDENCE.
 // This ordering is TS-local; no KMP method covers the combined list.
-const MASTER_THREAD_AUTHOR_PRECEDENCE: readonly string[] = ['user', 'system', 'nexus', ...PRIMARY_AGENT_PRECEDENCE];
+const MASTER_THREAD_AUTHOR_PRECEDENCE: readonly string[] = ['user', 'system', 'ara', ...PRIMARY_AGENT_PRECEDENCE];
 
 /**
  * Returns the precedence rank of a thread author string.

@@ -1,10 +1,10 @@
 /**
  * Field Validation Service — Platform-level shared validation
  *
- * Provides batch LLM-driven field validation that ALL Nexus modules can use.
+ * Provides batch LLM-driven field validation that ALL Ara modules can use.
  * Builds a single LLM prompt for the entire batch (vs. N individual calls),
  * stores results in sessionStorage, and persists user-correction feedback via
- * the NexusDataLayer so future validations can contextualise their prompts.
+ * the AraDataLayer so future validations can contextualise their prompts.
  *
  * Architecture notes:
  *   - Single Responsibility: validation + feedback persistence only; no UI.
@@ -20,8 +20,8 @@
  *   buildFeedbackContext — O(N) where N = feedback array length
  */
 
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import type { NexusQuery } from '@/lib/data-layer';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
+import type { AraQuery } from '@/lib/data-layer';
 
 // ============================================================================
 // Public types
@@ -83,7 +83,7 @@ export const MODULE_VALIDATION_PERSONAS: Record<string, string> = {
 // Internal constants
 // ============================================================================
 
-const BATCH_CACHE_PREFIX = 'nexus_batch_val_';
+const BATCH_CACHE_PREFIX = 'ara_batch_val_';
 const BATCH_LLM_TIMEOUT_MS = 5_000;
 
 // ============================================================================
@@ -360,7 +360,7 @@ export async function recordValidationFeedback(
   userId: string,
 ): Promise<void> {
   try {
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     await dataLayer.setDocument<ValidationFeedback>(
       `validation_feedback/${userId}/entries`,
       feedback.id,
@@ -383,15 +383,15 @@ export async function getRecentFeedback(
   limit = 5,
 ): Promise<ValidationFeedback[]> {
   try {
-    const dataLayer = getNexusDataLayer();
-    const q: NexusQuery = {
+    const dataLayer = getAraDataLayer();
+    const q: AraQuery = {
       collection: `validation_feedback/${userId}/entries`,
       where: [{ field: 'moduleId', op: '==', value: moduleId }],
       orderBy: [{ field: 'timestamp', direction: 'desc' }],
       limit,
     };
     const records = await dataLayer.query<ValidationFeedback>(q);
-    // NexusRecord<ValidationFeedback> = ValidationFeedback & { id: string }
+    // AraRecord<ValidationFeedback> = ValidationFeedback & { id: string }
     // ValidationFeedback already carries id, so the array is assignable directly.
     return records;
   } catch (err: unknown) {

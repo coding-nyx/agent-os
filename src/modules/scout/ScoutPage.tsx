@@ -70,12 +70,14 @@ registerDiagnosisSpec(scoutDiagnosisSpec);
 interface ScoutViewProps {
   profile: ScoutProfile | null;
   encryptionKey: CryptoKey | null;
+  profileError?: 'subscription_failed' | null;
+  isLoading?: boolean;
   isRefreshingNews?: boolean;
   onRefreshNews?: () => void;
   onActionParsed?: (type: string, payload: Record<string, unknown>) => void;
 }
 
-function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews, onActionParsed }: ScoutViewProps) {
+function ScoutContent({ profile, encryptionKey, profileError, isLoading, isRefreshingNews, onRefreshNews, onActionParsed }: ScoutViewProps) {
   const { user } = useAuth();
   const globalSoul = useGlobalSoulStore(s => s.globalSoul);
   const agentAlias = useGlobalSoulStore(s => s.globalSoul?.displayNames?.scout || 'Scout');
@@ -113,9 +115,10 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     createSession: createSessionFn,
     updateSession: updateSessionFn,
     deleteSession: deleteSessionFn,
+    refresh: refreshSessions,
   } = useSessions({ userId: user?.uid });
 
-  const { knowledgeNodes } = useKnowledgeNodes(ctx);
+  const { knowledgeNodes, refresh: refreshKnowledgeNodes } = useKnowledgeNodes(ctx);
 
   const deepResearch = useDeepResearch({
     userId: user?.uid,
@@ -277,6 +280,14 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     }
   }, [activeSessionId, setIsArtifactsSheetOpen]);
 
+  // Refresh session data when a session is opened
+  useEffect(() => {
+    if (activeSessionId) {
+      refreshKnowledgeNodes();
+      refreshSessions();
+    }
+  }, [activeSessionId, refreshKnowledgeNodes, refreshSessions]);
+
   const handleNewSessionSubmit = useCallback(async (topic: string, isDeepResearch: boolean) => {
     try {
       await handleNewSessionSubmitBase(topic, isDeepResearch);
@@ -303,10 +314,18 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
     encryptionKey,
     sessionId: activeSessionId || 'default',
     persistencePolicy: 'scout-research',
+    moduleSessionActive: !!activeSessionId,
     moduleContext: {
       scout_active_topic: activeSession?.topic ?? null,
       scout_session_context: sessionContext ?? null,
       scout_research_focus: profile?.researchFocus ?? null,
+      scout_profile_status: profile !== null
+        ? 'loaded'
+        : profileError === 'subscription_failed'
+          ? 'unavailable'
+          : isLoading
+            ? 'loading'
+            : 'empty',
     },
   });
 
@@ -609,6 +628,10 @@ function ScoutContent({ profile, encryptionKey, isRefreshingNews, onRefreshNews,
           artifactsMode={shellState.artifactsVisibility}
           artifactsPanel={artifactsPanel}
           onToggleArtifacts={handleToggleArtifacts}
+          onReload={() => {
+            refreshKnowledgeNodes();
+            refreshSessions();
+          }}
         />
         </div>
       );
@@ -1032,11 +1055,11 @@ export default function ScoutPage() {
           return loadedProfile;
         },
         saveProfile: saveScoutProfile,
-        subscribeProfile: (params, onUpdate) => {
+        subscribeProfile: (params, onUpdate, onError) => {
           return subscribeScoutProfile(params, (loadedProfile) => {
             setActiveProfile(loadedProfile);
             onUpdate(loadedProfile);
-          });
+          }, onError);
         },
         refreshProfile: async (params) => {
           const loadedProfile = await loadScoutProfile(params);
@@ -1051,10 +1074,12 @@ export default function ScoutPage() {
           onComplete={props.onComplete}
         />
       )}
-      renderContent={({ encryptionKey, onActionParsed }) => (
+      renderContent={({ encryptionKey, profileError, isLoading, onActionParsed }) => (
         <ScoutContent
           profile={activeProfile}
           encryptionKey={encryptionKey}
+          profileError={profileError}
+          isLoading={isLoading}
           isRefreshingNews={isRefreshingNews}
           onRefreshNews={() => handleRefreshNews(activeProfile, encryptionKey)}
           onActionParsed={onActionParsed}

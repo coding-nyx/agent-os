@@ -1,6 +1,6 @@
 import { RagChunkingServiceJs } from '@cortex-logic';
 import { EmbeddingService } from '@/lib/services/embedding-service';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import type { BatchOperation } from '@/lib/data-layer';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ export const RagIngestionService = {
       });
 
       // 4. Write to Firestore in a single batch
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
       await dataLayer.batchWrite(ops);
 
       console.info(
@@ -170,7 +170,7 @@ export const RagIngestionService = {
    */
   async deleteBySource(userId: string, source: string): Promise<void> {
     try {
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
       const existing = await dataLayer.query<{ uid: string; source: string }>({
         collection: 'rag_chunks',
         where: [

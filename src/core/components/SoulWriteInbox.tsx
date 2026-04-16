@@ -4,11 +4,11 @@ import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import { GlobalProjectionService } from '@/lib/services/global-projection-service';
-import type { NexusRecord } from '@/lib/data-layer';
+import type { AraRecord } from '@/lib/data-layer';
 import type { SoulWriteRequest } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-type SoulWriteRecord = NexusRecord<SoulWriteRequest>;
+type SoulWriteRecord = AraRecord<SoulWriteRequest>;
 
 export function SoulWriteInbox() {
   const { user, isGuest } = useAuth();

@@ -6,7 +6,7 @@
  * previous session.  Snapshots expire after 24 hours.
  */
 
-const SNAPSHOT_KEY_PREFIX = 'nexus_nsv_snapshot_';
+const SNAPSHOT_KEY_PREFIX = 'ara_nsv_snapshot_';
 const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface NsvSnapshot {

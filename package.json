@@ -1,5 +1,5 @@
 {
-  "name": "nexus",
+  "name": "ara",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -39,7 +39,7 @@
     "@tiptap/starter-kit": "^3.20.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cortex-logic": "github:raju-9-11/cortex-logic#v2.0.0",
+    "cortex-logic": "github:raju-9-11/cortex-logic#v2.0.1",
     "firebase": "^12.7.0",
     "framer-motion": "^12.23.26",
     "lucide-react": "^0.562.0",

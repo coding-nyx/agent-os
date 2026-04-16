@@ -3,7 +3,7 @@
 // Owns the `soma_profiles` Firestore collection with full E2EE.
 // Uses createEncryptedProfileService factory for the encryption/guest boilerplate.
 
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
 import { LoadContext } from '@/lib/types/encrypted-document';
@@ -116,7 +116,7 @@ function _doNormalize(userId: string, raw: unknown): SomaProfile {
 
 const _service = createEncryptedProfileService<SomaProfile>({
   collection: COLLECTION,
-  guestStorageKey: 'nexus_soma_profile_guest',
+  guestStorageKey: 'ara_soma_profile_guest',
   createEmpty: createEmptySomaProfile,
   normalize: _normalizeInternal,
   metadataProjection: (p) => ({
@@ -134,6 +134,7 @@ export const loadSomaProfile: (ctx: LoadContext) => Promise<SomaProfile | null> 
 export const subscribeSomaProfile: (
   ctx: LoadContext,
   onUpdate: (profile: SomaProfile | null) => void,
+  onError?: (error: unknown) => void,
 ) => () => void = _service.subscribe.bind(_service);
 
 // Guest helpers — re-exported for callers that reference them directly.
@@ -164,7 +165,7 @@ export async function saveSomaProfile(
 
   try {
     await syncAliveEntities(
-      getNexusDataLayer(),
+      getAraDataLayer(),
       bootstrapAliveEntities({
         vitalReadings: normalized.vitalReadings,
         physicalAssessments: normalized.physicalAssessments,

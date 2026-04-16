@@ -198,7 +198,7 @@ describe('OrchestrationPersistenceService', () => {
     const threadState = await OrchestrationPersistenceService.getThreadState(
       'user-1',
       {
-        moduleId: 'nexus',
+        moduleId: 'ara',
         threadId: 'missing-thread',
         now: '2024-01-01T00:00:00.000Z',
       },
@@ -312,12 +312,12 @@ describe('OrchestrationPersistenceService', () => {
     await OrchestrationPersistenceService.persistRuntimeArtifacts(
       'user-1',
       {
-        moduleId: 'nexus',
+        moduleId: 'ara',
         runtimeSummary: {
-          moduleId: 'nexus',
+          moduleId: 'ara',
           autopilotLevel: 4,
           historyMode: 'standard',
-          activeThreadId: 'nexus.shell',
+          activeThreadId: 'ara.shell',
           actions: [],
           aliveContext: null,
           counts: {

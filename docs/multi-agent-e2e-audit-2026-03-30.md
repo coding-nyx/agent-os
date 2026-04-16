@@ -35,10 +35,10 @@ Method: parallel static audits by 3 sub-agents + local verification + flow-audit
 - Impact: derived overtraining insight path is unreachable.
 - Refs: `src/lib/services/intelligence-pipeline.ts:34`, `src/modules/soma/actions/soma-field-actions.ts:193`
 
-4) Nexus cross-module blocker can remain busy until TTL
+4) Ara cross-module blocker can remain busy until TTL
 - Pending-target clear logic is limited to `query_result`/`VITAL_UPDATED` patterns.
 - Impact: false busy state and delayed interaction recovery.
-- Refs: `src/lib/hooks/use-nexus-cross-module-blocker.ts:63`, `src/lib/hooks/use-nexus-cross-module-blocker.ts:84`
+- Refs: `src/lib/hooks/use-ara-cross-module-blocker.ts:63`, `src/lib/hooks/use-ara-cross-module-blocker.ts:84`
 
 5) Main module stream interruption can silently no-op
 - Orchestrator marks interruptions, but `useModuleAI` does not branch on `response.isInterrupted` after completion.
@@ -90,12 +90,12 @@ Confirmed path:
 - Scout: research flow wired; export event re-entry is critical.
 - Forge: execution flow wired; persistence error propagation weak.
 - Notifications: inbox/settings wired; suppression enforcement uncertain in runtime.
-- Nexus: routing/delegation wired; blocker clearing and synthesis freshness gaps exist.
+- Ara: routing/delegation wired; blocker clearing and synthesis freshness gaps exist.
 - Hub: event-driven visuals wired; low integration test coverage.
 
 ## Registry & Coverage Audit Snapshot
 
-From regenerated reports (`docs/nexus-flow-audit.md`, `docs/flow-audit-report.md`):
+From regenerated reports (`docs/ara-flow-audit.md`, `docs/flow-audit-report.md`):
 - Registry validation: pass
 - Significant no-emitter/no-listener counts remain
 - Large action-label and action-handler coverage gaps remain
@@ -107,7 +107,7 @@ From regenerated reports (`docs/nexus-flow-audit.md`, `docs/flow-audit-report.md
 2. Atlas/Titan: `COMMITMENT_MISSED` compatibility test (domain/payload).
 3. Titan/Cascade: `SOMA_READINESS_UPDATED` payload schema contract tests.
 4. `useModuleAI`: interruption handling (`response.isInterrupted`) + streaming fallback tests.
-5. Nexus blocker: delegated completion contract matrix tests.
+5. Ara blocker: delegated completion contract matrix tests.
 6. Notifications: e2e quiet-hours suppression enforcement test.
 7. Forge: persistence failure propagation tests.
 
@@ -117,6 +117,6 @@ From regenerated reports (`docs/nexus-flow-audit.md`, `docs/flow-audit-report.md
 2. Align event contracts (`COMMITMENT_MISSED` and `SOMA_READINESS_UPDATED`).
 3. Add explicit interruption handling in `useModuleAI` parity with guided-intake.
 4. Make Atlas profile-update emit conditional on action success.
-5. Tighten Nexus pending-clear contract and broaden accepted completion signals.
+5. Tighten Ara pending-clear contract and broaden accepted completion signals.
 6. Wire/verify quiet-hours suppression in live notification dispatch path.
 

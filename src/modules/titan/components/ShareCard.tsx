@@ -244,7 +244,7 @@ function drawShareCard(data: CanvasCardData): void {
   ctx.font = '14px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = '#ffffff22';
   ctx.textAlign = 'right';
-  ctx.fillText('nexus.app', W - 40, H - 24);
+  ctx.fillText('ara.app', W - 40, H - 24);
   ctx.textAlign = 'left';
 
   // ── Trigger download ───────────────────────────────────────────────────
@@ -266,7 +266,7 @@ function buildTextSummary(data: CanvasCardData): string {
       lines.push(`Weight: ${data.prWeight} kg × ${data.prReps} reps`);
     }
     if (data.prDate) lines.push(`Date: ${formatDate(data.prDate)}`);
-    lines.push('', 'Logged with nexus.app/titan');
+    lines.push('', 'Logged with ara.app/titan');
     return lines.join('\n');
   } else {
     const lines = ['💪 WORKOUT COMPLETE — TITAN'];
@@ -278,7 +278,7 @@ function buildTextSummary(data: CanvasCardData): string {
       lines.push('', 'Exercises:');
       data.sessionExercises.forEach(e => lines.push(`  • ${e}`));
     }
-    lines.push('', 'Logged with nexus.app/titan');
+    lines.push('', 'Logged with ara.app/titan');
     return lines.join('\n');
   }
 }
@@ -400,7 +400,7 @@ function ShareCardPreview({
         )}
 
         {/* Branding */}
-        <p className="absolute bottom-4 right-5 text-[11px] text-white/15 tracking-widest">nexus.app</p>
+        <p className="absolute bottom-4 right-5 text-[11px] text-white/15 tracking-widest">ara.app</p>
       </div>
     </div>
   );

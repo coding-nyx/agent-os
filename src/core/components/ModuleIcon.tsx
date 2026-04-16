@@ -12,7 +12,7 @@ interface ModuleIconProps {
 
 export function moduleTextColor(source: string): string {
   const map: Record<string, string> = {
-    nexus: 'text-violet-300',
+    ara: 'text-violet-300',
     agnes: 'text-violet-400',
     titan: 'text-orange-400',
     ledger: 'text-cyan-300',
@@ -29,7 +29,7 @@ export function moduleTextColor(source: string): string {
 
 export function moduleSurfaceTone(source: string): string {
   const map: Record<string, string> = {
-    nexus: 'border-violet-500/20 bg-violet-500/10 text-violet-100',
+    ara: 'border-violet-500/20 bg-violet-500/10 text-violet-100',
     agnes: 'border-violet-500/20 bg-violet-500/10 text-violet-100',
     titan: 'border-orange-500/20 bg-orange-500/10 text-orange-100',
     ledger: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100',

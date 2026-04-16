@@ -5,7 +5,7 @@ import { OrchestrationCommandCenterService } from './orchestration-command-cente
 
 function makeRuntimeSummary(): OrchestrationTurnRuntimeSummary {
   return {
-    moduleId: 'nexus',
+    moduleId: 'ara',
     autopilotLevel: 4,
     historyMode: 'standard',
     activeThreadId: 'thread-1',
@@ -129,7 +129,7 @@ function makeSilentHistory(): SilentHistoryEntry[] {
       executionId: 'exec-ghost',
       proposalId: 'proposal-ghost',
       summary: 'Night reset completed',
-      source: 'nexus',
+      source: 'ara',
       timestamp: '2026-03-24T14:15:00.000Z',
       patientScope: 'USER',
       metadata: {

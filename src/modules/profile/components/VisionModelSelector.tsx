@@ -4,6 +4,7 @@ import { Cpu, ChevronDown, Search, RefreshCw, Check, Loader2 } from 'lucide-reac
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralInput } from '@/core/components/NeuralInput';
 import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
+import { ARA_STORAGE_KEYS } from '@/cortex-bridge/ara-events';
 
 type ProviderId = 'openrouter' | 'google' | 'grok';
 
@@ -13,7 +14,7 @@ const PROVIDERS: Array<{ id: ProviderId; label: string }> = [
   { id: 'grok', label: 'Grok' },
 ];
 
-const PROVIDER_KEY = 'nexus_debug_provider';
+const PROVIDER_KEY = ARA_STORAGE_KEYS.DEBUG_PROVIDER;
 const VISION_MODEL_KEY = 'preferred_vision_model';
 const DEFAULT_VISION_MODEL = 'openai/gpt-4o-mini';
 

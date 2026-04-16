@@ -21,6 +21,12 @@ export type WorkspaceType = 'focus' | 'lab' | 'command' | 'terminal';
 export interface ContentRenderProps<TProfile> {
   profile: TProfile | null;
   encryptionKey: CryptoKey | null;
+  /** Set when the Firestore subscription failed. Agents should surface this
+   *  as "data temporarily unavailable" rather than "no data." */
+  profileError: 'subscription_failed' | null;
+  /** True while the initial profile load / first subscription snapshot is pending.
+   *  Agents should treat profile=null + isLoading=true as "data incoming" not "no data." */
+  isLoading: boolean;
   setSessionActive?: (active: boolean) => void;
   onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void;
 }
@@ -62,10 +68,10 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
   
   const [guestReady, setGuestReady] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem(`nexus_guest_module_${moduleId}`) === 'true';
+    return sessionStorage.getItem(`ara_guest_module_${moduleId}`) === 'true';
   });
 
-  const { profile, setProfile, isOnboarding, setIsOnboarding, isLoading, encryptionKey, persistProfile } = useModuleProfile<TProfile>({
+  const { profile, setProfile, isOnboarding, setIsOnboarding, isLoading, encryptionKey, profileError, persistProfile } = useModuleProfile<TProfile>({
     moduleId,
     ...profileOptions
   });
@@ -188,7 +194,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
           <GuestModePanel
             moduleId={moduleId}
             onContinue={() => {
-              sessionStorage.setItem(`nexus_guest_module_${moduleId}`, 'true');
+              sessionStorage.setItem(`ara_guest_module_${moduleId}`, 'true');
               setGuestReady(true);
             }}
           />
@@ -299,7 +305,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     </div>
                 )}
                 <div className="flex-1 flex flex-col min-h-0 min-w-0">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} profileError={profileError} isLoading={isLoading} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
                 </div>
             </div>
         )}
@@ -321,7 +327,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     )}
                 </div>
                 <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col min-h-0 bg-slate-900/50 backdrop-blur-md">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} profileError={profileError} isLoading={isLoading} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
                 </div>
             </div>
         )}
@@ -334,7 +340,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                         !noContainer && "bg-black/10 backdrop-blur-[1px] rounded-panel border border-white/[0.09] shadow-2xl overflow-hidden"
                     )}
                 >
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} profileError={profileError} isLoading={isLoading} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
                 </div>
                 <AnimatePresence>
                     {RenderDashboard && !noContainer && (
@@ -357,7 +363,7 @@ export function UnifiedModulePage<TProfile extends { onboardingComplete?: boolea
                     {RenderDashboard ? <RenderDashboard profile={profile} encryptionKey={encryptionKey} /> : "FILE_SYSTEM_IDLE"}
                 </div>
                 <div className="h-[40%] flex flex-col min-h-0">
-                    <RenderContent profile={profile} encryptionKey={encryptionKey} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
+                    <RenderContent profile={profile} encryptionKey={encryptionKey} profileError={profileError} isLoading={isLoading} setSessionActive={stableSetSessionActive} onActionParsed={onActionParsed} />
                 </div>
             </div>
         )}

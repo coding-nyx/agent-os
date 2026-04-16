@@ -4,7 +4,7 @@
  * "Data & Backup" settings panel for the Profile page.
  *
  * Responsibilities (Single Responsibility — one panel, one concern):
- *  - Export: calls exportAllData → triggers browser file-save via downloadNexusExport
+ *  - Export: calls exportAllData → triggers browser file-save via downloadAraExport
  *  - Import: reads a user-selected .json file → calls importData → shows inline feedback
  *
  * No Cloud Functions. All reads/writes are client-side Firestore via the data layer.
@@ -18,7 +18,7 @@ import { GlassCard } from '@/core/components/GlassCard';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
-import { exportAllData, downloadNexusExport } from '@/lib/services/data-export-service';
+import { exportAllData, downloadAraExport } from '@/lib/services/data-export-service';
 import { importData } from '@/lib/services/data-import-service';
 
 // ─── Local types ───────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ export function DataBackupPanel() {
     try {
       const bundle = await exportAllData(user.uid, dataLayer);
       const isoDate = new Date().toISOString().slice(0, 10);
-      downloadNexusExport(bundle, `nexus-export-${isoDate}.json`);
+      downloadAraExport(bundle, `ara-export-${isoDate}.json`);
 
       const moduleCount = Object.keys(bundle.modules).length;
       setExportFeedback({
@@ -199,7 +199,7 @@ export function DataBackupPanel() {
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-white/90">Restore from Backup</h3>
             <p className="text-[11px] text-white/40 mt-1 leading-relaxed">
-              Select a <span className="font-semibold text-white/60">nexus-export-*.json</span>{' '}
+              Select a <span className="font-semibold text-white/60">ara-export-*.json</span>{' '}
               file. Only modules where the backup is newer than your current data will be
               overwritten — existing newer data is never replaced.
             </p>

@@ -1,4 +1,4 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import type { BatchOperation } from '@/lib/data-layer/index';
 import { useOrchestrationStore } from '@/lib/stores/orchestration-store';
 import { ALIVE_ENTITY_COLLECTION } from './alive-entity-service';
@@ -7,9 +7,9 @@ import { ORCHESTRATION_EXECUTION_SUBCOLLECTION, ORCHESTRATION_PROPOSAL_SUBCOLLEC
 import { SILENT_HISTORY_SUBCOLLECTION } from './orchestration-history-service';
 import { getUserDataDeletionTargets } from './user-data-registry';
 
-const LOCAL_STORAGE_PREFIXES = ['nexus_', 'agnes_'];
+const LOCAL_STORAGE_PREFIXES = ['ara_', 'agnes_'];
 const LOCAL_STORAGE_SUBSTRINGS = ['integrity'];
-const SESSION_STORAGE_KEYS = ['nexus_guest_active', 'nexus_vault_session', 'nexus_vault_session_ts'];
+const SESSION_STORAGE_KEYS = ['ara_guest_active', 'ara_vault_session', 'ara_vault_session_ts'];
 
 /** Known subcollections keyed by parent collection name. */
 const KNOWN_SUBCOLLECTIONS: Record<string, string[]> = {
@@ -42,11 +42,11 @@ function shouldRemoveLocalStorageKey(key: string): boolean {
 }
 
 async function deleteSubcollection(collectionPath: string): Promise<void> {
-  const dl = getNexusDataLayer();
+  const dl = getAraDataLayer();
   const docs = await dl.listDocuments(collectionPath, { limit: 0 });
   if (docs.length === 0) return;
 
-  // NexusDataLayer.batchWrite supports up to 500 operations per call
+  // AraDataLayer.batchWrite supports up to 500 operations per call
   const BATCH_SIZE = 500;
   for (let i = 0; i < docs.length; i += BATCH_SIZE) {
     const chunk = docs.slice(i, i + BATCH_SIZE);
@@ -70,7 +70,7 @@ export const SoulTerminationService = {
       console.warn('[SoulTerminationService] Non-fatal: Failed to reset onboarding status:', err);
     }
 
-    const dl = getNexusDataLayer();
+    const dl = getAraDataLayer();
     const targets = getUserDataDeletionTargets(uid);
     try {
       // 2. Delete known subcollections first (Firestore does NOT cascade-delete)

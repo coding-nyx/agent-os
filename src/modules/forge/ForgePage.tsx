@@ -6,7 +6,7 @@ import { useVault } from '@/lib/vault-context';
 import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralSelectMenu } from '@/core/components/NeuralSelectMenu';
 import { NeuralTextarea } from '@/core/components/NeuralTextarea';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { useModuleAI } from '@/lib/hooks/use-module-ai';
 import { cn, throttle } from '@/lib/utils';
 import { ForgeDashboard } from './components/ForgeDashboard';
@@ -75,7 +75,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
     encryptionKey,
     moduleContext: { forge_mode: selectedMode },
   });
-  // Destructure locally for use in this component — does NOT affect NexusChat's ai prop stability.
+  // Destructure locally for use in this component — does NOT affect AraChat's ai prop stability.
   const { messages, setMessages, isProcessing, streamingText, handleSendMessage } = ai;
 
   const profileRef = useRef(profile);
@@ -243,7 +243,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
     [handleSendMessage]
   );
 
-  /** Mode pill selector — rendered inside the NexusChat header via headerActions. */
+  /** Mode pill selector — rendered inside the AraChat header via headerActions. */
   const modePillSelector = (
     <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.045] border border-white/[0.12]">
       {FORGE_MODES.map((mode) => {
@@ -368,7 +368,7 @@ function ForgeContent({ profile, encryptionKey }: { profile: ForgeProfile | null
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col">
-          <NexusChat
+          <AraChat
             moduleId="forge"
             ai={ai}
             agentName={agentAlias}

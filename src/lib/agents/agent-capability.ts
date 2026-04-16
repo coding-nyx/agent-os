@@ -6,7 +6,7 @@ export type ActionPayloadAdapter = (payload: Record<string, unknown>) => Record<
 
 export interface AgentProviderDescriptor {
   id: string;
-  moduleId: ModuleId | 'nexus';
+  moduleId: ModuleId | 'ara';
   title: string;
   capabilities: AgentCapability[];
   actionAliases?: Partial<Record<string, string>>;

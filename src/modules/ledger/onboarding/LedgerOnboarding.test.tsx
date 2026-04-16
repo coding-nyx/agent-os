@@ -15,10 +15,10 @@ vi.mock('@/lib/auth-context', () => ({
   useAuth: vi.fn()
 }));
 
-// Mock NexusChat
-vi.mock('@/core/components/NexusChat', () => ({
-  NexusChat: ({ ai, agentName }: any) => (
-    <div data-testid="nexus-chat">
+// Mock AraChat
+vi.mock('@/core/components/AraChat', () => ({
+  AraChat: ({ ai, agentName }: any) => (
+    <div data-testid="ara-chat">
       <span>Agent: {agentName}</span>
       <div data-testid="chat-messages">
         {ai.messages.map((m: any, i: number) => (
@@ -87,7 +87,7 @@ describe('LedgerOnboarding', () => {
 
     await openGuidedMode();
 
-    expect(screen.getByText(/assistant: Nexus handoff received. I have your name as Alice, occupation as Engineer/i)).toBeInTheDocument();
+    expect(screen.getByText(/assistant: Ara handoff received. I have your name as Alice, occupation as Engineer/i)).toBeInTheDocument();
   });
 
   it('updates step progress based on focus actions', async () => {

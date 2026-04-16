@@ -120,7 +120,7 @@ export class CognitiveAgent {
       };
 
       const task: CancellableTask = this.kmpEngine.chatWithContext(
-        context.moduleId ?? 'nexus',
+        context.moduleId ?? 'ara',
         messageText,
         historyJson,
         context.systemPrompt,
@@ -215,7 +215,7 @@ export class CognitiveAgent {
       };
 
       const task: CancellableTask = this.kmpEngine.chatWithMemory(
-        context.moduleId ?? 'nexus',
+        context.moduleId ?? 'ara',
         messageText,
         historyJson,
         identity,

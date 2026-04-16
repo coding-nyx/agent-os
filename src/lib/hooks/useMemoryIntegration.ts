@@ -43,7 +43,7 @@ export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey 
       return;
     }
 
-    const moduleIds = Array.from(new Set([moduleId, 'nexus']));
+    const moduleIds = Array.from(new Set([moduleId, 'ara']));
     const unsubs = moduleIds.map((id) =>
       ModuleMemoryService.subscribeEnvelope(userId, id, (envelope) => {
         episodicEnvelopeRef.current[id] = envelope;
@@ -82,7 +82,7 @@ export function useMemoryIntegration({ moduleId, userId, isGuest, encryptionKey 
     const securityPolicy = MODULE_MANIFEST[moduleId as keyof typeof MODULE_MANIFEST]?.securityPolicy;
     const requiresVault = securityPolicy ? (securityPolicy.mandatory || securityPolicy.defaultLocked) : false;
 
-    const relevantModuleIds = Array.from(new Set([moduleId, 'nexus']));
+    const relevantModuleIds = Array.from(new Set([moduleId, 'ara']));
     const cachedEnvelopes = relevantModuleIds
       .map((id) => episodicEnvelopeRef.current[id])
       .filter((env): env is ModuleMemoryEnvelope => Boolean(env));

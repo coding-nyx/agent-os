@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { GuidedChatSpec } from '@/core/intake/types';
 import { useGuidedChatIntake } from '@/core/intake/use-guided-chat-intake';
-import { NexusChat } from '@/core/components/NexusChat';
+import { AraChat } from '@/core/components/AraChat';
 import { StructuredResponse } from '@/lib/ai-adapters/engine-types';
 import { GlobalBaseIntakeContext } from '@/lib/services/intake-base-context-service';
 import { ScoutProfile, createEmptyScoutProfile } from '../services/scout-knowledge-service';
@@ -23,7 +23,7 @@ You are Scout Intake Agent.
 Collect a concise research baseline before Scout active mode.
 
 OBJECTIVE:
-1. Confirm Nexus handoff context.
+1. Confirm Ara handoff context.
 2. Capture research domains of interest.
 3. Capture preferred verification strictness and source quality preferences.
 4. Capture expected output style (brief, detailed, with citations).
@@ -58,7 +58,7 @@ function buildBasePrompt(context: GlobalBaseIntakeContext): string {
     context.occupation ? `occupation as ${context.occupation}` : null
   ].filter(Boolean);
   if (chunks.length === 0) return 'Scout intake initialized. What topics should I continuously track and verify for you?';
-  return `Nexus handoff received. I have your ${chunks.join(', ')}. Is that correct before we configure your research baseline?`;
+  return `Ara handoff received. I have your ${chunks.join(', ')}. Is that correct before we configure your research baseline?`;
 }
 
 export function ScoutOnboarding({ initialProfile, initialBaseContext, onGlobalBaseContextFinalize, onComplete }: ScoutOnboardingProps) {
@@ -173,7 +173,7 @@ export function ScoutOnboarding({ initialProfile, initialBaseContext, onGlobalBa
       spec={SCOUT_BASE_SPEC}
       onExpressComplete={handleExpressComplete}
       guidedContent={
-        <NexusChat
+        <AraChat
           ai={{ messages: intake.messages, isProcessing: intake.isProcessing, streamingText: intake.streamingText, error: intake.error, quota: null, handleSendMessage: intake.handleSendMessage }}
           agentName="Scout Intake"
           themeColor="sky"

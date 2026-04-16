@@ -24,7 +24,7 @@ import type { RecoveryPlanDraft, RecoveryConsultResult } from '../components/Rec
 import { saveTitanProfile } from '../services/titan-profile-service';
 import { useSpineEvent, Spine } from '@/lib/spine/spine-event-bus';
 import { queueNSVUpdate } from '@/lib/services/nsv-update-queue';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
 import type { TitanTab } from './types';
 
 interface UseTitanRecoveryParams {
@@ -297,7 +297,7 @@ export function useTitanRecovery(params: UseTitanRecoveryParams): {
       ].join('\n');
 
       if (reasons.includes('injury')) {
-        NexusHandoffService.store({
+        AraHandoffService.store({
           moduleId: 'soma',
           type: 'query',
           content: prompt,
@@ -308,7 +308,7 @@ export function useTitanRecovery(params: UseTitanRecoveryParams): {
         setPendingConsults((prev) => ({ ...prev, soma: true }));
       }
       if (reasons.includes('stress')) {
-        NexusHandoffService.store({
+        AraHandoffService.store({
           moduleId: 'agnes',
           type: 'query',
           content: prompt,

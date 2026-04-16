@@ -1,4 +1,4 @@
-import type { NexusDataLayer } from '@/lib/data-layer';
+import type { AraDataLayer } from '@/lib/data-layer';
 import type { ActiveSessionState } from '@/lib/types';
 import {
   buildSessionDocId,
@@ -82,7 +82,7 @@ function buildChunks(messages: PersistedSessionChunk['messages'], now: string): 
 }
 
 export class ChunkedSessionStore implements SessionStore {
-  constructor(private readonly dataLayer: NexusDataLayer) {}
+  constructor(private readonly dataLayer: AraDataLayer) {}
 
   async save(sessionKey: SessionKey, session: ActiveSessionState): Promise<SaveSessionResult> {
     const docId = buildSessionDocId(sessionKey);

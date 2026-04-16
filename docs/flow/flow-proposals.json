@@ -1,7 +1,7 @@
 [
   {
     "proposalType": "mutation",
-    "sourceModule": "nexus",
+    "sourceModule": "ara",
     "requiresApproval": true,
     "lifecycleEvents": [
       "DRAFT_PROPOSED",

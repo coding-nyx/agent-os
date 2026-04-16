@@ -15,10 +15,10 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { ScopedChatPanel } from '@/core/components/field-management/ScopedChatPanel';
 import { useDebugMode } from '@/lib/hooks/use-debug-mode';
 import { ModelBadge } from '@/core/components/debug';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 import { useCrossModuleHintListener } from '@/lib/hooks/use-cross-module-hint-listener';
 import { DataSyncToast } from '@/core/components/DataSyncToast';
-import { NexusHandoffService } from '@/lib/services/nexus-handoff-service';
+import { AraHandoffService } from '@/lib/services/ara-handoff-service';
 import { useAuth } from '@/lib/auth-context';
 import { useDataLayer } from '@/lib/data-layer/provider';
 
@@ -205,9 +205,9 @@ function TelemetryTicker({ debugMode }: TelemetryTickerProps) {
             }, 3000);
             return () => clearInterval(interval);
         } else {
-            // Real Spine events: poll NexusLogger every 1s
+            // Real Spine events: poll AraLogger every 1s
             const interval = setInterval(() => {
-                const recent = NexusLogger.getRecentSpineEvents(1);
+                const recent = AraLogger.getRecentSpineEvents(1);
                 const last = recent[recent.length - 1];
                 setLog(last ? `⚡ ${last.eventType}` : '⚡ SPINE_IDLE');
             }, 1000);
@@ -290,7 +290,7 @@ export function ModuleLayout({
   const handleAskModule = () => {
     if (!activeHint) return;
     const { targetModule, rawQuote } = activeHint.hint;
-    NexusHandoffService.store({
+    AraHandoffService.store({
       moduleId: targetModule,
       type: 'query',
       content: rawQuote,
@@ -362,11 +362,11 @@ export function ModuleLayout({
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 shrink-0">
               <TelemetryTicker debugMode={debugMode} />
 
-              {moduleId !== 'nexus' && (
+              {moduleId !== 'ara' && (
                 <button
                   type="button"
-                  onClick={() => window.dispatchEvent(new Event('open-nexus'))}
-                   aria-label="Open Nyx AI"
+                  onClick={() => window.dispatchEvent(new Event('open-ara'))}
+                   aria-label="Open Ara AI"
                   className="relative w-10 h-10 sm:w-11 sm:h-11 min-h-[44px] min-w-[44px] rounded-xl bg-white/[0.06] border border-white/[0.09] flex items-center justify-center hover:bg-white/[0.10] hover:border-white/[0.14] active:scale-95 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-white/25 shrink-0"
                 >
                   <Sparkles className="w-4 h-4 text-white/55 group-hover:text-white/90" />

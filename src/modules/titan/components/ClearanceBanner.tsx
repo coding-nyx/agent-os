@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const SNOOZE_KEY = 'nexus_clearance_snooze';
+const SNOOZE_KEY = 'ara_clearance_snooze';
 const SNOOZE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 function isSnoozed(): boolean {

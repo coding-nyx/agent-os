@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { SpineDomain, SpineEvent, SpineEventPayload, SpineEventPriority, SpineEventType } from '@/lib/types';
-import type { NexusDataLayer } from '@/lib/data-layer';
+import type { AraDataLayer } from '@/lib/data-layer';
 import { adaptSpineEventToSpec, serializeSpecSpineEvent } from '@/lib/contracts/orchestration';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 import { NotificationContentResolverJs } from '@cortex-logic';
 
 export interface CascadeRule {
@@ -124,7 +124,7 @@ class SpineEventBus {
   private _cascadeTruncationByTrigger = new Map<SpineEventType, number>();
   private _recentCascadeTruncations: CascadeTruncationRecord[] = [];
   private uid: string | null = null;
-  private dataLayer: NexusDataLayer | null = null;
+  private dataLayer: AraDataLayer | null = null;
   private _sequenceCounter = 0;
 
   private readonly validDomains: SpineDomain[] = ['B', 'E', 'C', 'R', 'system'];
@@ -135,12 +135,12 @@ class SpineEventBus {
   }
 
   /**
-   * Inject a NexusDataLayer so Spine can persist events through the abstraction
+   * Inject a AraDataLayer so Spine can persist events through the abstraction
    * layer instead of hitting Firebase directly. Call this at app bootstrap (main.tsx).
    * When set, `logEvent` prefers the data layer over the direct Firebase path,
    * enabling InMemoryDataLayer injection in tests.
    */
-  setDataLayer(layer: NexusDataLayer): void {
+  setDataLayer(layer: AraDataLayer): void {
     this.dataLayer = layer;
   }
 
@@ -214,7 +214,7 @@ class SpineEventBus {
       reg.handler(event);
     });
 
-    NexusLogger.spine(event.type, event.source, event.data);
+    AraLogger.spine(event.type, event.source, event.data);
 
     this.recentEvents = [event, ...this.recentEvents].slice(0, 50);
 
@@ -316,7 +316,7 @@ class SpineEventBus {
     // Function receives pre-resolved title/body in the Firestore document.
     const enrichedEvent = enrichWithNotificationContent(event);
 
-    // Prefer NexusDataLayer when injected — supports InMemoryDataLayer in tests
+    // Prefer AraDataLayer when injected — supports InMemoryDataLayer in tests
     // and keeps Spine decoupled from the Firebase SDK.
     if (this.dataLayer) {
       await this.dataLayer.createDocument(`spine_events/${this.uid}/${SPINE_EVENTS_SUBCOLLECTION}`, enrichedEvent);
@@ -334,7 +334,7 @@ class SpineEventBus {
 
     // If dataLayer is not injected, logEvent fails. This is desired behavior to prevent Firebase coupling.
     // Log an error to indicate the missing dependency.
-    console.error('[SpineEventBus] NexusDataLayer not injected. Cannot log event.');
+    console.error('[SpineEventBus] AraDataLayer not injected. Cannot log event.');
   }
 
   private validateAndNormalize(event: SpineEventPayload): SpineEventPayload & { cascadeDepth: number } {
@@ -391,12 +391,12 @@ class SpineEventBus {
       MAX_RECENT_CASCADE_TRUNCATIONS,
     );
 
-    NexusLogger.emit('spine', {
+    AraLogger.emit('spine', {
       moduleId: event.source,
       label: 'CASCADE_TRUNCATED',
       detail: record,
     });
-    NexusLogger.warn(
+    AraLogger.warn(
       'SpineEventBus',
       `Cascade truncated at depth ${event.cascadeDepth} for ${event.type}`,
       { matchingRuleIds: record.matchingRuleIds, source: event.source },

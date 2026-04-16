@@ -37,7 +37,7 @@ function renderWithRouter(initialRoute: string, children: React.ReactNode) {
     <MemoryRouter initialEntries={[initialRoute]}>
       <Routes>
         <Route path="/" element={<div data-testid="landing">Landing</div>} />
-        <Route path="/nexus" element={<div data-testid="nexus">Nexus</div>} />
+        <Route path="/ara" element={<div data-testid="ara">Ara</div>} />
         <Route path="/hub" element={<ProtectedRoute>{children}</ProtectedRoute>} />
         <Route path="/agnes" element={
           <ProtectedRoute requireOnboarding={false}>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRightLeft, Archive, ChevronDown, ChevronUp, Radar, ShieldAlert } from 'lucide-react';
 import type { OrchestrationTurnRuntimeSummary, SilentHistoryEntry } from '@/lib/contracts/orchestration';
-import type { NexusDataLayer } from '@/lib/data-layer';
+import type { AraDataLayer } from '@/lib/data-layer';
 import { ModuleIcon } from '@/core/components/ModuleIcon';
 import { cn } from '@/lib/utils';
 import { OrchestrationExecutionService } from '@/lib/services/orchestration-execution-service';
@@ -119,7 +119,7 @@ interface OperationalCommandCenterCardProps {
   silentHistoryEntries?: SilentHistoryEntry[];
   userId?: string;
   isGuest?: boolean;
-  dataLayer: NexusDataLayer;
+  dataLayer: AraDataLayer;
   active?: boolean;
   className?: string;
 }

@@ -104,7 +104,7 @@ export function createEmptyForgeProfile(): ForgeProfile {
 
 const _service = createEncryptedProfileService<ForgeProfile>({
   collection: 'forge_sessions',
-  guestStorageKey: 'nexus_forge_profile_guest',
+  guestStorageKey: 'ara_forge_profile_guest',
   createEmpty: createEmptyForgeProfile,
   normalize: normalizeForgeProfile,
   metadataProjection: (p) => ({
@@ -132,6 +132,7 @@ export const saveForgeProfile: (profile: ForgeProfile, ctx: LoadContext) => Prom
 export const subscribeForgeProfile: (
   ctx: LoadContext,
   onUpdate: (profile: ForgeProfile | null) => void,
+  onError?: (error: unknown) => void,
 ) => () => void = _service.subscribe.bind(_service);
 
 export const syncGuestForgeProfileToUser: (ctx: LoadContext) => Promise<boolean> =

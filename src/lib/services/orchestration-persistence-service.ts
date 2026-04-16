@@ -6,12 +6,12 @@ import type {
   OrchestrationTurnRuntimeSummary,
   ProposalCard,
 } from '@/lib/contracts/orchestration';
-import type { BatchOperation, NexusDataLayer, NexusRecord } from '@/lib/data-layer';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import type { BatchOperation, AraDataLayer, AraRecord } from '@/lib/data-layer';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { MasterThreadService, type MasterThreadShellSnapshot } from './master-thread-service';
 import { OrchestrationPersistenceUtilsJs } from '@cortex-logic';
 import { safeParseKmp } from '@/cortex-bridge/kmp-parse';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 
 const _utils = new OrchestrationPersistenceUtilsJs();
 
@@ -96,7 +96,7 @@ function sortByTimestampDesc<T extends { id: string }>(
 }
 
 async function pruneCollectionByTimestamp<T extends { id: string }>(input: {
-  dataLayer: NexusDataLayer;
+  dataLayer: AraDataLayer;
   collection: string;
   limit: number;
   getTimestamp: (record: T) => string;
@@ -170,7 +170,7 @@ export class OrchestrationPersistenceService {
         _utils.toProposalRecord(moduleId, JSON.stringify(metadata), storedAt),
       ) as PersistedProposalRecord;
     } catch (err) {
-      NexusLogger.warn('KMP', `Persistence.toProposalRecord JSON.parse failed: ${err}`);
+      AraLogger.warn('KMP', `Persistence.toProposalRecord JSON.parse failed: ${err}`);
       throw err;
     }
   }
@@ -185,7 +185,7 @@ export class OrchestrationPersistenceService {
         _utils.toExecutionRecord(moduleId, JSON.stringify(metadata), storedAt),
       ) as PersistedExecutionRecord;
     } catch (err) {
-      NexusLogger.warn('KMP', `Persistence.toExecutionRecord JSON.parse failed: ${err}`);
+      AraLogger.warn('KMP', `Persistence.toExecutionRecord JSON.parse failed: ${err}`);
       throw err;
     }
   }
@@ -222,7 +222,7 @@ export class OrchestrationPersistenceService {
       moduleId: input.moduleId,
       threadId,
       updatedAt,
-      snapshot: MasterThreadService.createNexusShellSnapshot({
+      snapshot: MasterThreadService.createAraShellSnapshot({
         threadId,
         now: updatedAt,
         lastTurnRuntime: input.runtimeSummary ?? null,
@@ -242,7 +242,7 @@ export class OrchestrationPersistenceService {
       now?: string;
       retention?: Partial<typeof DEFAULT_ORCHESTRATION_RETENTION_LIMITS>;
     },
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     if (!uid) return;
 
@@ -320,8 +320,8 @@ export class OrchestrationPersistenceService {
     options?: {
       limit?: number;
     },
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
-  ): Promise<Array<NexusRecord<PersistedProposalRecord>>> {
+    dataLayer: AraDataLayer = getAraDataLayer(),
+  ): Promise<Array<AraRecord<PersistedProposalRecord>>> {
     if (!uid) return [];
     const docs = await dataLayer.listDocuments<PersistedProposalRecord>(this.getProposalCollectionPath(uid), { limit: 200 });
     const sorted = sortByTimestampDesc(docs, (record) => record.createdAt);
@@ -333,8 +333,8 @@ export class OrchestrationPersistenceService {
     options?: {
       limit?: number;
     },
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
-  ): Promise<Array<NexusRecord<PersistedExecutionRecord>>> {
+    dataLayer: AraDataLayer = getAraDataLayer(),
+  ): Promise<Array<AraRecord<PersistedExecutionRecord>>> {
     if (!uid) return [];
     const docs = await dataLayer.listDocuments<PersistedExecutionRecord>(this.getExecutionCollectionPath(uid), { limit: 200 });
     const sorted = sortByTimestampDesc(docs, (record) => record.executedAt);
@@ -344,8 +344,8 @@ export class OrchestrationPersistenceService {
   static async getExecutionFailureRecord(
     uid: string,
     failureId: string,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
-  ): Promise<NexusRecord<PersistedExecutionFailureRecord> | null> {
+    dataLayer: AraDataLayer = getAraDataLayer(),
+  ): Promise<AraRecord<PersistedExecutionFailureRecord> | null> {
     if (!uid || !failureId) return null;
     return dataLayer.getDocument<PersistedExecutionFailureRecord>(
       this.getExecutionFailureCollectionPath(uid),
@@ -360,8 +360,8 @@ export class OrchestrationPersistenceService {
       threadId?: string | null;
       now?: string;
     },
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
-  ): Promise<NexusRecord<PersistedThreadState>> {
+    dataLayer: AraDataLayer = getAraDataLayer(),
+  ): Promise<AraRecord<PersistedThreadState>> {
     const fallback = this.buildThreadStateSnapshot(input);
     if (!uid) return fallback;
 
@@ -376,7 +376,7 @@ export class OrchestrationPersistenceService {
   static async persistExecutionFailure(
     uid: string,
     failure: ExecutionFailure,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
+    dataLayer: AraDataLayer = getAraDataLayer(),
   ): Promise<void> {
     if (!uid || failure.patientScope === 'GUEST') return;
 
@@ -408,8 +408,8 @@ export class OrchestrationPersistenceService {
       executionId?: string;
       proposalId?: string;
     },
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
-  ): Promise<Array<NexusRecord<PersistedExecutionFailureRecord>>> {
+    dataLayer: AraDataLayer = getAraDataLayer(),
+  ): Promise<Array<AraRecord<PersistedExecutionFailureRecord>>> {
     if (!uid) return [];
     const docs = await dataLayer.listDocuments<PersistedExecutionFailureRecord>(this.getExecutionFailureCollectionPath(uid), { limit: 200 });
     const filtered = docs.filter((record) => {
@@ -425,8 +425,8 @@ export class OrchestrationPersistenceService {
     uid: string,
     failureId: string,
     updates: Partial<PersistedExecutionFailureRecord>,
-    dataLayer: NexusDataLayer = getNexusDataLayer(),
-  ): Promise<NexusRecord<PersistedExecutionFailureRecord> | null> {
+    dataLayer: AraDataLayer = getAraDataLayer(),
+  ): Promise<AraRecord<PersistedExecutionFailureRecord> | null> {
     if (!uid || !failureId) return null;
     return dataLayer.updateDocument<PersistedExecutionFailureRecord>(
       this.getExecutionFailureCollectionPath(uid),

@@ -40,7 +40,7 @@ describe('OrchestrationRuntimeService', () => {
     });
 
     const summary = OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 5,
       historyMode: 'silent',
       decisions: [
@@ -50,8 +50,8 @@ describe('OrchestrationRuntimeService', () => {
             id: 'card-1',
             proposalId: 'proposal-1',
             title: 'Record transaction',
-            summary: 'Record transaction requested by nexus.',
-            source: 'nexus',
+            summary: 'Record transaction requested by ara.',
+            source: 'ara',
             status: 'approved',
             approvalRequirement: { required: false, reason: 'none' },
             executionMode: 'ghost',
@@ -74,7 +74,7 @@ describe('OrchestrationRuntimeService', () => {
 
   it('keeps assistant confirmations when silent turns also contain blocked or review actions', () => {
     const summary = OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 5,
       historyMode: 'silent',
       decisions: [
@@ -84,8 +84,8 @@ describe('OrchestrationRuntimeService', () => {
             id: 'card-1',
             proposalId: 'proposal-1',
             title: 'Record transaction',
-            summary: 'Record transaction requested by nexus.',
-            source: 'nexus',
+            summary: 'Record transaction requested by ara.',
+            source: 'ara',
             status: 'approved',
             approvalRequirement: { required: false, reason: 'none' },
             executionMode: 'ghost',
@@ -106,8 +106,8 @@ describe('OrchestrationRuntimeService', () => {
             id: 'card-2',
             proposalId: 'proposal-2',
             title: 'Record budget',
-            summary: 'Record budget requested by nexus.',
-            source: 'nexus',
+            summary: 'Record budget requested by ara.',
+            source: 'ara',
             status: 'pending_approval',
             approvalRequirement: { required: true, reason: 'high_risk' },
             executionMode: 'manual',
@@ -202,7 +202,7 @@ describe('OrchestrationRuntimeService', () => {
 
   it('surfaces alive entity context alongside runtime summaries', () => {
     const summary = OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 3,
       historyMode: 'standard',
       aliveEntities: [
@@ -244,7 +244,7 @@ describe('OrchestrationRuntimeService', () => {
 
   it('counts incident review actions as approval-visible runtime work', () => {
     const summary = OrchestrationRuntimeService.buildTurnSummary({
-      moduleId: 'nexus',
+      moduleId: 'ara',
       autopilotLevel: 4,
       historyMode: 'standard',
       decisions: [
@@ -255,7 +255,7 @@ describe('OrchestrationRuntimeService', () => {
             proposalId: 'proposal-incident',
             title: 'Record transaction',
             summary: 'Transaction execution failed.',
-            source: 'nexus',
+            source: 'ara',
             status: 'incident',
             approvalRequirement: { required: false, reason: 'none' },
             executionMode: 'autonomous',
@@ -266,7 +266,7 @@ describe('OrchestrationRuntimeService', () => {
           execution: {
             id: 'exec-incident',
             proposalId: 'proposal-incident',
-            source: 'nexus',
+            source: 'ara',
             autopilotLevel: 4,
             executionMode: 'autonomous',
             historyMode: 'standard',

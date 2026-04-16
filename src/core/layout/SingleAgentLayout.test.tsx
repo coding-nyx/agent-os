@@ -77,8 +77,8 @@ vi.mock('framer-motion', () => ({
   },
 }));
 
-vi.mock('@/core/components/NexusChat', () => ({
-  NexusChat: () => <div data-testid="nexus-chat">Nexus Chat</div>,
+vi.mock('@/core/components/AraChat', () => ({
+  AraChat: () => <div data-testid="ara-chat">Ara Chat</div>,
 }));
 
 vi.mock('@/core/components/RoutingSuggestion', () => ({
@@ -122,7 +122,7 @@ describe('SingleAgentLayout', () => {
       </SingleAgentLayout>
     );
 
-    expect(screen.getByTestId('nexus-chat')).toBeInTheDocument();
+    expect(screen.getByTestId('ara-chat')).toBeInTheDocument();
     expect(document.body.style.overflow).toBe('hidden');
 
     await waitFor(() => {

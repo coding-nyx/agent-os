@@ -1,6 +1,6 @@
 /**
  * Retirement Calculator — thin bridge over cortex-logic's RetirementCalculatorJs.
- * Algorithm lives in KMP commonMain so both Agnes and nexus-android produce
+ * Algorithm lives in KMP commonMain so both Agnes and ara-android produce
  * identical projections.
  */
 

@@ -1,4 +1,4 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import {
   MemorySearchOptions,
   ModuleMemoryEnvelope,
@@ -73,7 +73,7 @@ export const EpisodicMemoryService = {
     const topK = options.topK ?? 5;
     const recencyWeight = options.recencyWeight ?? 0.3;
     const queryEmbedding = await EmbeddingService.embed(query);
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
 
     const envelopes: ModuleMemoryEnvelope[] = [];
 

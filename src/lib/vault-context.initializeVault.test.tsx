@@ -37,7 +37,7 @@ vi.mock('./services/guest-sync-service', () => ({
 vi.mock('./encryption', () => ({
   deriveKey: vi.fn(async () => ({ mock: 'key' } as unknown as CryptoKey)),
   encryptWithKey: vi.fn(async () => ({ ciphertext: 'cipher', iv: 'iv' })),
-  decryptWithKey: vi.fn(async () => 'NEXUS'),
+  decryptWithKey: vi.fn(async () => 'ARA'),
   base64ToUint8Array: vi.fn(() => new Uint8Array([1, 2, 3, 4])),
 }));
 
@@ -118,7 +118,7 @@ describe('VaultProvider.initializeVault', () => {
     mockDataLayer.updateDocument.mockResolvedValue(undefined);
 
     // Ensure we have a stable "current URL" for returnTo.
-    window.history.pushState({}, '', '/nexus?foo=bar#baz');
+    window.history.pushState({}, '', '/ara?foo=bar#baz');
     localStorage.clear();
     sessionStorage.clear();
   });
@@ -145,7 +145,7 @@ describe('VaultProvider.initializeVault', () => {
 
   it('backfills the retained session secret when switching from STRICT to SESSION while unlocked', async () => {
     const user = userEvent.setup();
-    localStorage.setItem('nexus_vault_mode', 'STRICT');
+    localStorage.setItem('ara_vault_mode', 'STRICT');
     mockDataLayer.subscribeToDocument.mockImplementation((_collection: string, _uid: string, onUpdate: (record: unknown) => void) => {
       onUpdate({ salt: 'c2FsdA==', canary: { ciphertext: 'cipher', iv: 'iv' } });
       return () => {};
@@ -163,7 +163,7 @@ describe('VaultProvider.initializeVault', () => {
       expect(screen.getByTestId('is-unlocked')).toHaveTextContent('true');
     });
 
-    expect(sessionStorage.getItem('nexus_vault_session')).toBeNull();
+    expect(sessionStorage.getItem('ara_vault_session')).toBeNull();
     expect(screen.getByTestId('persistence-mode')).toHaveTextContent('STRICT');
 
     await user.click(screen.getByRole('button', { name: 'Set Session' }));
@@ -174,16 +174,16 @@ describe('VaultProvider.initializeVault', () => {
 
     // The session password is now stored as an encrypted blob, not plaintext.
     await waitFor(() => {
-      expect(sessionStorage.getItem('nexus_vault_session')).not.toBeNull();
+      expect(sessionStorage.getItem('ara_vault_session')).not.toBeNull();
     });
     // Verify it is NOT the plaintext password (security invariant).
-    expect(sessionStorage.getItem('nexus_vault_session')).not.toBe('top-secret');
-    expect(sessionStorage.getItem('nexus_vault_session_ts')).not.toBeNull();
+    expect(sessionStorage.getItem('ara_vault_session')).not.toBe('top-secret');
+    expect(sessionStorage.getItem('ara_vault_session_ts')).not.toBeNull();
   });
 
   it('purges retained session storage when switching back to STRICT', async () => {
     const user = userEvent.setup();
-    localStorage.setItem('nexus_vault_mode', 'SESSION');
+    localStorage.setItem('ara_vault_mode', 'SESSION');
     mockDataLayer.subscribeToDocument.mockImplementation((_collection: string, _uid: string, onUpdate: (record: unknown) => void) => {
       onUpdate({ salt: 'c2FsdA==', canary: { ciphertext: 'cipher', iv: 'iv' } });
       return () => {};
@@ -203,9 +203,9 @@ describe('VaultProvider.initializeVault', () => {
 
     // Session password is stored as encrypted blob (not plaintext).
     await waitFor(() => {
-      expect(sessionStorage.getItem('nexus_vault_session')).not.toBeNull();
+      expect(sessionStorage.getItem('ara_vault_session')).not.toBeNull();
     });
-    expect(sessionStorage.getItem('nexus_vault_session')).not.toBe('top-secret');
+    expect(sessionStorage.getItem('ara_vault_session')).not.toBe('top-secret');
 
     await user.click(screen.getByRole('button', { name: 'Set Strict' }));
 
@@ -213,7 +213,7 @@ describe('VaultProvider.initializeVault', () => {
       expect(screen.getByTestId('persistence-mode')).toHaveTextContent('STRICT');
     });
 
-    expect(sessionStorage.getItem('nexus_vault_session')).toBeNull();
-    expect(sessionStorage.getItem('nexus_vault_session_ts')).toBeNull();
+    expect(sessionStorage.getItem('ara_vault_session')).toBeNull();
+    expect(sessionStorage.getItem('ara_vault_session_ts')).toBeNull();
   });
 });

@@ -12,22 +12,22 @@
  * server-side encrypted storage.
  */
 import { CredentialStoreJs } from '@cortex-logic';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { encryptWithKey, decryptWithKey } from '@/lib/encryption';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 
 const CREDENTIAL_COLLECTION = 'credentials';
 const CREDENTIAL_DOC_ID = 'api_keys';
 
 // Legacy localStorage key names (for migration/fallback).
 const LEGACY_KEYS: Record<string, string[]> = {
-  nexus_credential_openrouter: [
+  ara_credential_openrouter: [
     'VITE_OPENROUTER_API_KEY',
     'openrouter_api_key',
     'OPENROUTER_API_KEY',
   ],
-  nexus_credential_gemini: ['VITE_GOOGLE_API_KEY'],
-  nexus_credential_grok: ['VITE_GROK_API_KEY'],
+  ara_credential_gemini: ['VITE_GOOGLE_API_KEY'],
+  ara_credential_grok: ['VITE_GROK_API_KEY'],
 };
 
 let _instance: InstanceType<typeof CredentialStoreJs> | null = null;
@@ -56,7 +56,7 @@ export function getCredentialStore(
   _currentUserId = userId;
   _currentKey = encryptionKey;
 
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   const jsGetEncrypted = (
     key: string,
@@ -80,7 +80,7 @@ export function getCredentialStore(
                 await dataLayer.updateDocument(collectionPath, CREDENTIAL_DOC_ID, updates);
                 clearLegacyKey(key);
               } catch (migrationErr) {
-                NexusLogger.warn('CredentialStore', 'Encryption migration failed — using legacy key this session', migrationErr);
+                AraLogger.warn('CredentialStore', 'Encryption migration failed — using legacy key this session', migrationErr);
               }
               onComplete(legacyValue);
               return;
@@ -95,7 +95,7 @@ export function getCredentialStore(
             );
             onComplete(decrypted);
           } catch (e) {
-            NexusLogger.warn('CredentialStore', `Decryption failed for ${key}: ${e}`);
+            AraLogger.warn('CredentialStore', `Decryption failed for ${key}: ${e}`);
             onComplete(null);
           }
         })
@@ -183,9 +183,9 @@ function readLegacyKey(key: string): string | null {
 
   // Also check env vars.
   const envMap: Record<string, string | undefined> = {
-    nexus_credential_openrouter: import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined,
-    nexus_credential_gemini: import.meta.env.VITE_GOOGLE_API_KEY as string | undefined,
-    nexus_credential_grok: import.meta.env.VITE_GROK_API_KEY as string | undefined,
+    ara_credential_openrouter: import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined,
+    ara_credential_gemini: import.meta.env.VITE_GOOGLE_API_KEY as string | undefined,
+    ara_credential_grok: import.meta.env.VITE_GROK_API_KEY as string | undefined,
   };
 
   const fromEnv = envMap[key];
@@ -209,4 +209,36 @@ function clearLegacyKey(key: string): void {
   for (const name of legacyNames) {
     localStorage.removeItem(name);
   }
+}
+
+/**
+ * Saves an API key to the credential store (encrypted Firestore when vault is
+ * unlocked, localStorage fallback otherwise). Clears the in-memory key cache
+ * so the next engine call fetches the new value.
+ *
+ * @param provider  One of "openrouter", "gemini", "grok"
+ * @param key       The raw API key string
+ */
+export function saveApiKey(provider: string, key: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const store = _instance;
+    if (!store) {
+      // No credential store yet — fall back to writing the legacy localStorage key directly.
+      const legacyMap: Record<string, string> = {
+        openrouter: 'openrouter_api_key',
+        gemini: 'VITE_GOOGLE_API_KEY',
+        grok: 'VITE_GROK_API_KEY',
+      };
+      const lsKey = legacyMap[provider];
+      if (!lsKey) { reject(new Error(`Unknown provider: ${provider}`)); return; }
+      try {
+        localStorage.setItem(lsKey, key);
+        resolve();
+      } catch (e) {
+        reject(e);
+      }
+      return;
+    }
+    store.storeKey(provider, key, resolve, (err) => reject(new Error(err)));
+  });
 }

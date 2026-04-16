@@ -1,4 +1,4 @@
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 
 /**
  * Safely parse a JSON string returned by a KMP @JsExport method.
@@ -9,7 +9,7 @@ export function safeParseKmp<T>(raw: string, fallback: T, label: string): T {
   try {
     return JSON.parse(raw) as T;
   } catch (err) {
-    NexusLogger.warn('KMP', `${label} JSON.parse failed: ${err}`);
+    AraLogger.warn('KMP', `${label} JSON.parse failed: ${err}`);
     return fallback;
   }
 }

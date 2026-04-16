@@ -3,7 +3,7 @@
  *
  * Exposes Scout's RAG capabilities as a stable cross-agent API.
  *
- * Any Nexus module (Titan, Agnes, Atlas, Ledger, Soma) can call this service
+ * Any Ara module (Titan, Agnes, Atlas, Ledger, Soma) can call this service
  * to enrich its answers with Scout's local knowledge base + web fallback before
  * responding to the user. Calls are fire-and-forget friendly — the result is
  * returned immediately and a Spine event is published for traceability.
@@ -55,11 +55,11 @@ export const ScoutCrossModuleQueryService = {
     try {
       Spine.publish({
         type: 'SCOUT_CROSS_MODULE_QUERY',
-        source: context.requestingModule ?? 'nexus',
+        source: context.requestingModule ?? 'ara',
         target: 'scout',
         domain: 'C',
         priority: 'info',
-        data: { query, requestingModule: context.requestingModule ?? 'nexus' },
+        data: { query, requestingModule: context.requestingModule ?? 'ara' },
       });
 
       const result = await ScoutQueryService.queryLibrary(query, {
@@ -80,7 +80,7 @@ export const ScoutCrossModuleQueryService = {
           confidence: result.confidence,
           nodeCount: result.supportingNodes.length,
           webEnriched: result.webEnriched ?? false,
-          requestingModule: context.requestingModule ?? 'nexus',
+          requestingModule: context.requestingModule ?? 'ara',
         },
       });
 

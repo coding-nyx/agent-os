@@ -1,6 +1,6 @@
 import type { RagAdapter, RagRetrieveOptions, RagRetrieveResult } from '../rag-adapter';
 import type { UnifiedMemoryResult } from '@/lib/types';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { cosineSimilarity, computeKeywordScore, EmbeddingService } from '@/lib/services/embedding-service';
 
 /** Maximum chunks to fetch from Firestore per query. */
@@ -102,14 +102,14 @@ export const WebRagAdapter: RagAdapter = {
     const resultLimit = topK ?? DEFAULT_TOP_K;
 
     try {
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
 
       // Build query filters: always filter by uid, optionally by moduleId
       const whereFilters: { field: string; op: '==' | 'in'; value: unknown }[] = [
         { field: 'uid', op: '==', value: userId },
       ];
-      if (moduleId && moduleId !== 'nexus') {
-        // 'nexus' is the orchestrator — search all modules for it
+      if (moduleId && moduleId !== 'ara') {
+        // 'ara' is the orchestrator — search all modules for it
         whereFilters.push({ field: 'moduleId', op: '==', value: moduleId });
       }
 

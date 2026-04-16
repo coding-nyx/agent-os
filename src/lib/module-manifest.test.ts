@@ -40,8 +40,8 @@ describe('MODULE_MANIFEST integrity', () => {
 });
 
 describe('HUB_MODULE_ORDER', () => {
-  it('excludes nexus and bridge', () => {
-    expect(HUB_MODULE_ORDER).not.toContain('nexus');
+  it('excludes ara and bridge', () => {
+    expect(HUB_MODULE_ORDER).not.toContain('ara');
     expect(HUB_MODULE_ORDER).not.toContain('bridge');
   });
 

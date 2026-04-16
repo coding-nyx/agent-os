@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { NexusDataLayer, NexusRecord } from '@/lib/data-layer';
+import type { AraDataLayer, AraRecord } from '@/lib/data-layer';
 import type { AliveEntity, AliveEntityRuntimeContext } from '@/lib/contracts/orchestration';
 import type { ModuleId } from '@/lib/module-manifest';
 import { buildAliveEntityRuntimeContext, listAliveEntities } from '@/lib/services/alive-entity-service';
@@ -10,11 +10,11 @@ interface UseAliveEntityRetrievalOptions {
 }
 
 export function useAliveEntityRetrieval(
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
   uid?: string,
   options?: UseAliveEntityRetrievalOptions,
 ) {
-  const [entities, setEntities] = useState<Array<NexusRecord<AliveEntity>>>([]);
+  const [entities, setEntities] = useState<Array<AraRecord<AliveEntity>>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 

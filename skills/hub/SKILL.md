@@ -1,11 +1,11 @@
 ---
 name: hub
-description: Central orchestration hub and dashboard for the Nexus ecosystem.
+description: Central orchestration hub and dashboard for the Ara ecosystem.
 ---
 
 # Hub Module
 
-The Hub is the navigational and visualization center of Nexus, synthesizing data from all modules into a unified interactive experience.
+The Hub is the navigational and visualization center of Ara, synthesizing data from all modules into a unified interactive experience.
 
 ## Features
 - **3D Visualization**: Interactive Three.js representation of the user's state (Agnes/Atlas/Titan models).

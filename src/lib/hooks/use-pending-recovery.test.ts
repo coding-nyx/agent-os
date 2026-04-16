@@ -22,7 +22,7 @@ describe('usePendingRecovery', () => {
       result.current.savePendingRequest('hello', 'ctx-hash');
     });
 
-    const raw = localStorage.getItem('nexus_pending_agnes');
+    const raw = localStorage.getItem('ara_pending_agnes');
     const parsed = raw ? JSON.parse(raw) : null;
     expect(parsed?.status).toBe('pending');
     expect(parsed?.attempts).toBe(0);

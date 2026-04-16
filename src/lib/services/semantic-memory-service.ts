@@ -1,5 +1,5 @@
-import type { NexusDataLayer } from '@/lib/data-layer';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import type { AraDataLayer } from '@/lib/data-layer';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { SemanticFact, UnifiedMemoryResult } from '@/lib/types';
 
 function normalizeConfidence(confidence?: number): number {
@@ -30,7 +30,7 @@ export const SemanticMemoryService = {
     if (!uid || moduleIds.length === 0) return [];
 
     try {
-      const dataLayer = getNexusDataLayer();
+      const dataLayer = getAraDataLayer();
       // Use server-side filter + limit instead of fetching all facts.
       const facts = await dataLayer.query<Omit<SemanticFact, 'id'>>({
         collection: `semantic_memory/${uid}/facts`,
@@ -64,7 +64,7 @@ export const SemanticMemoryService = {
       onUpdate([]);
       return () => {};
     }
-    const dataLayer = getNexusDataLayer();
+    const dataLayer = getAraDataLayer();
     return dataLayer.subscribeToQuery<Omit<SemanticFact, 'id'>>(
       { collection: `semantic_memory/${uid}/facts` },
       (facts) => onUpdate(facts as SemanticFact[])
@@ -74,11 +74,11 @@ export const SemanticMemoryService = {
   async upsertFact(
     uid: string,
     fact: Omit<SemanticFact, 'id' | 'updatedAt'> & { id?: string },
-    dataLayerOverride?: NexusDataLayer,
+    dataLayerOverride?: AraDataLayer,
   ): Promise<void> {
     if (!uid || !fact.fact.trim()) return;
 
-    const dataLayer = dataLayerOverride ?? getNexusDataLayer();
+    const dataLayer = dataLayerOverride ?? getAraDataLayer();
     const factId = fact.id || crypto.randomUUID();
     try {
       await dataLayer.setDocument(`semantic_memory/${uid}/facts`, factId, {

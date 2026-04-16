@@ -10,6 +10,7 @@ import { NeuralButton } from '@/core/components/NeuralButton';
 import { NeuralToggle } from '@/core/components/NeuralToggle';
 import { MODULE_MANIFEST, type ModuleId } from '@/lib/module-manifest';
 import { useDebugMode, type DebugFlags } from '@/lib/hooks/use-debug-mode';
+import { ApiKeyPanel } from './ApiKeyPanel';
 import { ModelSelector } from './ModelSelector';
 import { VisionModelSelector } from './VisionModelSelector';
 
@@ -339,9 +340,12 @@ export function SystemPanel() {
                   Model Selection
                 </h3>
               </div>
-              <ModelSelector />
-              <div className="mt-6 pt-5 border-t border-white/[0.12]">
-                <VisionModelSelector />
+              <ApiKeyPanel />
+              <div className="mt-4 pt-4 border-t border-white/[0.07]">
+                <ModelSelector />
+                <div className="mt-6 pt-5 border-t border-white/[0.12]">
+                  <VisionModelSelector />
+                </div>
               </div>
             </GlassCard>
           </motion.div>

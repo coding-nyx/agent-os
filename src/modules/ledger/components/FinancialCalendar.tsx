@@ -1,7 +1,7 @@
 /**
  * FinancialCalendar.tsx
  *
- * Monthly calendar grid for the Nexus Ledger finance module.
+ * Monthly calendar grid for the Ara Ledger finance module.
  * Renders colored event dots per day, a detail panel on day selection,
  * and a monthly summary strip for bills/income/net cash flow.
  *

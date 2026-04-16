@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryDataProvider } from '@/lib/data-layer';
-import { setNexusDataLayer } from '@/lib/data-layer/provider';
+import { setAraDataLayer } from '@/lib/data-layer/provider';
 
 vi.mock('@/lib/encryption', () => ({
   decryptWithKey: vi.fn(),
@@ -14,12 +14,12 @@ const { createEmptyLedgerProfile, saveLedgerProfile } = await import('./ledger-i
 
 describe('ledger-intake-service alive entity wiring', () => {
   afterEach(() => {
-    setNexusDataLayer(new InMemoryDataProvider());
+    setAraDataLayer(new InMemoryDataProvider());
   });
 
   it('syncs financial goal and transaction alive entities when an authenticated profile is saved', async () => {
     const dataLayer = new InMemoryDataProvider();
-    setNexusDataLayer(dataLayer);
+    setAraDataLayer(dataLayer);
 
     const profile = createEmptyLedgerProfile();
     profile.financialGoals = [

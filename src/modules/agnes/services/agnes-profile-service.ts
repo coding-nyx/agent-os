@@ -35,7 +35,7 @@ function normalizeAgnesProfile(raw: unknown): TherapyIntakeProfile {
 
 const _service = createEncryptedProfileService<TherapyIntakeProfile>({
   collection: 'agnes_profiles',
-  guestStorageKey: 'nexus_agnes_profile_guest',
+  guestStorageKey: 'ara_agnes_profile_guest',
   createEmpty: createEmptyAgnesProfile,
   normalize: normalizeAgnesProfile,
   metadataProjection: (p) => ({
@@ -56,6 +56,7 @@ export const saveAgnesProfile: (profile: TherapyIntakeProfile, ctx: LoadContext)
 export const subscribeAgnesProfile: (
   ctx: LoadContext,
   onUpdate: (profile: TherapyIntakeProfile | null) => void,
+  onError?: (error: unknown) => void,
 ) => () => void = _service.subscribe.bind(_service);
 
 export const syncGuestAgnesProfileToUser: (ctx: LoadContext) => Promise<boolean> =

@@ -1,4 +1,4 @@
-import { Brain, ExternalLink, FileText } from 'lucide-react';
+import { Brain, ExternalLink, FileText, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ResearchSession, ScoutKnowledgeNode, SourceEntry } from '../types';
 
@@ -21,6 +21,13 @@ export function ScoutResearchArtifactsPanel({
     source.citingNodeIds?.some((id) => sessionNodeIds.has(id))
   );
 
+  const summaryNodes = sessionNodes
+    .filter((n) => n.confidence >= 0.75 && n.status === 'verified')
+    .slice(0, 3);
+  const summaryText = summaryNodes.length > 0
+    ? summaryNodes.map((n) => n.claim).join(' ')
+    : null;
+
   return (
     <section
       aria-label="Research artifacts"
@@ -40,6 +47,22 @@ export function ScoutResearchArtifactsPanel({
       </div>
 
       <div className="scrollbar-ghost mt-4 flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain pr-1">
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-[var(--module-color-300)]" aria-hidden="true" />
+            <h4 className="text-chip-soft text-white/40">Session summary</h4>
+          </div>
+          {summaryText ? (
+            <div className="rounded-2xl border border-[var(--module-accent-border)] bg-gradient-to-br from-[var(--module-accent-muted)] to-transparent p-4">
+              <p className="text-[13px] leading-relaxed text-white/80">{summaryText}</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/[0.09] bg-white/[0.045] px-4 py-4 text-center">
+              <p className="text-body-secondary">No verified findings yet — keep researching to build a summary.</p>
+            </div>
+          )}
+        </section>
+
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <h4 className="text-chip-soft text-white/40">Synthesized findings</h4>

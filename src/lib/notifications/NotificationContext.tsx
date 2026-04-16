@@ -199,7 +199,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       for (const item of dueItems) {
         Spine.emit({
           type: 'MODULE_REMINDER_DUE',
-          source: 'nexus',
+          source: 'ara',
           domain: 'system',
           data: { ...item.data, moduleId: item.data?.moduleId, reminderId: item.id },
           cascadeDepth: 0,

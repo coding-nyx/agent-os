@@ -1,5 +1,5 @@
 import type { InboxRecord } from '@/lib/notifications/NotificationContext';
-import type { NexusDataLayer } from '@/lib/data-layer';
+import type { AraDataLayer } from '@/lib/data-layer';
 
 // ─── Snooze ───────────────────────────────────────────────────────────────────
 
@@ -205,7 +205,7 @@ function settingsPath(userId: string): string {
 }
 
 export async function loadQuietHoursConfig(
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
   userId: string,
 ): Promise<QuietHoursConfig> {
   try {
@@ -221,7 +221,7 @@ export async function loadQuietHoursConfig(
 }
 
 export async function saveQuietHoursConfig(
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
   userId: string,
   config: QuietHoursConfig,
 ): Promise<void> {
@@ -234,7 +234,7 @@ export async function saveQuietHoursConfig(
 // ─── Snooze Persistence ──────────────────────────────────────────────────────
 
 export async function persistSnooze(
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
   userId: string,
   notificationId: string,
   snoozedUntil: string,
@@ -247,7 +247,7 @@ export async function persistSnooze(
 }
 
 export async function clearSnooze(
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
   userId: string,
   notificationId: string,
 ): Promise<void> {

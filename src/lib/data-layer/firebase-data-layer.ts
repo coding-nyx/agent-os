@@ -19,12 +19,12 @@ import {
 } from 'firebase/firestore';
 import { getFirebase } from '../firebase';
 import {
-  NexusDataLayer,
-  NexusDocumentId,
-  NexusOrderBy,
-  NexusQuery,
-  NexusQueryFilter,
-  NexusRecord,
+  AraDataLayer,
+  AraDocumentId,
+  AraOrderBy,
+  AraQuery,
+  AraQueryFilter,
+  AraRecord,
   BatchOperation,
 } from './index';
 
@@ -69,7 +69,7 @@ const _writeTracer = (() => {
   };
 })();
 
-const mapSnapshot = <T>(snap: DocumentSnapshot): NexusRecord<T> | null => {
+const mapSnapshot = <T>(snap: DocumentSnapshot): AraRecord<T> | null => {
   if (!snap.exists()) return null;
   return { ...(snap.data() as T), id: snap.id };
 };
@@ -112,9 +112,9 @@ const compareValues = (a: unknown, b: unknown): number => {
 };
 
 const compareWithOrder = (
-  a: NexusRecord<any>,
-  b: NexusRecord<any>,
-  orderBy: NexusOrderBy[],
+  a: AraRecord<any>,
+  b: AraRecord<any>,
+  orderBy: AraOrderBy[],
 ): number => {
   for (const rule of orderBy) {
     const direction = rule.direction === 'desc' ? -1 : 1;
@@ -129,7 +129,7 @@ const compareWithOrder = (
   return 0;
 };
 
-const matchesFilter = (record: NexusRecord<any>, filter: NexusQueryFilter): boolean => {
+const matchesFilter = (record: AraRecord<any>, filter: AraQueryFilter): boolean => {
   const value = getFieldValue(record, filter.field);
   const target = filter.value;
 
@@ -162,9 +162,9 @@ const matchesFilter = (record: NexusRecord<any>, filter: NexusQueryFilter): bool
 };
 
 const applyClientQuery = <T>(
-  documents: NexusRecord<T>[],
-  query: NexusQuery,
-): NexusRecord<T>[] => {
+  documents: AraRecord<T>[],
+  query: AraQuery,
+): AraRecord<T>[] => {
   let results = documents;
 
   if (query.where?.length) {
@@ -184,7 +184,7 @@ const applyClientQuery = <T>(
 
 const buildQueryRef = (
   db: Firestore,
-  query: NexusQuery,
+  query: AraQuery,
 ): { ref: FirestoreQuery; requiresClientFilter: boolean } => {
   let ref: FirestoreQuery = collection(db, query.collection);
   let requiresClientFilter = false;
@@ -208,19 +208,19 @@ const buildQueryRef = (
   return { ref, requiresClientFilter };
 };
 
-export class FirebaseDataLayer implements NexusDataLayer {
+export class FirebaseDataLayer implements AraDataLayer {
   constructor(private db: Firestore) {}
 
-  private map<T>(snap: DocumentSnapshot): NexusRecord<T> | null {
+  private map<T>(snap: DocumentSnapshot): AraRecord<T> | null {
     return mapSnapshot<T>(snap);
   }
 
-  async getDocument<T>(collectionName: string, id: NexusDocumentId): Promise<NexusRecord<T> | null> {
+  async getDocument<T>(collectionName: string, id: AraDocumentId): Promise<AraRecord<T> | null> {
     const snap = await getDoc(doc(this.db, collectionName, id));
     return this.map<T>(snap);
   }
 
-  async listDocuments<T>(collectionName: string, options?: { limit?: number }): Promise<NexusRecord<T>[]> {
+  async listDocuments<T>(collectionName: string, options?: { limit?: number }): Promise<AraRecord<T>[]> {
     const cap = options?.limit ?? 100;
     if (cap > 0) {
       const snap = await getDocs(fbQuery(collection(this.db, collectionName), fbLimit(cap)));
@@ -232,8 +232,8 @@ export class FirebaseDataLayer implements NexusDataLayer {
 
   async createDocument<T>(
     collectionName: string,
-    data: Omit<NexusRecord<T>, 'id'> & Partial<Pick<NexusRecord<T>, 'id'>>,
-  ): Promise<NexusRecord<T>> {
+    data: Omit<AraRecord<T>, 'id'> & Partial<Pick<AraRecord<T>, 'id'>>,
+  ): Promise<AraRecord<T>> {
     _writeTracer?.record('createDocument', collectionName);
     const { id, ...payload } = data;
     if (id) {
@@ -247,9 +247,9 @@ export class FirebaseDataLayer implements NexusDataLayer {
 
   async setDocument<T>(
     collectionName: string,
-    id: NexusDocumentId,
+    id: AraDocumentId,
     data: T,
-  ): Promise<NexusRecord<T>> {
+  ): Promise<AraRecord<T>> {
     _writeTracer?.record('setDocument', collectionName);
     const payload = omitId((data || {}) as Record<string, unknown>);
     await setDoc(doc(this.db, collectionName, id), payload);
@@ -258,9 +258,9 @@ export class FirebaseDataLayer implements NexusDataLayer {
 
   async updateDocument<T>(
     collectionName: string,
-    id: NexusDocumentId,
+    id: AraDocumentId,
     updates: Partial<T>,
-  ): Promise<NexusRecord<T> | null> {
+  ): Promise<AraRecord<T> | null> {
     _writeTracer?.record('updateDocument', collectionName);
     const ref = doc(this.db, collectionName, id);
     const payload = omitId((updates || {}) as Record<string, unknown>);
@@ -276,14 +276,14 @@ export class FirebaseDataLayer implements NexusDataLayer {
     return this.map<T>(snap);
   }
 
-  async deleteDocument(collectionName: string, id: NexusDocumentId): Promise<void> {
+  async deleteDocument(collectionName: string, id: AraDocumentId): Promise<void> {
     await deleteDoc(doc(this.db, collectionName, id));
   }
 
-  async query<T>(query: NexusQuery): Promise<NexusRecord<T>[]> {
+  async query<T>(query: AraQuery): Promise<AraRecord<T>[]> {
     const { ref, requiresClientFilter } = buildQueryRef(this.db, query);
     const snap = await getDocs(ref);
-    const docs = snap.docs.map((d) => this.map<T>(d)).filter(Boolean) as NexusRecord<T>[];
+    const docs = snap.docs.map((d) => this.map<T>(d)).filter(Boolean) as AraRecord<T>[];
     if (requiresClientFilter) {
       return applyClientQuery(docs, query);
     }
@@ -317,8 +317,9 @@ export class FirebaseDataLayer implements NexusDataLayer {
 
   subscribeToDocument<T>(
     collectionName: string,
-    id: NexusDocumentId,
-    listener: (document: NexusRecord<T> | null) => void,
+    id: AraDocumentId,
+    listener: (document: AraRecord<T> | null) => void,
+    onError?: (error: unknown) => void,
   ): () => void {
     const ref = doc(this.db, collectionName, id);
     return onSnapshot(
@@ -326,20 +327,28 @@ export class FirebaseDataLayer implements NexusDataLayer {
       (snap) => listener(this.map<T>(snap)),
       (error) => {
         console.error(`[FirebaseDataLayer] Document subscription error for ${collectionName}/${id}:`, error);
-        listener(null);
+        if (onError) {
+          // Forward to the caller so they can surface the error state.
+          // Do NOT null the listener — stale-but-valid data is better than null.
+          onError(error);
+        } else {
+          // Legacy path: no error handler registered, fall back to null to avoid
+          // leaving the caller in an indefinite loading state.
+          listener(null);
+        }
       },
     );
   }
 
   subscribeToQuery<T>(
-    query: NexusQuery,
-    listener: (documents: NexusRecord<T>[]) => void,
+    query: AraQuery,
+    listener: (documents: AraRecord<T>[]) => void,
   ): () => void {
     const { ref, requiresClientFilter } = buildQueryRef(this.db, query);
     return onSnapshot(
       ref,
       (snapshot) => {
-        let docs = snapshot.docs.map((d) => this.map<T>(d)).filter(Boolean) as NexusRecord<T>[];
+        let docs = snapshot.docs.map((d) => this.map<T>(d)).filter(Boolean) as AraRecord<T>[];
         if (requiresClientFilter) {
           docs = applyClientQuery(docs, query);
         }
@@ -353,7 +362,7 @@ export class FirebaseDataLayer implements NexusDataLayer {
   }
 }
 
-export function createFirebaseDataLayer(): NexusDataLayer | null {
+export function createFirebaseDataLayer(): AraDataLayer | null {
   try {
     const { db } = getFirebase();
     if (!db) return null;

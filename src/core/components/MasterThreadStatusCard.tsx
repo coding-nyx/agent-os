@@ -115,8 +115,8 @@ function titleCaseStatus(value: string): string {
   return value.replace(/_/g, ' ');
 }
 
-function getModuleLabel(moduleId: keyof typeof MODULE_MANIFEST | 'nexus'): string {
-  return MODULE_MANIFEST[moduleId]?.alias ?? 'Nyx';
+function getModuleLabel(moduleId: keyof typeof MODULE_MANIFEST | 'ara'): string {
+  return MODULE_MANIFEST[moduleId]?.alias ?? 'Ara';
 }
 
 function getAuthorLabel(
@@ -187,7 +187,7 @@ function AgentIdentity({
   const effectiveActorLabel = actorIdentityEnabled ? actorLabel : undefined;
   const effectiveActorShortLabel = actorIdentityEnabled ? actorShortLabel : undefined;
   const identity = resolveConversationalActorIdentity({
-    source: source === 'user' || source === 'system' || source === 'nexus' ? source : source,
+    source: source === 'user' || source === 'system' || source === 'ara' ? source : source,
     actorId: effectiveActorId,
     actorLabel: effectiveActorLabel,
     actorShortLabel: effectiveActorShortLabel,
@@ -196,7 +196,7 @@ function AgentIdentity({
   return (
     <div className={cn('flex min-w-0 items-center gap-2', className)}>
         <AgentIcon
-          source={source === 'user' || source === 'system' || source === 'nexus' ? source : undefined}
+          source={source === 'user' || source === 'system' || source === 'ara' ? source : undefined}
           moduleId={source !== 'user' && source !== 'system' ? source : undefined}
           actorId={effectiveActorId}
           actorLabel={effectiveActorLabel}
@@ -413,7 +413,7 @@ export function MasterThreadStatusCard({
                             />
                           ) : null}
                           <AgentIcon
-                            source={message.author === 'user' || message.author === 'system' || message.author === 'nexus' ? message.author : undefined}
+                            source={message.author === 'user' || message.author === 'system' || message.author === 'ara' ? message.author : undefined}
                             moduleId={message.author !== 'user' && message.author !== 'system' ? message.author : undefined}
                             actorId={chatActorIdentityEnabled ? message.actor?.actorId : undefined}
                             actorLabel={chatActorIdentityEnabled ? message.actor?.actorLabel : undefined}
@@ -686,7 +686,7 @@ export function MasterThreadStatusCard({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <AgentIcon
-                          moduleId={selectedProposal.source === 'nexus' ? 'nexus' : selectedProposal.source}
+                          moduleId={selectedProposal.source === 'ara' ? 'ara' : selectedProposal.source}
                           withBackground
                           className="h-8 w-8 rounded-xl"
                         />
@@ -884,7 +884,7 @@ export function MasterThreadStatusCard({
                             onClick={() => setSelectedProposalId(proposal.id)}
                           >
                             <AgentIcon
-                              moduleId={proposal.source === 'nexus' ? 'nexus' : proposal.source}
+                              moduleId={proposal.source === 'ara' ? 'ara' : proposal.source}
                               withBackground
                               className={cn(
                                 'h-8 w-8 rounded-xl',

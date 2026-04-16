@@ -5,7 +5,7 @@ description: Cognitive planning and executive function agent for task management
 
 # Atlas Module
 
-Atlas is the cognitive framework of Nexus, optimizing for productivity, temporal management, and sustainable output through executive function support.
+Atlas is the cognitive framework of Ara, optimizing for productivity, temporal management, and sustainable output through executive function support.
 
 ## Domain
 Focuses on long-term strategy (Goals), recurring patterns (Habits), and tactical execution (Tasks/Blocks).

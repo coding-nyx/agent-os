@@ -5,7 +5,7 @@
  * always reachable). Accepts a `returnTo` query-param and navigates there
  * after a successful handshake.
  *
- * Design: dark glassmorphism — matches the rest of the Nexus aesthetic.
+ * Design: dark glassmorphism — matches the rest of the Ara aesthetic.
  */
 
 import React, { useState } from 'react';
@@ -26,7 +26,7 @@ import { NeuralModal } from '@/core/components/NeuralModal';
  * - Must NOT contain backslash (some browsers normalise `\/` → `//`)
  */
 function safeReturnTo(raw: string | null): string {
-  const fallback = '/nexus';
+  const fallback = '/ara';
   if (!raw) return fallback;
   // Strip leading whitespace that could bypass checks
   const trimmed = raw.trim();
@@ -78,7 +78,7 @@ export function AppVaultGate() {
     setIsResetting(true);
     try {
       await destroyVault();
-      navigate('/nexus', { replace: true });
+      navigate('/ara', { replace: true });
     } catch (e) {
       console.error('Failed to reset vault:', e);
       setIsResetting(false);
@@ -114,7 +114,7 @@ export function AppVaultGate() {
         {/* Title block */}
         <div className="text-center space-y-1">
           <div className="text-[11px] font-black uppercase tracking-[0.4em] text-white/40">
-            {hasVault ? 'NEXUS VAULT' : 'INITIALIZE VAULT'}
+            {hasVault ? 'ARA VAULT' : 'INITIALIZE VAULT'}
           </div>
           <div className="text-xs text-white/25 tracking-wide px-4">
             {hasVault 

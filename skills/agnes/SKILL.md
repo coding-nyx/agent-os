@@ -5,7 +5,7 @@ description: Emotional and therapeutic agent specializing in resilience, mood an
 
 # Agnes Module
 
-Agnes is the emotional core of the Nexus ecosystem, designed for deep therapeutic intervention, somatic support, and emotional resilience monitoring.
+Agnes is the emotional core of the Ara ecosystem, designed for deep therapeutic intervention, somatic support, and emotional resilience monitoring.
 
 ## Personas
 - **Nurturer**: High empathy, somatic grounding, safe space creation.

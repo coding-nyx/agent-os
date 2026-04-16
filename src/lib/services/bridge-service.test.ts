@@ -32,11 +32,11 @@ vi.mock('@/lib/data-layer/provider', () => {
     getDocument: vi.fn(async () => null),
     setDocument: vi.fn(async () => {}),
   };
-  return { getNexusDataLayer: () => mockDL };
+  return { getAraDataLayer: () => mockDL };
 });
 
-vi.mock('@/lib/nexus-logger', () => ({
-  NexusLogger: {
+vi.mock('@/lib/ara-logger', () => ({
+  AraLogger: {
     warn: vi.fn(),
     error: vi.fn(),
   },

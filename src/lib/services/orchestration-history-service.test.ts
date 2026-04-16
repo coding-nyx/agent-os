@@ -9,7 +9,7 @@ const dataLayerSpies = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/data-layer/provider', () => ({
-  getNexusDataLayer: vi.fn(() => dataLayerSpies),
+  getAraDataLayer: vi.fn(() => dataLayerSpies),
 }));
 
 function makeMetadata(

@@ -8,7 +8,7 @@
 import { ActionHub, ActionContext } from './action-hub';
 import { GlobalProjectionService } from '../services/global-projection-service';
 import { EpisodicMemoryService } from '../services/episodic-memory-service';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { decryptWithKey } from '../encryption';
 import { NeuralStateVector } from '../types';
 
@@ -74,7 +74,7 @@ async function loadModuleProfile(
     const collection = isSoma ? 'soma_profiles' : 'intake_profiles';
     const docId = isSoma ? userId : `${userId}_${moduleId}`;
 
-    const record = await getNexusDataLayer().getDocument<Record<string, unknown>>(
+    const record = await getAraDataLayer().getDocument<Record<string, unknown>>(
       collection,
       docId
     );
@@ -829,7 +829,7 @@ async function handleGenerateSummary(context: ActionContext): Promise<void> {
           const summaryText = result.insights[0].description;
           const currentInsights = globalSoul?.compactedInsights ?? [];
 
-          await getNexusDataLayer().updateDocument('global_souls', userId, {
+          await getAraDataLayer().updateDocument('global_souls', userId, {
             compactedInsights: [
               `[${new Date().toLocaleDateString()}] ${summaryText}`,
               ...currentInsights.slice(0, 9) // Keep last 10 insights
@@ -853,7 +853,7 @@ export function registerAnalysisActions() {
   // Unit tests reset ActionHub's internal registry without resetting
   // any module-level flags. Make registration idempotent based on the
   // current public ActionHub state.
-  const alreadyRegistered = ActionHub.getAllowedActions('nexus').includes('analyze_trends');
+  const alreadyRegistered = ActionHub.getAllowedActions('ara').includes('analyze_trends');
   if (alreadyRegistered) return;
 
   const analysisHandlers = {
@@ -865,7 +865,7 @@ export function registerAnalysisActions() {
   };
 
   // Register with orchestrator (available to all modules)
-  ActionHub.registerMultiple('nexus', analysisHandlers);
+  ActionHub.registerMultiple('ara', analysisHandlers);
 
   // Register with specific modules that benefit from analysis
   const modules = ['hub', 'ledger', 'atlas', 'soma'];

@@ -2,7 +2,7 @@
  * Migration Service Tests
  * Tests for data migration functionality
  *
- * Uses InMemoryDataLayer injected via setNexusDataLayer() so that no Firebase
+ * Uses InMemoryDataLayer injected via setAraDataLayer() so that no Firebase
  * SDK imports are needed — the data layer abstraction is the only integration
  * point the service should ever touch.
  */
@@ -14,7 +14,7 @@ import type {
   MigrationResult,
   ModuleMigrationStatus,
 } from './migration-service';
-import { setNexusDataLayer } from '../data-layer/provider';
+import { setAraDataLayer } from '../data-layer/provider';
 import { InMemoryDataLayer } from '../data-layer/in-memory-data-layer';
 
 // ─── Shared mocks (non-firebase) ─────────────────────────────────────────────
@@ -78,7 +78,7 @@ describe('MigrationService', () => {
   beforeEach(() => {
     // Fresh in-memory store per test — no Firebase SDK required
     dataLayer = new InMemoryDataLayer();
-    setNexusDataLayer(dataLayer);
+    setAraDataLayer(dataLayer);
     service = new MigrationServiceClass();
     vi.clearAllMocks();
   });
@@ -216,7 +216,7 @@ describe('MigrationService', () => {
         if (col === 'agnes_profiles') throw new Error('Write failed');
         return originalSet(col, id, data);
       });
-      setNexusDataLayer(errorLayer);
+      setAraDataLayer(errorLayer);
 
       const mockKey = {} as CryptoKey;
       const result = await service.migrateUserData('user123', mockKey, 'therapy');

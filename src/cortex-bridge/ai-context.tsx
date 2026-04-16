@@ -5,19 +5,10 @@
  */
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Message, ConversationContext, MessageContent } from './types';
-import { CognitiveAgent } from './engine/CognitiveAgent';
-import { EngineConfig, StructuredResponse, StreamChunk } from './engine/types';
+import { StructuredResponse, StreamChunk } from './engine/types';
 import type { CoreUserProfile } from '@/lib/types';
-import { resolveOpenRouterKey } from '@/lib/services/openrouter-key';
-import { getCredentialStore } from './credential-store-bridge';
-
-function deriveProvider(config: Pick<EngineConfig, 'openrouterKey' | 'grokKey' | 'googleKey' | 'isMockMode'>): 'openrouter' | 'grok' | 'google' | 'mock' {
-  if (config.isMockMode) return 'mock';
-  if (config.openrouterKey) return 'openrouter';
-  if (config.grokKey) return 'grok';
-  if (config.googleKey) return 'google';
-  return 'mock';
-}
+import { CortexRuntime, CortexRuntimeState } from './cortex-runtime';
+import { ARA_EVENTS, ARA_STORAGE_KEYS } from './ara-events';
 
 export interface AIContextType {
   sendMessage: (
@@ -70,227 +61,117 @@ interface AIProviderProps {
 }
 
 export function AIProvider({ children, guestMode, userId, encryptionKey }: AIProviderProps) {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [initFailed, setInitFailed] = useState(false);
-  const [agent, setAgent] = useState<CognitiveAgent | null>(null);
-  const [runtimeModelId, setRuntimeModelId] = useState<string | null>(null);
-  const [runtimeProvider, setRuntimeProvider] = useState<'openrouter' | 'grok' | 'google' | 'mock' | null>(null);
-  const initRef = useRef(false);
-  const reinitRef = useRef(false);
-  const lastConfigRef = useRef<{ model: string | null; provider: string | null; guest: boolean; hasCredentialStore: boolean } | null>(null);
+  // Create runtime once via ref to avoid stale closure issues.
+  const runtimeRef = useRef<CortexRuntime | null>(null);
+  if (!runtimeRef.current) runtimeRef.current = new CortexRuntime();
 
+  const [runtimeState, setRuntimeState] = useState<CortexRuntimeState>(() => runtimeRef.current!.getState());
+
+  // Subscribe to runtime state changes.
   useEffect(() => {
-    if (initRef.current) return;
-    initRef.current = true;
-
-    const init = async () => {
-        // Try credential store path when user context is available.
-        const credentialStore = getCredentialStore(userId ?? null, encryptionKey ?? null);
-
-        // Legacy key resolution (fallback when credential store unavailable or for env vars).
-        // SECURITY: These localStorage reads are a legacy path. Keys stored here are
-        // vulnerable to XSS exfiltration. The credential store path above encrypts
-        // keys in Firestore and auto-migrates localStorage keys on first read.
-        const openrouterKey = resolveOpenRouterKey();
-        const grokKey = localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY;
-        const googleKey = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY;
-        const preferredProvider = (localStorage.getItem('nexus_debug_provider') as 'openrouter' | 'grok' | 'google' | null) || undefined;
-        const safePreferredProvider =
-          preferredProvider === 'openrouter' && !openrouterKey ? undefined : preferredProvider;
-
-        const config: EngineConfig = credentialStore
-          ? {
-              credentialStore,
-              preferredModelId: localStorage.getItem('preferred_model') || undefined,
-              preferredProvider: safePreferredProvider,
-              isMockMode: false,
-              freeModelsOnly: guestMode,
-            }
-          : {
-              openrouterKey,
-              grokKey,
-              googleKey,
-              preferredModelId: localStorage.getItem('preferred_model') || undefined,
-              preferredProvider: safePreferredProvider,
-              isMockMode: !openrouterKey && !grokKey && !googleKey,
-              freeModelsOnly: guestMode,
-            };
-
-        const newAgent = new CognitiveAgent(config);
-        await newAgent.initialize();
-
-        setAgent(newAgent);
-        setRuntimeModelId(config.freeModelsOnly ? 'google/gemini-2.0-flash:free' : (config.preferredModelId ?? null));
-        setRuntimeProvider(credentialStore ? (safePreferredProvider ?? 'openrouter') : deriveProvider(config));
-        setInitFailed(false);
-        setIsInitialized(true);
-    };
-
-    const timer = setTimeout(() => {
-        console.warn("AIProvider: initialization timed out after 8s. Running in degraded mode.");
-        setInitFailed(true);
-    }, 8000);
-
-    init()
-      .catch((e) => {
-        console.warn('AIProvider: initialization failed', e);
-        setInitFailed(true);
-      })
-      .finally(() => clearTimeout(timer));
-
-    return () => {
-      clearTimeout(timer);
-    };
+    return runtimeRef.current!.subscribe(setRuntimeState);
   }, []);
 
+  // Cold boot on mount — runs exactly once.
   useEffect(() => {
+    runtimeRef.current!.boot({
+      userId: userId ?? null,
+      encryptionKey: encryptionKey ?? null,
+      guestMode: !!guestMode,
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reconfigure when credentials or guest mode change.
+  useEffect(() => {
+    runtimeRef.current!.reconfigure({
+      userId: userId ?? null,
+      encryptionKey: encryptionKey ?? null,
+      guestMode: !!guestMode,
+    });
+  }, [userId, encryptionKey, guestMode]);
+
+  // Storage events for model/provider changes (cross-tab and same-tab custom event).
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === ARA_STORAGE_KEYS.PREFERRED_MODEL || e.key === ARA_STORAGE_KEYS.DEBUG_PROVIDER) {
+        runtimeRef.current!.reconfigure({
+          userId: userId ?? null,
+          encryptionKey: encryptionKey ?? null,
+          guestMode: !!guestMode,
+        });
+      }
+    };
+    const custom = () =>
+      runtimeRef.current!.reconfigure({
+        userId: userId ?? null,
+        encryptionKey: encryptionKey ?? null,
+        guestMode: !!guestMode,
+      });
+    const credentialsChanged = () =>
+      runtimeRef.current!.forceReinit({
+        userId: userId ?? null,
+        encryptionKey: encryptionKey ?? null,
+        guestMode: !!guestMode,
+      });
+    window.addEventListener('storage', handler);
+    window.addEventListener(ARA_EVENTS.MODEL_CHANGED, custom);
+    window.addEventListener(ARA_EVENTS.CREDENTIALS_CHANGED, credentialsChanged);
+    return () => {
+      window.removeEventListener('storage', handler);
+      window.removeEventListener(ARA_EVENTS.MODEL_CHANGED, custom);
+      window.removeEventListener(ARA_EVENTS.CREDENTIALS_CHANGED, credentialsChanged);
+    };
+  }, [userId, encryptionKey, guestMode]);
+
+  // Keep agent in sync with guestMode — free-models flag must update immediately.
+  useEffect(() => {
+    const { agent } = runtimeState;
     if (agent) {
       agent.setFreeModelsOnly(!!guestMode);
-      setRuntimeModelId(guestMode ? 'google/gemini-2.0-flash:free' : (localStorage.getItem('preferred_model') || null));
     }
-  }, [guestMode, agent]);
+  }, [guestMode, runtimeState]);
 
-  useEffect(() => {
-    // Skip while the initial mount effect is still in-flight.
-    if (!initRef.current) return;
+  // ── Convenience shorthand ────────────────────────────────────────────────
 
-    const readConfig = () => ({
-      model: localStorage.getItem('preferred_model'),
-      provider: localStorage.getItem('nexus_debug_provider'),
-      guest: !!guestMode,
-      hasCredentialStore: !!getCredentialStore(userId ?? null, encryptionKey ?? null),
-    });
-
-    // When agent is null (initial init failed or timed out) we still need to
-    // attempt initialization with the updated credentials.  The `forceInit`
-    // flag skips the deduplication check so we always try at least once.
-    const forceInit = !agent;
-    if (!forceInit) {
-      lastConfigRef.current = readConfig();
-    }
-
-    const reinitIfChanged = async (force = false) => {
-      const next = readConfig();
-      const prev = lastConfigRef.current;
-      if (!force && prev && prev.model === next.model && prev.provider === next.provider && prev.guest === next.guest && prev.hasCredentialStore === next.hasCredentialStore) return;
-      if (reinitRef.current) return;
-      reinitRef.current = true;
-      lastConfigRef.current = next;
-      try {
-        const credentialStore = getCredentialStore(userId ?? null, encryptionKey ?? null);
-
-        const openrouterKey = resolveOpenRouterKey();
-        const grokKey = localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY;
-        const googleKey = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY;
-        const preferredProvider = (localStorage.getItem('nexus_debug_provider') as 'openrouter' | 'grok' | 'google' | null) || undefined;
-        const safePreferredProvider =
-          preferredProvider === 'openrouter' && !openrouterKey ? undefined : preferredProvider;
-
-        const config: EngineConfig = credentialStore
-          ? {
-              credentialStore,
-              preferredModelId: localStorage.getItem('preferred_model') || undefined,
-              preferredProvider: safePreferredProvider,
-              isMockMode: false,
-              freeModelsOnly: !!guestMode,
-            }
-          : {
-              openrouterKey,
-              grokKey,
-              googleKey,
-              preferredModelId: localStorage.getItem('preferred_model') || undefined,
-              preferredProvider: safePreferredProvider,
-              isMockMode: !openrouterKey && !grokKey && !googleKey,
-              freeModelsOnly: !!guestMode,
-            };
-
-        const newAgent = new CognitiveAgent(config);
-        await newAgent.initialize();
-        setAgent(newAgent);
-        setRuntimeModelId(config.freeModelsOnly ? 'google/gemini-2.0-flash:free' : (config.preferredModelId ?? null));
-        setRuntimeProvider(credentialStore ? (safePreferredProvider ?? 'openrouter') : deriveProvider(config));
-        setInitFailed(false);
-        setIsInitialized(true);
-      } catch (e) {
-        console.warn('AIProvider: re-init failed', e);
-        setInitFailed(true);
-      } finally {
-        reinitRef.current = false;
-      }
-    };
-
-    // If initial init failed and credentials have arrived, retry immediately.
-    if (forceInit) {
-      void reinitIfChanged(true);
-    }
-
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'preferred_model' || e.key === 'nexus_debug_provider') {
-        void reinitIfChanged();
-      }
-    };
-    const handleCustom = () => { void reinitIfChanged(); };
-
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('nexus_model_changed', handleCustom);
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('nexus_model_changed', handleCustom);
-    };
-  }, [agent, guestMode, userId, encryptionKey]);
-
-  /** Empty StructuredResponse returned when the agent is unavailable (degraded mode). */
-  const degradedResponse = useCallback((context: ConversationContext) => ({
-    response: {
-      fullText: '',
-      publicText: '',
-      internalThoughts: null,
-      actions: [],
-      mutations: [],
-      isInterrupted: false,
-    } satisfies StructuredResponse,
-    updatedHistory: context.history,
-  }), []);
+  const agent = runtimeState.agent;
 
   const sendMessage = useCallback(async (content: MessageContent, context: ConversationContext, signal?: AbortSignal) => {
-      if (!agent) {
-        return {
-          response: {
-            fullText: 'AI assistant is unavailable — add an API key in Profile settings.',
-            publicText: 'AI assistant is unavailable — add an API key in Profile settings.',
-            internalThoughts: null,
-            actions: [],
-            mutations: [],
-            isInterrupted: false,
-          } satisfies StructuredResponse,
-          updatedHistory: context.history,
-        };
-      }
-      const result = await agent.chat(content, context, undefined, signal);
-      return result;
+    if (!agent) {
+      return {
+        response: {
+          fullText: 'AI assistant is unavailable — add an API key in Profile settings.',
+          publicText: 'AI assistant is unavailable — add an API key in Profile settings.',
+          internalThoughts: null,
+          actions: [],
+          mutations: [],
+          isInterrupted: false,
+        } satisfies StructuredResponse,
+        updatedHistory: context.history,
+      };
+    }
+    return agent.chat(content, context, undefined, signal);
   }, [agent]);
 
   const streamMessage = useCallback(async (content: MessageContent, context: ConversationContext, onChunk: (chunk: StreamChunk) => void, signal?: AbortSignal) => {
-      if (!agent) {
-        const offlineText = 'AI assistant is unavailable — add an API key in Profile settings.';
-        onChunk({ delta: offlineText, isThinking: false, isActing: false, currentActionType: null } satisfies StreamChunk);
-        return {
-          response: {
-            fullText: offlineText,
-            publicText: offlineText,
-            internalThoughts: null,
-            actions: [],
-            mutations: [],
-            isInterrupted: false,
-          } satisfies StructuredResponse,
-          updatedHistory: context.history,
-        };
-      }
-      const safeChunk = (chunk: StreamChunk) => {
-        try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }
+    if (!agent) {
+      const offlineText = 'AI assistant is unavailable — add an API key in Profile settings.';
+      onChunk({ delta: offlineText, isThinking: false, isActing: false, currentActionType: null } satisfies StreamChunk);
+      return {
+        response: {
+          fullText: offlineText,
+          publicText: offlineText,
+          internalThoughts: null,
+          actions: [],
+          mutations: [],
+          isInterrupted: false,
+        } satisfies StructuredResponse,
+        updatedHistory: context.history,
       };
-      const result = await agent.chat(content, context, safeChunk, signal);
-      return result;
+    }
+    const safeChunk = (chunk: StreamChunk) => {
+      try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }
+    };
+    return agent.chat(content, context, safeChunk, signal);
   }, [agent]);
 
   const streamWithMemory = useCallback(async (
@@ -349,12 +230,12 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
       generateJSON,
       analyzeImage,
       analyzeImageJSON,
-      activeModelId: runtimeModelId,
-      activeProvider: runtimeProvider,
-      isInitialized,
-      initFailed
+      activeModelId: runtimeState.modelId,
+      activeProvider: runtimeState.provider,
+      isInitialized: runtimeState.isReady,
+      initFailed: runtimeState.initFailed,
     }),
-    [sendMessage, streamMessage, streamWithMemory, generateJSON, analyzeImage, analyzeImageJSON, runtimeModelId, runtimeProvider, isInitialized, initFailed]
+    [sendMessage, streamMessage, streamWithMemory, generateJSON, analyzeImage, analyzeImageJSON, runtimeState],
   );
 
   return (
@@ -366,6 +247,6 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
 
 export function useAI() {
   const context = useContext(AIContext);
-  if (!context) throw new Error("useAI must be used within AIProvider");
+  if (!context) throw new Error('useAI must be used within AIProvider');
   return context;
 }

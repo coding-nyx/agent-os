@@ -33,7 +33,7 @@ export type NSVMetricPath =
 // This local copy is maintained for type-level NSVMetricPath[] compatibility;
 // the authoritative data lives in cortex-logic.
 export const NSV_OWNERSHIP: Record<ModuleId, NSVMetricPath[]> = Object.fromEntries(
-  (['nexus', 'agnes', 'titan', 'soma', 'ledger', 'atlas', 'scout', 'forge', 'bridge'] as ModuleId[]).map(
+  (['ara', 'agnes', 'titan', 'soma', 'ledger', 'atlas', 'scout', 'forge', 'bridge'] as ModuleId[]).map(
     (id) => [id, Array.from(_ownership.getWritableMetrics(id)) as NSVMetricPath[]]
   )
 ) as Record<ModuleId, NSVMetricPath[]>;
@@ -41,7 +41,7 @@ export const NSV_OWNERSHIP: Record<ModuleId, NSVMetricPath[]> = Object.fromEntri
 // NSV_READ_PERMISSIONS is sourced from KMP NsvOwnershipService.READ_PERMISSIONS.
 // Consumed by formatNSVForModulePrompt() and enhanceContextForModule().
 export const NSV_READ_PERMISSIONS: Record<ModuleId, NSVMetricPath[]> = Object.fromEntries(
-  (['nexus', 'agnes', 'titan', 'soma', 'ledger', 'atlas', 'scout', 'forge', 'bridge'] as ModuleId[]).map(
+  (['ara', 'agnes', 'titan', 'soma', 'ledger', 'atlas', 'scout', 'forge', 'bridge'] as ModuleId[]).map(
     (id) => [id, Array.from(_ownership.getReadableMetrics(id)) as NSVMetricPath[]]
   )
 ) as Record<ModuleId, NSVMetricPath[]>;

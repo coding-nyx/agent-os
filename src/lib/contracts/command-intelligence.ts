@@ -12,7 +12,8 @@ export type CommandCapability =
   | 'research'
   | 'research-enrichment'
   | 'technical-work'
-  | 'general-orchestration';
+  | 'general-orchestration'
+  | 'habit-management';
 
 export type CommandIntentType =
   | 'plan_day'

@@ -5,7 +5,7 @@ description: Research and knowledge agent specializing in information synthesis,
 
 # Scout Module
 
-Scout is the intelligence gatherer of Nexus, designed for high-fidelity research, knowledge extraction, and source synthesis.
+Scout is the intelligence gatherer of Ara, designed for high-fidelity research, knowledge extraction, and source synthesis.
 
 ## Domain
 Focuses on information retrieval, source validation, and complex knowledge synthesis.

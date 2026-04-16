@@ -1,6 +1,6 @@
 import type { AliveEntityRuntimeContext } from '@/lib/contracts/orchestration';
 import type { ModuleId } from '@/lib/module-manifest';
-import type { SynthesisAlert } from '@/modules/nexus/hooks/useNexusSynthesis';
+import type { SynthesisAlert } from '@/modules/ara/hooks/useAraSynthesis';
 import { AutonomyFeatureFlags } from './autonomy-feature-flags';
 
 export interface AnticipatoryPlanningProposal {
@@ -54,7 +54,7 @@ const HEURISTIC_RULES: PlanningHeuristicRule[] = [
 
 function buildAliveSummary(context: AliveEntityRuntimeContext | null): string {
   if (!context || context.total === 0) {
-    return 'No alive entities are currently available, so Nexus should work from the detected cross-domain pattern alone.';
+    return 'No alive entities are currently available, so Ara should work from the detected cross-domain pattern alone.';
   }
 
   const moduleSummary = context.moduleIds

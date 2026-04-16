@@ -7,12 +7,12 @@
  *
  * Design principles:
  *  - Pure business logic; no React dependencies.
- *  - All Firestore access goes through the NexusDataLayer abstraction.
+ *  - All Firestore access goes through the AraDataLayer abstraction.
  *  - Rate-limited per target module via sessionStorage to prevent UI spam.
  *  - Agnes-domain hints are always non-discrepant (emotional data is sacred).
  */
 
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import type { DataHint, HintVerificationResult } from '@/lib/types';
 import { EmbeddingUtilsJs } from '@cortex-logic';
 
@@ -79,7 +79,7 @@ export async function verifyHintAgainstProfile(
 
   // Fetch the target module's profile from Firestore via the abstraction layer.
   const collection = `${hint.targetModule}_profiles`;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   let profile: Record<string, unknown> | null = null;
   try {

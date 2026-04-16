@@ -20,7 +20,7 @@ describe('orchestration contracts', () => {
   it('orders agents by precedence', () => {
     expect(getAgentPrecedenceRank('agnes')).toBeLessThan(getAgentPrecedenceRank('atlas'));
     expect(compareAgentPrecedence('atlas', 'ledger')).toBeLessThan(0);
-    expect(compareAgentPrecedence('nexus', 'agnes')).toBeGreaterThan(0);
+    expect(compareAgentPrecedence('ara', 'agnes')).toBeGreaterThan(0);
   });
 
   it('sorts master thread turns and messages deterministically', () => {

@@ -29,6 +29,12 @@ import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import type { RoutineProposal } from '@/lib/routines/routine-types';
 import type { ThreadPlanningSuggestionDraft } from '@/lib/stores/orchestration-store';
 import type { Message, MessageContent } from '@/lib/types';
+import { ThreadParticipantServiceJs } from '@/cortex-bridge/cortex-logic-runtime';
+
+// Singleton JS bridge — null when the KMP bundle hasn't been built yet (dev boot path).
+const _ps = ThreadParticipantServiceJs
+  ? new (ThreadParticipantServiceJs as new () => any)()
+  : null;
 
 export interface MasterThreadState {
   threadId: string;
@@ -88,7 +94,7 @@ export interface MasterThreadShellSnapshot {
   mutationSupport: 'transient_only' | 'none';
 }
 
-export interface CreateNexusShellThreadSnapshotInput {
+export interface CreateAraShellThreadSnapshotInput {
   threadId: string;
   now: string;
   seedParticipants?: ThreadParticipant[];
@@ -96,7 +102,7 @@ export interface CreateNexusShellThreadSnapshotInput {
   seedTurns?: MasterThreadTurn[];
   liveChatMessages?: Message[];
   liveStreamingAssistantText?: string | null;
-  liveChatAssistantSource?: ModuleId | 'nexus';
+  liveChatAssistantSource?: ModuleId | 'ara';
   pendingTargets?: ModuleId[];
   mentionedParticipants?: ModuleId[];
   routingSuggestion?: {
@@ -125,7 +131,7 @@ const PROPOSAL_PRIORITY: Record<MasterThreadProposalLifecycle, number> = {
 };
 
 export class MasterThreadService {
-  static createNexusShellSnapshot(input: CreateNexusShellThreadSnapshotInput): MasterThreadShellSnapshot {
+  static createAraShellSnapshot(input: CreateAraShellThreadSnapshotInput): MasterThreadShellSnapshot {
     const patientScope = input.patientScope ?? 'USER';
     const shellProposalState = input.routingSuggestionState ?? 'draft';
     let thread = this.pruneStaleParticipants(
@@ -133,7 +139,7 @@ export class MasterThreadService {
       input.now,
     );
     const projectedLiveChatMessages = this.projectConversationMessages(input.threadId, input.liveChatMessages ?? [], {
-      assistantSource: input.liveChatAssistantSource ?? 'nexus',
+      assistantSource: input.liveChatAssistantSource ?? 'ara',
       now: input.now,
       streamingAssistantText: input.liveStreamingAssistantText ?? null,
     });
@@ -149,9 +155,9 @@ export class MasterThreadService {
     }
 
     thread = this.joinParticipant(thread, {
-      moduleId: 'nexus',
+      moduleId: 'ara',
       role: 'primary',
-      joinedAt: this.findExistingParticipant(thread, 'nexus')?.joinedAt ?? input.now,
+      joinedAt: this.findExistingParticipant(thread, 'ara')?.joinedAt ?? input.now,
       state: 'active',
       presence: 'online',
       lastActiveAt: input.now,
@@ -166,7 +172,7 @@ export class MasterThreadService {
       for (const participantId of messageParticipantIds) {
         thread = this.joinParticipant(thread, {
           moduleId: participantId,
-          role: participantId === 'nexus' ? 'primary' : 'secondary',
+          role: participantId === 'ara' ? 'primary' : 'secondary',
           joinedAt: this.findExistingParticipant(thread, participantId)?.joinedAt ?? message.createdAt,
           state: 'joined',
           presence: 'online',
@@ -209,7 +215,7 @@ export class MasterThreadService {
     }
 
     for (const participantId of input.mentionedParticipants ?? []) {
-      if (participantId === 'nexus') continue;
+      if (participantId === 'ara') continue;
       thread = this.inviteParticipant(thread, {
         moduleId: participantId,
         role: 'secondary',
@@ -220,11 +226,16 @@ export class MasterThreadService {
 
     if (input.routingSuggestion?.target) {
       if (shellProposalState === 'deferred') {
-        thread = this.leaveParticipant(thread, {
+        // User dismissed the routing proposal ("Stay Here") or auto-dismiss fired.
+        // The user is staying in Ara — bring the agent INTO the master thread so
+        // Ara can consult it inline. Do NOT dismiss it.
+        thread = this.joinParticipant(thread, {
           moduleId: input.routingSuggestion.target,
           role: 'secondary',
-          leftAt: input.now,
-          state: 'dismissed',
+          joinedAt: this.findExistingParticipant(thread, input.routingSuggestion.target)?.joinedAt ?? input.now,
+          state: 'waiting',
+          presence: 'idle',
+          inclusionReasons: ['consulted'],
         });
       } else {
         thread = this.inviteParticipant(thread, {
@@ -340,13 +351,39 @@ export class MasterThreadService {
         invitedAt: string;
       },
   ): MasterThreadState {
+    if (_ps) {
+      // Restore leftAt (not in Kotlin model) from original participants
+      const leftAtMap = new Map(state.participants.map((p) => [p.moduleId, p.leftAt]));
+      const updated: ThreadParticipant[] = JSON.parse(
+        (_ps as any).inviteParticipant(
+          JSON.stringify(state.participants),
+          participant.moduleId,
+          participant.invitedAt,
+          JSON.stringify(participant.inclusionReasons ?? []),
+          participant.state ?? null,
+        ),
+      );
+      const participants = updated.map((p) =>
+        leftAtMap.has(p.moduleId) && leftAtMap.get(p.moduleId)
+          ? { ...p, leftAt: leftAtMap.get(p.moduleId) }
+          : p,
+      );
+      return { ...state, participants };
+    }
     const existing = this.findExistingParticipant(state, participant.moduleId);
+    // Never downgrade a participant that is already in an active/waiting/joined state.
+    // This prevents 'invited' from overwriting 'waiting' when a new routing proposal
+    // fires for a module that has already been deferred and is being consulted inline.
+    const ACTIVE_STATES: ReadonlySet<string> = new Set(['waiting', 'joined', 'active']);
+    const resolvedState = existing && ACTIVE_STATES.has(existing.state)
+      ? existing.state
+      : (participant.state ?? 'invited');
     return this.upsertParticipant(state, {
       ...existing,
       moduleId: participant.moduleId,
       role: participant.role ?? existing?.role ?? 'secondary',
       joinedAt: existing?.joinedAt ?? participant.joinedAt ?? participant.invitedAt,
-      state: participant.state ?? 'invited',
+      state: resolvedState,
       presence: participant.presence ?? 'idle',
       invitedAt: participant.invitedAt,
       inclusionReasons: this.mergeInclusionReasons(existing?.inclusionReasons, participant.inclusionReasons),
@@ -356,6 +393,26 @@ export class MasterThreadService {
   }
 
   static joinParticipant(state: MasterThreadState, participant: ThreadParticipant): MasterThreadState {
+    if (_ps) {
+      const updated: ThreadParticipant[] = JSON.parse(
+        (_ps as any).joinParticipant(
+          JSON.stringify(state.participants),
+          participant.moduleId,
+          participant.joinedAt,
+          participant.state,
+          JSON.stringify(participant.inclusionReasons ?? []),
+          participant.lastActiveAt ?? null,
+        ),
+      );
+      // joining participant clears leftAt; restore leftAt for all other participants
+      const leftAtMap = new Map(state.participants.map((p) => [p.moduleId, p.leftAt]));
+      const participants = updated.map((p) =>
+        p.moduleId !== participant.moduleId && leftAtMap.has(p.moduleId) && leftAtMap.get(p.moduleId)
+          ? { ...p, leftAt: leftAtMap.get(p.moduleId) }
+          : p,
+      );
+      return { ...state, participants };
+    }
     const existing = this.findExistingParticipant(state, participant.moduleId);
     const nextState = participant.state === 'invited' ? 'joined' : participant.state;
     return this.upsertParticipant(state, {
@@ -382,6 +439,23 @@ export class MasterThreadService {
         state?: Extract<ThreadParticipant['state'], 'dismissed' | 'left'>;
       },
   ): MasterThreadState {
+    if (_ps) {
+      const updated: ThreadParticipant[] = JSON.parse(
+        (_ps as any).leaveParticipant(
+          JSON.stringify(state.participants),
+          participant.moduleId,
+          participant.state ?? 'left',
+        ),
+      );
+      // Set leftAt on the leaving participant (not in Kotlin model); restore for others
+      const leftAtMap = new Map(state.participants.map((p) => [p.moduleId, p.leftAt]));
+      const participants = updated.map((p) => {
+        if (p.moduleId === participant.moduleId) return { ...p, leftAt: participant.leftAt };
+        const prev = leftAtMap.get(p.moduleId);
+        return prev ? { ...p, leftAt: prev } : p;
+      });
+      return { ...state, participants };
+    }
     const existing = this.findExistingParticipant(state, participant.moduleId);
     return this.upsertParticipant(state, {
       ...existing,
@@ -399,8 +473,8 @@ export class MasterThreadService {
 
   /**
    * Removes `'invited'` participants that have been waiting longer than `staleInviteMs`
-   * (default 2 minutes) without progressing to any active state. Nexus is always kept.
-   * Called at the top of createNexusShellSnapshot to prevent stale seeds from accumulating
+   * (default 2 minutes) without progressing to any active state. Ara is always kept.
+   * Called at the top of createAraShellSnapshot to prevent stale seeds from accumulating
    * across turns.
    */
   static pruneStaleParticipants(
@@ -408,9 +482,26 @@ export class MasterThreadService {
     nowIso: string,
     staleInviteMs = 2 * 60 * 1000,
   ): MasterThreadState {
+    if (_ps) {
+      const pruned: ThreadParticipant[] = JSON.parse(
+        (_ps as any).pruneStaleParticipants(
+          JSON.stringify(state.participants),
+          nowIso,
+          staleInviteMs,
+        ),
+      );
+      if (pruned.length === state.participants.length) return state;
+      // Restore leftAt (not in Kotlin model) for surviving participants
+      const leftAtMap = new Map(state.participants.map((p) => [p.moduleId, p.leftAt]));
+      const participants = pruned.map((p) => {
+        const prev = leftAtMap.get(p.moduleId);
+        return prev ? { ...p, leftAt: prev } : p;
+      });
+      return { ...state, participants };
+    }
     const nowMs = new Date(nowIso).getTime();
     const pruned = state.participants.filter((p) => {
-      if (p.moduleId === 'nexus') return true;
+      if (p.moduleId === 'ara') return true;
       if (p.state !== 'invited') return true;
       const invitedMs = new Date(p.invitedAt ?? nowIso).getTime();
       return nowMs - invitedMs < staleInviteMs;
@@ -446,12 +537,12 @@ export class MasterThreadService {
     threadId: string,
     history: Message[],
     options?: {
-      assistantSource?: ModuleId | 'nexus';
+      assistantSource?: ModuleId | 'ara';
       now?: string;
       streamingAssistantText?: string | null;
     },
   ): MasterThreadMessage[] {
-    const assistantSource = options?.assistantSource ?? 'nexus';
+    const assistantSource = options?.assistantSource ?? 'ara';
     const projectedHistory = history.flatMap((message, index) => {
       if (message.role !== 'user' && message.role !== 'assistant') return [];
       
@@ -459,7 +550,7 @@ export class MasterThreadService {
       // Messages with NO threadId are treated as legacy or dashboard-only.
       if (message.threadId) {
         if (message.threadId !== threadId) return [];
-      } else if (threadId !== 'nexus.dashboard') {
+      } else if (threadId !== 'ara.dashboard') {
         return [];
       }
 
@@ -509,7 +600,7 @@ export class MasterThreadService {
       const requestMessage: MasterThreadMessage = {
         id: `${artifact.id}.request`,
         threadId,
-        author: 'nexus',
+        author: 'ara',
         kind: 'consultation_request',
         body: artifact.question,
         createdAt: artifact.requestedAt,
@@ -641,7 +732,7 @@ export class MasterThreadService {
       proposalId: proposal.id,
       title: options.title,
       summary: options.summary,
-      source: proposal.source === 'nexus' ? 'nexus' : proposal.source,
+      source: proposal.source === 'ara' ? 'ara' : proposal.source,
       status: options.status ?? (options.approvalRequirement.required ? 'pending_approval' : 'approved'),
       approvalRequirement: options.approvalRequirement,
       executionMode: options.executionMode,
@@ -664,13 +755,13 @@ export class MasterThreadService {
   }
 
   private static buildShellProposal(
-    input: CreateNexusShellThreadSnapshotInput,
+    input: CreateAraShellThreadSnapshotInput,
     patientScope: PatientScope,
   ): MutationProposal | null {
     if (input.isConflictBlocking) {
       return {
         id: `${input.threadId}.proposal.conflict`,
-        source: 'nexus',
+        source: 'ara',
         intent: 'Resolve active orchestration conflict',
         confidence: 0.95,
         requiresApproval: true,
@@ -685,7 +776,7 @@ export class MasterThreadService {
     if (input.routingSuggestion?.target) {
       return {
         id: `${input.threadId}.proposal.route.${input.routingSuggestion.target}`,
-        source: 'nexus',
+        source: 'ara',
         intent: `Route conversation to ${input.routingSuggestion.target}`,
         confidence: 0.78,
         patientScope,
@@ -721,7 +812,7 @@ export class MasterThreadService {
     if (input.planningProposal) {
       return {
         id: input.planningProposal.id,
-        source: 'nexus',
+        source: 'ara',
         intent: input.planningProposal.title,
         confidence: 0.72,
         patientScope,
@@ -742,7 +833,7 @@ export class MasterThreadService {
     if (input.docUploadBusy) {
       return {
         id: `${input.threadId}.proposal.document-analysis`,
-        source: 'nexus',
+        source: 'ara',
         intent: 'Analyze uploaded documents',
         confidence: 0.83,
         patientScope,
@@ -761,7 +852,7 @@ export class MasterThreadService {
 
     return {
       id: `${input.threadId}.proposal.consult.${firstPendingTarget}`,
-      source: 'nexus',
+      source: 'ara',
       intent: `Consult ${firstPendingTarget}`,
       confidence: 0.74,
       patientScope,
@@ -776,7 +867,7 @@ export class MasterThreadService {
 
   private static buildShellProposalSurface(
     proposal: MutationProposal,
-    input: CreateNexusShellThreadSnapshotInput,
+    input: CreateAraShellThreadSnapshotInput,
     routingSuggestionState: 'draft' | 'deferred',
   ): MasterThreadProposalSurface {
     const card = this.buildShellProposalCard(proposal, input, routingSuggestionState);
@@ -848,7 +939,7 @@ export class MasterThreadService {
 
   private static buildShellProposalCard(
     proposal: MutationProposal,
-    input: CreateNexusShellThreadSnapshotInput,
+    input: CreateAraShellThreadSnapshotInput,
     routingSuggestionState: 'draft' | 'deferred',
   ): ProposalCard {
     if (input.isConflictBlocking) {
@@ -898,7 +989,7 @@ export class MasterThreadService {
     if (input.planningProposal) {
       const moduleName = input.planningProposal.targetModuleId
         ? MODULE_MANIFEST[input.planningProposal.targetModuleId]?.alias ?? input.planningProposal.targetModuleId
-        : 'Nyx';
+        : 'Ara';
       const stepSummary = input.planningProposal.nodeCount && input.planningProposal.nodeCount > 1
         ? ` ${input.planningProposal.nodeCount} coordinated steps are ready.`
         : '';
@@ -932,7 +1023,7 @@ export class MasterThreadService {
     const moduleName = firstPendingTarget ? MODULE_MANIFEST[firstPendingTarget]?.alias ?? firstPendingTarget : 'module';
     return this.buildProposalCard(proposal, {
       title: `Waiting on ${moduleName}`,
-      summary: 'Nexus has delegated work and is waiting for the responding module to return.',
+      summary: 'Ara has delegated work and is waiting for the responding module to return.',
       approvalRequirement: { required: false, reason: 'none' },
       executionMode: 'assisted',
       historyMode: 'standard',
@@ -1100,7 +1191,7 @@ export class MasterThreadService {
       now: string;
     },
   ): Pick<ThreadParticipant, 'state' | 'presence' | 'lastActiveAt' | 'leftAt'> {
-    if (participant.moduleId === 'nexus') {
+    if (participant.moduleId === 'ara') {
       return {
         state: input.resolutionStatus === 'executed' || input.resolutionStatus === 'deferred' ? 'resolved' : 'active',
         presence: 'online',
@@ -1225,7 +1316,7 @@ export class MasterThreadService {
 
   private static normalizeParticipant(participant: ThreadParticipant): ThreadParticipant {
     const identity = resolveConversationalActorIdentity({
-      moduleId: participant.moduleId === 'nexus' ? 'nexus' : participant.moduleId,
+      moduleId: participant.moduleId === 'ara' ? 'ara' : participant.moduleId,
       actorId: participant.actorId,
       actorLabel: participant.actorLabel,
       actorShortLabel: participant.actorShortLabel,
@@ -1333,7 +1424,7 @@ export class MasterThreadService {
     ].join('|');
   }
 
-  private static normalizeParticipantIds(participantIds: Array<ModuleId | 'nexus'>): Array<ModuleId | 'nexus'> {
+  private static normalizeParticipantIds(participantIds: Array<ModuleId | 'ara'>): Array<ModuleId | 'ara'> {
     return [...new Set(participantIds)].sort((left, right) => compareMasterThreadAuthors(left, right));
   }
 
@@ -1364,14 +1455,14 @@ export class MasterThreadService {
 
       const existingTurn = turns.get(message.turnId);
       const participants = this.normalizeParticipantIds([
-        ...((existingTurn?.participantIds ?? []) as Array<ModuleId | 'nexus'>),
+        ...((existingTurn?.participantIds ?? []) as Array<ModuleId | 'ara'>),
         ...message.participantIds,
         ...this.toTurnParticipantIds(message.author),
       ]);
       const messageIds = [...new Set([...(existingTurn?.messageIds ?? []), message.id])];
       const startedBy =
         existingTurn?.startedBy ??
-        (message.author === 'user' || message.author === 'system' || message.author === 'nexus'
+        (message.author === 'user' || message.author === 'system' || message.author === 'ara'
           ? message.author
           : message.author);
 
@@ -1400,7 +1491,7 @@ export class MasterThreadService {
       .sort(compareMasterThreadTurns);
   }
 
-  private static toTurnParticipantIds(author: MasterThreadAuthor): Array<ModuleId | 'nexus'> {
+  private static toTurnParticipantIds(author: MasterThreadAuthor): Array<ModuleId | 'ara'> {
     if (author === 'user' || author === 'system') return [];
     return [author];
   }
@@ -1455,12 +1546,12 @@ export class MasterThreadService {
 
     const participants = new Set<ModuleId>();
     for (const action of runtimeSummary.actions) {
-      if (action.source !== 'nexus') {
+      if (action.source !== 'ara') {
         participants.add(action.source);
       }
     }
 
-    if (runtimeSummary.moduleId !== 'nexus' && runtimeSummary.moduleId in MODULE_MANIFEST) {
+    if (runtimeSummary.moduleId !== 'ara' && runtimeSummary.moduleId in MODULE_MANIFEST) {
       participants.add(runtimeSummary.moduleId as ModuleId);
     }
 
@@ -1546,7 +1637,7 @@ export class MasterThreadService {
 
   private static buildSynthesizedThreadMessages(
     state: MasterThreadState,
-    input: CreateNexusShellThreadSnapshotInput,
+    input: CreateAraShellThreadSnapshotInput,
   ): MasterThreadMessage[] {
     return [
       ...this.buildRuntimeSynthesisMessages(state, input.lastTurnRuntime),
@@ -1564,12 +1655,12 @@ export class MasterThreadService {
     const actionParticipants = this.collectRuntimeParticipantIds(runtimeSummary);
     const aliveParticipants = this.normalizeParticipantIds([
       ...(runtimeSummary.aliveContext?.moduleIds ?? []),
-      'nexus',
+      'ara',
     ]);
     const rootParticipants = this.normalizeParticipantIds([
       ...actionParticipants,
       ...aliveParticipants,
-      'nexus',
+      'ara',
     ]);
 
     const anchorCreatedAt = this.resolveSynthesisAnchorTimestamp(state, runtimeSummary);
@@ -1578,7 +1669,7 @@ export class MasterThreadService {
     const summaryMessageId = `${state.threadId}.message.runtime.${synthesisKey}.summary`;
     const summaryMessage = this.buildSynthesisMessage(state, {
       id: summaryMessageId,
-      author: 'nexus',
+      author: 'ara',
       createdAt: anchorCreatedAt,
       turnSequence: baseTurnSequence,
       participantIds: rootParticipants,
@@ -1603,8 +1694,8 @@ export class MasterThreadService {
         createdAt: actionCreatedAt,
         turnSequence: baseTurnSequence + index + 1,
         participantIds: this.normalizeParticipantIds([
-          ...(action.source === 'nexus' ? [] : [action.source]),
-          'nexus',
+          ...(action.source === 'ara' ? [] : [action.source]),
+          'ara',
         ]),
         proposalId: action.proposalId,
         replyToMessageId: summaryMessageId,
@@ -1635,7 +1726,7 @@ export class MasterThreadService {
   ): MasterThreadMessage[] {
     const messages: MasterThreadMessage[] = [];
     for (const artifact of artifacts) {
-      const sourceAuthor = artifact.sourceModuleId === 'nexus' ? 'nexus' : artifact.sourceModuleId;
+      const sourceAuthor = artifact.sourceModuleId === 'ara' ? 'ara' : artifact.sourceModuleId;
       const retryPrefix = artifact.retryAttempt ? `Retry ${artifact.retryAttempt} · ` : '';
       const parentResultMessageId = artifact.retryParentExecutionId
         ? `execution.${artifact.retryParentExecutionId.replace(/\.execution$/, '')}.result`
@@ -1647,7 +1738,7 @@ export class MasterThreadService {
         kind: 'execution_request',
         body: `${retryPrefix}Execute ${artifact.actionType.replace(/_/g, ' ')}.`,
         createdAt: artifact.requestedAt,
-        participantIds: artifact.sourceModuleId === 'nexus' ? ['nexus'] : [artifact.sourceModuleId, 'nexus'],
+        participantIds: artifact.sourceModuleId === 'ara' ? ['ara'] : [artifact.sourceModuleId, 'ara'],
         execution: artifact,
         replyToMessageId: parentResultMessageId,
         dedupeKey: `execution:${artifact.executionId}:request`,
@@ -1664,7 +1755,7 @@ export class MasterThreadService {
           .filter((part): part is string => Boolean(part))
           .join(' '),
         createdAt: artifact.resolvedAt,
-        participantIds: artifact.sourceModuleId === 'nexus' ? ['nexus'] : [artifact.sourceModuleId, 'nexus'],
+        participantIds: artifact.sourceModuleId === 'ara' ? ['ara'] : [artifact.sourceModuleId, 'ara'],
         execution: artifact,
         proposalId: artifact.proposalId,
         replyToMessageId: `${artifact.id}.request`,
@@ -1676,7 +1767,7 @@ export class MasterThreadService {
 
   private static buildConflictSynthesisMessages(
     state: MasterThreadState,
-    input: CreateNexusShellThreadSnapshotInput,
+    input: CreateAraShellThreadSnapshotInput,
   ): MasterThreadMessage[] {
     if (!input.isConflictBlocking) return [];
 
@@ -1689,7 +1780,7 @@ export class MasterThreadService {
         turnSequence: this.getNextTurnSequence(state),
         participantIds: this.normalizeParticipantIds(state.participants.map((participant) => participant.moduleId)),
         dedupeKey: `${state.threadId}|conflict|active`,
-        body: 'Conflict surfaced in the Master Thread. Nexus is holding execution until the active cross-agent disagreement is resolved.',
+        body: 'Conflict surfaced in the Master Thread. Ara is holding execution until the active cross-agent disagreement is resolved.',
       }),
     ];
   }
@@ -1780,11 +1871,11 @@ export class MasterThreadService {
 
   private static describeRuntimeSynthesis(
     runtimeSummary: OrchestrationTurnRuntimeSummary,
-    participantIds: Array<ModuleId | 'nexus'>,
+    participantIds: Array<ModuleId | 'ara'>,
   ): string {
     const actionCount = runtimeSummary.actions.length;
     const participantSummary = participantIds
-      .filter((participantId) => participantId !== 'nexus')
+      .filter((participantId) => participantId !== 'ara')
       .map((participantId) => MODULE_MANIFEST[participantId]?.alias ?? participantId)
       .join(', ');
     const countFragments = [
@@ -1805,8 +1896,8 @@ export class MasterThreadService {
 
     const lead =
       actionCount > 0
-        ? `Nexus synthesized ${countFragments.join(', ')}${participantSummary ? ` across ${participantSummary}` : ''}.`
-        : 'Nexus updated the Master Thread context.';
+        ? `Ara synthesized ${countFragments.join(', ')}${participantSummary ? ` across ${participantSummary}` : ''}.`
+        : 'Ara updated the Master Thread context.';
 
     if (runtimeSummary.aliveContext?.total) {
       return `${lead} Alive context referenced ${runtimeSummary.aliveContext.total} item${runtimeSummary.aliveContext.total === 1 ? '' : 's'}.`;

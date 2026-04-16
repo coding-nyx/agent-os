@@ -48,7 +48,7 @@ const BLOCKED_DECISION: OrchestrationActionGateDecision = {
     runtime: { disposition: 'standard', noticePrefix: 'KMP evaluation failed', summary: '' },
     proposal: { id: '', createdAt: new Date().toISOString() },
     proposalCard: { title: '', summary: '' },
-    execution: { id: '', source: 'nexus', status: 'failed', executedAt: new Date().toISOString() },
+    execution: { id: '', source: 'ara', status: 'failed', executedAt: new Date().toISOString() },
     activeThreadId: null,
     failure: null,
   } as unknown as ActionOrchestrationMetadata,

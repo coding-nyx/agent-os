@@ -13,7 +13,7 @@ function makeEvent(overrides: Partial<SpineEvent>): SpineEvent {
   return {
     id: 'evt-1',
     type: 'MODULE_DELEGATED',
-    source: 'nexus',
+    source: 'ara',
     domain: 'system',
     data: {},
     timestamp: Date.now(),
@@ -54,8 +54,8 @@ describe('flow-contracts', () => {
   });
 
   it('detects delegation completion signals', () => {
-    expect(isDelegationCompletionSignal(makeEvent({ type: 'MODULE_DELEGATED', target: 'nexus', data: { reason: 'query_result' } }))).toBe(true);
-    expect(isDelegationCompletionSignal(makeEvent({ type: 'MODULE_DELEGATED', target: 'nexus', data: { status: 'completed' } }))).toBe(true);
+    expect(isDelegationCompletionSignal(makeEvent({ type: 'MODULE_DELEGATED', target: 'ara', data: { reason: 'query_result' } }))).toBe(true);
+    expect(isDelegationCompletionSignal(makeEvent({ type: 'MODULE_DELEGATED', target: 'ara', data: { status: 'completed' } }))).toBe(true);
     expect(isDelegationCompletionSignal(makeEvent({ type: 'MODULE_PROFILE_UPDATED' }))).toBe(true);
     expect(isDelegationCompletionSignal(makeEvent({ type: 'MODULE_DELEGATED', data: { reason: 'delegated' } }))).toBe(false);
   });

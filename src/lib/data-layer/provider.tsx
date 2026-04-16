@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
-import { InMemoryDataProvider, NexusDataLayer } from './index';
+import { InMemoryDataProvider, AraDataLayer } from './index';
 import { createFirebaseDataLayer } from './firebase-data-layer';
 import { Spine } from '@/lib/spine/spine-event-bus';
 
@@ -19,9 +19,9 @@ export function _reportDirectFirestoreImport(importerPath: string): void {
   _directFirestoreImporters.add(importerPath);
 }
 
-let globalDataLayer: NexusDataLayer | null = null;
+let globalDataLayer: AraDataLayer | null = null;
 
-export function getNexusDataLayer(): NexusDataLayer {
+export function getAraDataLayer(): AraDataLayer {
   if (globalDataLayer) return globalDataLayer;
   if (import.meta.env.MODE === 'test') {
     globalDataLayer = new InMemoryDataProvider();
@@ -32,23 +32,23 @@ export function getNexusDataLayer(): NexusDataLayer {
   return globalDataLayer;
 }
 
-export function setNexusDataLayer(adapter: NexusDataLayer) {
+export function setAraDataLayer(adapter: AraDataLayer) {
   globalDataLayer = adapter;
 }
 
-const DataLayerContext = createContext<NexusDataLayer | null>(null);
+const DataLayerContext = createContext<AraDataLayer | null>(null);
 
 export function DataLayerProvider({
   children,
   adapter,
 }: {
   children: React.ReactNode;
-  adapter?: NexusDataLayer;
+  adapter?: AraDataLayer;
 }) {
-  const value = useMemo(() => adapter ?? getNexusDataLayer(), [adapter]);
+  const value = useMemo(() => adapter ?? getAraDataLayer(), [adapter]);
 
   useEffect(() => {
-    setNexusDataLayer(value);
+    setAraDataLayer(value);
     Spine.setDataLayer(value);
   }, [value]);
 
@@ -56,9 +56,9 @@ export function DataLayerProvider({
     if (import.meta.env.DEV && _directFirestoreImporters.size > 0) {
       const violations = [..._directFirestoreImporters];
       console.error(
-        '[Nexus DI Guard] Direct firebase/firestore imports detected outside the allowlist.\n' +
+        '[Ara DI Guard] Direct firebase/firestore imports detected outside the allowlist.\n' +
           'Only src/lib/firebase.ts and src/lib/data-layer/ may import from firebase/firestore.\n' +
-          'Route all data access through useDataLayer() or the NexusDataLayer interface.\n\n' +
+          'Route all data access through useDataLayer() or the AraDataLayer interface.\n\n' +
           violations.map((v) => `  ✗ ${v}`).join('\n'),
       );
     }
@@ -69,8 +69,8 @@ export function DataLayerProvider({
   return <DataLayerContext.Provider value={value}>{children}</DataLayerContext.Provider>;
 }
 
-export function useDataLayer(): NexusDataLayer {
+export function useDataLayer(): AraDataLayer {
   const ctx = useContext(DataLayerContext);
   if (ctx) return ctx;
-  return getNexusDataLayer();
+  return getAraDataLayer();
 }

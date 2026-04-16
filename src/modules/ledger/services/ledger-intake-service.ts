@@ -1,4 +1,4 @@
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { bootstrapAliveEntities, syncAliveEntities } from '@/lib/services/alive-entity-service';
 import { createEncryptedProfileService } from '@/lib/services/encrypted-profile-service';
 import { LoadContext } from '@/lib/types/encrypted-document';
@@ -1001,7 +1001,7 @@ export function createEmptyLedgerProfile(): LedgerIntakeProfile {
 
 const _service = createEncryptedProfileService<LedgerIntakeProfile>({
   collection: 'ledger_profiles',
-  guestStorageKey: 'nexus_ledger_profile_guest',
+  guestStorageKey: 'ara_ledger_profile_guest',
   createEmpty: createEmptyLedgerProfile,
   normalize: normalizeLedgerProfile,
   metadataProjection: (p) => ({
@@ -1021,6 +1021,7 @@ export const loadLedgerProfile: (ctx: LoadContext) => Promise<LedgerIntakeProfil
 export const subscribeLedgerProfile: (
   ctx: LoadContext,
   onUpdate: (profile: LedgerIntakeProfile | null) => void,
+  onError?: (error: unknown) => void,
 ) => () => void = _service.subscribe.bind(_service);
 
 export async function saveLedgerProfile(profile: LedgerIntakeProfile, ctx: LoadContext): Promise<void> {
@@ -1031,7 +1032,7 @@ export async function saveLedgerProfile(profile: LedgerIntakeProfile, ctx: LoadC
 
   try {
     await syncAliveEntities(
-      getNexusDataLayer(),
+      getAraDataLayer(),
       bootstrapAliveEntities({
         ledgerFinancialGoals: normalized.financialGoals,
         ledgerTransactions: normalized.transactions,

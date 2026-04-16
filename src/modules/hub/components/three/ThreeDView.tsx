@@ -10,11 +10,11 @@ import { cn } from '@/lib/utils';
 import type { GlobalProjection } from '@/lib/types';
 import type { FloatingPodProps } from '../../constants';
 import { CORE_MODULES } from '../../constants';
-import { WallEModel, EveModel, LedgerModel, PolyPodModel, ForgeModel, AtlasModel, NexusModel } from './models';
+import { WallEModel, EveModel, LedgerModel, PolyPodModel, ForgeModel, AtlasModel, AraModel } from './models';
 
 // --- Neural Flow (Star-topology connections from center to modules) ---
 
-function NexusFlow({ start, end, color, isPlugin, pulseRef }: { 
+function AraFlow({ start, end, color, isPlugin, pulseRef }: { 
   start: THREE.Vector3; 
   end: THREE.Vector3; 
   color: string; 
@@ -29,7 +29,7 @@ function NexusFlow({ start, end, color, isPlugin, pulseRef }: {
   const curve = useMemo(() => {
     // Deep anchoring logic: extend start/end deeper into models to hide bobbing gaps
     const dir = new THREE.Vector3().subVectors(end, start).normalize();
-    const adjStart = start.clone().sub(dir.clone().multiplyScalar(0.4)); // Deep into Nexus
+    const adjStart = start.clone().sub(dir.clone().multiplyScalar(0.4)); // Deep into Ara
     const adjEnd = end.clone().add(dir.clone().multiplyScalar(0.8)); // Deep into Pod
     
     const mid = new THREE.Vector3().addVectors(adjStart, adjEnd).multiplyScalar(0.5);
@@ -367,12 +367,12 @@ export default function ThreeDView({ podLayout, moduleAccess, globalSoul, onModu
       <DepthParticles />
 
       <group position={[0, 0.8, 0]}>
-        {/* The Central Nexus Model */}
-        <NexusModel scale={0.05} />
+        {/* The Central Ara Model */}
+        <AraModel scale={0.05} />
         
         {/* Star-topology neural flows */}
         {podLayout.map((module) => (
-          <NexusFlow
+          <AraFlow
             key={`flow-${module.id}`}
             start={centerPos}
             end={new THREE.Vector3(...module.position)}

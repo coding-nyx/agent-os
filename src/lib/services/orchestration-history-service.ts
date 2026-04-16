@@ -2,8 +2,8 @@ import type {
   ActionOrchestrationMetadata,
   SilentHistoryEntry,
 } from '@/lib/contracts/orchestration';
-import type { NexusDataLayer, NexusRecord } from '@/lib/data-layer';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import type { AraDataLayer, AraRecord } from '@/lib/data-layer';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { OrchestrationHistoryUtilsJs } from '@cortex-logic';
 import { safeParseKmp } from '@/cortex-bridge/kmp-parse';
 
@@ -86,13 +86,13 @@ export class OrchestrationHistoryService {
     entries: SilentHistoryEntry[],
     options?: {
       retentionLimit?: number;
-      dataLayer?: NexusDataLayer;
+      dataLayer?: AraDataLayer;
     },
   ): Promise<void> {
     const filteredEntries = entries.filter((entry) => entry.patientScope !== 'GUEST');
     if (!uid || filteredEntries.length === 0) return;
 
-    const dataLayer = options?.dataLayer ?? getNexusDataLayer();
+    const dataLayer = options?.dataLayer ?? getAraDataLayer();
     await dataLayer.batchWrite(
       filteredEntries.map((entry) => ({
         type: 'set' as const,
@@ -112,12 +112,12 @@ export class OrchestrationHistoryService {
     uid: string,
     options?: {
       limit?: number;
-      dataLayer?: NexusDataLayer;
+      dataLayer?: AraDataLayer;
     },
-  ): Promise<Array<NexusRecord<SilentHistoryEntry>>> {
+  ): Promise<Array<AraRecord<SilentHistoryEntry>>> {
     if (!uid) return [];
 
-    const dataLayer = options?.dataLayer ?? getNexusDataLayer();
+    const dataLayer = options?.dataLayer ?? getAraDataLayer();
     const docs = await dataLayer.listDocuments<SilentHistoryEntry>(this.getSilentHistoryCollectionPath(uid), { limit: 400 });
     const sorted = sortSilentHistoryEntries(docs);
     return typeof options?.limit === 'number' ? sorted.slice(0, options.limit) : sorted;
@@ -128,9 +128,9 @@ export class OrchestrationHistoryService {
     threadId: string,
     options?: {
       limit?: number;
-      dataLayer?: NexusDataLayer;
+      dataLayer?: AraDataLayer;
     },
-  ): Promise<Array<NexusRecord<SilentHistoryEntry>>> {
+  ): Promise<Array<AraRecord<SilentHistoryEntry>>> {
     if (!uid || !threadId) return [];
 
     const docs = await this.listSilentHistory(uid, {
@@ -150,12 +150,12 @@ export class OrchestrationHistoryService {
     uid: string,
     options?: {
       retentionLimit?: number;
-      dataLayer?: NexusDataLayer;
+      dataLayer?: AraDataLayer;
     },
   ): Promise<void> {
     if (!uid) return;
 
-    const dataLayer = options?.dataLayer ?? getNexusDataLayer();
+    const dataLayer = options?.dataLayer ?? getAraDataLayer();
     const retentionLimit = options?.retentionLimit ?? DEFAULT_SILENT_HISTORY_RETENTION_LIMIT;
     if (retentionLimit <= 0) return;
 

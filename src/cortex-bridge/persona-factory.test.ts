@@ -8,7 +8,7 @@ function makeMockProfile(overrides: Partial<PersonaUserProfile> = {}): PersonaUs
     pronouns: 'they/them',
     assignedSexAtBirth: 'male',
     agentPersonalityProvision: {
-      orchestratorAlias: 'Nexus',
+      orchestratorAlias: 'Ara',
       agentGenders: { orchestrator: 'female', agnes: 'female', titan: 'non-binary', ledger: 'non-binary' },
     },
     ...overrides,
@@ -17,8 +17,8 @@ function makeMockProfile(overrides: Partial<PersonaUserProfile> = {}): PersonaUs
 
 function makeMockSoul(overrides: Partial<PersonaGlobalProjection> = {}): PersonaGlobalProjection {
   return {
-    displayNames: { agnes: 'Agnes', titan: 'Titan', nexus: 'Nexus' },
-    agentGenders: { agnes: 'female', titan: 'non-binary', nexus: 'female' },
+    displayNames: { agnes: 'Agnes', titan: 'Titan', ara: 'Ara' },
+    agentGenders: { agnes: 'female', titan: 'non-binary', ara: 'female' },
     ...overrides,
   };
 }
@@ -109,6 +109,6 @@ describe('PersonaFactory.generateSystemPrompt', () => {
       userProfile: makeMockProfile(),
       globalSoul: soul,
     });
-    expect(result).toContain('Your Name: Nexus');
+    expect(result).toContain('Your Name: Ara');
   });
 });

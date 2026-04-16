@@ -259,7 +259,7 @@ export function QuickLogBar({
             <NeuralInput
               ref={inputRef}
               type="text"
-              aria-label="Unified entry — log workout or ask Nexus"
+              aria-label="Unified entry — log workout or ask Ara"
               enterKeyHint="go"
               inputMode="text"
               autoComplete="off"

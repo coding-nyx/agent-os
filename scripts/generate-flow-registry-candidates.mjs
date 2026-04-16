@@ -269,7 +269,7 @@ async function main() {
   const intents = intentTypes.map((intent) => ({
     intentType: intent,
     capabilities: [],
-    primaryModule: 'nexus',
+    primaryModule: 'ara',
   }));
 
   const actions = Array.from(actionRegistry.entries()).flatMap(([actionType, modules]) => {

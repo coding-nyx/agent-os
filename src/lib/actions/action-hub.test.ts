@@ -65,8 +65,8 @@ class TestableActionHub {
       }
     }
 
-    // 3. Fallback to nexus
-    const orchestratorHandlers = this.registry.get('nexus');
+    // 3. Fallback to ara
+    const orchestratorHandlers = this.registry.get('ara');
     if (orchestratorHandlers && orchestratorHandlers.has(actionType)) {
       await orchestratorHandlers.get(actionType)!(context);
       return true;
@@ -94,7 +94,7 @@ class TestableActionHub {
         }
       }
     }
-    const orchestratorHandlers = this.registry.get('nexus');
+    const orchestratorHandlers = this.registry.get('ara');
     if (orchestratorHandlers) {
       for (const action of orchestratorHandlers.keys()) {
         actions.add(action);
@@ -206,15 +206,15 @@ describe('ModuleActionHub', () => {
     expect(result).toBe(false);
   });
 
-  it('returns false for unregistered action on a known module (no nexus fallback)', async () => {
+  it('returns false for unregistered action on a known module (no ara fallback)', async () => {
     hub.register('agnes', 'KNOWN_ACTION', vi.fn());
     const result = await hub.execute('agnes', 'UNKNOWN_ACTION', makeMockContext());
     expect(result).toBe(false);
   });
 
-  it('falls back to nexus handler when module handler is missing', async () => {
+  it('falls back to ara handler when module handler is missing', async () => {
     const orchHandler = vi.fn();
-    hub.register('nexus', 'GLOBAL_ACTION', orchHandler);
+    hub.register('ara', 'GLOBAL_ACTION', orchHandler);
     hub.register('agnes', 'LOCAL_ACTION', vi.fn());
 
     const ctx = makeMockContext();
@@ -224,9 +224,9 @@ describe('ModuleActionHub', () => {
     expect(orchHandler).toHaveBeenCalledWith(ctx);
   });
 
-  it('falls back to nexus when module is not registered at all', async () => {
+  it('falls back to ara when module is not registered at all', async () => {
     const orchHandler = vi.fn();
-    hub.register('nexus', 'GLOBAL_ACTION', orchHandler);
+    hub.register('ara', 'GLOBAL_ACTION', orchHandler);
 
     const ctx = makeMockContext();
     const result = await hub.execute('unknown_module', 'GLOBAL_ACTION', ctx);
@@ -247,10 +247,10 @@ describe('ModuleActionHub', () => {
     expect(h2).toHaveBeenCalledOnce();
   });
 
-  it('getAllowedActions merges module and nexus actions', () => {
+  it('getAllowedActions merges module and ara actions', () => {
     hub.register('agnes', 'LOCAL_A', vi.fn());
     hub.register('agnes', 'LOCAL_B', vi.fn());
-    hub.register('nexus', 'GLOBAL_C', vi.fn());
+    hub.register('ara', 'GLOBAL_C', vi.fn());
 
     const actions = hub.getAllowedActions('agnes');
     expect(actions).toContain('LOCAL_A');
@@ -258,8 +258,8 @@ describe('ModuleActionHub', () => {
     expect(actions).toContain('GLOBAL_C');
   });
 
-  it('getAllowedActions returns only nexus actions for unknown module', () => {
-    hub.register('nexus', 'GLOBAL_ONLY', vi.fn());
+  it('getAllowedActions returns only ara actions for unknown module', () => {
+    hub.register('ara', 'GLOBAL_ONLY', vi.fn());
 
     const actions = hub.getAllowedActions('unknown');
     expect(actions).toEqual(['GLOBAL_ONLY']);
@@ -305,9 +305,9 @@ describe('ModuleActionHub', () => {
     expect(actions).toContain('delete_field');
   });
 
-  it('dependency resolution falls through to nexus when dep has no match', async () => {
+  it('dependency resolution falls through to ara when dep has no match', async () => {
     const orchHandler = vi.fn();
-    hub.register('nexus', 'GLOBAL_ACTION', orchHandler);
+    hub.register('ara', 'GLOBAL_ACTION', orchHandler);
     hub.register('soma', 'create_field', vi.fn());
     hub.addDependency('titan', 'soma');
 
@@ -318,7 +318,7 @@ describe('ModuleActionHub', () => {
     expect(orchHandler).toHaveBeenCalledWith(ctx);
   });
 
-  it('returns false when dependency module has no matching action and no nexus', async () => {
+  it('returns false when dependency module has no matching action and no ara', async () => {
     hub.register('soma', 'create_field', vi.fn());
     hub.addDependency('titan', 'soma');
 
@@ -482,15 +482,15 @@ describe('ActionHub guest firewall', () => {
     expect(pushAssistantMessage).not.toHaveBeenCalled();
   });
 
-  it('prefers capability providers before nexus fallback and records the real execution owner', async () => {
+  it('prefers capability providers before ara fallback and records the real execution owner', async () => {
     const actionType = 'daily_plan';
     const atlasHandler = vi.fn();
-    const nexusHandler = vi.fn();
+    const araHandler = vi.fn();
     const bridgeModuleId = `bridge-${Math.random().toString(36).slice(2)}`;
 
     AgentRegistryService.resetForTests();
     ActionHub.register('atlas', actionType, atlasHandler);
-    ActionHub.register('nexus', actionType, nexusHandler);
+    ActionHub.register('ara', actionType, araHandler);
     ActionHub.registerProvider('atlas', {
       id: `atlas-provider-${Math.random().toString(36).slice(2)}`,
       capabilities: ['daily-planning'],
@@ -503,15 +503,15 @@ describe('ActionHub guest firewall', () => {
       actionType,
       proposal: {
         ...makeOrchestrationMetadata().proposal,
-        source: 'nexus',
+        source: 'ara',
       },
       proposalCard: {
         ...makeOrchestrationMetadata().proposalCard,
-        source: 'nexus',
+        source: 'ara',
       },
       execution: {
         ...makeOrchestrationMetadata().execution,
-        source: 'nexus',
+        source: 'ara',
       },
     };
 
@@ -521,12 +521,12 @@ describe('ActionHub guest firewall', () => {
     }));
 
     expect(result).toBe(true);
-    expect(nexusHandler).not.toHaveBeenCalled();
+    expect(araHandler).not.toHaveBeenCalled();
     expect(atlasHandler).toHaveBeenCalledWith(expect.objectContaining({
       moduleId: 'atlas',
       orchestration: expect.objectContaining({
-        proposal: expect.objectContaining({ source: 'nexus' }),
-        proposalCard: expect.objectContaining({ source: 'nexus' }),
+        proposal: expect.objectContaining({ source: 'ara' }),
+        proposalCard: expect.objectContaining({ source: 'ara' }),
         execution: expect.objectContaining({ source: 'atlas' }),
       }),
     }));
@@ -534,12 +534,12 @@ describe('ActionHub guest firewall', () => {
 });
 
 describe('ActionHub capability dispatch fallback', () => {
-  it('resolves a provider by capability when nexus lacks a direct handler', async () => {
+  it('resolves a provider by capability when ara lacks a direct handler', async () => {
     const handler = vi.fn();
     ActionHub.register('scout', 'query_knowledge', handler);
 
-    const result = await ActionHub.execute('nexus', 'query_knowledge', makeMockContext({
-      moduleId: 'nexus',
+    const result = await ActionHub.execute('ara', 'query_knowledge', makeMockContext({
+      moduleId: 'ara',
       payload: { query: 'sleep debt' },
     }));
 

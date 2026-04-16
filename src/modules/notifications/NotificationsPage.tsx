@@ -43,9 +43,9 @@ import {
 import { useNotificationSchedules } from './hooks/useNotificationSchedules';
 import { useNotificationInbox } from './hooks/useNotificationInbox';
 
-const NexusChat = lazy(async () => {
-  const mod = await import('@/core/components/NexusChat');
-  return { default: mod.NexusChat };
+const AraChat = lazy(async () => {
+  const mod = await import('@/core/components/AraChat');
+  return { default: mod.AraChat };
 });
 
 // ---------------------------------------------------------------------------
@@ -715,11 +715,11 @@ export default function NotificationsPage() {
                 </div>
               </div>
 
-              {/* Nexus Reminders */}
+              {/* Ara Reminders */}
               <div className="rounded-2xl border border-white/[0.09] bg-white/[0.045] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.10)]">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-white/68 font-semibold">
-                    Nexus Reminders
+                    Ara Reminders
                   </p>
                   {scheduleHook.agentSchedules.length > 0 && (
                     <span className="text-[11px] text-white/50">{scheduleHook.agentSchedules.length}</span>
@@ -839,7 +839,7 @@ export default function NotificationsPage() {
             <div className="ml-auto flex items-center gap-1">
               <Zap className="w-2.5 h-2.5 text-indigo-400/50" />
               <span className="text-[11px] uppercase tracking-[0.15em] text-indigo-400/50 font-black">
-                Nexus Inbox
+                Ara Inbox
               </span>
             </div>
           </div>
@@ -849,7 +849,7 @@ export default function NotificationsPage() {
       <QuickReminderModal
         open={scheduleHook.isCreateModalOpen}
         onClose={() => scheduleHook.setIsCreateModalOpen(false)}
-        moduleId="nexus"
+        moduleId="ara"
       />
 
       <ConfirmDialog
@@ -901,10 +901,10 @@ function NotificationAIPanel({
   });
 
   return (
-    <NexusChat
+    <AraChat
       moduleId={'notifications' as ModuleId}
       ai={ai}
-      agentName="Nexus Notify"
+      agentName="Ara Notify"
       themeColor={'indigo' as any}
       placeholder="Triage my inbox, set quiet hours, snooze alerts..."
       authMode="global"

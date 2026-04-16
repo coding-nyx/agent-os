@@ -4,9 +4,9 @@
  * Assembles a portable JSON snapshot of all user data across modules.
  *
  * v2.0 API — `exportAllData`:
- *   - Accepts an explicit NexusDataLayer instance (no global singleton coupling)
+ *   - Accepts an explicit AraDataLayer instance (no global singleton coupling)
  *   - Vault-encrypted fields are exported raw (no decryption) — data stays E2EE
- *   - Returns a NexusExport object; caller is responsible for triggering download
+ *   - Returns a AraExport object; caller is responsible for triggering download
  *
  * Legacy v1.0 API — `exportUserData` / `downloadAsJSON` — retained for backward compat.
  *
@@ -14,11 +14,11 @@
  * All fetches run in parallel via Promise.all.
  */
 
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import type { NexusDataLayer } from '@/lib/data-layer/index';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
+import type { AraDataLayer } from '@/lib/data-layer/index';
 import { MODULE_MANIFEST } from '@/lib/module-manifest';
 import { decryptWithKey } from '@/lib/encryption';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -78,7 +78,7 @@ export async function exportUserData(
   userId: string,
   vaultKey?: CryptoKey,
 ): Promise<ExportBundle> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   const modules: Record<string, unknown> = {};
 
   // ── Module profiles (parallel) ────────────────────────────────────────────
@@ -132,7 +132,7 @@ export async function exportUserData(
   try {
     const soulDoc = await dataLayer.getDocument('global_souls', userId);
     if (soulDoc !== null) globalSoul = soulDoc;
-  } catch (e) { NexusLogger.warn('DataExport', 'Section export failed', e); }
+  } catch (e) { AraLogger.warn('DataExport', 'Section export failed', e); }
 
   // ── Spine events (last 100, newest first) ─────────────────────────────────
   let spineEvents: unknown[] | undefined = undefined;
@@ -143,7 +143,7 @@ export async function exportUserData(
       limit: 100,
     });
     spineEvents = events;
-  } catch (e) { NexusLogger.warn('DataExport', 'Section export failed', e); }
+  } catch (e) { AraLogger.warn('DataExport', 'Section export failed', e); }
 
   return {
     exportedAt: new Date().toISOString(),
@@ -162,11 +162,11 @@ export async function exportUserData(
  * file download. Cleans up the object URL immediately after the click.
  *
  * @param bundle   - The bundle returned by exportUserData
- * @param filename - Optional override. Defaults to nexus-export-YYYY-MM-DD.json
+ * @param filename - Optional override. Defaults to ara-export-YYYY-MM-DD.json
  */
 export function downloadAsJSON(bundle: ExportBundle, filename?: string): void {
   const isoDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const resolvedFilename = filename ?? `nexus-export-${isoDate}.json`;
+  const resolvedFilename = filename ?? `ara-export-${isoDate}.json`;
 
   const json = JSON.stringify(bundle, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
@@ -188,13 +188,13 @@ export function downloadAsJSON(bundle: ExportBundle, filename?: string): void {
 // ─── v2.0 Public types ────────────────────────────────────────────────────────
 
 /**
- * Portable export envelope for all user data across Nexus modules (v2.0).
+ * Portable export envelope for all user data across Ara modules (v2.0).
  *
  * Vault-encrypted fields are kept as-is — the encrypted ciphertext and IV
  * travel in the export unchanged so that E2EE guarantees are preserved.
  * The recipient must hold the correct vault key to use those fields.
  */
-export interface NexusExport {
+export interface AraExport {
   /** Schema version — always '2.0' for this format */
   version: '2.0';
   /** ISO 8601 UTC timestamp at the moment of export */
@@ -221,7 +221,7 @@ export interface NexusExport {
 // ─── v2.0 internal constants ──────────────────────────────────────────────────
 
 /**
- * Ordered mapping of Firestore collection → NexusExport modules key.
+ * Ordered mapping of Firestore collection → AraExport modules key.
  * `scout_knowledge` and `forge_sessions` intentionally diverge from the
  * `*_profiles` naming convention used by the other modules.
  */
@@ -235,7 +235,7 @@ const MODULE_COLLECTION_MAP = [
   { collection: 'forge_sessions', key: 'forge' },
 ] as const satisfies ReadonlyArray<{
   collection: string;
-  key: keyof NexusExport['modules'];
+  key: keyof AraExport['modules'];
 }>;
 
 /** Shape guard for documents that carry a vault-encrypted payload */
@@ -248,7 +248,7 @@ function hasEncryptedPayload(doc: unknown): boolean {
 // ─── v2.0 Core export logic ───────────────────────────────────────────────────
 
 /**
- * Assembles a complete, portable NexusExport (v2.0) for the given user.
+ * Assembles a complete, portable AraExport (v2.0) for the given user.
  *
  * - All reads are parallelised (Promise.all over the fixed module list).
  * - Vault-encrypted documents are stored raw — no decryption occurs here.
@@ -258,14 +258,14 @@ function hasEncryptedPayload(doc: unknown): boolean {
  * @param dataLayer - Data-layer instance (injected; no global singleton coupling)
  * @param vaultKey  - Optional CryptoKey, reserved for future vault-metadata
  *                    enrichment. Not used for decryption.
- * @returns Fully assembled NexusExport ready for serialisation.
+ * @returns Fully assembled AraExport ready for serialisation.
  */
 export async function exportAllData(
   userId: string,
-  dataLayer: NexusDataLayer,
+  dataLayer: AraDataLayer,
   _vaultKey?: CryptoKey,
-): Promise<NexusExport> {
-  const modules: NexusExport['modules'] = {};
+): Promise<AraExport> {
+  const modules: AraExport['modules'] = {};
   let hasVaultDoc = false;
 
   // ── Module profiles — all in parallel ─────────────────────────────────────
@@ -278,7 +278,7 @@ export async function exportAllData(
           if (hasEncryptedPayload(doc)) hasVaultDoc = true;
         }
         // null result → leave key absent (sparse export)
-      } catch (e) { NexusLogger.warn('DataExport', 'Section omitted from export'); }
+      } catch (e) { AraLogger.warn('DataExport', 'Section omitted from export'); }
     }),
   );
 
@@ -287,7 +287,7 @@ export async function exportAllData(
   try {
     const soulDoc = await dataLayer.getDocument('global_souls', userId);
     if (soulDoc !== null) globalSoul = soulDoc;
-  } catch (e) { NexusLogger.warn('DataExport', 'Section omitted from export'); }
+  } catch (e) { AraLogger.warn('DataExport', 'Section omitted from export'); }
 
   return {
     version: '2.0',
@@ -304,18 +304,18 @@ export async function exportAllData(
 // ─── v2.0 Download helper ─────────────────────────────────────────────────────
 
 /**
- * Serialises a NexusExport to pretty-printed JSON and triggers a browser
+ * Serialises a AraExport to pretty-printed JSON and triggers a browser
  * file-save dialog. The object URL is revoked synchronously after the click
  * is scheduled — the browser queues the download before the URL expires.
  *
- * @param nexusExport - The object returned by `exportAllData`
- * @param filename    - Optional override; defaults to `nexus-export-YYYY-MM-DD.json`
+ * @param araExport - The object returned by `exportAllData`
+ * @param filename    - Optional override; defaults to `ara-export-YYYY-MM-DD.json`
  */
-export function downloadNexusExport(nexusExport: NexusExport, filename?: string): void {
+export function downloadAraExport(araExport: AraExport, filename?: string): void {
   const isoDate = new Date().toISOString().slice(0, 10);
-  const resolvedFilename = filename ?? `nexus-export-${isoDate}.json`;
+  const resolvedFilename = filename ?? `ara-export-${isoDate}.json`;
 
-  const json = JSON.stringify(nexusExport, null, 2);
+  const json = JSON.stringify(araExport, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
 

@@ -4,7 +4,7 @@ import path from 'path';
 const ROOT = process.cwd();
 const EXCLUDE_DIRS = new Set(['node_modules', 'dist', 'build', 'out', '.git', 'playwright-report', 'test-results']);
 
-const FLOW_DOC = path.join(ROOT, 'docs', 'nexus-flows.md');
+const FLOW_DOC = path.join(ROOT, 'docs', 'ara-flows.md');
 const TYPES = path.join(ROOT, 'src', 'lib', 'types.ts');
 const OUTPUT = path.join(ROOT, 'docs', 'flow-audit-report.md');
 
@@ -35,7 +35,7 @@ function splitList(cell) {
 function parseFlowDoc(text) {
   const lines = text.split(/\r?\n/);
   const startIndex = lines.findIndex((line) => line.includes('| Event Type |'));
-  if (startIndex < 0) throw new Error('Event table not found in docs/nexus-flows.md');
+  if (startIndex < 0) throw new Error('Event table not found in docs/ara-flows.md');
 
   const rows = [];
   for (let i = startIndex + 2; i < lines.length; i++) {
@@ -243,7 +243,7 @@ async function main() {
     missingActionHandlers.length ? missingActionHandlers.map((a) => `- ${a}`).join('\n') : '- None',
     '',
     '## Notes',
-    '- This report is derived from docs/nexus-flows.md and static code scan of ActionHub registrations and prompt action tags.',
+    '- This report is derived from docs/ara-flows.md and static code scan of ActionHub registrations and prompt action tags.',
     '- Use this report to drive registry completion and deterministic dispatch mapping.',
     '',
   ].join('\n');

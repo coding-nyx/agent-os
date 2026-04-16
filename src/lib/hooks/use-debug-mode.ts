@@ -1,20 +1,20 @@
 /**
  * useDebugMode — reactive debug-mode toggle backed by localStorage.
  *
- * Key:   localStorage['nexus_debug_mode']  ('true' | 'false')
- * Sync:  'storage' event (cross-tab) + 'nexus_debug_mode_changed' CustomEvent (same-tab)
+ * Key:   localStorage['ara_debug_mode']  ('true' | 'false')
+ * Sync:  'storage' event (cross-tab) + 'ara_debug_mode_changed' CustomEvent (same-tab)
  *
  * Also exposes granular DebugFlags (per-feature visibility controls) stored
- * under FLAGS_STORAGE_KEY and synced via 'nexus_debug_flags_changed'.
+ * under FLAGS_STORAGE_KEY and synced via 'ara_debug_flags_changed'.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 
-const STORAGE_KEY = 'nexus_debug_mode';
-const CUSTOM_EVENT = 'nexus_debug_mode_changed';
+const STORAGE_KEY = 'ara_debug_mode';
+const CUSTOM_EVENT = 'ara_debug_mode_changed';
 
-const FLAGS_STORAGE_KEY = 'nexus_debug_flags';
-const FLAGS_CUSTOM_EVENT = 'nexus_debug_flags_changed';
+const FLAGS_STORAGE_KEY = 'ara_debug_flags';
+const FLAGS_CUSTOM_EVENT = 'ara_debug_flags_changed';
 
 // ---------------------------------------------------------------------------
 // DebugFlags — granular per-feature visibility controls
@@ -136,7 +136,7 @@ export function useDebugMode(): DebugModeControls {
   const toggleDebugMode = useCallback(() => {
     const next = !readDebugMode();
     writeDebugMode(next);
-    NexusLogger.setDebugMode(next);
+    AraLogger.setDebugMode(next);
     window.dispatchEvent(new CustomEvent(CUSTOM_EVENT));
   }, []);
 

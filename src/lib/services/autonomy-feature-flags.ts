@@ -8,7 +8,7 @@ export type AutonomyFeatureFlag =
   | 'scoutExternalSignalLoop'
   | 'scoutCrossModuleQuery';
 
-const STORAGE_KEY = 'nexus_autonomy_feature_flags';
+const STORAGE_KEY = 'ara_autonomy_feature_flags';
 
 const DEFAULT_FLAGS: Record<AutonomyFeatureFlag, boolean> = {
   anticipatoryPlanning: true,

@@ -1,7 +1,7 @@
 import { SpineEvent, SpineEventType, SpineDomain, SpineEventPriority } from '@/lib/types';
 import { LedgerSpineEventType } from '@/modules/ledger/actions/ledger-field-actions';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
-import type { NexusQuery, NexusQueryFilter } from '@/lib/data-layer';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
+import type { AraQuery, AraQueryFilter } from '@/lib/data-layer';
 
 export interface LedgerEvent extends SpineEvent {
   financialImpact?: {
@@ -38,10 +38,10 @@ export type LedgerEventInput = Omit<LedgerEvent, 'id' | 'timestamp' | 'cascadeDe
 };
 
 export class SpineEventService {
-  private dataLayer: ReturnType<typeof getNexusDataLayer> | null = null;
+  private dataLayer: ReturnType<typeof getAraDataLayer> | null = null;
 
   constructor() {
-    this.dataLayer = getNexusDataLayer();
+    this.dataLayer = getAraDataLayer();
   }
 
   async logLedgerEvent(event: LedgerEventInput, userId?: string | null): Promise<void> {
@@ -78,7 +78,7 @@ export class SpineEventService {
     }
 
     try {
-      const where: NexusQueryFilter[] = [];
+      const where: AraQueryFilter[] = [];
       if (filter?.type) where.push({ field: 'type', op: '==', value: filter.type });
       if (filter?.source) where.push({ field: 'source', op: '==', value: filter.source });
       if (filter?.startDate) where.push({ field: 'timestamp', op: '>=', value: filter.startDate });
@@ -88,7 +88,7 @@ export class SpineEventService {
         ? `ledger_events/${userId}/events`
         : 'ledger_events_guest';
 
-      const query: NexusQuery = {
+      const query: AraQuery = {
         collection,
         ...(where.length > 0 && { where }),
         orderBy: [{ field: 'timestamp', direction: 'desc' }],

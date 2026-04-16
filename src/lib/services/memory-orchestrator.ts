@@ -47,7 +47,7 @@ export class MemoryOrchestrator {
     recalledFactsSummary: string;
     status: 'ok' | 'vault_blocked';
   }> {
-    const relevantModuleIds = Array.from(new Set([moduleId, 'nexus']));
+    const relevantModuleIds = Array.from(new Set([moduleId, 'ara']));
 
     const episodicPromise =
       cachedEnvelopes.length > 0 && episodicReady

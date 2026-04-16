@@ -1,4 +1,4 @@
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 import { OrchestrationExecutionService } from '@/lib/services/orchestration-execution-service';
 
 const RETRY_WORKER_INTERVAL_MS = 30_000;
@@ -20,7 +20,7 @@ class OrchestrationRetryWorker {
       const summary = await OrchestrationExecutionService.processDueRetries(this.uid, { limit: 5 });
       this.consecutiveFailures = 0;
       if (summary.attempted > 0) {
-        NexusLogger.warn(
+        AraLogger.warn(
           'RetryWorker',
           `[RetryWorker] Processed ${summary.attempted} due retries (${summary.succeeded} succeeded, ${summary.failed} failed)`,
         );
@@ -29,7 +29,7 @@ class OrchestrationRetryWorker {
       this.consecutiveFailures++;
       const backoffMs = FAILURE_BACKOFF_MS[Math.min(this.consecutiveFailures - 1, FAILURE_BACKOFF_MS.length - 1)];
       this.backoffUntil = Date.now() + backoffMs;
-      NexusLogger.warn(
+      AraLogger.warn(
         'RetryWorker',
         `[RetryWorker] Failed to process due retries (failure ${this.consecutiveFailures}, backing off ${backoffMs / 1_000}s): ${error instanceof Error ? error.message : String(error)}`,
       );

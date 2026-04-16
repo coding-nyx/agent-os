@@ -3,7 +3,7 @@ import { GuestQuotaServiceJs } from '@cortex-logic';
 
 const _quota = new GuestQuotaServiceJs();
 
-const STORAGE_KEY = 'nexus_guest_quota';
+const STORAGE_KEY = 'ara_guest_quota';
 
 // Vitest/JSDOM test environment may provide a partial or proxy-mocked `localStorage`.
 // We polyfill by replacing the global `localStorage` object (not mutating it),

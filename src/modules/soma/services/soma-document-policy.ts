@@ -1,7 +1,7 @@
 import type { DocumentAnalysisResult, DocumentType } from '@/lib/services/document-analysis-service';
 import { DocumentAnalysisService } from '@/lib/services/document-analysis-service';
 import type { DocumentPipelinePolicy } from '@/lib/services/document-pipeline';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 
 const SOMA_DOC_CONTEXT = { moduleId: 'soma', domain: 'lab_report' as const };
 
@@ -25,7 +25,7 @@ export const somaDocumentPolicy: DocumentPipelinePolicy<DocumentAnalysisResult, 
     const rawText = parsed.rawText?.trim() ?? '';
     if (rawText.length < 20) {
       const err = new Error('No readable text extracted from document.');
-      NexusLogger.error('SomaDocumentPolicy', err);
+      AraLogger.error('SomaDocumentPolicy', err);
       throw err;
     }
 
@@ -33,7 +33,7 @@ export const somaDocumentPolicy: DocumentPipelinePolicy<DocumentAnalysisResult, 
     const response = await sendMessage(prompt);
     if (!response || response.trim().length === 0) {
       const err = new Error('Analysis returned an empty response.');
-      NexusLogger.error('SomaDocumentPolicy', err);
+      AraLogger.error('SomaDocumentPolicy', err);
       throw err;
     }
 

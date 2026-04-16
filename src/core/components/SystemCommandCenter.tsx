@@ -56,7 +56,7 @@ export function SystemCommandCenter() {
         setPurgeStep('IDLE');
         setShowSettings(false);
         setIsOpen(false);
-        navigate('/nexus', { replace: true });
+        navigate('/ara', { replace: true });
     } catch (e) {
         console.error("Purge Protocol Failed:", e);
         setPurgeStep('IDLE');
@@ -139,7 +139,7 @@ export function SystemCommandCenter() {
                               <div className="space-y-6">
                                   <div className="space-y-2">
                                       <h3 className="text-xl font-bold uppercase tracking-tighter text-red-500 font-display">Neural Overwrite</h3>
-                                      <p className="text-xs text-white/60 font-medium italic leading-relaxed px-4">Type CONFIRM to initialize atomic wipe. Your soul will be permanently detached from the nexus.</p>
+                                      <p className="text-xs text-white/60 font-medium italic leading-relaxed px-4">Type CONFIRM to initialize atomic wipe. Your soul will be permanently detached from the ara.</p>
                                   </div>
                                   <div className="space-y-3">
                                       <NeuralButton size="sm" variant="danger" className="w-full bg-red-600 hover:bg-red-500 shadow-red-500/20" onClick={handlePurgeSoul}>Execute Wipe</NeuralButton>
@@ -151,7 +151,7 @@ export function SystemCommandCenter() {
                           {purgeStep === 'DELETING' && (
                               <div className="space-y-4">
                                   <Zap className="w-8 h-8 text-white/60 mx-auto animate-spin" />
-                                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-white animate-pulse font-display">Purging Nexus...</p>
+                                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-white animate-pulse font-display">Purging Ara...</p>
                               </div>
                           )}
                       </motion.div>

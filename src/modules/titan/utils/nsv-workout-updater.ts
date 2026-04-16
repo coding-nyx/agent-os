@@ -1,7 +1,7 @@
 /**
  * Pure NSV patch computation for completed workout sessions.
  * Thin bridge over cortex-logic's TitanNsvUpdaterJs — algorithm lives in
- * KMP commonMain so both Agnes and nexus-android produce identical values.
+ * KMP commonMain so both Agnes and ara-android produce identical values.
  */
 
 import { TitanNsvUpdaterJs } from '@cortex-logic';

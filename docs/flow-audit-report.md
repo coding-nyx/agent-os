@@ -350,5 +350,5 @@ Generated: 2026-03-29T20:04:47.540Z
 - x
 
 ## Notes
-- This report is derived from docs/nexus-flows.md and static code scan of ActionHub registrations and prompt action tags.
+- This report is derived from docs/ara-flows.md and static code scan of ActionHub registrations and prompt action tags.
 - Use this report to drive registry completion and deterministic dispatch mapping.

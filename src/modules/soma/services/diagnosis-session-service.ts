@@ -20,13 +20,13 @@
 //   - rawText is NEVER written anywhere — only a SHA-256 hash is stored.
 //
 // Firebase Storage:
-//   - Files are uploaded via getFirebase().storage (no NexusDataLayer abstraction
+//   - Files are uploaded via getFirebase().storage (no AraDataLayer abstraction
 //     exists for binary blob storage).
-//   - Firestore session documents use getNexusDataLayer() (NexusDataLayer boundary).
+//   - Firestore session documents use getAraDataLayer() (AraDataLayer boundary).
 
 import { ref, uploadBytes, deleteObject, getBytes } from 'firebase/storage';
 import { getFirebase } from '@/lib/firebase';
-import { getNexusDataLayer } from '@/lib/data-layer/provider';
+import { getAraDataLayer } from '@/lib/data-layer/provider';
 import { encryptWithKey, decryptWithKey } from '@/lib/encryption';
 import { Spine } from '@/lib/spine/spine-event-bus';
 import type { SpineEventType } from '@/lib/types';
@@ -35,7 +35,7 @@ import { mergeSomaDiagnosisData } from '../diagnosis/soma-diagnosis-merge';
 import type { DocumentAnalysisResult, ExtractedField } from '@/lib/services/document-analysis-service';
 import { runDocumentPipeline } from '@/lib/services/document-pipeline';
 import { somaDocumentPolicy } from './soma-document-policy';
-import { NexusLogger } from '@/lib/nexus-logger';
+import { AraLogger } from '@/lib/ara-logger';
 import { buildDiagnosisSummaryPrompt } from '../prompts/soma-prompt-builder';
 import { sanitizeJsonPayload } from '@/lib/ai-adapters/sanitize';
 import type { SomaDiagnosisSummary } from '../types';
@@ -155,7 +155,7 @@ async function updateSessionStatus(
   status: DiagnosisStatus,
   extra?: Partial<SomaDiagnosisSession>,
 ): Promise<void> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
   await dataLayer.updateDocument<SomaDiagnosisSession>(
     SESSIONS_COLLECTION(uid),
     sessionId,
@@ -191,7 +191,7 @@ export async function startDiagnosisSession(
   const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
   const storagePath = `${STORAGE_PREFIX}/${uid}/${sessionId}/${file.name}`;
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   // Create session doc with 'uploading' status first so the UI can show progress.
   const sessionDoc: SomaDiagnosisSession = {
@@ -229,7 +229,7 @@ export async function startDiagnosisSession(
     // Record failure — do not rethrow without marking the session as errored.
     const message =
       uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
-    await updateSessionStatus(uid, sessionId, 'error', { parseError: message }).catch((e) => { NexusLogger.warn('DiagnosisSession', 'Best-effort status update failed', e); });
+    await updateSessionStatus(uid, sessionId, 'error', { parseError: message }).catch((e) => { AraLogger.warn('DiagnosisSession', 'Best-effort status update failed', e); });
     throw uploadError;
   }
 }
@@ -261,7 +261,7 @@ export async function triggerParse(
   llmCallback: (prompt: string) => Promise<string>,
   sourceFile?: File,
 ): Promise<{ analysis: DocumentAnalysisResult; summary: SomaDiagnosisSummary }> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   // Load session metadata.
   const sessionRecord = await dataLayer.getDocument<SomaDiagnosisSession>(
@@ -370,10 +370,10 @@ export async function triggerParse(
   } catch (parseError) {
     const message =
       parseError instanceof Error ? parseError.message : 'Unknown parse error';
-    NexusLogger.error('[SomaDiagnosisParse]', parseError);
+    AraLogger.error('[SomaDiagnosisParse]', parseError);
     await updateSessionStatus(uid, sessionId, 'error', {
       parseError: message.slice(0, 500), // truncate to avoid bloating Firestore
-    }).catch((e) => { NexusLogger.warn('DiagnosisSession', 'Best-effort status update failed', e); });
+    }).catch((e) => { AraLogger.warn('DiagnosisSession', 'Best-effort status update failed', e); });
     throw parseError;
   }
 }
@@ -394,7 +394,7 @@ export async function getActiveDiagnosisSession(
   uid: string,
   encryptionKey: CryptoKey,
 ): Promise<(SomaDiagnosisSession & { analysisResult?: DocumentAnalysisResult; diagnosisSummary?: SomaDiagnosisSummary }) | null> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   // Fetch the most recent session ordered by uploadedAt, then filter client-side.
   // NOTE: Firestore rejects a `!=` filter combined with `orderBy` on a *different*
@@ -459,7 +459,7 @@ export async function closeDiagnosis(
   encryptionKey: CryptoKey,
   merge: boolean,
 ): Promise<void> {
-  const dataLayer = getNexusDataLayer();
+  const dataLayer = getAraDataLayer();
 
   // Load session to get the storage path before deleting the Firestore doc.
   const sessionRecord = await dataLayer.getDocument<SomaDiagnosisSession>(
@@ -578,7 +578,7 @@ function parseDiagnosisSummary(raw: string): SomaDiagnosisSummary | null {
       confidenceRationale: typeof parsed.confidenceRationale === 'string' ? parsed.confidenceRationale.trim() : '',
     };
   } catch (err) {
-    NexusLogger.error('SomaDiagnosisSummary', err);
+    AraLogger.error('SomaDiagnosisSummary', err);
     return null;
   }
 }
