@@ -368,7 +368,7 @@ export function useModuleAI({
   const pendingAIStateRef = useRef<{ isThinking: boolean; isActing: boolean; currentActionType: string | null }>({ isThinking: false, isActing: false, currentActionType: null });
   const streamRafRef = useRef<number>(0);
   const idleConsolidationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; hideUserMessage?: boolean }) => void) | null>(null);
+  const handleSendMessageRef = useRef<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; hideUserMessage?: boolean }) => void) | null>(null) as React.MutableRefObject<((content: MessageContent, onActionParsed?: (actionType: string, payload: Record<string, unknown>) => void, options?: { isRecoveryReplay?: boolean; visibleContent?: MessageContent; hideUserMessage?: boolean }) => void) | null>;
   const recoveryReplayKeyRef = useRef<string | null>(null);
 
   // ── Session persistence sub-hook ────────────────────────────────────
@@ -486,7 +486,7 @@ export function useModuleAI({
     isHydrating,
     messagesCount: messages.length,
     setMessages,
-    onSendMessageRef: handleSendMessageRef,
+    onSendMessageRef: handleSendMessageRef as React.MutableRefObject<((content: MessageContent, onActionParsed?: unknown, options?: { hideUserMessage?: boolean }) => void) | null>,
     sendMessage,
     mountedRef
   });
