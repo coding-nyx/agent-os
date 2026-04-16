@@ -6,7 +6,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "site": "agent-ara",
+    "site": "agent-nexus",
     "public": "out",
     "ignore": [
       "firebase.json",
