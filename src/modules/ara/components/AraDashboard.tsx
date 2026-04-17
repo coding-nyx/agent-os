@@ -580,7 +580,7 @@ export function AraDashboard({ ai, agentName, surfaceMode = 'chat' }: AraDashboa
     // 1. Patch suggestion to deferred — masterThreadService will see deferred and
     //    join the agent into the thread as 'waiting' (consulted) rather than dismissing it.
     // 2. Directly persist the target as 'waiting' so the state survives any subsequent
-    //    routing suggestion reset (e.g. Nyx re-proposes the same module on the fallback stream).
+    //    routing suggestion reset (e.g. Ara re-proposes the same module on the fallback stream).
     const handleRoutingDismissed = (event: SpineEvent) => {
       patchThreadRoutingSuggestion(currentThreadId, { state: 'deferred' });
       if (isTrackedParticipantModule(event.target)) {

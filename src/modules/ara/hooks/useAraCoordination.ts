@@ -181,7 +181,7 @@ export function useAraCoordination(input: UseAraCoordinationInput) {
   const presentRoutingSuggestion = useCallback((target: ModuleId, reason?: string, confidence?: number) => {
     // Don't re-propose a module that's already being consulted inline (deferred state).
     // This prevents the banner from reappearing and the 'deferred'→'draft' state reset
-    // when Nyx calls delegate_to_module again on the fallback stream.
+    // when Ara calls delegate_to_module again on the fallback stream.
     const existingSuggestion = useOrchestrationStore.getState().threadRoutingSuggestionByThreadId[currentThreadId];
     if (existingSuggestion?.target === target && existingSuggestion.state === 'deferred') {
       return;
