@@ -59,7 +59,7 @@ export interface CoreUserProfile {
   orchestrationPreferences?: OrchestrationPreferences;
   aiPreferences?: {
     preferredModel?: string;
-    preferredProvider?: 'openrouter' | 'google' | 'grok';
+    preferredProvider?: 'openrouter' | 'google' | 'grok' | 'mercury';
   };
   schemaVersion: number;
   createdAt: string;

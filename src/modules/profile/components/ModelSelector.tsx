@@ -51,6 +51,12 @@ function readProvider(): ProviderId {
   try {
     const v = localStorage.getItem(PROVIDER_KEY);
     if (v === 'openrouter' || v === 'google' || v === 'grok') return v;
+    // Legacy 'mercury' selection (now unsupported browser-side due to CORS)
+    // silently migrates to openrouter — users should pick inception/* slugs via OR.
+    if (v === 'mercury') {
+      try { localStorage.setItem(PROVIDER_KEY, 'openrouter'); } catch { /* noop */ }
+      return 'openrouter';
+    }
   } catch { /* noop */ }
   return 'openrouter';
 }
@@ -78,10 +84,11 @@ export function ModelSelector() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
 
-  const fetchOpenRouterModels = useCallback(async () => {
+  const fetchOpenRouterModels = useCallback(async (): Promise<ORModel[]> => {
     const apiKey = resolveOpenRouterKey();
-    if (!apiKey) return;
+    if (!apiKey) return [];
     const res = await fetch('https://openrouter.ai/api/v1/models', {
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -94,13 +101,14 @@ export function ModelSelector() {
       a.name.localeCompare(b.name),
     );
     setModels(data);
+    return data;
   }, []);
 
-  const fetchGoogleModels = useCallback(async () => {
+  const fetchGoogleModels = useCallback(async (): Promise<ORModel[]> => {
     const apiKey =
       localStorage.getItem('VITE_GOOGLE_API_KEY') ||
       (import.meta.env.VITE_GOOGLE_API_KEY as string | undefined);
-    if (!apiKey) return;
+    if (!apiKey) return [];
     // Use header-based auth instead of URL query param to avoid key
     // exposure in browser history, server access logs, and Referer headers.
     const res = await fetch(
@@ -123,13 +131,14 @@ export function ModelSelector() {
       };
     });
     setModels(data);
+    return data;
   }, []);
 
-  const fetchGrokModels = useCallback(async () => {
+  const fetchGrokModels = useCallback(async (): Promise<ORModel[]> => {
     const apiKey =
       localStorage.getItem('VITE_GROK_API_KEY') ||
       (import.meta.env.VITE_GROK_API_KEY as string | undefined);
-    if (!apiKey) return;
+    if (!apiKey) return [];
     const res = await fetch('https://api.x.ai/v1/models', {
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -146,30 +155,24 @@ export function ModelSelector() {
       pricing: { prompt: '0', completion: '0' },
     }));
     setModels(data);
+    return data;
   }, []);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setFetchFailed(false);
+      setModels([]);
       try {
-        if (provider === 'openrouter') {
-          await fetchOpenRouterModels();
-        } else if (provider === 'google') {
-          await fetchGoogleModels();
-        } else if (provider === 'grok') {
-          await fetchGrokModels();
-        }
+        let result: ORModel[] = [];
+        if (provider === 'openrouter') result = await fetchOpenRouterModels();
+        else if (provider === 'google') result = await fetchGoogleModels();
+        else if (provider === 'grok') result = await fetchGrokModels();
+        if (result.length === 0) setFetchFailed(true);
       } catch (e) {
         console.warn('ModelSelector: fetch failed', e);
-        if (provider === 'google') {
-          setModels([
-            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', context_length: 0, pricing: { prompt: '0', completion: '0' } },
-          ]);
-        } else if (provider === 'grok') {
-          setModels([
-            { id: 'grok-2', name: 'Grok 2', context_length: 0, pricing: { prompt: '0', completion: '0' } },
-          ]);
-        }
+        setFetchFailed(true);
+        setModels([]);
       } finally {
         setLoading(false);
       }
@@ -269,7 +272,28 @@ export function ModelSelector() {
           </NeuralButton>
         </div>
 
-        {/* Trigger */}
+        {/* Trigger — dropdown when models are available, manual text input otherwise. */}
+        {fetchFailed ? (
+          <div className="space-y-1.5">
+            <NeuralInput
+              value={selectedModel}
+              onChange={(e) => setSelectedModelState(e.target.value)}
+              onBlur={() => { if (selectedModel) selectModel(selectedModel); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && selectedModel) {
+                  e.preventDefault();
+                  selectModel(selectedModel);
+                }
+              }}
+              placeholder="Enter model id (e.g. grok-4-fast-reasoning)"
+              className="text-xs"
+            />
+            <p className="text-[11px] text-white/30 px-1">
+              Model list unavailable — enter the model id manually.
+            </p>
+          </div>
+        ) : (
+        <>
         <NeuralButton
           variant="secondary"
           onClick={() => setIsOpen(o => !o)}
@@ -347,6 +371,8 @@ export function ModelSelector() {
             </motion.div>
           )}
         </AnimatePresence>
+        </>
+        )}
       </div>
 
       {/* Current selection summary */}

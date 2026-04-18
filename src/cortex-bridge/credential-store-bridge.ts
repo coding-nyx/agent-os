@@ -28,6 +28,7 @@ const LEGACY_KEYS: Record<string, string[]> = {
   ],
   ara_credential_gemini: ['VITE_GOOGLE_API_KEY'],
   ara_credential_grok: ['VITE_GROK_API_KEY'],
+  ara_credential_mercury: ['VITE_MERCURY_API_KEY', 'mercury_api_key'],
 };
 
 let _instance: InstanceType<typeof CredentialStoreJs> | null = null;
@@ -186,6 +187,7 @@ function readLegacyKey(key: string): string | null {
     ara_credential_openrouter: import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined,
     ara_credential_gemini: import.meta.env.VITE_GOOGLE_API_KEY as string | undefined,
     ara_credential_grok: import.meta.env.VITE_GROK_API_KEY as string | undefined,
+    ara_credential_mercury: import.meta.env.VITE_MERCURY_API_KEY as string | undefined,
   };
 
   const fromEnv = envMap[key];
@@ -216,7 +218,7 @@ function clearLegacyKey(key: string): void {
  * unlocked, localStorage fallback otherwise). Clears the in-memory key cache
  * so the next engine call fetches the new value.
  *
- * @param provider  One of "openrouter", "gemini", "grok"
+ * @param provider  One of "openrouter", "gemini", "grok", "mercury"
  * @param key       The raw API key string
  */
 export function saveApiKey(provider: string, key: string): Promise<void> {
@@ -228,6 +230,7 @@ export function saveApiKey(provider: string, key: string): Promise<void> {
         openrouter: 'openrouter_api_key',
         gemini: 'VITE_GOOGLE_API_KEY',
         grok: 'VITE_GROK_API_KEY',
+        mercury: 'VITE_MERCURY_API_KEY',
       };
       const lsKey = legacyMap[provider];
       if (!lsKey) { reject(new Error(`Unknown provider: ${provider}`)); return; }

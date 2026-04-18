@@ -211,20 +211,24 @@ declare module '@cortex-logic' {
       openrouterKey?: string,
       geminiKey?: string,
       grokKey?: string,
+      mercuryKey?: string,
       preferredModel?: string,
-      isMockMode?: boolean
+      isMockMode?: boolean,
+      preferredProvider?: string
     ): void;
     initWithCredentialStore(
       store: CredentialStoreJs,
       preferredModel: string,
       isMockMode: boolean,
       onReady: () => void,
-      onError: (err: string) => void
+      onError: (err: string) => void,
+      preferredProvider?: string
     ): CancellableTask;
     reinitFromCredentialStore(
       preferredModel: string,
       onReady: () => void,
-      onError: (err: string) => void
+      onError: (err: string) => void,
+      preferredProvider?: string
     ): void;
     clearCredentials(): void;
     chat(
@@ -1137,6 +1141,7 @@ declare module '@cortex-logic' {
       jsDeleteKey: (key: string, onComplete: () => void, onError: (err: string) => void) => void,
     );
     storeKey(provider: string, key: string, onComplete: () => void, onError: (err: string) => void): void;
+    /** provider ∈ {'openrouter','gemini','grok','mercury'} */
     deleteKey(provider: string, onComplete: () => void, onError: (err: string) => void): void;
     clearCredentials(): void;
     clearAll(onComplete: () => void, onError: (err: string) => void): void;

@@ -18,8 +18,10 @@ function getOrCreateKmpEngine(config: EngineConfig): CognitiveEngineJs {
       config.openrouterKey ?? '',
       config.googleKey ?? '',
       config.grokKey ?? '',
+      config.mercuryKey ?? '',
       config.preferredModelId ?? '',
-      config.isMockMode ?? false
+      config.isMockMode ?? false,
+      config.preferredProvider ?? ''
     );
   }
   return _kmpEngine;
@@ -54,6 +56,7 @@ export class CognitiveAgent {
         this.config.isMockMode ?? false,
         () => resolve(),
         (err) => reject(new Error(err)),
+        this.config.preferredProvider ?? '',
       );
     });
 
@@ -69,6 +72,7 @@ export class CognitiveAgent {
         enabled ? 'google/gemini-2.0-flash:free' : (this.config.preferredModelId ?? ''),
         () => { /* ready */ },
         (err) => console.warn('CognitiveAgent: reinit failed', err),
+        this.config.preferredProvider ?? '',
       );
       return;
     }
@@ -78,8 +82,10 @@ export class CognitiveAgent {
       this.config.openrouterKey ?? '',
       this.config.googleKey ?? '',
       this.config.grokKey ?? '',
+      this.config.mercuryKey ?? '',
       enabled ? 'google/gemini-2.0-flash:free' : (this.config.preferredModelId ?? ''),
-      this.config.isMockMode ?? false
+      this.config.isMockMode ?? false,
+      this.config.preferredProvider ?? ''
     );
   }
 

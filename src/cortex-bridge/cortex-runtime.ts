@@ -25,7 +25,7 @@ export interface RuntimeConfig {
 
 export interface CortexRuntimeState {
   agent: CognitiveAgent | null;
-  provider: 'openrouter' | 'grok' | 'google' | 'mock' | null;
+  provider: 'openrouter' | 'grok' | 'google' | 'mercury' | 'mock' | null;
   modelId: string | null;
   isReady: boolean;
   initFailed: boolean;
@@ -44,12 +44,13 @@ interface TrackedConfig {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function deriveProvider(
-  config: Pick<EngineConfig, 'openrouterKey' | 'grokKey' | 'googleKey' | 'isMockMode'>,
-): 'openrouter' | 'grok' | 'google' | 'mock' {
+  config: Pick<EngineConfig, 'openrouterKey' | 'grokKey' | 'googleKey' | 'mercuryKey' | 'isMockMode'>,
+): 'openrouter' | 'grok' | 'google' | 'mercury' | 'mock' {
   if (config.isMockMode) return 'mock';
   if (config.openrouterKey) return 'openrouter';
   if (config.grokKey) return 'grok';
   if (config.googleKey) return 'google';
+  if (config.mercuryKey) return 'mercury';
   return 'mock';
 }
 
@@ -194,14 +195,15 @@ export class CortexRuntime {
       const openrouterKey = resolveOpenRouterKey();
       const grokKey = localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY;
       const googleKey = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY;
-      const hasDirectKeys = !!(openrouterKey || grokKey || googleKey);
+      const mercuryKey = localStorage.getItem('VITE_MERCURY_API_KEY') || import.meta.env.VITE_MERCURY_API_KEY;
+      const hasDirectKeys = !!(openrouterKey || grokKey || googleKey || mercuryKey);
 
       // Credential store — encrypted Firestore-backed key resolution.
       // Only used when there are no direct plain-text keys available AND the user
       // has a session (userId), so keys are resolved from encrypted vault storage.
       const credentialStore = !hasDirectKeys ? getCredentialStore(userId, encryptionKey) : null;
 
-      const preferredProvider = (localStorage.getItem(ARA_STORAGE_KEYS.DEBUG_PROVIDER) as 'openrouter' | 'grok' | 'google' | null) || undefined;
+      const preferredProvider = (localStorage.getItem(ARA_STORAGE_KEYS.DEBUG_PROVIDER) as 'openrouter' | 'grok' | 'google' | 'mercury' | null) || undefined;
       const safePreferredProvider =
         preferredProvider === 'openrouter' && !openrouterKey ? undefined : preferredProvider;
 
@@ -217,9 +219,10 @@ export class CortexRuntime {
             openrouterKey,
             grokKey,
             googleKey,
+            mercuryKey,
             preferredModelId: localStorage.getItem(ARA_STORAGE_KEYS.PREFERRED_MODEL) || undefined,
             preferredProvider: safePreferredProvider,
-            isMockMode: !openrouterKey && !grokKey && !googleKey,
+            isMockMode: !openrouterKey && !grokKey && !googleKey && !mercuryKey,
             freeModelsOnly: guestMode,
           };
 
@@ -230,7 +233,7 @@ export class CortexRuntime {
         ? 'google/gemini-2.0-flash:free'
         : (engineConfig.preferredModelId ?? null);
 
-      const resolvedProvider: 'openrouter' | 'grok' | 'google' | 'mock' = credentialStore
+      const resolvedProvider: 'openrouter' | 'grok' | 'google' | 'mercury' | 'mock' = credentialStore
         ? (safePreferredProvider ?? 'openrouter')
         : deriveProvider(engineConfig);
 

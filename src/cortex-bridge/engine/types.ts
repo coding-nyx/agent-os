@@ -22,8 +22,10 @@ export interface EngineConfig {
   grokKey?: string;
   /** @deprecated Use credentialStore instead. */
   googleKey?: string;
+  /** @deprecated Use credentialStore instead. */
+  mercuryKey?: string;
   preferredModelId?: string;
-  preferredProvider?: 'openrouter' | 'grok' | 'google';
+  preferredProvider?: 'openrouter' | 'grok' | 'google' | 'mercury';
   isMockMode?: boolean;
   freeModelsOnly?: boolean;
   /** When provided, keys are resolved from the credential store instead of config fields. */

@@ -1353,17 +1353,21 @@ export class CognitiveEngineJs {
   constructor() {}
   init(
     _openrouterKey?: string, _geminiKey?: string, _grokKey?: string,
-    _preferredModel?: string, _isMockMode?: boolean
+    _mercuryKey?: string,
+    _preferredModel?: string, _isMockMode?: boolean,
+    _preferredProvider?: string
   ) {}
   initWithCredentialStore(
     _store: any, _preferredModel: string, _isMockMode: boolean,
-    onReady: () => void, _onError: (err: string) => void
+    onReady: () => void, _onError: (err: string) => void,
+    _preferredProvider?: string
   ) {
     setTimeout(onReady, 0);
     return new CancellableTask();
   }
   reinitFromCredentialStore(
-    _preferredModel: string, onReady: () => void, _onError: (err: string) => void
+    _preferredModel: string, onReady: () => void, _onError: (err: string) => void,
+    _preferredProvider?: string
   ) {
     setTimeout(onReady, 0);
   }

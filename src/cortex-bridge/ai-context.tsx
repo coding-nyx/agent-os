@@ -45,7 +45,7 @@ export interface AIContextType {
     options?: { model?: string; temperature?: number; maxTokens?: number; signal?: AbortSignal; format?: 'json_object' | 'text' }
   ) => Promise<string>;
   activeModelId: string | null;
-  activeProvider: 'openrouter' | 'grok' | 'google' | 'mock' | null;
+  activeProvider: 'openrouter' | 'grok' | 'google' | 'mercury' | 'mock' | null;
   isInitialized: boolean;
   /** True when initialization timed out or failed; agent will be null. */
   initFailed: boolean;
