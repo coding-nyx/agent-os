@@ -237,8 +237,15 @@ class BridgeServiceClass {
       // Handle FCM messages
       if (this.fcmUnsubscribe) this.fcmUnsubscribe();
       this.fcmUnsubscribe = onMessage(messaging, (payload) => {
-        // Show OS notification for all foreground/hidden-tab FCM messages.
-        // (True background/closed-app messages are handled by the SW's onBackgroundMessage.)
+        // Only surface an OS-level notification when the tab is hidden.
+        // When the tab is visible, the in-app toast (driven by the Firestore
+        // `notification_inbox` subscription in NotificationContext) is the
+        // single source of truth — showing both produced a duplicate where
+        // users saw the native popup AND the in-app toast for the same event.
+        // True closed-app pushes are still handled by the SW's
+        // `onBackgroundMessage`, which continues to show an OS notification.
+        const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+        if (!isHidden) return;
         const title = payload.notification?.title ?? 'Ara Alert';
         const body = payload.notification?.body ?? '';
         this.showNativeNotification(title, body, (payload.data as Record<string, string> | undefined) ?? {});
