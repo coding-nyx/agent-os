@@ -10,7 +10,7 @@ import { OrchestrationRolloutService } from './orchestration-rollout-service';
 import { AraActionDispatchService } from './ara-action-dispatch-service';
 import { AraActionPlannerServiceJs } from '@cortex-logic';
 
-const _planner = AraActionPlannerServiceJs ? new AraActionPlannerServiceJs() : null;
+const _planner = new AraActionPlannerServiceJs();
 
 interface BuildActionPlanInput {
   threadId: string;
@@ -122,9 +122,11 @@ function resolveIntentModules(intent: ParsedCommandIntent): {
   ]);
 
   // Delegate Scout enrichment decision to KMP (single source of truth).
-  const shouldEnrichWithScout = _planner
-    ? _planner.shouldEnrichWithScout(intent.intentType, targetModuleId, JSON.stringify(baseSupportingModuleIds))
-    : false;
+  const shouldEnrichWithScout = _planner.shouldEnrichWithScout(
+    intent.intentType,
+    targetModuleId,
+    JSON.stringify(baseSupportingModuleIds),
+  );
 
   const supportingModuleIds = shouldEnrichWithScout
     ? dedupeModules([...baseSupportingModuleIds, 'scout' as ModuleId])
@@ -155,30 +157,13 @@ function buildNode(intent: ParsedCommandIntent): AraActionPlanNode {
   }
 
   // Delegate node construction to KMP — single source of truth for intent→node logic.
-  if (_planner) {
-    const nodeJson = _planner.buildNode(
-      JSON.stringify(intent),
-      mappedActionType ?? null,
-      targetModuleId,
-      JSON.stringify(supportingModuleIds),
-    );
-    return JSON.parse(nodeJson) as AraActionPlanNode;
-  }
-  // Fallback when KMP build is behind: construct minimal node from TS data.
-  return {
-    id: `${targetModuleId}.${intent.intentType}.${Date.now()}`,
-    intentId: intent.intentType,
-    intentType: intent.intentType,
-    label: intent.rawSegment ?? intent.intentType,
-    summary: intent.rawSegment ?? intent.intentType,
+  const nodeJson = _planner.buildNode(
+    JSON.stringify(intent),
+    mappedActionType ?? null,
     targetModuleId,
-    supportingModuleIds,
-    actionType: mappedActionType ?? 'propose_draft',
-    mutatesState: true,
-    canRunInParallel: false,
-    dependsOn: [],
-    payload: {},
-  } as AraActionPlanNode;
+    JSON.stringify(supportingModuleIds),
+  );
+  return JSON.parse(nodeJson) as AraActionPlanNode;
 }
 
 export class AraActionPlannerService {

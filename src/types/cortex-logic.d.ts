@@ -78,6 +78,7 @@ declare module '@cortex-logic' {
   export interface SanitizedResult {
     readonly publicText: string;
     readonly internalThoughts: string | null;
+    readonly internalDirectives: string[];
     readonly isThinking: boolean;
     readonly isActing: boolean;
     readonly currentActionType: string | null;
@@ -97,6 +98,47 @@ declare module '@cortex-logic' {
     stripProviderControlTokens(content: string): string;
     isProviderControlOnly(content: string): boolean;
     stripTechnicalFiller(text: string): string;
+  }
+
+  export class AraEngagementModesJs {
+    readonly casual: string;
+    readonly deep: string;
+    readonly impromptu: string;
+    readonly somatic: string;
+    /** Resolve a prompt block for a given mode name. */
+    promptBlockFor(mode: string): string;
+  }
+
+  export class HalfLifeEngineJs {
+    /** Decay all beliefs in the graph based on their current intensity. */
+    decay(graphJson: string): string;
+    /** Apply an intensity boost to a specific belief node. */
+    trigger(nodeJson: string, intensityBoost: number): string;
+  }
+
+  export class SomaticSessionMonitorJs {
+    constructor(jsEmitSpineEvent: (eventJson: string) => void);
+    /** Call when a dialogue session starts. */
+    startSession(currentVitality: number, topicLabel?: string): void;
+    /** Call on each Soma telemetry update during an active session. */
+    onVitalityUpdate(currentVitality: number, nowMs?: number, onComplete?: () => void, onError?: (err: string) => void): CancellableTask;
+    /** Update the current dialogue topic label. */
+    setCurrentTopic(label: string): void;
+    /** Process a Somatic Ping from the 5×5 grid. */
+    processSomaticPing(gridX: number, gridY: number, pressure: number, nowMs?: number, onComplete?: () => void, onError?: (err: string) => void): CancellableTask;
+    /** True if a somatic ping is due. */
+    isPingDue(nowMs?: number): boolean;
+  }
+
+  export class TherapeuticMoveTrackerJs {
+    /** Check if a category can be used. */
+    canUse(category: string): boolean;
+    /** Record a used category. */
+    record(category: string): void;
+    /** Reset the tracker. */
+    reset(): void;
+    /** Get suggested categories that can be used. */
+    getSuggestedCategories(): string[];
   }
 
   // ─── PersonaFactory ───────────────────────────────────────────────────────

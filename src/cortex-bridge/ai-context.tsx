@@ -201,6 +201,26 @@ export function AIProvider({ children, guestMode, userId, encryptionKey }: AIPro
         updatedHistory: context.history,
       };
     }
+
+    // --- Runtime Type Validation (CortexBridge Drift Protection) ---
+    const { validateAndReportDrift } = await import('@/lib/schemas/profile-zod-schemas');
+    
+    // 1. Validate Neural State Vector
+    try {
+      const nsvObj = JSON.parse(context.nsvJson);
+      validateAndReportDrift('nsv', nsvObj);
+    } catch { /* ignore parse errors; KMP handles malformed JSON */ }
+
+    // 2. Validate Module Context Profiles
+    try {
+      const moduleCtxObj = JSON.parse(context.moduleContextJson);
+      for (const [key, value] of Object.entries(moduleCtxObj)) {
+        if (key.endsWith('_profile')) {
+          validateAndReportDrift(key, value);
+        }
+      }
+    } catch { /* ignore parse errors; KMP handles malformed JSON */ }
+
     const safeChunk = (chunk: StreamChunk) => {
       try { onChunk(chunk); } catch (e) { console.warn('onChunk callback error:', e); }
     };

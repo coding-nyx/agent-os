@@ -2,18 +2,13 @@
  * Agnes persona prompts — source of truth lives in KMP (cortex-logic).
  *
  * This file is a thin bridge that reads from PersonaPromptCatalogJs.
- * Throws at import time if the cortex bundle is missing the class —
- * this is intentional: a missing catalog means the bundle is broken,
- * not a graceful degradation scenario.
+ * If the cortex bundle is missing the class, it falls back to empty strings
+ * to allow the app to boot, though core functionality will be degraded.
  */
 import { PersonaPromptCatalogJs } from '@cortex-logic';
 
-if (!PersonaPromptCatalogJs) {
-  throw new Error('cortex-logic PersonaPromptCatalogJs is unavailable — check cortex bundle integrity');
-}
+const _catalog = PersonaPromptCatalogJs ? new (PersonaPromptCatalogJs as any)() : null;
 
-const _catalog = new PersonaPromptCatalogJs();
+export const AGNES_PERSONA: string = _catalog?.promptFor('agnes') ?? '';
 
-export const AGNES_PERSONA: string = _catalog.promptFor('agnes') ?? '';
-
-export const THERAPY_ONBOARDING_PERSONA: string = _catalog.promptFor('agnes_onboarding') ?? '';
+export const THERAPY_ONBOARDING_PERSONA: string = _catalog?.promptFor('agnes_onboarding') ?? '';

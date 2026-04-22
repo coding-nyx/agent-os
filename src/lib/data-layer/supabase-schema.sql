@@ -1,4 +1,4 @@
--- NexusDataLayer — Supabase schema
+-- AraDataLayer — Supabase schema
 --
 -- A single generic table stores all collections.  The `collection` column acts
 -- as a namespace; subcollection-style paths (e.g. "sessions/s1/messages") are

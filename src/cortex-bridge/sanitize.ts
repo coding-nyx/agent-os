@@ -23,11 +23,6 @@ export type { ExtractedMutation };
 
 const _sanitizer = new LlmSanitizerJs();
 
-const ACTION_TAG_REGEX = /<action\b([^>]*)>([\s\S]*?)<\/action>/gi;
-const BRACKET_ACTION_REGEX = /\[action\b([^\]]*)\]\s*({[\s\S]*?})(?=\s|$)/gi;
-const TOOL_CALL_SEGMENT_REGEX = /<tool_call_begin>([\s\S]*?)<tool_call_end>/gi;
-const TOOL_CALL_RAW_REGEX = /<tool_call>([\s\S]*?)<\/tool_call>/gi;
-
 export function stripProviderControlTokens(content: string): string {
   if (!content) return '';
   return _sanitizer.stripProviderControlTokens(content);
@@ -44,36 +39,9 @@ export function stripTechnicalFiller(text: string): string {
 }
 
 export function stripInternalTags(content: string, options: StripOptions = {}): SanitizedContent {
-  const directives: string[] = [];
-  let normalized = content;
-
-  normalized = normalized.replace(ACTION_TAG_REGEX, (_match, attrs) => {
-    const typeMatch = String(attrs ?? '').match(/type\s*=\s*["']([^"']+)["']/i);
-    const actionType = typeMatch?.[1] ?? 'unknown';
-    directives.push(`[ACTION: ${actionType}]`);
-    return ' ';
-  });
-
-  normalized = normalized.replace(BRACKET_ACTION_REGEX, (_match, attrs) => {
-    const typeMatch = String(attrs ?? '').match(/type\s*=\s*["']([^"']+)["']/i);
-    const actionType = typeMatch?.[1] ?? 'unknown';
-    directives.push(`[ACTION: ${actionType}]`);
-    return ' ';
-  });
-
-  normalized = normalized.replace(TOOL_CALL_SEGMENT_REGEX, (_match, body) => {
-    const name = String(body ?? '').split('<tool_sep>')[0]?.trim();
-    directives.push(`[TOOL_CALL: ${name || 'unknown'}]`);
-    return ' ';
-  });
-
-  normalized = normalized.replace(TOOL_CALL_RAW_REGEX, () => {
-    directives.push('[TOOL_CALL_RAW]');
-    return ' ';
-  });
-
-  const r = _sanitizer.sanitize(normalized, options.retainSpacings ?? false);
-  const internalParts = [r.internalThoughts, ...directives]
+  const r = _sanitizer.sanitize(content || '', options.retainSpacings ?? false);
+  
+  const internalParts = [r.internalThoughts, ...(r.internalDirectives || [])]
     .map((part) => (part ?? '').trim())
     .filter(Boolean);
 
@@ -81,7 +49,7 @@ export function stripInternalTags(content: string, options: StripOptions = {}): 
     publicText: r.publicText,
     internalText: internalParts.length > 0 ? internalParts.join('\n') : null,
     isThinking: r.isThinking,
-    isActing: r.isActing || directives.some((d) => d.startsWith('[ACTION:')),
+    isActing: r.isActing || (r.internalDirectives || []).some((d: string) => d.startsWith('[ACTION:')),
     currentActionType: r.currentActionType ?? null,
   };
 }

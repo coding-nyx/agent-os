@@ -57,11 +57,16 @@ function tryLoad(name: string): (new (...args: unknown[]) => unknown) | null {
 }
 
 export const AccountAggregationJs = requireEngineExport('AccountAggregationJs');
+export const AgnesSessionLifecycleServiceJs = requireEngineExport('AgnesSessionLifecycleServiceJs');
+export const AraEngagementModesJs = requireEngineExport('AraEngagementModesJs');
 export const AliveEntityUtilsJs = requireEngineExport('AliveEntityUtilsJs');
 export const EmbeddingUtilsJs = requireEngineExport('EmbeddingUtilsJs');
 export const MedicalClearanceEvaluatorJs = requireEngineExport('MedicalClearanceEvaluatorJs');
 export const AgnesGravityEngineJs = requireEngineExport('AgnesGravityEngineJs');
 export const BeliefGraphServiceJs = requireEngineExport('BeliefGraphServiceJs');
+export const HalfLifeEngineJs = requireEngineExport('HalfLifeEngineJs');
+export const SomaticSessionMonitorJs = requireEngineExport('SomaticSessionMonitorJs');
+export const TherapeuticMoveTrackerJs = requireEngineExport('TherapeuticMoveTrackerJs');
 export const AtlasBlueprintServiceJs = requireEngineExport('AtlasBlueprintServiceJs');
 export const AtlasPlanningEngineJs = requireEngineExport('AtlasPlanningEngineJs');
 export const AtlasPredictiveEngineJs = requireEngineExport('AtlasPredictiveEngineJs');
@@ -103,12 +108,12 @@ export const LlmSanitizerJs = requireEngineExport('LlmSanitizerJs');
 export const NetWorthAggregationJs = requireEngineExport('NetWorthAggregationJs');
 export const OnboardingValidationJs = requireEngineExport('OnboardingValidationJs');
 export const NeuralStateVectorJs = requireEngineExport('NeuralStateVectorJs');
-// Ara* services are added in the next cortex-logic KMP build — use safe lazy pattern until rebuilt.
-export const AraActionDispatchServiceJs = tryLoad('AraActionDispatchServiceJs');
-export const AraActionPlannerServiceJs = tryLoad('AraActionPlannerServiceJs');
-export const AraDispatchExecutionServiceJs = tryLoad('AraDispatchExecutionServiceJs');
-export const AraRoutingServiceJs = tryLoad('AraRoutingServiceJs');
-export const AraSynthesisServiceJs = tryLoad('AraSynthesisServiceJs');
+// Ara* services are now the standard names in the KMP build.
+export const AraActionDispatchServiceJs = requireEngineExport('AraActionDispatchServiceJs');
+export const AraActionPlannerServiceJs = requireEngineExport('AraActionPlannerServiceJs');
+export const AraDispatchExecutionServiceJs = requireEngineExport('AraDispatchExecutionServiceJs');
+export const AraRoutingServiceJs = requireEngineExport('AraRoutingServiceJs');
+export const AraSynthesisServiceJs = requireEngineExport('AraSynthesisServiceJs');
 export const NsvOwnershipServiceJs = requireEngineExport('NsvOwnershipServiceJs');
 export const NsvServiceJs = requireEngineExport('NsvServiceJs');
 export const OrchestrationActionGateServiceJs = requireEngineExport('OrchestrationActionGateServiceJs');
@@ -131,6 +136,7 @@ export const RecurringBillEngineJs = requireEngineExport('RecurringBillEngineJs'
 export const RecoveryTemplatesJs = requireEngineExport('RecoveryTemplatesJs');
 export const RetirementCalculatorJs = requireEngineExport('RetirementCalculatorJs');
 export const RuntimeSemanticsBuilderJs = requireEngineExport('RuntimeSemanticsBuilderJs');
+export const SchemaMaintenanceServiceJs = tryLoad('SchemaMaintenanceServiceJs');
 export const SessionArcJs = requireEngineExport('SessionArcJs');
 export const SomaFieldTemplatesJs = requireEngineExport('SomaFieldTemplatesJs');
 export const SoulAuthorityServiceJs = requireEngineExport('SoulAuthorityServiceJs');
@@ -145,6 +151,7 @@ export const TransactionAggregationJs = requireEngineExport('TransactionAggregat
 // RagChunkingServiceJs may not be in the export map if the DFS doesn't reach the rag namespace;
 // use the safe lazy pattern so the app boots even if the export is missing at load time.
 export const RagChunkingServiceJs = tryLoad('RagChunkingServiceJs');
+export const SomaIngestServiceJs = tryLoad('SomaIngestServiceJs');
 // NotificationContentResolverJs may not be in the export map until the KMP JS library is rebuilt;
 // use the safe lazy pattern so the app boots even if the export is missing at load time.
 export const NotificationContentResolverJs = tryLoad('NotificationContentResolverJs');

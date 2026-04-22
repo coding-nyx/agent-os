@@ -10,6 +10,7 @@ import { saveAgnesProfile, type TherapyIntakeProfile } from '../services/agnes-p
 import type { AgnesSessionPhase } from '../session-arc';
 import type { AgnesEngagementMode, AgnesPersistentEngagementMode } from '../engagement-modes';
 import type { AgnesState } from './types';
+import * as AgnesLifecycleBridge from '@/cortex-bridge/agnes-session-lifecycle-bridge';
 
 interface UseAgnesSessionParams {
   profile: TherapyIntakeProfile | null;
@@ -84,6 +85,17 @@ export function useAgnesSession({
   const prevUserRef = useRef(user);
 
   const agentAlias = globalSoul?.displayNames?.agnes || 'Agnes';
+
+  // ── Session lifecycle (KMP Bridge) ────────────────────────────────────────
+
+  // Purge expired impromptu sessions on mount or when user changes
+  useEffect(() => {
+    if (user && !isGuest) {
+      AgnesLifecycleBridge.purgeExpiredSessions().catch((e) => {
+        console.error('[AgnesSession] Failed to purge expired sessions:', e);
+      });
+    }
+  }, [user, isGuest]);
 
   const {
     messages,
@@ -185,6 +197,20 @@ export function useAgnesSession({
     }
   }, [pendingBeliefOpen, isHydrating, isImpromptu, isProcessing, handleSendMessage]);
 
+  // Evaluate sentiment gravity and trigger invitations if needed
+  useEffect(() => {
+    if (messages.length === 0 || isProcessing || isImpromptu || currentState !== 'session') return;
+    const last = [...messages].reverse().find((m) => m.role === 'assistant');
+    if (!last) return;
+    const content = typeof last.content === 'string' ? last.content : '';
+    const match = content.match(/Sentiment Gravity:\s*(\d*\.?\d+)/i);
+    if (!match) return;
+    const gravity = parseFloat(match[1]);
+    if (!isNaN(gravity)) {
+      AgnesLifecycleBridge.evaluateSentimentGravity(gravity, `session_${sessionStartedAt}`).catch(() => {});
+    }
+  }, [messages, isProcessing, isImpromptu, currentState, sessionStartedAt]);
+
   // Parse Agnes's declared Phase from the last assistant message after each completed turn.
   useEffect(() => {
     if (messages.length === 0 || isProcessing || isImpromptu) return;
@@ -209,7 +235,10 @@ export function useAgnesSession({
   // ── Session lifecycle ─────────────────────────────────────────────────────
 
   const startSession = useCallback(async (type: 'impromptu' | 'new' | 'continue', beliefContext?: { triggeringBeliefs: string[]; rationale: string[] }) => {
+    const sessionId = type === 'impromptu' ? 'impromptu' : `session_${Date.now()}`;
+
     if (type === 'continue') {
+      await AgnesLifecycleBridge.transitionTo(preferredPersistentMode.toUpperCase() as AgnesLifecycleBridge.AgnesSessionMode, sessionId);
       setSessionType('new');
       setEngagementForSession();
       setSessionStartedAt(Date.now());
@@ -227,6 +256,7 @@ export function useAgnesSession({
     }
 
     if (type === 'impromptu') {
+      await AgnesLifecycleBridge.transitionTo('IMPROMPTU', 'impromptu');
       sessionStorage.removeItem(`ara_session_agnes_impromptu`);
       const quickSupportGreetings = [
         "You reached out, and that matters. This is Impromptu mode \u2014 private, off the record, and focused on what you need right now. Take a breath, and whenever you're ready, tell me what's happening.",
@@ -244,6 +274,7 @@ export function useAgnesSession({
 
     // Starting a new regular session
     await clearSession();
+    await AgnesLifecycleBridge.transitionTo(preferredPersistentMode.toUpperCase() as AgnesLifecycleBridge.AgnesSessionMode, sessionId);
     setSessionType('new');
     setEngagementForSession();
     setSessionStartedAt(Date.now());
@@ -353,8 +384,10 @@ export function useAgnesSession({
   const finalizeClose = useCallback(async () => {
     if (isImpromptu) {
       try { sessionStorage.removeItem('ara_session_agnes_impromptu'); } catch { /* ignore */ }
+      await AgnesLifecycleBridge.closeImpromptu('impromptu');
       setMessages([]);
     } else {
+      await AgnesLifecycleBridge.transitionTo('CASUAL', 'closing');
       await clearSession();
     }
     setCurrentState('selecting');
