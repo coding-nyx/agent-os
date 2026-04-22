@@ -39,6 +39,7 @@ export type { DeferredApproval };
 import { AraActionPlannerService } from '@/lib/services/ara-action-planner-service';
 import { AraActionDispatchExecutionService } from '@/lib/services/ara-action-dispatch-execution-service';
 import { isOpenRouterAuthError } from '@/lib/services/openrouter-key';
+import { classifyAiError, ConsecutiveFailureTracker } from '@/lib/ai/ai-error-classifier';
 
 export type PersistencePolicy = 'auto' | 'scout-research' | 'atlas-planning' | 'ledger-financial' | 'manual' | 'ephemeral';
 
@@ -131,6 +132,16 @@ function toUserFacingAiError(error: unknown): string {
   }
   return message || 'The neural tunnel encountered an interference packet.';
 }
+
+/**
+ * Module-level tracker of consecutive transient AI failures per moduleId.
+ * Lives outside the component so it survives re-renders and hook invocations
+ * within the same tab session; reset on first success per moduleId. A single
+ * "link persistently broken" AI_LINK_FAILURE emit is produced after
+ * `DEFAULT_TRANSIENT_ESCALATION_THRESHOLD` consecutive transient failures,
+ * preventing every network blip from spamming the user's inbox.
+ */
+const aiTransientFailureTracker = new ConsecutiveFailureTracker();
 
 /**
  * Builds the history slice and optional summary block to pass to streamMessage.
@@ -1303,6 +1314,10 @@ export function useModuleAI({
         
         clearPendingRequest();
 
+        // Successful stream — clear any accumulated transient-failure count
+        // for this module so escalation only fires on *consecutive* failures.
+        aiTransientFailureTracker.reset(moduleId);
+
         // --- Pending query result (delegated to useHandoffProcessor) ---
         handlePendingQueryResult(adjustedPublicText);
 
@@ -1370,19 +1385,37 @@ export function useModuleAI({
           flushActiveSession();
         }
 
-        // Emit critical failure event so the notification system can alert the user
-        Spine.emit({
-          type: 'AI_LINK_FAILURE',
-          source: moduleId,
-          domain: 'system',
-          data: { 
-            moduleId, 
-            errorMessage: e instanceof Error ? e.message : String(e),
-            timestamp: new Date().toISOString()
-          },
-          cascadeDepth: 0,
-          priority: 'critical'
-        });
+        // Classify the failure so transient network/upstream blips stay inline
+        // in the UI and never reach the notification inbox as critical alerts.
+        // Only user-actionable (auth/quota/content-policy) and fatal
+        // (unclassified, persistent) failures produce an AI_LINK_FAILURE Spine
+        // emit. Consecutive transient failures eventually escalate to a single
+        // fatal emit so the user is informed when the link is really broken.
+        const classified = classifyAiError(e);
+        let shouldEmit = classified.kind === 'user_actionable' || classified.kind === 'fatal';
+        if (classified.kind === 'transient') {
+          if (aiTransientFailureTracker.recordTransient(moduleId)) {
+            shouldEmit = true;
+          }
+        } else {
+          aiTransientFailureTracker.reset(moduleId);
+        }
+
+        if (shouldEmit) {
+          Spine.emit({
+            type: 'AI_LINK_FAILURE',
+            source: moduleId,
+            domain: 'system',
+            data: {
+              moduleId,
+              errorMessage: classified.rawMessage,
+              errorKind: classified.kind,
+              timestamp: new Date().toISOString(),
+            },
+            cascadeDepth: 0,
+            priority: 'critical'
+          });
+        }
 
         AraLogger.emit('ai', {
           moduleId,
