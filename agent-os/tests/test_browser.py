@@ -1,0 +1,79 @@
+import os
+from pathlib import Path
+
+from playwright.sync_api import expect, sync_playwright
+
+
+def test_web_data_profile_workspace_and_mobile_navigation(system):
+    output = Path(__file__).resolve().parents[1] / "test-results"
+    output.mkdir(exist_ok=True)
+    errors = []
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=os.environ.get("ARA_BROWSER_EXECUTABLE", "/usr/bin/chromium"), args=["--no-sandbox"])
+        context = browser.new_context(viewport={"width": 1440, "height": 1000}, timezone_id="Asia/Kolkata")
+        page = context.new_page()
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.goto(f"http://127.0.0.1:{system['port']}", wait_until="domcontentloaded")
+        expect(page.get_by_role("heading", name="A little more clarity.", exact=False)).to_be_visible(timeout=30000)
+        assert page.locator(".profile-card").count() >= 6
+        page.screenshot(path=str(output / "overview-desktop.png"), full_page=True)
+        page.get_by_role("button", name="Data library", exact=True).click()
+        page.get_by_role("button", name="New dataset", exact=True).click()
+        dialog = page.get_by_role("dialog")
+        dialog.get_by_label("Name", exact=True).fill("Browser test finance")
+        dialog.get_by_label("Data module").select_option("finance")
+        dialog.get_by_role("button", name="Create dataset", exact=True).click()
+        expect(page.get_by_role("heading", name="Browser test finance")).to_be_visible()
+        page.get_by_role("button", name="Add transaction", exact=True).click()
+        dialog.get_by_label("Description", exact=True).fill("Browser grocery test")
+        dialog.get_by_label("Amount", exact=True).fill("-150.25")
+        dialog.get_by_label("Category", exact=True).fill("Groceries")
+        dialog.get_by_role("button", name="Save record", exact=True).click()
+        expect(page.get_by_role("cell", name="Browser grocery test", exact=True)).to_be_visible()
+        page.get_by_role("button", name="Agents", exact=False).first.click()
+        page.locator("main .profile-card").filter(has_text="Ledger").click()
+        page.get_by_role("tab", name="Data", exact=True).click()
+        page.get_by_label("Access to Browser test finance", exact=True).select_option("read")
+        page.get_by_role("tab", name="Workspace", exact=True).click()
+        expect(page.get_by_role("cell", name="Browser grocery test", exact=True)).to_be_visible()
+        page.screenshot(path=str(output / "ledger-workspace.png"), full_page=True)
+        page.get_by_role("tab", name="Identity", exact=True).click()
+        editor = page.get_by_role("textbox", name="Asset content")
+        editor.wait_for()
+        expect(page.get_by_role("button", name="Save changes")).to_be_enabled(timeout=10000)
+        original = editor.input_value()
+        editor.fill(original + "\nBrowser-edited identity.")
+        page.get_by_role("button", name="Save changes").click()
+        expect(page.get_by_role("status")).to_contain_text("Saved locally")
+        profile = next(p for p in system["client"].get("/profiles").json() if p["preset"] == "ledger")
+        system["client"].post(f"/profiles/{profile['id']}/model", json={"name": "Browser wire fixture", "base_url": system["provider_url"], "model": "ara-protocol-test", "api_key": "test-only-placeholder", "api_mode": "chat_completions"}).raise_for_status()
+        page.get_by_role("tab", name="Voice", exact=True).click()
+        expect(page.get_by_role("heading", name="Voice input", exact=True)).to_be_visible()
+        page.get_by_role("button", name="Record a voice note", exact=True).click()
+        expect(page.get_by_role("status").first).to_contain_text("Microphone unavailable", timeout=10000)
+        page.get_by_role("textbox", name="Transcript / text").fill("Reviewed voice transcript test")
+        page.get_by_role("button", name="Use in conversation", exact=True).click()
+        review = page.get_by_role("dialog")
+        expect(review.get_by_role("textbox", name="Message agent")).to_have_value("Reviewed voice transcript test")
+        review.get_by_role("button", name="Send message", exact=True).click()
+        expect(review.get_by_text("ARA native runtime protocol verified.", exact=True)).to_be_visible(timeout=60000)
+        review.get_by_role("button", name="Close dialog").click()
+        page.get_by_role("button", name="Machines & sync", exact=True).click()
+        expect(page.get_by_role("heading", name="Received node snapshots")).to_be_visible()
+        page.get_by_role("button", name="Pair a node", exact=True).click()
+        enrollment = page.get_by_role("dialog")
+        enrollment.get_by_label("Node name", exact=True).fill("Browser paired node")
+        enrollment.get_by_label("Host API address", exact=True).fill(f"http://127.0.0.1:{system['port']}")
+        with page.expect_download() as download_info:
+            enrollment.get_by_role("button", name="Download enrollment file").click()
+        assert download_info.value.suggested_filename == "node-enrollment.json"
+        expect(page.get_by_role("heading", name="Browser paired node", exact=True)).to_be_visible()
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.get_by_role("button", name="Open navigation").click()
+        page.get_by_role("button", name="Overview", exact=True).click()
+        expect(page.get_by_role("heading", name="A little more clarity.", exact=False)).to_be_visible()
+        page.wait_for_function("document.querySelector('.sidebar').getBoundingClientRect().right <= 1")
+        page.screenshot(path=str(output / "overview-mobile.png"), full_page=True)
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), "Mobile viewport overflows horizontally"
+        assert not errors, errors
+        browser.close()

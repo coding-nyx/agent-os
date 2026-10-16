@@ -1,34 +1,33 @@
-# Ara: Holistic AI Ecosystem
+# ARA Agent OS
 
-**Ara** (Artificial General Neural Ecosystem for Stability - AGNES) is a unified, multi-agent wellness platform featuring specialized AI agents (Agnes, Titan, Ledger, Atlas, Scout, Forge) with a futuristic, Wall-E and Eve-inspired aesthetic. It combines emotional support, physical optimization, cognitive planning, and financial stability into a single, cohesive "Global Soul," secured by client-side End-to-End Encryption (E2EE).
+A local-first, single-user agent workspace: a web client, independent PostgreSQL data modules, and a pinned native agent runtime. Host and node use the same distribution. Android is planned after the web and node workflows.
 
-For a detailed breakdown of the system architecture, product definition, and module functionalities, please see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The implementation lives in [`agent-os/`](agent-os/README.md). Its guide describes supported features, boundaries, native compatibility, model setup, node synchronization and recovery.
 
-## Quick Start
+## Start
 
-1.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+Prerequisites: Git, uv, Node 24, and Docker with Compose (or an existing PostgreSQL 17 instance).
 
-2.  **Setup Environment:**
-    ```bash
-    cp .env.example .env.local
-    ```
-    *Edit `.env.local` to add your Firebase keys (required for cloud persistence).*
+```bash
+cd agent-os
+bash scripts/setup.sh
+bash scripts/start.sh
+```
 
-3.  **Run Development Server:**
-    ```bash
-    npm run dev
-    ```
-    Open [http://localhost:3000](http://localhost:3000).
+The combined API/dashboard binds loopback port 8787. Configure a model account in a profile's Connections view. No Firebase project or application signup is required for the local prototype.
 
-## Commands
+```bash
+cd agent-os
+bash scripts/check.sh
+```
 
-- `npm run dev`: Start Vite development server.
-- `npm run build`: Type-check and build for production (outputs to `out/`).
-- `npm run lint`: Run ESLint checks.
-- `npm run preview`: Preview the production build locally.
+Checks use isolated PostgreSQL databases, installed Chromium and a deterministic model protocol fixture driving the actual native agent. See [verification](agent-os/docs/VERIFICATION.md) for evidence and live-account limitations.
 
-## Route Truth
-Runtime routes in `src/App.tsx` are the source of truth for product navigation and module identity.
+## Repository
+
+- [`agent-os/`](agent-os/README.md): application, frontend, native adapter, CLI, migrations, tests and scripts.
+- [`docs/design/`](docs/README.md): the current product architecture and future delivery contracts.
+- [Runtime integration decisions](agent-os/docs/UPSTREAM-DECISIONS.md): native source audits and compatibility seams.
+- [Interface behavior](agent-os/docs/PRODUCT-SURFACES.md): views, lifecycle states and failure behavior.
+
+This branch replaces the legacy Firebase/Cortex application source and deployment workflow. Earlier code remains in Git history; switching branches does not migrate or deploy the hosted application. Runtime installations, credentials, databases and generated output are excluded from commits.

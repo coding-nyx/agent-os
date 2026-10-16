@@ -1,3 +1,0 @@
-## 2024-03-24 - [Avoid Redundant Embedding API Calls for Static Fields]
-**Learning:** `src/lib/services/semantic-field-retrieval-service.ts` re-evaluates the embedding for static field metadata (like name and description) on *every* user query via `Promise.all(fields.map(...))`. Without a local cache in `EmbeddingService.embed`, this creates severe O(N) network bottlenecks, rate limits, and high latency for the user.
-**Action:** Always implement local memoization/caching (e.g. `Map<string, Promise<number[]>>`) at the boundary of expensive API services like LLMs or embedding generation, especially when they process static, repeated text (like definitions or contexts). Limit cache sizes to prevent memory leaks in single-page applications.

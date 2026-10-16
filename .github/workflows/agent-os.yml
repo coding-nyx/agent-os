@@ -1,0 +1,49 @@
+name: Agent OS validation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  prototype:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: agent-os
+    env:
+      ARA_DATABASE_URL: postgresql+psycopg://ara_os:ara_os_local@127.0.0.1:55432/ara_os
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_USER: ara_os
+          POSTGRES_PASSWORD: ara_os_local
+          POSTGRES_DB: ara_os
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U ara_os -d ara_os"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: '0.12.23'
+      - name: Install locked dependencies and native runtime
+        run: bash scripts/setup.sh
+      - name: Install browser
+        run: .venv/bin/playwright install --with-deps chromium
+      - name: Build and exercise the actual native runtime
+        run: |
+          ARA_BROWSER_EXECUTABLE="$(.venv/bin/python -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); print(p.chromium.executable_path); p.stop()')"
+          export ARA_BROWSER_EXECUTABLE
+          bash scripts/check.sh

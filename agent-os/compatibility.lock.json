@@ -1,0 +1,20 @@
+{
+  "product": "ARA Agent OS",
+  "version": "0.1.0",
+  "api_version": 1,
+  "runtime": {
+    "source": "https://github.com/NousResearch/hermes-agent.git",
+    "revision": "201b32361592bd9ac230d33fd592e101b8cca4af",
+    "downstream_branch": "ara-v0.1",
+    "core_patches": [],
+    "python": "3.14.8",
+    "extras": ["web", "telegram", "mcp", "edge-tts"],
+    "transport": "native authenticated canonical gateway client"
+  },
+  "application_python": "3.12",
+  "node": ">=22.12",
+  "postgresql": "17",
+  "profile_imports": ["native tar.gz", "OpenClaw directory"],
+  "voice": "reviewed transcription -> native agent turn -> optional speech",
+  "remote_runtime_channel_bridge": "not certified; no duplicate receiver activation"
+}
