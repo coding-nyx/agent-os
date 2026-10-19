@@ -2,6 +2,36 @@
 
 Current-instance validation on x86 Linux; browser timezone Asia/Kolkata. This is not a live deployment or a fresh cloud-machine restoration claim.
 
+## 19 October 2026 — native swarms, standalone nodes and guarded computer control
+
+- Clean, isolated full regression run: **103 passed in 292.89 seconds**.
+  Production TypeScript/Vite build, Python compilation, shell syntax and Git
+  whitespace checks passed. One dependency deprecation warning remains in
+  Starlette's HTTPX test-client integration.
+- Swarm coverage exercises actual native child sessions with a local provider
+  fixture, any-profile policy, custom coding roles, inherited isolated Git
+  worktrees, real file/terminal tools, partial failures, cancellation, durable
+  event receipts and unknown-outcome handling. No paid inference was submitted.
+- Standalone node checks run without application PostgreSQL, execute native
+  workers locally, replay immutable events after reconnection and acknowledge
+  credential-scrubbed native snapshots separately from task completion.
+  These tests do not certify a production multi-host deployment.
+- Computer-control checks use explicit fake drivers, never physical desktop
+  capture or input. They cover default-deny grants, single-use approvals and
+  rejection, durable input idempotency, controller leases, revocation, strict
+  action validation, MCP image responses and HTTP/WebSocket access boundaries.
+  Chromium checks cover unavailable-driver readiness, grants and modes, mobile
+  overflow and browser errors. Existing visual styling was retained while
+  readiness and permission states were made explicit.
+- The live API was restarted only after confirming no pending managed work or
+  API-owned child processes. Health returned ready; all **nine** native config
+  hashes were unchanged. Computer control remains **view-only with zero agent
+  grants**. The untrusted-Host probe returned HTTP 403.
+- Remote-node desktop streaming, Android control, physical driver operation and
+  production provider reliability are not claimed. Git artifacts are not applied
+  automatically to the source checkout. The runtime adapter retains native
+  delegation through v1; replacing that dependency is a post-v1 step.
+
 ## 19 October 2026 — installation model onboarding
 
 - `scripts/setup.sh` now provisions the six presets before first server start,

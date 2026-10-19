@@ -81,9 +81,16 @@ def call_mcp(c, system, profile_id, name, args):
     return json.loads(result["content"][0]["text"])
 
 
+def connect_fixture(c, system, profile):
+    response = c.post(f"/profiles/{profile['id']}/model", json={"name": "Swarm wire fixture", "base_url": system["provider_url"],
+        "model": "ara-shared-setup-test", "api_key": "shared-setup-test-secret", "api_mode": "chat_completions"})
+    response.raise_for_status()
+
+
 def test_swarm_mcp_tools_and_execution_in_tandem(system):
     c = system["client"]
     p = next(x for x in c.get("/profiles").json() if x["preset"] == "scout")
+    connect_fixture(c, system, p)
 
     # Calling ara_spawn_swarm while disabled should return error
     refused = call_mcp(c, system, p["id"], "ara_spawn_swarm", {"preset": "research", "task": "Investigate distributed consensus", "operation_id": "sw-1"})
@@ -117,7 +124,7 @@ def test_swarm_mcp_tools_and_execution_in_tandem(system):
 
         # Poll ara_get_swarm until completion
         completed = None
-        for _ in range(30):
+        for _ in range(180):
             info = call_mcp(c, system, p["id"], "ara_get_swarm", {"swarm_id": swarm_id})
             if info["state"] in {"succeeded", "failed"}:
                 completed = info
@@ -136,10 +143,8 @@ def test_swarm_mcp_tools_and_execution_in_tandem(system):
             assert w["role"] in {"Lead Researcher", "Source & Evidence Analyst", "Fact Checker & Synthesizer"}
 
         # Synthesized output should integrate all workers
-        assert "Research Swarm Synthesis" in completed["synthesized_output"]
-        assert "Lead Researcher" in completed["synthesized_output"]
-        assert "Source & Evidence Analyst" in completed["synthesized_output"]
-        assert "Fact Checker & Synthesizer" in completed["synthesized_output"]
+        assert "ARA native runtime protocol verified" in completed["synthesized_output"]
+        assert all("ARA native runtime protocol verified" in w["output"] for w in completed["workers"])
     finally:
         c.put(f"/profiles/{p['id']}/swarms", json={"enabled": False})
 
@@ -147,6 +152,7 @@ def test_swarm_mcp_tools_and_execution_in_tandem(system):
 def test_swarm_api_spawning_and_custom_preset(system):
     c = system["client"]
     p = next(x for x in c.get("/profiles").json() if x["preset"] == "ara")
+    connect_fixture(c, system, p)
     try:
         c.put(f"/profiles/{p['id']}/swarms", json={
             "enabled": True,
@@ -171,7 +177,7 @@ def test_swarm_api_spawning_and_custom_preset(system):
 
         # Poll via GET /api/v1/swarms/{id}
         completed = None
-        for _ in range(30):
+        for _ in range(180):
             check = c.get(f"/swarms/{swarm['id']}").json()
             if check["state"] in {"succeeded", "failed"}:
                 completed = check
@@ -183,8 +189,7 @@ def test_swarm_api_spawning_and_custom_preset(system):
         worker_roles = {w["role"] for w in completed["workers"]}
         assert worker_roles == {"Vault Architect", "Security Auditor"}
         assert all(w["state"] == "completed" for w in completed["workers"])
-        assert "Vault Architect" in completed["synthesized_output"]
-        assert "Security Auditor" in completed["synthesized_output"]
+        assert "ARA native runtime protocol verified" in completed["synthesized_output"]
 
         # Profile swarms list should reflect this run
         profile_swarms = c.get(f"/profiles/{p['id']}/swarms").json()

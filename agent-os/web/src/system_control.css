@@ -180,6 +180,24 @@
   padding: 4px 10px;
 }
 
+.sc-stream-tools button.active {
+  color: #f7fbf5;
+  background: #2f4f3f;
+  border-color: #2f4f3f;
+}
+
+.sc-viewport-header .sc-stream-meta {
+  color: #e4ece5;
+}
+
+.sc-placeholder p {
+  color: #abb8bf;
+}
+
+.sc-viewport-footer small {
+  color: #bac7bf;
+}
+
 .sc-canvas-container {
   position: relative;
   background: #000000;

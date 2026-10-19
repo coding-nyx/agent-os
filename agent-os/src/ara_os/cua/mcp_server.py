@@ -5,10 +5,10 @@ import json
 import sys
 from typing import Any, Dict
 
-from .tools import CUA_TOOLS, invoke_cua_tool
+from .tools import CUA_TOOLS, invoke_cua_tool, result_content
 
 
-async def handle_jsonrpc(request: Dict[str, Any]) -> Dict[str, Any] | None:
+async def handle_jsonrpc(request: Dict[str, Any], *, actor=None) -> Dict[str, Any] | None:
     method = request.get("method")
     req_id = request.get("id")
 
@@ -38,14 +38,25 @@ async def handle_jsonrpc(request: Dict[str, Any]) -> Dict[str, Any] | None:
         tool_name = params.get("name", "")
         tool_args = params.get("arguments", {})
 
-        result = await invoke_cua_tool(tool_name, tool_args)
-        is_error = "error" in result and not result.get("success", False)
+        import jsonschema
+        tool = next((t for t in CUA_TOOLS if t["name"] == tool_name), None)
+        if tool is None:
+            return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32602, "message": "Unknown computer tool"}}
+        try:
+            jsonschema.validate(tool_args, tool["inputSchema"])
+        except jsonschema.ValidationError:
+            return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32602, "message": "Invalid computer tool arguments"}}
+        try:
+            result = await invoke_cua_tool(tool_name, tool_args, actor=actor)
+        except Exception:
+            result = {"success": False, "error": "Native computer action unavailable; inspect local driver and policy."}
+        is_error = "error" in result and not result.get("success", False) and result.get("metadata", {}).get("state") != "pending"
 
         return {
             "jsonrpc": "2.0",
             "id": req_id,
             "result": {
-                "content": [{"type": "text", "text": json.dumps(result, indent=2)}],
+                "content": result_content(result),
                 "isError": is_error,
             },
         }
@@ -62,7 +73,7 @@ async def handle_jsonrpc(request: Dict[str, Any]) -> Dict[str, Any] | None:
     return None
 
 
-async def run_stdio_server():
+async def run_stdio_server(actor=None):
     """Runs a standalone stdio JSON-RPC MCP server for local Hermes agents."""
     loop = asyncio.get_running_loop()
     reader = asyncio.StreamReader()
@@ -79,7 +90,7 @@ async def run_stdio_server():
 
         try:
             req = json.loads(text)
-            response = await handle_jsonrpc(req)
+            response = await handle_jsonrpc(req, actor=actor)
             if response:
                 out = json.dumps(response) + "\n"
                 sys.stdout.write(out)
@@ -94,8 +105,8 @@ async def run_stdio_server():
             sys.stdout.flush()
 
 
-def main():
-    asyncio.run(run_stdio_server())
+def main(actor=None):
+    asyncio.run(run_stdio_server(actor))
 
 
 if __name__ == "__main__":

@@ -113,6 +113,51 @@ export function PlanningSurface({ id }: { id: string }) {
   </section>;
 }
 
+function SwarmExecutionSettings({ profile, config, saved }: { profile: Item; config: any; saved: () => Promise<void> }) {
+  const [machines, setMachines] = useState<any[]>([]);
+  const [error, setError] = useState('');
+  useEffect(() => { api('/machines').then(setMachines).catch(e => setError(e.message)); }, []);
+  return <details className="panel padded" style={{ marginBottom: 20 }}>
+    <summary><strong>Execution owner, workspace and worker limits</strong></summary>
+    <p>Every profile can coordinate its own swarm. Worker model connections resolve on the selected execution machine.</p>
+    {error && <div className="notice warning" role="alert">{error}</div>}
+    <div className="two-columns">
+      <form key={JSON.stringify(config)} onSubmit={async e => {
+        e.preventDefault(); const f = new FormData(e.currentTarget);
+        try { await put('/profiles/' + profile.id + '/swarms', {
+          workspace: String(f.get('workspace') || '') || null,
+          toolsets: f.getAll('toolsets'), max_workers: Number(f.get('max_workers')),
+          max_concurrent: Number(f.get('max_concurrent')), max_iterations: Number(f.get('max_iterations')),
+          timeout_seconds: Number(f.get('timeout_seconds'))
+        }); await saved(); setError(''); } catch (e) { setError((e as Error).message); }
+      }}>
+        <label>Local Git workspace<input name="workspace" defaultValue={config.workspace || ''} placeholder="/absolute/path/to/repository" /></label>
+        <p className="hint">Coding requires a clean committed Git baseline. Worktrees preserve the source repository. These are not OS sandboxes.</p>
+        <fieldset><legend>Explicit worker tool grants</legend>{['web', 'file', 'terminal'].map(t =>
+          <label key={t}><input type="checkbox" name="toolsets" value={t} defaultChecked={config.toolsets?.includes(t)} /> {t}</label>)}</fieldset>
+        <div className="form-columns">
+          <label>Worker limit<input type="number" name="max_workers" min="1" max="8" defaultValue={config.max_workers} required /></label>
+          <label>Concurrent workers<input type="number" name="max_concurrent" min="1" max="4" defaultValue={config.max_concurrent} required /></label>
+          <label>Iterations per worker<input type="number" name="max_iterations" min="1" max="40" defaultValue={config.max_iterations} required /></label>
+          <label>Seconds per worker<input type="number" name="timeout_seconds" min="1" max="1800" defaultValue={config.timeout_seconds} required /></label>
+        </div><button>Save worker policy</button>
+      </form>
+      <form onSubmit={async e => {
+        e.preventDefault(); const f = new FormData(e.currentTarget);
+        try { await put('/profiles/' + profile.id + '/placement', { machine_id: f.get('machine_id'), native_name: f.get('native_name') });
+          await saved(); setError(''); } catch (e) { setError((e as Error).message); }
+      }}>
+        <label>Execution machine<select name="machine_id" defaultValue={profile.execution_placement?.machine_id || 'local'}>
+          <option value="local">This machine</option>{machines.filter(m => m.id !== 'local').map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+        <label>Installed native profile on that node<input name="native_name" defaultValue={profile.execution_placement?.native_name || profile.native_name} required /></label>
+        <p className="hint">Prepare the model and enable swarm policy on the node explicitly. Run <code>ara node work</code> there to receive tasks and sync receipts.
+          The node’s permissions intersect with these worker limits; credentials are never sent with a task.</p>
+        <button>Assign execution owner</button>
+      </form>
+    </div>
+  </details>;
+}
+
 export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (f: () => Promise<any>) => Promise<void>; refresh: () => Promise<void> }) {
   const [data, setData] = useState<any>(null);
   const [enabled, setEnabled] = useState(false);
@@ -121,6 +166,8 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
   const [deployPreset, setDeployPreset] = useState<string | null>(null);
   const [inspectRun, setInspectRun] = useState<Item | null>(null);
   const [taskText, setTaskText] = useState('');
+  const [roles, setRoles] = useState('[{"role":"Implementer A","objective":"Implement an independent component","stage":0},{"role":"Implementer B","objective":"Implement a different independent component","stage":0},{"role":"Reviewer","objective":"Review inherited changes and run tests","stage":1}]');
+  const [deploymentId, setDeploymentId] = useState(() => crypto.randomUUID());
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
@@ -139,6 +186,15 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
   }, [p.id]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!inspectRun) return;
+    const id = inspectRun.id;
+    const timer = setInterval(() => api('/swarms/' + id).then(run => {
+      setInspectRun(run);
+      setData((previous: any) => previous ? { ...previous, runs: previous.runs.map((r: any) => r.id === id ? run : r) } : previous);
+    }).catch(e => setError(e.message)), 1500);
+    return () => clearInterval(timer);
+  }, [inspectRun?.id]);
 
   async function saveConfig(newEnabled = enabled, newTrigger = triggerMode, newAllowed = allowedPresets) {
     try {
@@ -176,7 +232,8 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
       const run = await post(`/profiles/${p.id}/swarms/spawn`, {
         preset: deployPreset,
         task: taskText.trim(),
-        operation_id: crypto.randomUUID()
+        operation_id: deploymentId,
+        ...(deployPreset === 'custom' ? { custom_roles: JSON.parse(roles) } : {})
       });
       setDeployPreset(null);
       setTaskText('');
@@ -216,6 +273,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
 
     {status && <div className="notice" role="status">{status}</div>}
     {error && <div className="notice warning" role="alert">{error}</div>}
+    {data && <SwarmExecutionSettings profile={p} config={data.config} saved={load} />}
 
     <div className="two-columns" style={{marginBottom: 24}}>
       <section className="panel padded">
@@ -289,7 +347,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
             </div>
           </div>
           <div className="swarm-card-actions">
-            <button className="primary" disabled={!enabled || !isAllowed} onClick={() => setDeployPreset(spec.id)}>
+            <button className="primary" disabled={!enabled || !isAllowed} onClick={() => { setDeploymentId(crypto.randomUUID()); setDeployPreset(spec.id); }}>
               <Play size={14} /> Deploy swarm
             </button>
           </div>
@@ -348,6 +406,10 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
             Task or problem for the swarm
             <textarea rows={5} required placeholder="Describe the task in detail. The swarm will break it down across specialized roles and synthesize the findings." value={taskText} onChange={e => setTaskText(e.target.value)} />
           </label>
+          {deployPreset === 'custom' && <label>Worker roles and dependency stages (JSON)
+            <textarea className="code" rows={7} required value={roles} onChange={e => setRoles(e.target.value)} />
+            <small>Same-stage workers run concurrently in separate worktrees. Later stages inherit their artifacts.</small>
+          </label>}
           <div className="button-row" style={{marginTop: 18}}>
             <button type="button" onClick={() => setDeployPreset(null)}>Cancel</button>
             <button className="primary" type="submit" disabled={submitting || !taskText.trim()}>
@@ -371,6 +433,11 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
         <div className="native-record" style={{marginBottom: 16}}>
           <strong>Task:</strong>
           <p>{inspectRun.task}</p>
+          <small>Execution owner: {inspectRun.owner_machine || 'legacy, inspect receipts'}</small>
+          {['queued', 'running'].includes(inspectRun.state) && <button disabled={inspectRun.cancel_requested}
+            onClick={() => post('/swarms/' + inspectRun.id + '/cancel', {}).then(setInspectRun).catch(e => setError(e.message))}>
+            {inspectRun.cancel_requested ? 'Cancellation requested' : 'Request cancellation'}</button>}
+          {inspectRun.error && <div className="notice warning">{inspectRun.error}</div>}
         </div>
         <h3>Worker Bots Working in Tandem</h3>
         <div className="swarm-workers-grid">
@@ -380,8 +447,11 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
               <span className={`badge ${w.state === 'completed' ? 'good' : w.state === 'running' ? '' : 'warning'}`}><i />{w.state}</span>
             </div>
             <small className="objective-text"><strong>Objective:</strong> {w.objective}</small>
+            {w.api_calls !== undefined && <small>Observed model calls: {w.api_calls} · tokens: {w.tokens?.input ?? 'unknown'} in / {w.tokens?.output ?? 'unknown'} out</small>}
             {w.output && <div className="worker-output-preview"><pre>{w.output}</pre></div>}
             {w.error && <div className="notice warning"><small>{w.error}</small></div>}
+            {w.artifacts && <details><summary>Workspace evidence · not applied to the original repository</summary>
+              <pre>{JSON.stringify(w.artifacts, null, 2).slice(0, 60000)}</pre></details>}
           </div>)}
         </div>
         {inspectRun.synthesized_output && <div style={{marginTop: 20}}>

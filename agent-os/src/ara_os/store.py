@@ -118,6 +118,10 @@ def initialize():
                     data["state"] = "needs_reconnection" if row["id"] != "local" else "local"
                 if row["kind"] == "channel":
                     data["state"] = "disabled_after_restore"
+                if row["kind"] == "swarm_run" and data.get("state") in {"queued", "running"}:
+                    # A restored application projection is not execution authority.
+                    # Never manufacture a new local receipt and repeat admitted tools.
+                    data.update(state="unknown", error="Restored task has no confirmed execution-owner authority. Inspect native history before retrying.")
                 session.add(Entity(id=row["id"], kind=row["kind"], data=data,
                     revision=row.get("revision", 1), created_at=datetime.fromisoformat(row["created_at"]),
                     updated_at=datetime.fromisoformat(row["updated_at"])))

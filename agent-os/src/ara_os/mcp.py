@@ -12,8 +12,9 @@ TOOLS = [
     {"name": "ara_delegate_task", "description": "Start one scoped specialist task. Returns a task ID; inspect it using ara_get_task. Reuse operation_id on retries.", "inputSchema": {"type": "object", "properties": {"profile_id": {"type": "string"}, "text": {"type": "string"}, "operation_id": {"type": "string"}}, "required": ["profile_id", "text", "operation_id"], "additionalProperties": False}},
     {"name": "ara_get_task", "description": "Inspect a specialist task started by this profile. A pending or unknown task is not permission to run it again.", "inputSchema": {"type": "object", "properties": {"run_id": {"type": "string"}}, "required": ["run_id"], "additionalProperties": False}},
     {"name": "ara_list_swarms", "description": "List available swarm presets and check whether swarm coordination is enabled for this profile.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "ara_spawn_swarm", "description": "Deploy a coordinated swarm of specialized worker bots working in tandem for large or complex tasks (presets: 'research', 'coding', 'analysis', 'custom'). Returns swarm_id and runs workers in tandem.", "inputSchema": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["research", "coding", "analysis", "custom"]}, "task": {"type": "string"}, "operation_id": {"type": "string"}, "custom_roles": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "objective": {"type": "string"}}, "required": ["role", "objective"]}}}, "required": ["preset", "task", "operation_id"], "additionalProperties": False}},
+    {"name": "ara_spawn_swarm", "description": "Start scoped native workers on this profile's assigned machine. Dependent stages run in order; independent workers run concurrently. Results are self-reports, not verified facts. Reuse operation_id after disconnects.", "inputSchema": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["research", "coding", "analysis", "custom"]}, "task": {"type": "string", "minLength": 1, "maxLength": 20000}, "operation_id": {"type": "string", "minLength": 1, "maxLength": 120}, "custom_roles": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "object", "properties": {"role": {"type": "string"}, "objective": {"type": "string"}, "stage": {"type": "integer", "minimum": 0, "maximum": 7}}, "required": ["role", "objective"], "additionalProperties": False}}}, "required": ["preset", "task", "operation_id"], "additionalProperties": False}},
     {"name": "ara_get_swarm", "description": "Inspect a swarm execution started by this profile. Returns worker status, worker outputs, and synthesized outcome.", "inputSchema": {"type": "object", "properties": {"swarm_id": {"type": "string"}}, "required": ["swarm_id"], "additionalProperties": False}},
+    {"name": "ara_cancel_swarm", "description": "Request cancellation of a swarm owned by this profile. Cancellation is not confirmation that in-flight OS actions were undone.", "inputSchema": {"type": "object", "properties": {"swarm_id": {"type": "string"}}, "required": ["swarm_id"], "additionalProperties": False}},
 ] + CUA_TOOLS
 
 
@@ -44,12 +45,19 @@ def invoke(profile_id: str, name: str, args: dict):
                 "swarm_id": swarm_record["id"],
                 "state": swarm_record["state"],
                 "preset": swarm_record["preset"],
+                "owner_machine": swarm_record["owner_machine"],
                 "workers": [{"id": w["id"], "role": w["role"], "objective": w["objective"]} for w in swarm_record.get("workers", [])]
             }
-        if name == "ara_get_swarm":
+        if name in {"ara_get_swarm", "ara_cancel_swarm"}:
             task = get(session, args["swarm_id"], "swarm_run")
             if task.get("profile_id") != profile_id:
                 raise Problem("swarm_not_owned", "This profile did not start that swarm.", 403)
+            if name == "ara_cancel_swarm":
+                from .store import change
+                from .task_journal import TERMINAL
+                if task["state"] not in TERMINAL:
+                    task = change(session, task["id"], {"cancel_requested": True})
+                return {"id": task["id"], "state": task["state"], "cancel_requested": task.get("cancel_requested", False)}
             return {
                 "id": task["id"],
                 "preset": task["preset"],
@@ -57,19 +65,12 @@ def invoke(profile_id: str, name: str, args: dict):
                 "task": task["task"],
                 "workers": task.get("workers", []),
                 "synthesized_output": task.get("synthesized_output"),
-                "error": task.get("error")
+                "error": task.get("error"),
+                "owner_machine": task.get("owner_machine"), "event_cursor": task.get("event_cursor"),
+                "native_snapshot_id": task.get("native_snapshot_id"), "usage": task.get("usage")
             }
         if name.startswith("ara_cua_"):
-            import asyncio
-            import concurrent.futures
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
-            if loop and loop.is_running():
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                    return ex.submit(asyncio.run, invoke_cua_tool(name, args)).result()
-            return asyncio.run(invoke_cua_tool(name, args))
+            raise Problem("async_control_required", "Computer tools require the asynchronous authorized dispatcher", 409)
         if name == "ara_list_agents":
             return [{k: p.get(k) for k in ("id", "name", "description", "enabled")} for target in profile.get("delegation_targets", []) for p in [get(session, target, "profile")]]
         if name == "ara_get_task":

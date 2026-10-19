@@ -4,8 +4,8 @@ This directory contains the core implementation of **ARA Agent OS**:
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy, PostgreSQL 17, and the native Hermes runtime bridge.
 - **Frontend**: React 19, TypeScript, and Vite running on port 8787.
 - **Subsystems**:
-  - `ara_os.cua`: Standalone Computer-Using Agent engine with hardware-accelerated video streaming (macOS, Android, Linux) and native semantic scripting (`osascript`, `adb shell`).
-  - `ara_os.swarms`: Coordinated multi-agent worker teams executing in tandem with parallel phases and consensus synthesis.
+  - `ara_os.cua`: Explicitly authorized native desktop control, periodic observation, and operator intervention. Physical device support requires validation.
+  - `ara_os.swarms`: Native child-agent teams for any preset/custom profile, staged worktrees, durable node receipts and acknowledged server sync.
   - `ara_os.mcp`: Model Context Protocol tool endpoints and standalone stdio server.
   - `ara_os.domains`: Domain persistence layer for Finance, Training, Notes, Reflections, and Planning.
 
@@ -38,28 +38,39 @@ bash scripts/start.sh
 
 ## Running Standalone CUA (Computer-Using Agent)
 
+For an execution-only node without PostgreSQL or the dashboard, start with
+`bash scripts/setup-node.sh --profile coding-agent`, then configure its model
+using `hermes --profile coding-agent model`. See [node/swarms setup](docs/SWARMS.md).
+
 To use computer control with a local Hermes agent without the web server:
 ```bash
-# Run stdio MCP server for Hermes
-.venv/bin/ara cua mcp
+# Explicitly grant a standalone native profile observation and supervised inputs
+.venv/bin/ara cua configure --profile coding-agent --allow-view --allow-input --mode supervised
 
-# Inspect discovered hardware devices (macOS screens, Android devices via ADB, Linux desktops)
+# Run stdio MCP with that identity (supervised inputs need an operator surface)
+.venv/bin/ara cua mcp --profile coding-agent
+
+# Inspect native driver presence without capturing the screen
 .venv/bin/ara cua devices
+
+# Optional driver installation through setup; no computer grants are enabled
+.venv/bin/ara setup --skip-model --computer-control
 ```
 
 ---
 
 ## Testing & Verification
 
-Run the full pytest suite (83 tests):
+Run the full pytest suite:
 ```bash
 .venv/bin/pytest -v
 ```
 
 Run specific test modules:
 ```bash
-.venv/bin/pytest tests/test_cua.py -v     # CUA streaming, osascript, and input tests
-.venv/bin/pytest tests/test_swarms.py -v  # Multi-agent swarm execution tests
+.venv/bin/pytest tests/test_cua.py -v       # Policy and mocked capture/input transport tests
+.venv/bin/pytest tests/test_execution.py -v # Native standalone/node execution, worktrees and sync
+.venv/bin/pytest tests/test_swarms.py -v    # Profile/MCP native swarm execution
 ```
 
 ---

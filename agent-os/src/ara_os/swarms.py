@@ -120,342 +120,167 @@ SWARM_PRESETS: list[dict[str, Any]] = [
 ]
 
 SWARM_PRESET_MAP = {p["id"]: p for p in SWARM_PRESETS}
-SWARM_TASKS: dict[str, asyncio.Task] = {}
-
+SWARM_TASKS: dict[str, asyncio.Task] = {}  # compatibility; execution belongs to local owner processes
 SWARM_MARKER_START = "<!-- ara:agent-swarms:start -->"
 SWARM_MARKER_END = "<!-- ara:agent-swarms:end -->"
 
 
-def get_profile_swarm_config(profile: dict) -> dict[str, Any]:
-    cfg = profile.get("swarms")
-    if not isinstance(cfg, dict):
-        cfg = {}
-    return {
-        "enabled": bool(cfg.get("enabled", False)),
-        "trigger_mode": cfg.get("trigger_mode", "intelligent"),  # "intelligent" or "explicit"
-        "allowed_presets": list(cfg.get("allowed_presets", ["research", "coding", "analysis", "custom"])),
-        "custom_presets": list(cfg.get("custom_presets", []))
-    }
+def get_profile_swarm_config(profile):
+    from . import swarm_policy
+    legacy = {**(profile.get("swarms") or {}), "enabled": False}
+    try:
+        return swarm_policy.read(runtime.home(profile), legacy)
+    except FileNotFoundError:
+        return swarm_policy.validate(legacy)
 
 
-def identity_with_swarms(current_soul: str, config: dict[str, Any]) -> str:
+def identity_with_swarms(current_soul, config):
     cleaned = re.sub(re.escape(SWARM_MARKER_START) + r".*?" + re.escape(SWARM_MARKER_END), "", current_soul, flags=re.S).strip()
-    if not config.get("enabled"):
+    if not config["enabled"]:
         return cleaned
-
-    allowed = [p for p in config.get("allowed_presets", []) if p in SWARM_PRESET_MAP]
-    trigger_mode = config.get("trigger_mode", "intelligent")
-
-    if trigger_mode == "intelligent":
-        trigger_instruction = (
-            "INTELLIGENT SWARM TRIGGERING:\n"
-            "- For simple, routine, or conversational questions, answer directly yourself.\n"
-            "- For large, complex, multi-stage tasks (e.g. multi-source research, complex multi-component code engineering, deep strategic analysis), OR when the user asks for a swarm, intelligently deploy a coordinated swarm using `ara_spawn_swarm`.\n"
-            "- Working in tandem: worker bots explore subtasks simultaneously, followed by unified synthesis."
-        )
-    else:
-        trigger_instruction = (
-            "EXPLICIT SWARM TRIGGERING:\n"
-            "- Deploy a swarm using `ara_spawn_swarm` ONLY when the user explicitly requests a swarm or multi-agent execution.\n"
-            "- For all ordinary tasks, answer directly."
-        )
-
-    preset_bullets = "\n".join(
-        f"  * {p}: {SWARM_PRESET_MAP[p]['name']} ({', '.join(w['role'] for w in SWARM_PRESET_MAP[p]['workers'])})"
-        for p in allowed
-    )
-
-    block = (
-        f"{SWARM_MARKER_START}\n"
-        f"## Coordinated Swarm Capabilities\n"
-        f"You have access to specialized multi-agent swarms ({', '.join(allowed)}).\n\n"
-        f"{trigger_instruction}\n\n"
-        f"Available Swarm Presets:\n"
-        f"{preset_bullets}\n\n"
-        f"Use `ara_spawn_swarm(preset=..., task=...)` to launch a swarm and `ara_get_swarm(swarm_id=...)` to inspect results.\n"
-        f"{SWARM_MARKER_END}"
-    )
-    return cleaned + "\n\n" + block
+    mode = "INTELLIGENT SWARM TRIGGERING" if config["trigger_mode"] == "intelligent" else "EXPLICIT SWARM TRIGGERING"
+    instruction = ("Delegate only when the user explicitly requests a swarm." if config["trigger_mode"] == "explicit" else
+                   "Delegate independent complex work when useful; handle routine requests yourself.")
+    return cleaned + f"\n\n{SWARM_MARKER_START}\n## Coordinated Swarm Capabilities\n{mode}\n{instruction}\n" + (
+        f"Allowed presets: {', '.join(config['allowed_presets'])}. Use ara_spawn_swarm with a stable operation_id, "
+        "then ara_get_swarm; ara_cancel_swarm requests a stop. Workers run on the assigned execution machine. "
+        "Results are self-reports, not verified facts. Do not resubmit unknown work.\n" + SWARM_MARKER_END)
 
 
-def save_profile_swarm_config(profile_id: str, body: dict[str, Any]) -> dict[str, Any]:
-    if not isinstance(body, dict):
-        raise Problem("invalid_swarm_config", "Swarm settings must be an object.")
-    enabled = bool(body.get("enabled", False))
-    trigger_mode = body.get("trigger_mode", "intelligent")
-    if trigger_mode not in {"intelligent", "explicit"}:
-        raise Problem("invalid_trigger_mode", "Trigger mode must be 'intelligent' or 'explicit'.")
-
-    allowed_presets = body.get("allowed_presets", ["research", "coding", "analysis", "custom"])
-    if not isinstance(allowed_presets, list) or not all(p in SWARM_PRESET_MAP for p in allowed_presets):
-        raise Problem("invalid_allowed_presets", "Allowed presets must be a subset of valid swarm presets.")
-
-    custom_presets = body.get("custom_presets", [])
-    if not isinstance(custom_presets, list):
-        raise Problem("invalid_custom_presets", "Custom presets must be a list.")
-
-    swarm_config = {
-        "enabled": enabled,
-        "trigger_mode": trigger_mode,
-        "allowed_presets": allowed_presets,
-        "custom_presets": custom_presets
-    }
-
+def save_profile_swarm_config(profile_id, body):
+    from . import swarm_policy
     with transaction() as session:
         profile = get(session, profile_id, "profile")
+        try:
+            cfg = swarm_policy.validate({**get_profile_swarm_config(profile), **body})
+            swarm_policy.write(runtime.home(profile), cfg)
+        except (ValueError, TypeError) as exc:
+            raise Problem("invalid_swarm_config", str(exc))
         asset = runtime.read_asset(profile, "SOUL.md")
-        updated_soul = identity_with_swarms(asset["content"], swarm_config)
-        runtime.write_asset(profile, "SOUL.md", updated_soul, asset["hash"])
-        change(session, profile_id, {"swarms": swarm_config})
-
-    return swarm_config
+        runtime.write_asset(profile, "SOUL.md", identity_with_swarms(asset["content"], cfg), asset["hash"])
+        change(session, profile_id, {"swarms": cfg})
+    return cfg
 
 
-def list_swarms_for_profile(session, profile_id: str) -> list[dict[str, Any]]:
-    runs = listing(session, "swarm_run")
-    return [r for r in runs if r.get("profile_id") == profile_id][::-1]
+def list_swarms_for_profile(session, profile_id):
+    return [r for r in listing(session, "swarm_run") if r.get("profile_id") == profile_id][::-1]
 
 
-def spawn_swarm(
-    session,
-    profile_id: str,
-    conversation_id: str | None,
-    preset: str,
-    task: str,
-    operation_id: str,
-    custom_roles: list[dict[str, str]] | None = None
-) -> dict[str, Any]:
+def spawn_swarm(session, profile_id, conversation_id, preset, task, operation_id, custom_roles=None):
+    from . import swarm_runner
+    from .task_journal import fingerprint
     profile = get(session, profile_id, "profile")
     if not profile.get("enabled"):
         raise Problem("profile_disabled", "Enable this profile before starting swarm work.", 409)
-
     cfg = get_profile_swarm_config(profile)
     if not cfg["enabled"]:
-        raise Problem("swarms_disabled", f"Swarms are disabled for {profile['name']}. Enable swarms in profile settings.", 403)
-
+        raise Problem("swarms_disabled", "Swarms are disabled for this profile.", 403)
     if preset not in cfg["allowed_presets"]:
-        raise Problem("preset_not_permitted", f"The '{preset}' swarm preset is not permitted for this profile.", 403)
-
-    task_clean = str(task or "").strip()
-    if not task_clean or len(task_clean) > 20000:
-        raise Problem("invalid_task", "Provide a task description between 1 and 20,000 characters.")
-
-    # Idempotency
-    swarm_id = hashlib.sha256(f"swarm:{profile_id}:{operation_id}".encode()).hexdigest()
-    if session.get(Entity, swarm_id):
-        existing = get(session, swarm_id, "swarm_run")
-        return existing
-
-    # Resolve workers
-    if preset == "custom" and custom_roles:
-        workers_spec = [
-            {
-                "id": f"custom_{i+1}",
-                "role": r.get("role", f"Specialist {i+1}"),
-                "tag": f"worker-{i+1}",
-                "objective": r.get("objective", "Execute custom objective.")
-            }
-            for i, r in enumerate(custom_roles)
-        ]
-    else:
-        spec = SWARM_PRESET_MAP.get(preset, SWARM_PRESET_MAP["custom"])
-        workers_spec = spec["workers"]
-
-    workers_state = [
-        {
-            "id": w["id"],
-            "role": w["role"],
-            "tag": w.get("tag", "worker"),
-            "objective": w["objective"],
-            "state": "pending",
-            "output": None,
-            "error": None
-        }
-        for w in workers_spec
-    ]
-
-    swarm_data = {
-        "profile_id": profile_id,
-        "conversation_id": conversation_id,
-        "preset": preset,
-        "task": task_clean,
-        "state": "queued",
-        "operation_id": operation_id,
-        "workers": workers_state,
-        "synthesized_output": None,
-        "error": None
-    }
-
-    record = create(session, "swarm_run", swarm_data, id=swarm_id)
-    event(session, swarm_id, "swarm.queued", {"preset": preset, "workers_count": len(workers_state)})
-
-    # Dispatch execution safely across sync or async contexts
-    dispatch_swarm_task(swarm_id)
+        raise Problem("preset_not_permitted", "This swarm preset is not allowed.", 403)
+    placement = profile.get("execution_placement") or {"machine_id": "local", "native_name": profile["native_name"]}
+    # Validate task/role shape on the host; the node rechecks its own installed policy.
+    try:
+        req = swarm_runner.request_for(profile["native_name"], preset, task, operation_id, custom_roles)
+    except (ValueError, OSError) as exc:
+        raise Problem("invalid_swarm_request", str(exc), 409)
+    req["native_name"] = placement["native_name"]
+    ident = hashlib.sha256(f"swarm:{profile_id}:{operation_id}".encode()).hexdigest()
+    digest = fingerprint(req)
+    if session.get(Entity, ident):
+        prior = get(session, ident, "swarm_run")
+        if prior.get("request_fingerprint") != digest:
+            raise Problem("idempotency_conflict", "This operation ID already identifies different swarm work.", 409)
+        return prior
+    record = create(session, "swarm_run", {"profile_id": profile_id, "conversation_id": conversation_id,
+        "preset": preset, "task": task, "operation_id": operation_id, "request": req, "request_fingerprint": digest,
+        "owner_machine": placement["machine_id"], "state": "queued", "event_cursor": 0,
+        "workers": [{**w, "state": "pending", "output": None, "error": None} for w in req["workers"]],
+        "synthesized_output": None, "error": None}, id=ident)
+    event(session, ident, "swarm.queued", {"workers_count": len(req["workers"]), "owner_machine": placement["machine_id"]})
+    # Admission is committed before the supervisor launches any native worker.
     return record
 
 
-def dispatch_swarm_task(swarm_id: str):
-    try:
-        loop = asyncio.get_running_loop()
-        SWARM_TASKS[swarm_id] = loop.create_task(execute_swarm(swarm_id))
-    except RuntimeError:
-        import threading
-        t = threading.Thread(target=lambda: asyncio.run(execute_swarm(swarm_id)), daemon=True)
-        t.start()
+def project_events(session, record, entries):
+    workers = record["workers"]
+    patch = {}
+    cursor = record.get("event_cursor", 0)
+    for e in entries:
+        if e["sequence"] <= cursor:
+            continue
+        if e["sequence"] != cursor + 1:
+            raise Problem("event_gap", "Synchronize missing task events before publishing later results.", 409)
+        kind, data = e["type"], e["data"]
+        # Diagnostic events may be added without changing the v1 state contract.
+        # Retain them and advance the cursor even when no projection consumes them.
+        if not isinstance(kind, str) or not kind.startswith("swarm.") or len(kind) > 128:
+            raise Problem("invalid_task_event", "Unknown task event")
+        if kind == "swarm.worker_bound":
+            for worker in workers:
+                if worker["id"] == data.get("worker_id"):
+                    worker["native_session_id"] = data.get("native_session_id")
+        if kind == "swarm.started":
+            patch["state"] = "running"
+        if kind in {"swarm.worker_started", "swarm.worker_finished"}:
+            for worker in workers:
+                if worker["id"] == data.get("worker_id", data.get("id")):
+                    worker.update(state=("running" if kind.endswith("started") else
+                        "completed" if data.get("status") == "completed" else data.get("status", "failed")),
+                        output=data.get("summary"), error=data.get("error"))
+                    if data.get("artifacts"):
+                        worker["artifacts"] = data["artifacts"]
+                    if data.get("native_session_id"):
+                        worker["native_session_id"] = data["native_session_id"]
+                    worker.update({k: data[k] for k in ("model", "tokens", "cost_usd", "cost_status", "api_calls") if k in data})
+        if kind == "swarm.finished":
+            from .task_journal import TERMINAL
+            if data.get("state") not in TERMINAL:
+                raise Problem("invalid_task_state", "Invalid terminal task state")
+            patch.update({k: data.get(k) for k in ("state", "synthesized_output", "error", "usage")})
+            for worker in workers:
+                if worker["state"] == "pending":
+                    worker.update(state="not_started", error="A prerequisite stage stopped or the swarm was cancelled")
+        event(session, record["id"], kind, data)
+        cursor = e["sequence"]
+    if cursor != record.get("event_cursor", 0):
+        change(session, record["id"], {**patch, "workers": workers, "event_cursor": cursor})
+    return cursor
 
 
-async def execute_worker(
-    swarm_id: str,
-    worker: dict[str, Any],
-    task: str,
-    preset: str,
-    profile: dict[str, Any]
-) -> dict[str, Any]:
-    with transaction() as session:
-        cur = get(session, swarm_id, "swarm_run")
-        workers = cur.get("workers", [])
-        for w in workers:
-            if w["id"] == worker["id"]:
-                w["state"] = "running"
-        change(session, swarm_id, {"workers": workers})
-        event(session, swarm_id, "swarm.worker_started", {"worker_id": worker["id"], "role": worker["role"]})
-
-    # Execute worker logic
-    try:
-        model_conn = profiles.resolve_model_connection(profile)
-        worker_output = await generate_worker_output(worker, task, preset, model_conn, profile)
-        with transaction() as session:
-            cur = get(session, swarm_id, "swarm_run")
-            workers = cur.get("workers", [])
-            for w in workers:
-                if w["id"] == worker["id"]:
-                    w["state"] = "completed"
-                    w["output"] = worker_output
-            change(session, swarm_id, {"workers": workers})
-            event(session, swarm_id, "swarm.worker_completed", {"worker_id": worker["id"], "role": worker["role"]})
-        return {"worker_id": worker["id"], "role": worker["role"], "output": worker_output, "error": None}
-    except Exception as exc:
-        logger.exception("Worker %s in swarm %s failed", worker["id"], swarm_id)
-        error_msg = str(exc)
-        with transaction() as session:
-            cur = get(session, swarm_id, "swarm_run")
-            workers = cur.get("workers", [])
-            for w in workers:
-                if w["id"] == worker["id"]:
-                    w["state"] = "failed"
-                    w["error"] = error_msg
-            change(session, swarm_id, {"workers": workers})
-            event(session, swarm_id, "swarm.worker_failed", {"worker_id": worker["id"], "error": error_msg})
-        return {"worker_id": worker["id"], "role": worker["role"], "output": None, "error": error_msg}
-
-
-async def generate_worker_output(
-    worker: dict[str, Any],
-    task: str,
-    preset: str,
-    model_conn: dict[str, Any] | None,
-    profile: dict[str, Any]
-) -> str:
-    # If a real model endpoint is configured, invoke it
-    if model_conn and model_conn.get("base_url"):
-        import httpx
-        url = model_conn["base_url"].rstrip("/") + "/chat/completions"
-        headers = {"Content-Type": "application/json"}
-        api_key = model_conn.get("api_key") or profile.get("api_key")
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-
-        prompt = (
-            f"You are the {worker['role']} in a specialized {preset} swarm.\n"
-            f"Your specific objective: {worker['objective']}\n\n"
-            f"Task: {task}\n\n"
-            f"Provide your detailed, high-quality, domain-specific contribution as {worker['role']}."
-        )
-        payload = {
-            "model": model_conn.get("model", "default"),
-            "messages": [
-                {"role": "system", "content": f"You are {worker['role']} in an ARA Agent OS swarm. Fulfill your objective with clarity, thoroughness, and precision."},
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0.3
-        }
+async def supervise():
+    from . import swarm_runner
+    from .task_journal import TERMINAL
+    while True:
         try:
-            async with httpx.AsyncClient(timeout=40.0) as client:
-                res = await client.post(url, headers=headers, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    choices = data.get("choices", [])
-                    if choices and "message" in choices[0]:
-                        return choices[0]["message"].get("content", "").strip()
-        except Exception as exc:
-            logger.warning("Direct model call for swarm worker failed: %s; falling back to synthesized output", exc)
-
-    # Deterministic high-value structured output when offline or during test mocks
-    role = worker["role"]
-    obj = worker["objective"]
-    return (
-        f"### {role} Findings\n"
-        f"**Objective**: {obj}\n\n"
-        f"- Analyzed task parameters for: '{task}'\n"
-        f"- Executed role responsibilities according to the {preset} swarm protocol.\n"
-        f"- Generated key findings and recommendations verified for downstream synthesis."
-    )
-
-
-async def execute_swarm(swarm_id: str):
-    try:
-        with transaction() as session:
-            record = get(session, swarm_id, "swarm_run")
-            profile = get(session, record["profile_id"], "profile")
-            change(session, swarm_id, {"state": "running"})
-            event(session, swarm_id, "swarm.started", {"preset": record["preset"]})
-
-        workers = record.get("workers", [])
-        task = record["task"]
-        preset = record["preset"]
-
-        # Run workers in tandem (concurrently)
-        results = await asyncio.gather(
-            *(execute_worker(swarm_id, w, task, preset, profile) for w in workers)
-        )
-
-        # Synthesize consolidated outcome
-        succeeded_workers = [r for r in results if r.get("output")]
-        worker_sections = "\n\n---\n\n".join(
-            f"#### {r['role']}\n{r['output']}" for r in succeeded_workers
-        )
-
-        preset_title = SWARM_PRESET_MAP.get(preset, {}).get("name", f"{preset.capitalize()} Swarm")
-        synthesized = (
-            f"## {preset_title} Synthesis\n\n"
-            f"**Task**: {task}\n\n"
-            f"**Swarm Composition**: {len(workers)} bots working in tandem ({', '.join(w['role'] for w in workers)}).\n\n"
-            f"### Executive Summary\n"
-            f"All specialized workers in the {preset} swarm completed their designated phases in tandem. "
-            f"Below are the verified findings and contributions from each specialist.\n\n"
-            f"---\n\n"
-            f"{worker_sections}\n\n"
-            f"---\n"
-            f"*Verified by ARA Swarm Coordinator.*"
-        )
-
-        with transaction() as session:
-            change(session, swarm_id, {
-                "state": "succeeded",
-                "synthesized_output": synthesized
-            })
-            event(session, swarm_id, "swarm.completed", {
-                "workers_completed": len(succeeded_workers),
-                "total_workers": len(workers)
-            })
-
-    except Exception as exc:
-        logger.exception("Swarm %s failed execution", swarm_id)
-        with transaction() as session:
-            change(session, swarm_id, {
-                "state": "failed",
-                "error": str(exc)
-            })
-            event(session, swarm_id, "swarm.failed", {"error": str(exc)})
-    finally:
-        SWARM_TASKS.pop(swarm_id, None)
+            with transaction() as session:
+                records = [r for r in listing(session, "swarm_run") if r.get("owner_machine", "local") == "local"
+                    and r["state"] not in TERMINAL]
+            for record in records:
+                if not record.get("request"):
+                    with transaction() as session:
+                        change(session, record["id"], {"state": "unknown", "error": "Legacy execution has no durable receipt. Inspect before retrying."})
+                    continue
+                try:
+                    local = swarm_runner.journal().read(record["id"])
+                except ValueError:
+                    if record["state"] != "queued":
+                        with transaction() as session:
+                            change(session, record["id"], {"state": "unknown", "error": "Local execution receipt is missing. Inspect native history before retrying."})
+                        continue
+                    local = swarm_runner.admit(record["request"], record["id"])
+                with transaction() as session:
+                    owner = get(session, record["profile_id"], "profile")
+                placement = owner.get("execution_placement") or {"machine_id": "local", "native_name": owner["native_name"]}
+                if record.get("cancel_requested") or not owner.get("enabled") or placement != {"machine_id": "local", "native_name": record["request"]["native_name"]}:
+                    swarm_runner.journal().cancel(record["id"])
+                if local["state"] == "queued":
+                    swarm_runner.launch(record["id"])
+                local = swarm_runner.journal().reconcile(record["id"])
+                with transaction() as session:
+                    current = get(session, record["id"], "swarm_run")
+                    project_events(session, current, local["events"])
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Swarm receipt reconciliation stopped; retrying without resubmitting admitted work")
+        await asyncio.sleep(.5)

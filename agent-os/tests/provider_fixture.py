@@ -31,9 +31,13 @@ async def completion(request: Request):
     is_approval = any("ARA_APPROVAL_TEST" in str(m.get("content", "")) for m in messages)
     is_clarify = any("ARA_CLARIFY_TEST" in str(m.get("content", "")) for m in messages)
     is_slow = any("ARA_SLOW_TEST" in str(m.get("content", "")) for m in messages)
-    is_tool_test = is_clarify or any("ARA_TOOL_TEST" in str(m.get("content", "")) for m in messages)
-    target_name = "clarify" if is_clarify else "mcp__ara_data__ara_list_datasets"
-    target_arguments = {"questions": [{"question": "Which test option?", "choices": ["Option A", "Option B"]}]} if is_clarify else {}
+    is_swarm_write = any("ARA_SWARM_WRITE_TEST" in str(m.get("content", "")) and "Role: Implementation Engineer" in str(m.get("content", "")) for m in messages)
+    is_swarm_check = any("ARA_SWARM_WRITE_TEST" in str(m.get("content", "")) and "Role: Reviewer & QA Engineer" in str(m.get("content", "")) for m in messages)
+    is_tool_test = is_swarm_write or is_swarm_check or is_clarify or any("ARA_TOOL_TEST" in str(m.get("content", "")) for m in messages)
+    target_name = "write_file" if is_swarm_write else "terminal" if is_swarm_check else "clarify" if is_clarify else "mcp__ara_data__ara_list_datasets"
+    target_arguments = ({"path": "swarm-proof.txt", "content": "Implemented by the actual native worker.\n"} if is_swarm_write else
+        {"command": "test -f swarm-proof.txt && echo ARA_SWARM_FILE_CHECK_PASSED"} if is_swarm_check else
+        {"questions": [{"question": "Which test option?", "choices": ["Option A", "Option B"]}]} if is_clarify else {})
     deferred = next((t for t in tools if t.get("function", {}).get("name") == "tool_call"), None)
     if is_approval and "memory" not in prior_calls:
         message = {"role": "assistant", "content": None, "tool_calls": [{"id": "fixture-memory", "type": "function", "function": {"name": "memory", "arguments": json.dumps({"target": "memory", "action": "add", "content": "ARA approved memory verification marker"})}}]}
@@ -41,9 +45,16 @@ async def completion(request: Request):
     elif is_clarify and "clarify" not in prior_calls:
         message = {"role": "assistant", "content": None, "tool_calls": [{"id": "fixture-clarify", "type": "function", "function": {"name": "clarify", "arguments": json.dumps(target_arguments)}}]}
         finish = "tool_calls"
+    elif (is_swarm_write or is_swarm_check) and target_name not in prior_calls:
+        message = {"role": "assistant", "content": None, "tool_calls": [{"id": "fixture-swarm-tool", "type": "function", "function": {
+            "name": target_name, "arguments": json.dumps(target_arguments)}}]}
+        finish = "tool_calls"
+    elif (is_swarm_write or is_swarm_check) and tool_messages:
+        message = {"role": "assistant", "content": "Native worker tool result: " + str(tool_messages[-1].get("content", ""))[:2000]}
+        finish = "stop"
     elif is_tool_test and deferred and "tool_call" not in prior_calls and not is_clarify:
         if "tool_search" not in prior_calls:
-            name, arguments = "tool_search", {"queries": ["clarify" if is_clarify else "ara datasets"]}
+            name, arguments = "tool_search", {"queries": [target_name if is_swarm_write or is_swarm_check or is_clarify else "ara datasets"]}
         elif "tool_describe" not in prior_calls:
             name, arguments = "tool_describe", {"names": [target_name]}
         else:
@@ -54,7 +65,7 @@ async def completion(request: Request):
         message = {"role": "assistant", "content": "Native data tool verified: " + str(tool_messages[-1].get("content", ""))[:1000]}
         finish = "stop"
     elif is_tool_test:
-        candidate = next((t for t in tools if ("clarify" if is_clarify else "ara_list_datasets") in t.get("function", {}).get("name", "")), None)
+        candidate = next((t for t in tools if (target_name if is_swarm_write or is_swarm_check or is_clarify else "ara_list_datasets") in t.get("function", {}).get("name", "")), None)
         if candidate:
             message = {"role": "assistant", "content": None, "tool_calls": [{"id": "test-call-1", "type": "function", "function": {"name": candidate["function"]["name"], "arguments": json.dumps(target_arguments)}}]}
             finish = "tool_calls"

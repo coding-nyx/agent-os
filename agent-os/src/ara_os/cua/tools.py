@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import json
 from typing import Any, Dict, List
 
 from .engine import cua_engine
@@ -10,7 +11,7 @@ from .models import CUAAction
 CUA_TOOLS: List[Dict[str, Any]] = [
     {
         "name": "ara_cua_list_devices",
-        "description": "List all devices available for computer and system control (macOS desktop, Android devices, Linux, etc.) including their platform, resolution, and capabilities.",
+        "description": "List validated native desktop adapters. Driver presence alone is not proof of capture or input readiness.",
         "inputSchema": {
             "type": "object",
             "properties": {},
@@ -30,21 +31,18 @@ CUA_TOOLS: List[Dict[str, Any]] = [
                     "type": "string",
                     "description": "Target device ID (e.g. 'macos_local', 'android_...', 'linux_local'). If omitted, the default primary device is used.",
                 },
+                "operation_id": {"type": "string", "minLength": 1, "maxLength": 120,
+                    "description": "Stable operation ID required for agent inputs. Reuse on retries; never resubmit unknown work under a new ID."},
                 "action": {
                     "type": "string",
                     "enum": [
                         "screenshot",
-                        "mouse_move",
                         "left_click",
                         "right_click",
                         "double_click",
-                        "triple_click",
-                        "mouse_down",
-                        "mouse_up",
                         "drag",
                         "scroll",
                         "touch",
-                        "swipe",
                         "type",
                         "key",
                         "hotkey",
@@ -53,11 +51,15 @@ CUA_TOOLS: List[Dict[str, Any]] = [
                 },
                 "coordinate": {
                     "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
                     "items": {"type": "number"},
                     "description": "Normalized coordinates [x, y] in range [0.0, 1.0]. Example: [0.5, 0.5] for screen center.",
                 },
                 "end_coordinate": {
                     "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
                     "items": {"type": "number"},
                     "description": "Target normalized coordinates [x, y] for drag or swipe gestures.",
                 },
@@ -142,7 +144,7 @@ CUA_TOOLS: List[Dict[str, Any]] = [
 ]
 
 
-async def invoke_cua_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+async def invoke_cua_tool(name: str, args: Dict[str, Any], *, actor=None) -> Dict[str, Any]:
     """Universal dispatcher for CUA MCP tools."""
     if name == "ara_cua_list_devices":
         devices = await cua_engine.list_devices()
@@ -157,7 +159,7 @@ async def invoke_cua_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
     if name == "ara_cua_computer":
         action = CUAAction.from_dict(args)
-        result = await cua_engine.act(device_id, action)
+        result = await cua_engine.act(device_id, action, actor=actor, operation_id=args.get("operation_id"))
         return result.to_dict()
 
     elif name == "ara_cua_semantic":
@@ -167,7 +169,17 @@ async def invoke_cua_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         return result.to_dict()
 
     elif name == "ara_cua_ui_tree":
-        tree = await cua_engine.get_ui_tree(device_id)
+        tree = await cua_engine.get_ui_tree(device_id, actor=actor)
         return {"device_id": device_id, "ui_tree": tree}
 
     return {"error": f"Unknown CUA tool: {name}"}
+
+
+def result_content(value):
+    clean = {k: v for k, v in value.items() if k != "frame_base64"}
+    content = [{"type": "text", "text": json.dumps(clean)}]
+    if value.get("frame_base64"):
+        fmt = value.get("metadata", {}).get("format", "png")
+        content.append({"type": "image", "data": value["frame_base64"],
+                        "mimeType": "image/jpeg" if fmt in {"jpeg", "jpg"} else "image/png"})
+    return content

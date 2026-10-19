@@ -24,6 +24,7 @@ def main():
     setup.add_argument("--use-existing", action="store_true", help="Use the model/account already configured in this installation's native root")
     setup.add_argument("--replace-models", action="store_true", help="Explicitly replace existing preset model choices")
     setup.add_argument("--non-interactive", action="store_true", help="Never prompt; use --use-existing or skip model setup")
+    setup.add_argument("--computer-control", action="store_true", help="Explicitly install/check the native desktop driver; grants remain disabled")
     chat = subs.add_parser("chat", help="Use the native agent CLI for an ARA profile")
     chat.add_argument("profile", help="Profile ID or native profile name")
     chat.add_argument("args", nargs=argparse.REMAINDER)
@@ -45,14 +46,46 @@ def main():
     node = subs.add_parser("node", help="Node status and profile synchronization")
     node_sub = node.add_subparsers(dest="action", required=True)
     node_sub.add_parser("status")
+    node_init = node_sub.add_parser("init", help="Create a standalone native node profile without PostgreSQL")
+    node_init.add_argument("--profile", required=True)
+    node_init.add_argument("--computer-control", action="store_true", help="Explicitly install the native desktop driver; no grants enabled")
     pair = node_sub.add_parser("pair"); pair.add_argument("--enrollment", type=Path, required=True)
     sync = node_sub.add_parser("sync"); sync.add_argument("--profile", required=True)
     sync.add_argument("--watch", action="store_true", help="Watch committed native assets and periodically snapshot active state")
     sync.add_argument("--interval", type=int, default=5, help="Asset reconciliation interval, minimum 2 seconds")
+    work = node_sub.add_parser("work", help="Run assigned node-local swarms and synchronize durable task receipts")
+    work.add_argument("--once", action="store_true", help="Exchange one task/event batch and exit; admitted workers remain running")
+    swarm = subs.add_parser("swarm", help="Standalone node-local native swarms; PostgreSQL is not required")
+    swarm_sub = swarm.add_subparsers(dest="action", required=True)
+    policy = swarm_sub.add_parser("configure")
+    policy.add_argument("--profile", required=True)
+    policy.add_argument("--enabled", choices=["yes", "no"], required=True)
+    policy.add_argument("--workspace", type=Path)
+    policy.add_argument("--toolsets", help="Explicit comma-separated worker grants: file,terminal,web")
+    run_swarm = swarm_sub.add_parser("run")
+    run_swarm.add_argument("--profile", required=True)
+    run_swarm.add_argument("--preset", choices=["research", "coding", "analysis", "custom"], required=True)
+    run_swarm.add_argument("--task", required=True)
+    run_swarm.add_argument("--operation-id", required=True)
+    run_swarm.add_argument("--roles", type=Path, help="Custom roles JSON file")
+    run_swarm.add_argument("--wait", action="store_true")
+    for name in ("status", "cancel", "_worker"):
+        command = swarm_sub.add_parser(name)
+        command.add_argument("task_id")
     cua = subs.add_parser("cua", help="Computer Use Agent (CUA) system control and MCP server")
     cua_sub = cua.add_subparsers(dest="action", required=True)
-    cua_sub.add_parser("mcp", help="Run standalone CUA stdio MCP server for Hermes")
+    cua_mcp = cua_sub.add_parser("mcp", help="Run standalone CUA stdio MCP server for Hermes")
+    cua_mcp.add_argument("--profile", required=True, help="Native profile identity with explicit computer grants")
     cua_sub.add_parser("devices", help="List discovered devices available for computer control")
+    cua_sub.add_parser("approvals", help="Inspect pending local computer inputs without a web server")
+    for name in ("approve", "reject"):
+        approval_command = cua_sub.add_parser(name, help="Explicit local operator decision for one pending computer input")
+        approval_command.add_argument("approval_id")
+    cua_config = cua_sub.add_parser("configure", help="Explicitly configure standalone computer permissions")
+    cua_config.add_argument("--profile", required=True)
+    cua_config.add_argument("--mode", choices=["view_only", "supervised", "autonomous"], default="view_only")
+    cua_config.add_argument("--allow-view", action="store_true")
+    cua_config.add_argument("--allow-input", action="store_true")
     args = parser.parse_args()
     if args.state:
         os.environ["ARA_STATE_DIR"] = str(Path(args.state).resolve())
@@ -65,6 +98,15 @@ def main():
             from .setup import run_setup
             try:
                 run_setup(args)
+                if args.computer_control:
+                    code = subprocess.call([str(config.RUNTIME_PYTHON), "-m", "hermes_cli.main", "computer-use", "install"],
+                                           cwd=config.RUNTIME_SOURCE, env=config.runtime_env())
+                    if code:
+                        raise Problem("computer_setup_incomplete", "The native driver installer reported a failure. No desktop grants were enabled.")
+                from .runtime_adapter import computer
+                status = asyncio.run(computer({"action": "status"}))
+                print("Computer control: " + ("driver installed; live readiness not yet verified" if status["installed"] else
+                    "unavailable; optionally rerun setup with --computer-control") + ". Desktop grants are explicit and separate from model setup.")
             except (EOFError, KeyboardInterrupt):
                 print("Setup interrupted. Review preset model settings before rerunning; no work was resubmitted.", file=sys.stderr)
                 raise SystemExit(130)
@@ -102,10 +144,29 @@ def main():
             asyncio.run(restore_bundle(args))
         elif args.command == "node":
             asyncio.run(node_command(args))
+        elif args.command == "swarm":
+            asyncio.run(swarm_command(args))
         elif args.command == "cua":
             if args.action == "mcp":
                 from .cua.mcp_server import main as run_cua_mcp
-                run_cua_mcp()
+                run_cua_mcp(args.profile)
+            elif args.action == "approvals":
+                print(json.dumps([json.loads(path.read_text()) for path in sorted((config.STATE / "computer-approvals").glob("*.json"))], indent=2))
+            elif args.action in {"approve", "reject"}:
+                from .cua import cua_engine
+                result = asyncio.run(cua_engine.approve(args.approval_id)) if args.action == "approve" else cua_engine.reject(args.approval_id)
+                print(json.dumps(result.to_dict(), indent=2))
+                if args.action == "approve" and not result.success:
+                    raise SystemExit(1)
+            elif args.action == "configure":
+                from .cua import policy
+                from .swarm_runner import profile
+                if args.allow_input and not args.allow_view:
+                    raise Problem("invalid_computer_grant", "Input access also requires an explicit --allow-view grant")
+                profile(args.profile)
+                cfg = policy.read()
+                cfg["grants"][args.profile] = (["view"] if args.allow_view else []) + (["input"] if args.allow_view and args.allow_input else [])
+                print(json.dumps(policy.update({"mode": args.mode, "grants": cfg["grants"]}), indent=2))
             elif args.action == "devices":
                 from .cua import discover_all_devices
                 async def print_devs():
@@ -203,10 +264,46 @@ async def node_command(args):
     import hashlib
     import httpx
     pair_path = config.STATE / "node-connection.json"
+    if args.action == "init":
+        from .swarm_policy import DEFAULTS
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", args.profile) or args.profile == "default":
+            raise Problem("invalid_profile_name", "Choose a non-default native node profile name")
+        workspace = config.STATE / "workspaces" / args.profile
+        workspace.mkdir(parents=True, exist_ok=True)
+        await runtime.call({"operation": "create", "profiles": [{"name": args.profile,
+            "soul": "You are an ARA node agent. Work within explicit task and tool grants. Inspect uncertain outcomes before retrying.",
+            "description": "Standalone ARA execution node profile", "ara_config": {
+                "terminal": {"backend": "local", "cwd": str(workspace)}, "ara": {"swarm": dict(DEFAULTS)}}}]})
+        if args.computer_control:
+            code = subprocess.call([str(config.RUNTIME_PYTHON), "-m", "hermes_cli.main", "computer-use", "install"],
+                                   cwd=config.RUNTIME_SOURCE, env=config.runtime_env())
+            if code:
+                raise Problem("computer_setup_incomplete", "Native driver installation failed. No computer grants were enabled.")
+        print(json.dumps({"native_name": args.profile, "model_setup": f"hermes --profile {args.profile} model",
+            "swarms": "Configure explicit workspace and tool grants using ara swarm configure",
+            "host_link": "Pair with ara node pair; then run ara node work", "database_required": False}, indent=2))
+        return
+    if args.action == "work":
+        from .node_execution import exchange
+        if not pair_path.exists():
+            raise Problem("node_not_paired", "Pair this node before exchanging execution tasks")
+        enrollment = json.loads(pair_path.read_text())
+        while True:
+            try:
+                print(json.dumps(await exchange(enrollment)), flush=True)
+            except httpx.HTTPError:
+                print("Node link unavailable; admitted local work continues and events remain queued.", file=sys.stderr, flush=True)
+                if args.once:
+                    raise SystemExit(1)
+            if args.once:
+                return
+            await asyncio.sleep(2)
     if args.action == "status":
         print(json.dumps({"product": "ARA Agent OS", "runtime_installed": config.RUNTIME_PYTHON.exists(), "state_directory": str(config.STATE), "paired": pair_path.exists()}, indent=2))
     elif args.action == "pair":
         enrollment = json.loads(args.enrollment.read_text())
+        from .node_execution import validate_connection
+        validate_connection(enrollment)
         async with httpx.AsyncClient(timeout=20) as client:
             response = await client.post(enrollment["host"] + "/api/v1/nodes/check", headers={"X-ARA-Node-Key": enrollment["token"]}, json={"machine_id": enrollment["machine_id"]})
         if response.status_code != 200:
@@ -260,6 +357,42 @@ async def node_command(args):
             if not args.watch:
                 break
             await asyncio.sleep(max(2, args.interval))
+
+
+async def swarm_command(args):
+    from . import swarm_runner, swarm_policy, runtime
+    from .task_journal import TERMINAL
+    if args.action == "configure":
+        p = swarm_runner.profile(args.profile)
+        cfg = swarm_policy.read(runtime.home(p))
+        cfg["enabled"] = args.enabled == "yes"
+        if args.workspace:
+            cfg["workspace"] = str(args.workspace.resolve())
+        if args.toolsets is not None:
+            cfg["toolsets"] = [t.strip() for t in args.toolsets.split(",") if t.strip()]
+        print(json.dumps(swarm_policy.write(runtime.home(p), cfg), indent=2))
+    elif args.action == "run":
+        request = swarm_runner.request_for(args.profile, args.preset, args.task, args.operation_id,
+            json.loads(args.roles.read_text()) if args.roles else None)
+        receipt = swarm_runner.admit(request)
+        swarm_runner.launch(receipt["id"])
+        print(json.dumps({"task_id": receipt["id"], "state": receipt["state"], "contract": request["contract"]}), flush=True)
+        if args.wait:
+            while True:
+                value = swarm_runner.journal().reconcile(receipt["id"])
+                if value["state"] in TERMINAL:
+                    print(json.dumps(value, indent=2))
+                    if value["state"] != "succeeded":
+                        raise SystemExit(1)
+                    break
+                await asyncio.sleep(.25)
+    elif args.action == "_worker":
+        await swarm_runner.execute(args.task_id)
+    elif args.action == "cancel":
+        swarm_runner.journal().cancel(args.task_id)
+        print(json.dumps({"task_id": args.task_id, "cancel_requested": True}))
+    else:
+        print(json.dumps(swarm_runner.journal().reconcile(args.task_id), indent=2))
 
 
 if __name__ == "__main__":

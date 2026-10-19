@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import platform
 from typing import Dict, List, Optional
 
-from .android import AndroidDeviceProvider
 from .base import BaseDeviceProvider
-from .linux import LinuxDeviceProvider
-from .macos import MacOSDeviceProvider
+from .native import NativeDeviceProvider
 
 
 _REGISTRY: Dict[str, BaseDeviceProvider] = {}
@@ -22,29 +19,15 @@ def get_device_provider(device_id: str) -> Optional[BaseDeviceProvider]:
 
 async def discover_all_devices() -> List[BaseDeviceProvider]:
     """Auto-discovers locally available devices (macOS host, Linux host, connected Android devices via ADB)."""
-    current_os = platform.system().lower()
-
-    # Host OS registration
-    if current_os == "darwin":
-        if "macos_local" not in _REGISTRY:
-            register_device(MacOSDeviceProvider("macos_local", "Mac System"))
-    elif current_os == "linux":
-        if "linux_local" not in _REGISTRY:
-            register_device(LinuxDeviceProvider("linux_local", "Linux Workstation"))
-
-    # Android ADB discovery
-    android_devices = await AndroidDeviceProvider.discover_devices()
-    for dev in android_devices:
-        register_device(dev)
+    if "local_desktop" not in _REGISTRY:
+        register_device(NativeDeviceProvider())
 
     return list(_REGISTRY.values())
 
 
 __all__ = [
     "BaseDeviceProvider",
-    "MacOSDeviceProvider",
-    "AndroidDeviceProvider",
-    "LinuxDeviceProvider",
+    "NativeDeviceProvider",
     "register_device",
     "get_device_provider",
     "discover_all_devices",

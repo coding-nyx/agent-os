@@ -48,13 +48,16 @@ async def lifespan(app):
                 return
 
     preparation = asyncio.create_task(prepare())
+    from .swarms import supervise
+    supervisor = asyncio.create_task(supervise())
     # Keep static UI and diagnostics reachable while storage recovers.
     yield
     preparation.cancel()
+    supervisor.cancel()
     tasks = list(runs.TASKS.values())
     for task in tasks:
         task.cancel()
-    await asyncio.gather(preparation, *tasks, return_exceptions=True)
+    await asyncio.gather(preparation, supervisor, *tasks, return_exceptions=True)
 
 
 app = FastAPI(title="ARA Agent OS", version=__version__, lifespan=lifespan)
@@ -83,11 +86,17 @@ async def storage_handler(request, exc):
 
 @app.middleware("http")
 async def boundary(request: Request, call_next):
+    if not trusted_host(request.headers.get("host", "")):
+        return JSONResponse({"error": {"code": "untrusted_host", "detail": "Use the configured Agent OS address."}}, 403)
     origin = request.headers.get("origin", "")
     if request.method not in {"GET", "HEAD", "OPTIONS"} and origin:
         from urllib.parse import urlsplit
         if urlsplit(origin).netloc != request.headers.get("host"):
             return JSONResponse({"error": {"code": "origin_mismatch", "detail": "Use the connected Agent OS application to change state."}}, 403)
+    if request.url.path.startswith("/api/v1/cua/") and request.url.path != "/api/v1/cua/session":
+        expected = "Bearer " + config.private_file("computer-operator-token")
+        if not hmac.compare_digest(request.headers.get("authorization", ""), expected):
+            return JSONResponse({"error": {"code": "computer_auth_required", "detail": "Open System Control in the local dashboard."}}, 401)
     try:
         response = await call_next(request)
     except Exception:
@@ -96,7 +105,20 @@ async def boundary(request: Request, call_next):
         return JSONResponse({"error": {"code": "unexpected_failure", "detail": "This operation stopped unexpectedly. Existing data is retained.", "reference": id}}, 500)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "same-origin"
+    if request.url.path.startswith("/api/v1/cua/"):
+        response.headers["Cache-Control"] = "no-store"
     return response
+
+
+def trusted_host(value):
+    # Same-origin checks alone do not stop browser DNS rebinding against a
+    # loopback operator service. A real reverse proxy must use the configured URL.
+    from urllib.parse import urlsplit
+    try:
+        host = urlsplit("//" + value).hostname
+        return bool(host) and host in {"localhost", "127.0.0.1", "::1", urlsplit(config.API_URL).hostname}
+    except ValueError:
+        return False
 
 
 class DatasetBody(BaseModel):
@@ -293,7 +315,7 @@ async def spawn_profile_swarm(id: str, body: dict):
             conversation_id=body.get("conversation_id"),
             preset=body.get("preset", "research"),
             task=body.get("task", ""),
-            operation_id=body.get("operation_id") or uuid.uuid4().hex,
+            operation_id=body.get("operation_id"),
             custom_roles=body.get("custom_roles")
         )
 
@@ -302,6 +324,23 @@ async def spawn_profile_swarm(id: str, body: dict):
 def get_swarm(swarm_id: str):
     with transaction() as session:
         return get(session, swarm_id, "swarm_run")
+
+
+@app.post("/api/v1/swarms/{swarm_id}/cancel")
+def cancel_swarm(swarm_id: str):
+    from .task_journal import TERMINAL
+    with transaction() as session:
+        record = get(session, swarm_id, "swarm_run")
+        if record["state"] in TERMINAL:
+            return record
+        return change(session, swarm_id, {"cancel_requested": True})
+
+
+@app.put("/api/v1/profiles/{id}/placement")
+def profile_placement(id: str, body: dict):
+    from .node_execution import placement
+    with transaction() as session:
+        return placement(session, id, body)
 
 
 @app.get("/api/v1/profiles/{id}")
@@ -318,6 +357,11 @@ async def profile_patch(id: str, body: PatchBody):
     profile = find(id, "profile")
     if profile["revision"] != body.revision:
         raise Problem("revision_conflict", "This profile changed. Reload before applying lifecycle changes.", 409)
+    if body.values.get("enabled") is False:
+        from .cua import policy
+        grants = policy.read()["grants"]
+        if id in grants:
+            policy.update({"grants": {key: value for key, value in grants.items() if key != id}})
     if "enabled" in body.values:
         await runtime.call({"operation": "profile-state", "name": profile["native_name"], "enabled": bool(body.values["enabled"])})
     with transaction() as session:
@@ -686,9 +730,43 @@ async def node_sync(request: Request):
         path.write_bytes(cipher().encrypt(data)); path.chmod(0o600)
     with transaction() as session:
         if session.get(Entity, id) is None:
-            create(session, "replica", {"machine_id": machine["id"], "profile_name": str(body["profile_name"])[:100], "sha256": body["sha256"], "state": "received_snapshot", "filename": path.name}, id=id)
+            create(session, "replica", {"machine_id": machine["id"], "profile_name": str(body["profile_name"])[:100],
+                "task_id": body.get("task_id"), "sha256": body["sha256"], "state": "received_snapshot", "filename": path.name}, id=id)
+        if body.get("task_id"):
+            task = get(session, body["task_id"], "swarm_run")
+            if task.get("owner_machine") != machine["id"]:
+                raise Problem("task_not_owned", "This node does not own that task", 403)
+            change(session, task["id"], {"native_snapshot_id": id, "recovery_state": "received_native_snapshot"})
         change(session, machine["id"], {"state": "paired", "last_received": datetime.now(timezone.utc).isoformat()})
     return {"acknowledged": True, "snapshot_id": id, "native_state": "passive", "credentials": "excluded", "automatic_activation": False}
+
+
+@app.post("/api/v1/nodes/tasks/poll")
+async def node_task_poll(request: Request):
+    from .node_execution import bindings
+    from .task_journal import TERMINAL
+    body = await request.json()
+    machine = authorized_node(request, body.get("machine_id", ""))
+    with transaction() as session:
+        assigned = bindings(session, machine["id"])
+        enabled_owners = {(b["profile_id"], b["native_name"]) for b in assigned if b["enabled"]}
+        owned = [r for r in listing(session, "swarm_run") if r.get("owner_machine") == machine["id"]]
+        tasks = [{"id": r["id"], "request": r["request"], "profile_id": r["profile_id"],
+                  "cancel_requested": bool(r.get("cancel_requested")) or (r["profile_id"], r["request"]["native_name"]) not in enabled_owners}
+                 for r in owned if r["state"] not in TERMINAL and r.get("request")]
+        receipts = {r["id"]: r.get("event_cursor", 0) for r in owned}
+        snapshot_receipts = [r["task_id"] for r in listing(session, "replica") if r.get("machine_id") == machine["id"] and r.get("task_id")]
+        change(session, machine["id"], {"last_seen": datetime.now(timezone.utc).isoformat(), "execution_contract": "ara-execution/1"})
+    return {"bindings": assigned, "tasks": tasks, "receipts": receipts, "snapshot_receipts": snapshot_receipts}
+
+
+@app.post("/api/v1/nodes/tasks/events")
+async def node_task_events(request: Request):
+    from .node_execution import receive
+    body = await request.json()
+    machine = authorized_node(request, body.get("machine_id", ""))
+    with transaction() as session:
+        return receive(session, machine["id"], body)
 
 
 @app.get("/api/v1/replicas")
@@ -749,7 +827,9 @@ async def mcp_route(profile_id: str, request: Request):
     if method == "initialize":
         result = {"protocolVersion": body.get("params", {}).get("protocolVersion", "2025-03-26"), "capabilities": {"tools": {}}, "serverInfo": {"name": "ARA data", "version": __version__}}
     elif method == "tools/list":
-        result = {"tools": mcp.TOOLS}
+        from .cua import policy as computer_policy
+        allowed = "view" in computer_policy.read()["grants"].get(profile_id, [])
+        result = {"tools": [t for t in mcp.TOOLS if allowed or not t["name"].startswith("ara_cua_")]}
     elif method == "tools/call":
         params = body.get("params", {})
         try:
@@ -761,8 +841,16 @@ async def mcp_route(profile_id: str, request: Request):
                 jsonschema.validate(params.get("arguments", {}), tool["inputSchema"])
             except jsonschema.ValidationError as exc:
                 raise Problem("invalid_tool_arguments", exc.message)
-            value = mcp.invoke(profile_id, params["name"], params.get("arguments", {}))
-            result = {"content": [{"type": "text", "text": json.dumps(value)}]}
+            if params["name"].startswith("ara_cua_"):
+                from .cua.tools import invoke_cua_tool, result_content
+                if not find(profile_id, "profile")["enabled"]:
+                    raise Problem("profile_disabled", "This profile is disabled", 403)
+                value = await invoke_cua_tool(params["name"], params.get("arguments", {}), actor=profile_id)
+                result = {"content": result_content(value), "isError": value.get("success") is False and
+                          value.get("metadata", {}).get("state") != "pending"}
+            else:
+                value = mcp.invoke(profile_id, params["name"], params.get("arguments", {}))
+                result = {"content": [{"type": "text", "text": json.dumps(value)}]}
         except Problem as exc:
             result = {"isError": True, "content": [{"type": "text", "text": exc.detail}]}
     elif method == "ping":
@@ -779,8 +867,74 @@ def storage_export():
     return JSONResponse({"format": "ara-os-v1", "entities": items}, headers={"Content-Disposition": 'attachment; filename="ara-agent-os.json"'})
 
 
-# CUA (Computer-Using Agent) System Control & Streaming
+# ARA-managed native computer control. Desktop grants are not dataset grants.
 from .cua import CUAAction, cua_engine
+
+
+@app.get("/api/v1/cua/session")
+def cua_operator_session(request: Request):
+    from urllib.parse import urlsplit
+    origin = request.headers.get("origin", "")
+    if (origin and urlsplit(origin).netloc != request.headers.get("host")) or request.headers.get("sec-fetch-site") not in {None, "same-origin", "none"}:
+        raise Problem("origin_mismatch", "Open System Control from the connected dashboard", 403)
+    return {"token": config.private_file("computer-operator-token")}
+
+
+@app.get("/api/v1/cua/state")
+def cua_state():
+    from .cua import policy
+    return policy.read()
+
+
+@app.put("/api/v1/cua/state")
+def cua_update_state(body: dict):
+    from .cua import policy
+    try:
+        for actor, grants in body.get("grants", {}).items():
+            if grants:
+                try:
+                    uuid.UUID(actor)
+                except ValueError:
+                    continue  # Standalone native-name grants have no app DB dependency.
+                if not find(actor, "profile")["enabled"]:
+                    raise Problem("profile_disabled", "Enable this profile before granting computer access", 403)
+        return policy.update({k: body[k] for k in ("mode", "kill_switch", "grants") if k in body})
+    except ValueError as exc:
+        raise Problem("invalid_computer_policy", str(exc))
+
+
+@app.get("/api/v1/cua/approvals")
+def cua_approvals():
+    directory = config.STATE / "computer-approvals"
+    return [json.loads(path.read_text()) for path in sorted(directory.glob("*.json"))]
+
+
+@app.post("/api/v1/cua/approvals/{id}/approve")
+async def cua_approve(id: str):
+    try:
+        if len(id) != 32 or any(c not in "0123456789abcdef" for c in id):
+            raise ValueError("Invalid approval ID")
+        pending = config.STATE / "computer-approvals" / (id + ".json")
+        if pending.is_file():
+            actor = json.loads(pending.read_text())["actor"]
+            try:
+                uuid.UUID(actor)
+            except ValueError:
+                pass
+            else:
+                if not find(actor, "profile")["enabled"]:
+                    raise Problem("profile_disabled", "This profile was disabled before approval", 403)
+        return (await cua_engine.approve(id)).to_dict()
+    except ValueError as exc:
+        raise Problem("approval_unavailable", str(exc), 409)
+
+
+@app.post("/api/v1/cua/approvals/{id}/reject")
+def cua_reject(id: str):
+    try:
+        return cua_engine.reject(id).to_dict()
+    except ValueError as exc:
+        raise Problem("approval_unavailable", str(exc), 409)
 
 
 @app.get("/api/v1/cua/devices")
@@ -790,93 +944,68 @@ async def list_cua_devices():
 
 @app.post("/api/v1/cua/devices/{device_id}/action")
 async def cua_device_action(device_id: str, body: dict):
-    action = CUAAction.from_dict(body)
     try:
-        res = await cua_engine.act(device_id, action)
-        return res.to_dict()
-    except ValueError as e:
-        raise Problem("device_not_found", str(e), 404)
+        action = CUAAction.from_dict(body)
+        return (await cua_engine.act(device_id, action, operator=True)).to_dict()
+    except ValueError as exc:
+        raise Problem("computer_action_unavailable", str(exc), 409)
 
 
 @app.post("/api/v1/cua/devices/{device_id}/semantic")
 async def cua_device_semantic(device_id: str, body: dict):
-    script = body.get("script", "")
-    engine = body.get("engine", "osascript_applescript")
-    try:
-        res = await cua_engine.execute_semantic(device_id, script, engine)
-        return res.to_dict()
-    except ValueError as e:
-        raise Problem("device_not_found", str(e), 404)
+    return (await cua_engine.execute_semantic(device_id, body.get("script", ""))).to_dict()
 
 
 @app.get("/api/v1/cua/devices/{device_id}/frame")
 async def cua_device_frame(device_id: str):
     try:
-        frame_bytes, meta = await cua_engine.get_frame(device_id)
-        fmt = meta.get("format", "png")
-        media_type = "image/jpeg" if fmt in ("jpeg", "jpg") else "image/png"
-        return Response(content=frame_bytes, media_type=media_type)
-    except ValueError as e:
-        raise Problem("device_not_found", str(e), 404)
+        data, meta = await cua_engine.get_frame(device_id)
+        return Response(content=data, media_type="image/jpeg" if meta.get("format") in {"jpeg", "jpg"} else "image/png")
+    except ValueError as exc:
+        raise Problem("computer_capture_unavailable", str(exc), 409)
 
 
 @app.get("/api/v1/cua/devices/{device_id}/ui-tree")
 async def cua_device_ui_tree(device_id: str):
     try:
-        return await cua_engine.get_ui_tree(device_id)
-    except ValueError as e:
-        raise Problem("device_not_found", str(e), 404)
+        return await cua_engine.get_ui_tree(device_id, operator=True)
+    except ValueError as exc:
+        raise Problem("computer_tree_unavailable", str(exc), 409)
 
 
 @app.post("/api/v1/cua/kill-switch")
-def cua_kill_switch(body: dict):
-    active = bool(body.get("active", True))
-    state = cua_engine.set_kill_switch(active)
-    return {"kill_switch": state}
+async def cua_kill_switch(body: dict):
+    if type(body.get("active")) is not bool:
+        raise Problem("invalid_kill_switch", "Provide a boolean active flag")
+    return {"kill_switch": cua_engine.set_kill_switch(body["active"]),
+            "detail": "Blocks new managed inputs and interrupts active transports; already delivered OS actions cannot be undone."}
 
 
 @app.websocket("/api/v1/cua/devices/{device_id}/stream")
 async def cua_device_stream(websocket: WebSocket, device_id: str):
-    await websocket.accept()
+    from urllib.parse import urlsplit
+    origin = websocket.headers.get("origin", "")
+    protocols = [p.strip() for p in websocket.headers.get("sec-websocket-protocol", "").split(",")]
+    token = config.private_file("computer-operator-token")
+    if not trusted_host(websocket.headers.get("host", "")) or (origin and urlsplit(origin).netloc != websocket.headers.get("host")) or not any(hmac.compare_digest(p, token) for p in protocols):
+        await websocket.close(code=1008)
+        return
+    await websocket.accept(subprotocol="ara-control" if "ara-control" in protocols else None)
     try:
-        prov = await cua_engine.get_provider_or_raise(device_id)
-        info = await prov.get_device_info()
-        await websocket.send_json({"type": "init", "device": info.to_dict(), "kill_switch": cua_engine.kill_switch_active})
-
-        async def stream_sender():
+        await cua_engine.get_provider_or_raise(device_id)
+        await websocket.send_json({"type": "init", "kill_switch": cua_engine.kill_switch_active})
+        # Socket is observation-only; all inputs use the authenticated policy-gated API.
+        while True:
             import base64
-            async for frame in prov.stream_frames():
-                b64 = base64.b64encode(frame).decode()
-                await websocket.send_json({"type": "frame", "data": b64})
-
-        async def command_receiver():
-            while True:
-                msg = await websocket.receive_json()
-                m_type = msg.get("type")
-                if m_type == "input":
-                    action = CUAAction.from_dict(msg.get("action", {}))
-                    res = await cua_engine.act(device_id, action)
-                    await websocket.send_json({"type": "action_result", "result": res.to_dict()})
-                elif m_type == "kill_switch":
-                    cua_engine.set_kill_switch(bool(msg.get("active", True)))
-                    await websocket.send_json({"type": "kill_switch_status", "active": cua_engine.kill_switch_active})
-
-        sender_task = asyncio.create_task(stream_sender())
-        receiver_task = asyncio.create_task(command_receiver())
-        done, pending = await asyncio.wait(
-            [sender_task, receiver_task],
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for t in pending:
-            t.cancel()
+            data, meta = await cua_engine.get_frame(device_id)
+            await websocket.send_json({"type": "frame", "data": base64.b64encode(data).decode(),
+                                       "format": meta.get("format", "png")})
+            await asyncio.sleep(1)
     except (WebSocketDisconnect, asyncio.CancelledError):
         pass
-    except Exception as e:
-        try:
-            await websocket.send_json({"type": "error", "message": str(e)})
-            await websocket.close()
-        except Exception:
-            pass
+    except Exception:
+        await websocket.send_json({"type": "error", "message": "Native capture unavailable; inspect device readiness."})
+        await websocket.close()
 
 
 def mount_web():

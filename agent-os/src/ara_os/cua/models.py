@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from enum import Enum
 from typing import Any, List, Optional, Tuple
 
@@ -77,6 +78,8 @@ class CUAAction:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CUAAction:
         act_str = data.get("action", "screenshot")
+        if not isinstance(act_str, str):
+            raise ValueError("Action must be a string")
         try:
             kind = CUAActionKind(act_str)
         except ValueError:
@@ -89,16 +92,22 @@ class CUAAction:
                 "press_hotkey": CUAActionKind.HOTKEY,
                 "key_combination": CUAActionKind.HOTKEY,
             }
-            kind = alias_map.get(act_str, CUAActionKind.SCREENSHOT)
+            if act_str not in alias_map:
+                raise ValueError("Unknown computer action")
+            kind = alias_map[act_str]
 
         coord = data.get("coordinate")
-        if coord and isinstance(coord, (list, tuple)) and len(coord) >= 2:
+        if coord is not None and (not isinstance(coord, (list, tuple)) or len(coord) != 2):
+            raise ValueError("Coordinate must contain exactly two numbers")
+        if coord is not None:
             coord = (float(coord[0]), float(coord[1]))
         else:
             coord = None
 
         end_coord = data.get("end_coordinate")
-        if end_coord and isinstance(end_coord, (list, tuple)) and len(end_coord) >= 2:
+        if end_coord is not None and (not isinstance(end_coord, (list, tuple)) or len(end_coord) != 2):
+            raise ValueError("End coordinate must contain exactly two numbers")
+        if end_coord is not None:
             end_coord = (float(end_coord[0]), float(end_coord[1]))
         else:
             end_coord = None
@@ -113,6 +122,14 @@ class CUAAction:
         if not keys and data.get("key"):
             keys = [data["key"]]
 
+        for point in (coord, end_coord):
+            if point is not None and any(not math.isfinite(v) or not 0 <= v <= 1 for v in point):
+                raise ValueError("Coordinates must be finite normalized values between zero and one")
+        if keys is not None and (not isinstance(keys, list) or not 1 <= len(keys) <= 8):
+            raise ValueError("Keys must be a bounded list")
+        duration = data.get("duration_ms", 200)
+        if type(duration) is not int or not 1 <= duration <= 5000:
+            raise ValueError("Duration must be between 1 and 5000 milliseconds")
         return cls(
             action=kind,
             coordinate=coord,

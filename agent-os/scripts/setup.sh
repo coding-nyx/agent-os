@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  printf '%s\n' 'Usage: bash scripts/setup.sh [--skip-model | --use-existing] [--replace-models] [--non-interactive]' \
+  printf '%s\n' 'Usage: bash scripts/setup.sh [--skip-model | --use-existing] [--replace-models] [--non-interactive] [--computer-control]' \
     'Installs dependencies, prepares the presets, then opens one shared provider/model wizard.' \
     'Existing per-agent model choices are preserved unless replacement is confirmed.'
   exit 0
