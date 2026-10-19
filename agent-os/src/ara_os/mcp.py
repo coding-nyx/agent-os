@@ -10,19 +10,54 @@ TOOLS = [
     {"name": "ara_list_agents", "description": "List only the specialist profiles explicitly permitted for delegation.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"name": "ara_delegate_task", "description": "Start one scoped specialist task. Returns a task ID; inspect it using ara_get_task. Reuse operation_id on retries.", "inputSchema": {"type": "object", "properties": {"profile_id": {"type": "string"}, "text": {"type": "string"}, "operation_id": {"type": "string"}}, "required": ["profile_id", "text", "operation_id"], "additionalProperties": False}},
     {"name": "ara_get_task", "description": "Inspect a specialist task started by this profile. A pending or unknown task is not permission to run it again.", "inputSchema": {"type": "object", "properties": {"run_id": {"type": "string"}}, "required": ["run_id"], "additionalProperties": False}},
+    {"name": "ara_list_swarms", "description": "List available swarm presets and check whether swarm coordination is enabled for this profile.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
+    {"name": "ara_spawn_swarm", "description": "Deploy a coordinated swarm of specialized worker bots working in tandem for large or complex tasks (presets: 'research', 'coding', 'analysis', 'custom'). Returns swarm_id and runs workers in tandem.", "inputSchema": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["research", "coding", "analysis", "custom"]}, "task": {"type": "string"}, "operation_id": {"type": "string"}, "custom_roles": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "objective": {"type": "string"}}, "required": ["role", "objective"]}}}, "required": ["preset", "task", "operation_id"], "additionalProperties": False}},
+    {"name": "ara_get_swarm", "description": "Inspect a swarm execution started by this profile. Returns worker status, worker outputs, and synthesized outcome.", "inputSchema": {"type": "object", "properties": {"swarm_id": {"type": "string"}}, "required": ["swarm_id"], "additionalProperties": False}},
 ]
 
 
 def invoke(profile_id: str, name: str, args: dict):
     import hashlib
     from .store import Entity, create
-    from . import runs
+    from . import runs, swarms
     delegation = None
     with transaction() as session:
         profile = get(session, profile_id, "profile")
         if not profile["enabled"]:
             raise Problem("profile_disabled", "This profile is disabled.", 403)
         bindings = {b["dataset_id"]: b["access"] for b in profile.get("bindings", [])}
+        if name == "ara_list_swarms":
+            cfg = swarms.get_profile_swarm_config(profile)
+            return {
+                "enabled": cfg["enabled"],
+                "trigger_mode": cfg["trigger_mode"],
+                "allowed_presets": [p for p in swarms.SWARM_PRESETS if p["id"] in cfg["allowed_presets"]]
+            }
+        if name == "ara_spawn_swarm":
+            preset = args.get("preset", "research")
+            task_text = args.get("task", "")
+            op_id = args.get("operation_id", "")
+            roles = args.get("custom_roles")
+            swarm_record = swarms.spawn_swarm(session, profile_id, None, preset, task_text, op_id, roles)
+            return {
+                "swarm_id": swarm_record["id"],
+                "state": swarm_record["state"],
+                "preset": swarm_record["preset"],
+                "workers": [{"id": w["id"], "role": w["role"], "objective": w["objective"]} for w in swarm_record.get("workers", [])]
+            }
+        if name == "ara_get_swarm":
+            task = get(session, args["swarm_id"], "swarm_run")
+            if task.get("profile_id") != profile_id:
+                raise Problem("swarm_not_owned", "This profile did not start that swarm.", 403)
+            return {
+                "id": task["id"],
+                "preset": task["preset"],
+                "state": task["state"],
+                "task": task["task"],
+                "workers": task.get("workers", []),
+                "synthesized_output": task.get("synthesized_output"),
+                "error": task.get("error")
+            }
         if name == "ara_list_agents":
             return [{k: p.get(k) for k in ("id", "name", "description", "enabled")} for target in profile.get("delegation_targets", []) for p in [get(session, target, "profile")]]
         if name == "ara_get_task":

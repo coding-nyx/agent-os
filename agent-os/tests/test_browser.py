@@ -9,7 +9,8 @@ def test_web_data_profile_workspace_and_mobile_navigation(system):
     output.mkdir(exist_ok=True)
     errors = []
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(executable_path=os.environ.get("ARA_BROWSER_EXECUTABLE", "/usr/bin/chromium"), args=["--no-sandbox"])
+        chrome_candidate = "/usr/bin/chromium" if Path("/usr/bin/chromium").exists() else "/usr/bin/google-chrome"
+        browser = playwright.chromium.launch(executable_path=os.environ.get("ARA_BROWSER_EXECUTABLE", chrome_candidate), args=["--no-sandbox"])
         context = browser.new_context(viewport={"width": 1440, "height": 1000}, timezone_id="Asia/Kolkata")
         page = context.new_page()
         page.on("pageerror", lambda error: errors.append(str(error)))

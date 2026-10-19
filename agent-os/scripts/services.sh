@@ -11,7 +11,7 @@ else
     docker compose up -d postgres
   fi
   for ara_attempt in {1..30}; do
-    if docker exec ara-os-postgres pg_isready -U ara_os -d ara_os >/dev/null 2>&1; then
+    if docker exec ara-os-postgres pg_isready -p 55432 -U ara_os -d ara_os >/dev/null 2>&1; then
       printf '%s\n' 'Agent OS PostgreSQL is ready'
       exit 0
     fi

@@ -7,11 +7,35 @@ import yaml
 
 from . import config, runtime
 from .catalog import PRESETS
+from .launchers import record_default_profile
 from .store import Problem, change, create, get, listing, transaction
 
 
 def data_token(id: str) -> str:
     return config.private_file("data-token-" + id)
+
+
+def resolve_model_connection(profile: dict) -> dict | None:
+    if isinstance(profile.get("model_connection"), dict) and profile["model_connection"].get("model"):
+        return profile["model_connection"]
+    try:
+        target = runtime.home(profile) / "config.yaml"
+        if target.exists():
+            cfg = yaml.safe_load(target.read_text()) or {}
+            m = cfg.get("model")
+            model_name = None
+            if isinstance(m, str) and m.strip():
+                model_name = m.strip()
+            elif isinstance(m, dict) and (m.get("default") or m.get("model")):
+                model_name = m.get("default") or m.get("model")
+            if model_name:
+                provider_name = m.get("provider", "native") if isinstance(m, dict) else "native"
+                base_url = m.get("base_url", "") if isinstance(m, dict) else ""
+                api_mode = m.get("api_mode", "chat_completions") if isinstance(m, dict) else "chat_completions"
+                return {"name": provider_name, "base_url": base_url, "model": model_name, "api_mode": api_mode}
+    except Exception:
+        pass
+    return None
 
 
 async def provision(profile: dict):
@@ -44,7 +68,10 @@ async def provision(profile: dict):
     target.write_text(yaml.safe_dump(native, sort_keys=False))
     target.chmod(0o600)
     with transaction() as session:
-        return change(session, profile["id"], {"provision_state": "ready"})
+        ready = change(session, profile["id"], {"provision_state": "ready"})
+    record_default_profile(config.STATE, ready)
+    from .agent_configuration import apply_preset_identity
+    return apply_preset_identity(ready)
 
 
 async def create_profile(name: str, preset: str, soul: str | None = None, source: dict | None = None):
@@ -56,6 +83,7 @@ async def create_profile(name: str, preset: str, soul: str | None = None, source
         profile = create(session, "profile", {"name": name, "preset": preset, "description": template["role"],
             "module": template["module"], "soul": soul or template["soul"], "native_name": "ara-" + id[:8],
             "enabled": True, "bindings": [], "learning": "off", "provision_state": "pending", "owner_machine": "local",
+            "configuration": dict(source.get("configuration", {})) if source else {},
             "logical_profile_id": source.get("logical_profile_id", source["id"]) if source else id,
             "clone_from": source["native_name"] if source else None}, id=id)
     try:
@@ -83,10 +111,15 @@ async def seed():
         if not machines:
             create(session, "machine", {"name": "This machine", "role": "host", "state": "local", "endpoint": config.API_URL}, id="local")
     for profile in existing:
+        record_default_profile(config.STATE, profile)
         if not (config.STATE / ("data-token-" + profile["id"])).exists():
             await provision(profile)
-    if not existing:
-        for preset in PRESETS:
+        elif profile.get("provision_state") == "ready":
+            from .agent_configuration import apply_preset_identity
+            apply_preset_identity(profile)
+    existing_presets = {p["preset"] for p in existing}
+    for preset in PRESETS:
+        if preset["id"] not in existing_presets:
             await create_profile(preset["name"], preset["id"])
 
 
@@ -113,7 +146,7 @@ async def bind(profile: dict, bindings: list[dict]):
         has_gateway = any(c.get("profile_id") == profile["id"] and c.get("state") == "enabled" for c in listing(session, "channel"))
         for binding in bindings:
             dataset = get(session, binding["dataset_id"], "dataset")
-            if dataset["module"] == "notebook" and has_gateway:
+            if dataset["module"] in {"notebook", "emotional"} and has_gateway:
                 raise Problem("private_channel_scope_unverified", "Use a separate private instance for notebook access until per-channel data scoping is certified.", 409)
             if binding.get("access") not in {"read", "write"}:
                 raise Problem("invalid_access", "Dataset access must be read or write.")

@@ -154,13 +154,26 @@ def catalog():
     return {"modules": MODULES, "presets": PRESETS}
 
 
+def enrich_profile(p: dict) -> dict:
+    from . import swarms
+    conn = profiles.resolve_model_connection(p)
+    spec = next((s for s in PRESETS if s["id"] == p["preset"]), None)
+    values = {**{f["id"]: f["default"] for f in spec["fields"]}, **p.get("configuration", {})} if spec else {}
+    context_ready = bool(spec and not any(f["required"] and values.get(f["id"]) in (None, "") for f in spec["fields"]))
+    return {**p, **({"model_connection": conn} if conn else {}),
+            "model_ready": bool(conn), "chat_ready": bool(conn and p.get("enabled") and p.get("provision_state") == "ready"),
+            "preset_spec": spec, "context_ready": context_ready,
+            "swarms": swarms.get_profile_swarm_config(p),
+            "retired_preset": p["preset"] not in {s["id"] for s in PRESETS} | {"custom"}}
+
+
 @app.get("/api/v1/dashboard")
 def dashboard():
     with transaction() as session:
-        ps, ds, rs = listing(session, "profile"), domains.datasets(session), listing(session, "run")
+        ps, ds, rs = [enrich_profile(p) for p in listing(session, "profile")], domains.datasets(session), listing(session, "run")
         return {"profiles": ps, "datasets": [{**d, "summary": domains.summary(session, d["id"])} for d in ds],
-                "runs": rs[-20:][::-1], "machines": listing(session, "machine"),
-                "waiting": [r for r in rs if r["state"] in {"waiting", "unknown", "failed"}]}
+                "runs": [runs.view(r) for r in rs[-20:][::-1]], "machines": listing(session, "machine"),
+                "waiting": [runs.view(r) for r in rs if r["state"] in {"waiting", "unknown", "failed"}]}
 
 
 @app.get("/api/v1/datasets")
@@ -225,17 +238,75 @@ def import_records(id: str, body: dict):
 @app.get("/api/v1/profiles")
 def list_profiles():
     with transaction() as session:
-        return listing(session, "profile")
+        return [enrich_profile(p) for p in listing(session, "profile")]
 
 
 @app.post("/api/v1/profiles", status_code=201)
 async def new_profile(body: ProfileBody):
-    return await profiles.create_profile(body.name, body.preset, body.soul)
+    return enrich_profile(await profiles.create_profile(body.name, body.preset, body.soul))
+
+
+@app.get("/api/v1/profiles/{id}/configuration")
+def profile_configuration(id: str):
+    from .agent_configuration import configuration
+    return configuration(find(id, "profile"))
+
+
+@app.put("/api/v1/profiles/{id}/configuration")
+def update_profile_configuration(id: str, body: dict):
+    from .agent_configuration import save_configuration
+    return save_configuration(id, body)
+
+
+@app.get("/api/v1/swarms/presets")
+def swarm_presets():
+    from . import swarms
+    return swarms.SWARM_PRESETS
+
+
+@app.get("/api/v1/profiles/{id}/swarms")
+def profile_swarms(id: str):
+    from . import swarms
+    with transaction() as session:
+        profile = get(session, id, "profile")
+        return {
+            "config": swarms.get_profile_swarm_config(profile),
+            "presets": swarms.SWARM_PRESETS,
+            "runs": swarms.list_swarms_for_profile(session, id)
+        }
+
+
+@app.put("/api/v1/profiles/{id}/swarms")
+def update_profile_swarms(id: str, body: dict):
+    from . import swarms
+    return swarms.save_profile_swarm_config(id, body)
+
+
+@app.post("/api/v1/profiles/{id}/swarms/spawn")
+async def spawn_profile_swarm(id: str, body: dict):
+    import uuid
+    from . import swarms
+    with transaction() as session:
+        return swarms.spawn_swarm(
+            session=session,
+            profile_id=id,
+            conversation_id=body.get("conversation_id"),
+            preset=body.get("preset", "research"),
+            task=body.get("task", ""),
+            operation_id=body.get("operation_id") or uuid.uuid4().hex,
+            custom_roles=body.get("custom_roles")
+        )
+
+
+@app.get("/api/v1/swarms/{swarm_id}")
+def get_swarm(swarm_id: str):
+    with transaction() as session:
+        return get(session, swarm_id, "swarm_run")
 
 
 @app.get("/api/v1/profiles/{id}")
 def profile_detail(id: str):
-    return find(id, "profile")
+    return enrich_profile(find(id, "profile"))
 
 
 @app.patch("/api/v1/profiles/{id}")
@@ -409,6 +480,10 @@ async def native_proxy(id: str, path: str, request: Request):
     if isinstance(body, dict):
         body = {**body, "profile": find(id, "profile")["native_name"]}
     result = await runtime.native_http(request.method, native_path, body, find(id, "profile"))
+    if native_path == "/api/model/set" and isinstance(body, dict) and body.get("scope") == "main" and body.get("model"):
+        with transaction() as session:
+            conn = {"name": body.get("provider", "native"), "base_url": body.get("base_url") or "", "model": body["model"], "api_mode": "chat_completions"}
+            change(session, id, {"model_connection": conn})
     return runtime.redact(result)
 
 
@@ -416,7 +491,7 @@ async def native_proxy(id: str, path: str, request: Request):
 async def telegram(id: str, body: dict):
     profile = find(id, "profile")
     with transaction() as session:
-        if any(get(session, b["dataset_id"], "dataset")["module"] == "notebook" for b in profile.get("bindings", [])):
+        if any(get(session, b["dataset_id"], "dataset")["module"] in {"notebook", "emotional"} for b in profile.get("bindings", [])):
             raise Problem("private_channel_scope_unverified", "Keep this private notebook instance separate from a bot until per-channel data scoping is certified.", 409)
     token, users = body.get("token", "").strip(), body.get("allowed_users", "").strip()
     if not token or not users:
@@ -484,13 +559,19 @@ async def conversation_detail(id: str):
     c = find(id, "conversation")
     with transaction() as session:
         turn_rows = [r for r in listing(session, "run") if r["conversation_id"] == id]
-    return {**c, "runs": turn_rows}
+    recovery = await asyncio.to_thread(runs.conversation_recovery, c, turn_rows)
+    return {**c, "runs": [runs.view(r) for r in turn_rows], "recovery": recovery}
+
+
+@app.post("/api/v1/conversations/{id}/restart", status_code=201)
+def restart_conversation(id: str):
+    return runs.restart_conversation(id)
 
 
 @app.get("/api/v1/runs")
 def list_runs():
     with transaction() as session:
-        return listing(session, "run")[::-1]
+        return [runs.view(r) for r in listing(session, "run")[::-1]]
 
 
 @app.get("/api/v1/runs/{id}")
@@ -498,7 +579,7 @@ def run_detail(id: str):
     with transaction() as session:
         run = get(session, id, "run")
         evs = session.scalars(select(Event).where(Event.entity_id == id).order_by(Event.sequence)).all()
-        return {**run, "events": [{"sequence": e.sequence, "type": e.type, "data": e.data} for e in evs]}
+        return {**runs.view(run), "events": [{"sequence": e.sequence, "type": e.type, "data": e.data} for e in evs]}
 
 
 @app.post("/api/v1/runs/{id}/control")

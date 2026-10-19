@@ -1,5 +1,6 @@
 export type Item = { id: string; revision: number; [key: string]: any };
-export const brand = (s: unknown) => String(s ?? '').replace(/hermes/gi, 'Agent OS');
+// Runtime diagnostics, commands, paths and model output are user content, not UI branding.
+export const brand = (s: unknown) => String(s ?? '');
 
 export async function api<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch('/api/v1' + path, {

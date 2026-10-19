@@ -3,12 +3,18 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
-
-
-from . import runtime
+from . import profiles, runtime
 from .store import Entity, Problem, change, create, event, get, listing, transaction
 
 TASKS: dict[str, asyncio.Task] = {}
+MISSING_FAILURE_DETAIL = "The native turn failed without an error detail. Inspect its native receipt and history."
+
+
+def view(run: dict) -> dict:
+    # Historical projections may predate structured diagnostics. Do not invent a cause.
+    if run.get("state") == "failed" and not run.get("error"):
+        return {**run, "error": MISSING_FAILURE_DETAIL}
+    return run
 
 
 def persist(run_id, type, data):
@@ -21,8 +27,13 @@ async def execute(run: dict, profile: dict, conversation: dict, text: str):
     try:
         with transaction() as session:
             change(session, run["id"], {"state": "running"})
-        async for frame in runtime.frames({"operation": "run", "session_id": conversation.get("native_session_id"),
-            "conversation_id": conversation["id"], "submission_id": run["id"], "title": conversation["title"], "text": text}, profile):
+        model_conn = profile.get("model_connection") or profiles.resolve_model_connection(profile)
+        model_name = model_conn.get("model") if isinstance(model_conn, dict) else None
+        req = {"operation": "run", "session_id": conversation.get("native_session_id"),
+            "conversation_id": conversation["id"], "submission_id": run["id"], "title": conversation["title"], "text": text}
+        if model_name:
+            req["model"] = model_name
+        async for frame in runtime.frames(req, profile):
             kind, payload = frame["type"], frame["data"]
             if kind == "session":
                 with transaction() as session:
@@ -47,10 +58,14 @@ async def execute(run: dict, profile: dict, conversation: dict, text: str):
                 elif type == "message.complete":
                     with transaction() as session:
                         state = "cancelled" if data.get("status") == "interrupted" else "failed" if data.get("error") or data.get("status") in {"error", "failed"} else "succeeded"
-                        change(session, run["id"], {"state": state, "output": data.get("text", ""), "usage": data.get("usage"), "error": data.get("error"), "prompt": None})
+                        change(session, run["id"], {"state": state, "output": data.get("text", ""), "usage": data.get("usage"),
+                            "error": data.get("error") or (MISSING_FAILURE_DETAIL if state == "failed" else None), "prompt": None})
             elif kind in {"error", "unknown"}:
                 with transaction() as session:
-                    change(session, run["id"], {"state": "unknown" if kind == "unknown" else "failed", "error": payload.get("detail", "Inspect the native session outcome.")})
+                    change(session, run["id"], {"state": "unknown" if kind == "unknown" else "failed",
+                        "error": payload.get("detail", "Inspect the native session outcome."),
+                        "error_code": payload.get("code"), "error_stage": payload.get("stage"),
+                        "recovery_action": payload.get("action"), "prompt": None})
             elif kind == "receipt":
                 with transaction() as session:
                     change(session, run["id"], terminal_patch(payload))
@@ -67,21 +82,69 @@ def submit(conversation_id: str, text: str, operation_id: str):
     with transaction() as session:
         conversation = get(session, conversation_id, "conversation")
         profile = get(session, conversation["profile_id"], "profile")
-        if not profile["enabled"]:
-            raise Problem("profile_disabled", "Enable this profile before starting managed work.", 409)
-        if profile.get("provision_state") != "ready":
-            raise Problem("profile_not_ready", "Finish the profile's runtime setup first.", 409)
         if session.get(Entity, id):
             prior = get(session, id)
             if prior["input"] != text:
                 raise Problem("idempotency_conflict", "This operation ID was already used with another message.", 409)
             return prior
-        if any(r.get("conversation_id") == conversation_id and r["state"] in {"running", "waiting", "accepted", "cancel_requested", "unknown"} for r in listing(session, "run")):
+        if not profile["enabled"]:
+            raise Problem("profile_disabled", "Enable this profile before starting managed work.", 409)
+        if profile.get("provision_state") != "ready":
+            raise Problem("profile_not_ready", "Finish the profile's runtime setup first.", 409)
+        if not (profile.get("model_connection") or profiles.resolve_model_connection(profile)):
+            raise Problem("model_not_configured", "Configure a model connection for this profile before starting a conversation.", 409)
+        turns = [r for r in listing(session, "run") if r.get("conversation_id") == conversation_id]
+        if any(r["state"] in {"running", "waiting", "accepted", "cancel_requested", "unknown"} for r in turns):
             raise Problem("conversation_busy", "This conversation already has a pending turn. Wait or cancel it first.", 409)
+        if conversation.get("native_session_id") or turns:
+            from .native_diagnostics import session_recovery
+            recovery = session_recovery(runtime.home(profile), session_id=conversation.get("native_session_id"),
+                                        request_id=conversation["id"])
+            if recovery:
+                raise Problem(recovery["code"], recovery["detail"], 409, recovery["action"])
         run = create(session, "run", {"profile_id": profile["id"], "conversation_id": conversation_id,
             "input": text, "output": "", "state": "accepted", "audience": "application"}, id=id)
     TASKS[id] = asyncio.create_task(execute(run, profile, conversation, text))
     return run
+
+
+def conversation_recovery(conversation: dict, turns: list[dict]) -> dict | None:
+    if not turns or turns[-1]["state"] != "failed":
+        return None
+    if any(r["state"] in {"running", "waiting", "accepted", "cancel_requested", "unknown"} for r in turns):
+        return None
+    from .native_diagnostics import session_recovery
+    with transaction() as session:
+        profile = get(session, conversation["profile_id"], "profile")
+    return session_recovery(runtime.home(profile), session_id=conversation.get("native_session_id"),
+                            request_id=conversation["id"])
+
+
+def restart_conversation(conversation_id: str):
+    # The source row serializes repeated recovery clicks. No prompt is submitted.
+    from sqlalchemy import select
+    with transaction() as session:
+        row = session.scalar(select(Entity).where(Entity.id == conversation_id,
+            Entity.kind == "conversation").with_for_update())
+        if row is None:
+            raise Problem("not_found", "This conversation no longer exists.", 404)
+        conversation = get(session, conversation_id, "conversation")
+        if conversation.get("recovery_conversation_id"):
+            return get(session, conversation["recovery_conversation_id"], "conversation")
+        turns = [r for r in listing(session, "run") if r.get("conversation_id") == conversation_id]
+        if not conversation_recovery(conversation, turns):
+            raise Problem("recovery_unavailable", "No confirmed missing-model session can be replaced. "
+                          "Inspect pending or uncertain work before starting again.", 409)
+        profile = get(session, conversation["profile_id"], "profile")
+        if not profile.get("enabled") or profile.get("provision_state") != "ready":
+            raise Problem("profile_not_ready", "Enable the profile and finish its runtime setup first.", 409)
+        if not profiles.resolve_model_connection(profile):
+            raise Problem("model_not_configured", "Select a model in Connections before starting a fresh conversation.", 409)
+        replacement = create(session, "conversation", {"profile_id": profile["id"],
+            "title": conversation["title"][:110] + " · fresh", "audience": "application",
+            "recovery_of": conversation_id})
+        change(session, conversation_id, {"recovery_conversation_id": replacement["id"]})
+        return replacement
 
 
 async def control(run: dict, action: str, choice: str | None = None):
@@ -121,7 +184,9 @@ def terminal_patch(receipt):
     outcome = receipt.get("outcome")
     return {"state": "succeeded" if outcome == "completed" else "cancelled" if outcome in {"interrupted", "cancelled"} else "failed",
             "output": result.get("final_response", result.get("text", "")) if isinstance(result, dict) else str(result),
-            "error": result.get("error") if isinstance(result, dict) else None,
+            "error": (result.get("error") if isinstance(result, dict) else None) or (
+                MISSING_FAILURE_DETAIL
+                if outcome not in {"completed", "interrupted", "cancelled"} else None),
             "usage": receipt.get("usage"), "prompt": None, "receipt": receipt}
 
 

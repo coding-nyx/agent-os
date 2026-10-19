@@ -43,7 +43,7 @@ async def frames(request: dict, profile: dict | None = None):
             except (ValueError, UnicodeError):
                 continue
             if isinstance(frame, dict) and frame.get("ara_frame"):
-                if frame["type"] == "error":
+                if frame["type"] in {"error", "unknown"}:
                     errored = True
                 yield frame
         code = await process.wait()
@@ -64,6 +64,8 @@ async def call(request: dict, profile: dict | None = None):
     async for frame in frames(request, profile):
         if frame["type"] == "error":
             raise Problem("runtime_error", frame["data"]["detail"], 502, "Inspect the connection or resume the native session.")
+        if frame["type"] == "unknown":
+            raise Problem("unknown_outcome", frame["data"]["detail"], 409, "Inspect the native session before retrying.")
         if frame["type"] == "result":
             result = frame["data"]
     return result
@@ -74,7 +76,7 @@ async def native_http(method: str, path: str, body=None, profile: dict | None = 
                          "params": {"profile": profile["native_name"]} if profile else {}, "body": body}, profile)
     if result["status"] >= 400:
         detail = result["body"].get("detail", "The native operation was refused.")
-        raise Problem("native_operation_refused", str(detail).replace("Hermes", "Agent runtime").replace("hermes", "agent-os")[:800], result["status"])
+        raise Problem("native_operation_refused", str(detail)[:800], result["status"])
     return result["body"]
 
 

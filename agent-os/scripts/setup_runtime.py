@@ -26,7 +26,10 @@ if current.stdout.strip() != revision:
     subprocess.run(["git", "-C", str(source), "sparse-checkout", "init", "--no-cone"], check=True)
     subprocess.run(["git", "-C", str(source), "sparse-checkout", "set", "/*", "!/apps/", "!/website/", "!/tests/", "!/tests-js/", "!/evals/", "!/contributors/", "!/web/", "!/ui-tui/", "!/assets/"], check=True)
     subprocess.run(["git", "-C", str(source), "checkout", "-B", lock["runtime"]["downstream_branch"], revision], check=True)
-python_path = subprocess.check_output(["uv", "python", "find", "--managed-python", lock["runtime"]["python"]], text=True).strip()
+try:
+    python_path = subprocess.check_output(["uv", "python", "find", "--managed-python", lock["runtime"]["python"]], text=True, stderr=subprocess.DEVNULL).strip()
+except subprocess.CalledProcessError:
+    python_path = subprocess.check_output(["uv", "python", "find", lock["runtime"]["python"]], text=True).strip()
 stamp = root / ".runtime/build.json"
 environment = root / ".runtime/env"
 sys.path.insert(0, str(source))
@@ -36,7 +39,18 @@ expected_stamp = {"revision": revision, "extras": lock["runtime"]["extras"]}
 previous_stamp = json.loads(stamp.read_text()) if stamp.exists() else {}
 if not (environment / "bin/python").exists() or previous_stamp != expected_stamp:
     import pm
+    cache_dir = Path(os.environ.get("UV_CACHE_DIR", root / ".runtime/uv-cache"))
+    cache_dir.mkdir(parents=True, exist_ok=True)
     pm.build_environment(source=source, out=environment, python=Path(python_path),
-        cache=Path(os.environ["UV_CACHE_DIR"]), extras=lock["runtime"]["extras"], explicit=True)
-subprocess.run([str(environment / "bin/python"), "-c", "import hermes_cli.gateway_client, fastapi, mcp, telegram; print('Agent OS native runtime imports verified')"], cwd=source, check=True, env={**os.environ, "PYTHONPATH": str(source)})
+        cache=cache_dir, extras=lock["runtime"]["extras"], explicit=True)
+subprocess.run([str(environment / "bin/python"), "-c", "import ruamel.yaml, hermes_cli.main, hermes_cli.gateway_client, fastapi, mcp, telegram; print('Agent OS native runtime imports verified')"], cwd=source, check=True, env={**os.environ, "PYTHONPATH": str(source)})
 stamp.write_text(json.dumps(expected_stamp, indent=2))
+sys.path.insert(0, str(root / "src"))
+from ara_os.launchers import install_cli
+
+commands = install_cli(root, Path(os.environ["ARA_CLI_BIN_DIR"]) if os.environ.get("ARA_CLI_BIN_DIR") else None)
+for command in commands:
+    subprocess.run([str(command), "--help"], cwd=root.parent, check=True,
+        env={key: value for key, value in os.environ.items() if key not in {"HERMES_HOME", "HERMES_RUNTIME_DIR", "PYTHONPATH"}},
+        stdout=subprocess.DEVNULL, timeout=30)
+print("Agent OS native commands installed in " + str(commands[0].parent))

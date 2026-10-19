@@ -84,16 +84,27 @@ async def main(request):
     elif operation == "run":
         from hermes_cli.gateway_client import connect_gateway
         async with connect_gateway() as client:
+            request["_stage"] = "session.resume" if request.get("session_id") else "session.create"
             if request.get("session_id"):
                 snapshot = await client.rpc("session.resume", session_id=request["session_id"])
             else:
-                snapshot = await client.rpc("session.create", request_id=request["conversation_id"], source="gui",
-                    title=request.get("title", "ARA conversation"), run_budget=300)
+                create_params = {
+                    "request_id": request["conversation_id"],
+                    "source": "gui",
+                    "title": request.get("title", "ARA conversation"),
+                    "run_budget": 300,
+                }
+                if request.get("model"):
+                    create_params["model"] = request["model"]
+                snapshot = await client.rpc("session.create", **create_params)
             sid = snapshot["session_id"]
+            request["session_id"] = sid
             emit("session", snapshot)
+            request["_stage"] = "prompt.submit"
             receipt = await client.rpc("prompt.submit", session_id=sid,
                 submission_id=request["submission_id"], text=request["text"])
             emit("admission", receipt)
+            request["_stage"] = "prompt.events"
             admission_id = receipt["admission_id"]
             while True:
                 try:
@@ -261,9 +272,40 @@ async def main(request):
         raise ValueError("Unsupported node operation")
 
 
+def failure_frame(exc, request):
+    from hermes_cli.gateway_client import GatewayRPCError
+    stage = request.get("_stage")
+    detail = str(exc)[:1200]
+    payload = {"code": type(exc).__name__, "detail": detail, "stage": stage}
+    if isinstance(exc, GatewayRPCError):
+        payload["code"] = "native_" + str(exc)
+        payload["native_reason"] = str(exc)
+        if str(exc) == "storage_unavailable":
+            from native_diagnostics import session_recovery
+            home = os.environ.get("HERMES_HOME")
+            recovery = session_recovery(Path(home), session_id=request.get("session_id"),
+                request_id=request.get("conversation_id")) if home else None
+            if recovery:
+                payload.update(recovery)
+            else:
+                payload["detail"] = ("The native runtime could not read or save this session "
+                    "(storage_unavailable). Check the profile's native storage and service logs. "
+                    "A missing model has not been established; do not delete its database.")
+    # A lost reply during submission or execution is not a confirmed refusal.
+    ambiguous = (stage == "prompt.events" or
+                 (stage == "prompt.submit" and not isinstance(exc, GatewayRPCError)))
+    if ambiguous:
+        payload.update(code="native_outcome_unknown", detail="The runtime connection stopped. "
+            "Inspect the native session outcome before retrying; work may already have run.")
+    return ("unknown" if ambiguous else "error"), payload
+
+
 if __name__ == "__main__":
+    request = {}
     try:
-        asyncio.run(main(json.loads(sys.stdin.readline())))
+        request = json.loads(sys.stdin.readline())
+        asyncio.run(main(request))
     except Exception as exc:
-        emit("error", {"code": type(exc).__name__, "detail": str(exc).replace("Hermes", "Agent runtime").replace("hermes", "agent-os")[:1200]})
+        kind, payload = failure_frame(exc, request)
+        emit(kind, payload)
         sys.exit(1)

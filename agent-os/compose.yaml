@@ -2,16 +2,16 @@ services:
   postgres:
     image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     container_name: ara-os-postgres
+    network_mode: host
+    command: postgres -p 55432
     environment:
       POSTGRES_USER: ara_os
       POSTGRES_PASSWORD: ara_os_local
       POSTGRES_DB: ara_os
-    ports:
-      - "127.0.0.1:55432:5432"
     volumes:
       - ara_os_postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ara_os -d ara_os"]
+      test: ["CMD-SHELL", "pg_isready -p 55432 -U ara_os -d ara_os"]
       interval: 2s
       timeout: 3s
       retries: 20

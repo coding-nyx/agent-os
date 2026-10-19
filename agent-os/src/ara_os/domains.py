@@ -38,7 +38,9 @@ def validate_record(dataset: dict, payload: dict):
     module = dataset["module"]
     text_fields = {"finance": ("description", "category", "account", "date"),
                    "training": ("title", "notes", "date"), "notebook": ("title", "content", "date"),
-                   "research": ("title", "url", "notes", "content", "date")}.get(module, ())
+                   "research": ("title", "url", "notes", "content", "date"),
+                   "emotional": ("title", "content", "mood", "date"),
+                   "planning": ("title", "content", "status", "priority", "date")}.get(module, ())
     if any(key in payload and not isinstance(payload[key], str) for key in text_fields):
         raise Problem("invalid_record", "Text fields must contain text.")
     if module == "finance":
@@ -69,12 +71,19 @@ def validate_record(dataset: dict, payload: dict):
                 valid = False
             if not valid:
                 raise Problem("invalid_set", "Repetitions and weight must be nonnegative.")
-    elif module == "notebook":
+    elif module in {"notebook", "emotional"}:
         if not str(payload.get("content", "")).strip():
             raise Problem("empty_note", "Write something before saving the note.")
     elif module == "research":
         if not payload.get("title"):
             raise Problem("missing_source", "Give this source or finding a title.")
+    elif module == "planning":
+        if not payload.get("title", "").strip():
+            raise Problem("missing_task", "Give this task or goal a title.")
+        if payload.get("status", "planned") not in {"planned", "in_progress", "done", "paused"}:
+            raise Problem("invalid_task_status", "Choose a valid task status.")
+        if payload.get("priority", "normal") not in {"low", "normal", "high"}:
+            raise Problem("invalid_task_priority", "Choose a valid priority.")
     else:
         try:
             jsonschema.validate(payload, dataset["schema"])

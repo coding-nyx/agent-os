@@ -62,3 +62,15 @@ def test_event_reconnect_resumes_after_last_acknowledged_event(system):
                 assert item["entity_id"] == following["id"]
                 break
     assert c.get("/events", headers={"Last-Event-ID": "invalid"}).status_code == 400
+
+
+def test_unconfigured_model_refuses_message_submission_cleanly(system):
+    c = system["client"]
+    p = c.post("/profiles", json={"name": "Unconfigured model agent", "preset": "ara"}).json()
+    assert p["provision_state"] == "ready"
+    assert not p.get("model_connection")
+    conversation = c.post("/conversations", json={"profile_id": p["id"], "title": "Unconfigured model test"}).json()
+    response = c.post(f"/conversations/{conversation['id']}/messages", json={"text": "hello", "operation_id": "unconfigured-1"})
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "model_not_configured"
+

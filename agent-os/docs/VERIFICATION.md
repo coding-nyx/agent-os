@@ -1,6 +1,32 @@
-# v0.1 verification — 16 October 2026
+# v0.1 verification
 
 Current-instance validation on x86 Linux; browser timezone Asia/Kolkata. This is not a live deployment or a fresh cloud-machine restoration claim.
+
+## 19 October 2026 — preset workflows and legacy-session recovery
+
+- Production TypeScript/Vite build passed.
+- Full regression run: **46 passed in 204.03 seconds**. The final focused
+  recovery/preset run subsequently passed **17 tests in 30.58 seconds**, including
+  one newly added regression for executable native CLI commands in error messages.
+- All six recommended presets ran through actual native sessions and scoped MCP
+  discovery with an explicitly local protocol fixture. Test configuration and
+  datasets stayed in the disposable installation.
+- Reproduced a legacy native session created with an empty model, then configured
+  a model and verified its old policy still refused restoration. Explicit recovery
+  opened a separate conversation; a deliberate fixture turn succeeded without
+  rewriting the old receipt or automatically resending the failed turn.
+- Desktop/mobile Chromium checked recovery visibility, disabled old-session
+  sending, an empty replacement draft, no page errors and no horizontal overflow.
+  Screenshots: `test-results/session-recovery-{desktop,mobile}.png`.
+- Live local API restarted only after confirming no pending managed work. Health
+  returned ready. Titan's diagnosed legacy conversation received an empty replacement;
+  native session creation succeeded using its configured model. Original history
+  and receipt were verified unchanged. **No live inference was submitted.**
+- Agnes/Scout ChatGPT account selection was requested, but native validation
+  correctly refused model assignment without each profile's login. No OAuth
+  tokens were copied and neither profile is claimed account-ready.
+
+## 16 October 2026 — initial prototype verification
 
 | Command/check | Observed result |
 | --- | --- |

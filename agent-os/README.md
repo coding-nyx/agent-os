@@ -14,7 +14,13 @@ bash scripts/setup.sh
 bash scripts/start.sh
 ```
 
-The API and compiled dashboard share loopback port 8787. Startup runs versioned PostgreSQL migrations, seeds six presets, and creates isolated native homes. Missing PostgreSQL leaves the static client and health diagnostics available while initialization retries. A model account is configured separately in each profile's Connections view; installation does not require a paid model account.
+The API and compiled dashboard share loopback port 8787. Startup runs versioned PostgreSQL migrations, seeds Ara, Agnes, Titan, Ledger, Atlas, and Scout, and creates isolated native homes. Ara is the orchestrator. Soma and Forge are deferred. Existing Soma/Orchestrator profiles are retained under Previous profiles, with their data and history. Missing PostgreSQL leaves the static client and health diagnostics available while initialization retries. A model account is configured separately in each profile's Connections view; installation does not require a paid model account. See [agent roles and configuration](docs/AGENT-PRESETS.md).
+
+Setup installs `hermes`, `hermes-agent`, and `hermes-acp` in `~/.local/bin` (override with `ARA_CLI_BIN_DIR`). They use this installation's native Python environment and Agent OS profile homes. Once the server creates the presets, bare `hermes` selects Ara; `hermes profiles` aliases `hermes profile list`. Use `hermes -p NATIVE_PROFILE_NAME` for another agent, or `hermes profile use NATIVE_PROFILE_NAME` to change the default. An explicit `HERMES_HOME` retains its own profile selection. Setup refreshes launchers belonging to this installation and refuses to replace commands owned by another installation.
+
+Profiles can have their runtime files ready while still needing a model. The profile API reports `model_ready` and `chat_ready` separately from `provision_state`: a model must be selected, and chatting also requires an enabled profile with its runtime provisioned. Live credentials and provider availability are checked by the native runtime. Chat without a selected model explains how to configure it before creating a native session; credentials remain scoped to each profile.
+
+Older conversations created without a selected model can retain an invalid frozen native policy even after a model is configured. Their chat view offers **Start fresh conversation**, which preserves the original history and opens an empty replacement; it never resends a message or rewrites native SQLite state. Recovery is unavailable while work is pending or its outcome is unknown. Storage errors are only classified as a missing-model policy when a read-only receipt inspection confirms it. Other storage failures still require investigation. Run failures retain their code/stage, and interrupted transport after submission remains an uncertain outcome rather than permission to retry.
 
 For frontend development, keep the API running and run `npm --prefix web run dev` in another terminal. Vite proxies `/api` to port 8787. Rebuild with `npm --prefix web run build` for the combined server.
 
@@ -33,7 +39,7 @@ Tests require the local development PostgreSQL administrator and a Chromium exec
 | Area | Implemented behavior |
 | --- | --- |
 | Dashboard | Real profile/data/run counts, activity and attention states; responsive desktop/mobile layout; empty and failure states. |
-| Profiles | Ara, Ledger, Titan, Soma, Scout, Orchestrator; custom identity; create, disable, retry setup, isolated instances. Each native home has its own state and default working directory (not an OS security sandbox). |
+| Profiles | Ara, Agnes, Titan, Ledger, Atlas, Scout; role-specific setup and workspaces, preserved custom identity, create/disable/retry, and isolated instances. Each native home has its own state and default working directory (not an OS security sandbox). |
 | Data before agents | Independent finance, training, notebook, research and JSON Schema datasets. Validated writes, exact decimal amounts, optimistic edits, idempotent writes/import, archive, export. Deleting/disabling an agent does not own or delete its data. |
 | Customized workspaces | Ledger finance table/totals; training log; notebook; research sources; custom records. Shared module components appear in both the library and bound profile workspace. Scout's future specialized application is not implemented. |
 | Agent execution | Canonical authenticated native gateway, model streaming, deferred tool discovery, native durable admission receipts, private app conversations, stop, clarification and approvals; receipt-based inspection of uncertain outcomes without resubmission. Browser disconnection does not cancel native execution. |
