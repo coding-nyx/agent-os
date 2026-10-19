@@ -160,7 +160,7 @@ def enrich_profile(p: dict) -> dict:
     spec = next((s for s in PRESETS if s["id"] == p["preset"]), None)
     values = {**{f["id"]: f["default"] for f in spec["fields"]}, **p.get("configuration", {})} if spec else {}
     context_ready = bool(spec and not any(f["required"] and values.get(f["id"]) in (None, "") for f in spec["fields"]))
-    return {**p, **({"model_connection": conn} if conn else {}),
+    return {**p, "model_connection": conn,
             "model_ready": bool(conn), "chat_ready": bool(conn and p.get("enabled") and p.get("provision_state") == "ready"),
             "preset_spec": spec, "context_ready": context_ready,
             "swarms": swarms.get_profile_swarm_config(p),
@@ -414,7 +414,9 @@ async def model(id: str, body: dict):
         payload["api_key"] = body["api_key"]
     result = await runtime.native_http("POST", "/api/providers/custom-endpoints", payload, profile)
     with transaction() as session:
-        change(session, id, {"model_connection": {k: payload[k] for k in ["name", "base_url", "model", "api_mode"]}})
+        metadata = {k: payload[k] for k in ["name", "base_url", "model", "api_mode"]}
+        conn = profiles.resolve_model_connection({**profile, "model_connection": metadata})
+        change(session, id, {"model_connection": conn})
     return runtime.redact(result)
 
 
@@ -482,7 +484,7 @@ async def native_proxy(id: str, path: str, request: Request):
     result = await runtime.native_http(request.method, native_path, body, find(id, "profile"))
     if native_path == "/api/model/set" and isinstance(body, dict) and body.get("scope") == "main" and body.get("model"):
         with transaction() as session:
-            conn = {"name": body.get("provider", "native"), "base_url": body.get("base_url") or "", "model": body["model"], "api_mode": "chat_completions"}
+            conn = profiles.resolve_model_connection(get(session, id, "profile"))
             change(session, id, {"model_connection": conn})
     return runtime.redact(result)
 

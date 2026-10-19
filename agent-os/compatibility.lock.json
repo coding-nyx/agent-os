@@ -8,7 +8,7 @@
     "downstream_branch": "ara-v0.1",
     "core_patches": [],
     "python": "3.14.8",
-    "extras": ["web", "telegram", "mcp", "edge-tts"],
+    "extras": ["web", "telegram", "mcp", "edge-tts", "anthropic"],
     "transport": "native authenticated canonical gateway client"
   },
   "application_python": "3.12",

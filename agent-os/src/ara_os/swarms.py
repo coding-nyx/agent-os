@@ -322,7 +322,7 @@ async def execute_worker(
 
     # Execute worker logic
     try:
-        model_conn = profile.get("model_connection") or profiles.resolve_model_connection(profile)
+        model_conn = profiles.resolve_model_connection(profile)
         worker_output = await generate_worker_output(worker, task, preset, model_conn, profile)
         with transaction() as session:
             cur = get(session, swarm_id, "swarm_run")

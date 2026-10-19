@@ -27,7 +27,7 @@ async def execute(run: dict, profile: dict, conversation: dict, text: str):
     try:
         with transaction() as session:
             change(session, run["id"], {"state": "running"})
-        model_conn = profile.get("model_connection") or profiles.resolve_model_connection(profile)
+        model_conn = profiles.resolve_model_connection(profile)
         model_name = model_conn.get("model") if isinstance(model_conn, dict) else None
         req = {"operation": "run", "session_id": conversation.get("native_session_id"),
             "conversation_id": conversation["id"], "submission_id": run["id"], "title": conversation["title"], "text": text}
@@ -91,7 +91,7 @@ def submit(conversation_id: str, text: str, operation_id: str):
             raise Problem("profile_disabled", "Enable this profile before starting managed work.", 409)
         if profile.get("provision_state") != "ready":
             raise Problem("profile_not_ready", "Finish the profile's runtime setup first.", 409)
-        if not (profile.get("model_connection") or profiles.resolve_model_connection(profile)):
+        if not profiles.resolve_model_connection(profile):
             raise Problem("model_not_configured", "Configure a model connection for this profile before starting a conversation.", 409)
         turns = [r for r in listing(session, "run") if r.get("conversation_id") == conversation_id]
         if any(r["state"] in {"running", "waiting", "accepted", "cancel_requested", "unknown"} for r in turns):

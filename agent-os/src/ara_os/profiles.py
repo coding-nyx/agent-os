@@ -16,26 +16,31 @@ def data_token(id: str) -> str:
 
 
 def resolve_model_connection(profile: dict) -> dict | None:
-    if isinstance(profile.get("model_connection"), dict) and profile["model_connection"].get("model"):
-        return profile["model_connection"]
+    # Native CLI and dashboard controls both own this file. Application metadata is
+    # a display-name cache, never authority for model selection or wire protocol.
     try:
         target = runtime.home(profile) / "config.yaml"
-        if target.exists():
-            cfg = yaml.safe_load(target.read_text()) or {}
-            m = cfg.get("model")
-            model_name = None
-            if isinstance(m, str) and m.strip():
-                model_name = m.strip()
-            elif isinstance(m, dict) and (m.get("default") or m.get("model")):
-                model_name = m.get("default") or m.get("model")
-            if model_name:
-                provider_name = m.get("provider", "native") if isinstance(m, dict) else "native"
-                base_url = m.get("base_url", "") if isinstance(m, dict) else ""
-                api_mode = m.get("api_mode", "chat_completions") if isinstance(m, dict) else "chat_completions"
-                return {"name": provider_name, "base_url": base_url, "model": model_name, "api_mode": api_mode}
-    except Exception:
-        pass
-    return None
+        cfg = yaml.safe_load(target.read_text())
+        if not isinstance(cfg, dict):
+            return None
+        m = cfg.get("model")
+        model_name = (m.get("default") or m.get("model")) if isinstance(m, dict) else m
+        if not isinstance(model_name, str) or not model_name.strip():
+            return None
+        model_name = model_name.strip()
+        provider_name = m.get("provider", "native") if isinstance(m, dict) else "native"
+        base_url = m.get("base_url", "") if isinstance(m, dict) else ""
+        api_mode = m.get("api_mode", "chat_completions") if isinstance(m, dict) else "chat_completions"
+        cached = profile.get("model_connection")
+        cached = cached if isinstance(cached, dict) else {}
+        same_endpoint = cached.get("model") == model_name and cached.get("base_url", "") == base_url
+        same_provider = cached.get("provider") == provider_name or provider_name == "ara-connection"
+        name = (cached.get("name") if same_endpoint and same_provider else None) or provider_name
+        return {"name": name, "provider": provider_name, "base_url": base_url,
+                "model": model_name, "api_mode": api_mode}
+    except (OSError, ValueError, TypeError, yaml.YAMLError):
+        # Missing/unreadable native configuration must not resurrect stale metadata.
+        return None
 
 
 async def provision(profile: dict):
