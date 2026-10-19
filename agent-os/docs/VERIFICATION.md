@@ -2,6 +2,55 @@
 
 Current-instance validation on x86 Linux; browser timezone Asia/Kolkata. This is not a live deployment or a fresh cloud-machine restoration claim.
 
+## 19 October 2026 — installation model onboarding
+
+- `scripts/setup.sh` now provisions the six presets before first server start,
+  then offers one native provider/account/model wizard and explicit application
+  confirmation. `.venv/bin/ara setup` reopens onboarding without reinstalling.
+- Existing model choices are preserved by default. `--replace-models` explicitly
+  targets the original six presets, not retained profiles or extra instances.
+  `--skip-model`, `--non-interactive` and `--use-existing` support unattended setup
+  without hanging on account prompts. Setup itself never submits inference.
+- Shared API-key setup was exercised through all six real native agent sessions
+  against an authenticated local wire fixture. OAuth tests verified one native-root
+  refresh grant remained available to child profiles without cloning its tokens.
+  Native account resolution is checked under each profile before success is reported.
+- Fresh installation into a disposable empty database created six native homes
+  and the CLI default before any web server was started. Cancellation, existing
+  choices, changed-file conflicts and running-API outcome preservation are covered.
+- Full regression run: **74 passed in 222.25 seconds**. Final focused setup run:
+  **8 passed in 31.48 seconds**, including the additional fresh-install check
+  and replacement of an earlier shared API key without keeping a stale fallback.
+  Production frontend build and shell syntax checks passed.
+- Live `.venv/bin/ara setup --skip-model` passed; all eight pre-existing native
+  configuration hashes were unchanged and health remained ready. The user's
+  Agnes/Scout provider split was not replaced.
+
+## 19 October 2026 — live account checks and provider dependency repair
+
+- Kept the user's selected split: Agnes uses ChatGPT/Codex with
+  `gpt-6-luna-900k`; Scout uses MiniMax OAuth with `MiniMax-M2.7-highspeed`.
+- Both profiles completed a real, connection-only inference turn and returned
+  `READY`. No tool calls were recorded. Personal setup answers, dataset grants and
+  credentials were not copied or changed. This verifies a single live turn per
+  connection, not general reasoning quality or provider reliability.
+- Scout's initial check exposed a missing Anthropic Messages SDK. Added the
+  pinned native `anthropic` extra and actual adapter import smoke checks; rebuilt
+  through native PM with a validated staged environment and a retained previous
+  environment. Stopped the native gateway only after checking for active native
+  admissions/workers, then repeated Scout's connection check successfully.
+- Re-running `scripts/setup_runtime.py` verified imports and launcher help
+  without another rebuild. Tests cover failed staged checks, promotion rollback,
+  preservation of the previous environment and installed adapter availability.
+- Connection reporting and managed execution now read native model/provider/
+  protocol settings rather than trusting stale application metadata. Regression
+  coverage includes CLI-style changes, stale cache execution and rejection of a
+  removed or malformed native model without creating a run.
+- Production TypeScript/Vite build passed. Full regression run:
+  **67 passed in 214.25 seconds**, including provider selection, native adapter
+  imports, staged dependency refresh/rollback, session recovery, preset workflows,
+  swarms, browser flows, node snapshots and encrypted backup/restore.
+
 ## 19 October 2026 — preset workflows and legacy-session recovery
 
 - Production TypeScript/Vite build passed.
@@ -45,4 +94,4 @@ The browser case creates finance data, binds Ledger, uses its finance workspace,
 
 Model responses come from an explicit deterministic OpenAI wire fixture. Native session authority, tool discovery, tool execution, SQLite persistence, application services, PostgreSQL and MCP transport are real. These checks do not certify paid provider behavior or reasoning quality.
 
-Not live-certified: OAuth completion, paid model calls, Telegram send/receive, physical microphone capture and provider STT/TTS, external Hindsight/Obsidian services, ARM/macOS execution, active host/node gateway handoff or bidirectional data replication. The prototype exposes actual configured native capabilities and labels/gates unsupported placement cases. Android and hosted deployment are outside this implementation.
+Beyond the two account checks above, other provider OAuth flows, metered API billing, production provider reliability, Telegram send/receive, physical microphone capture and provider STT/TTS, external Hindsight/Obsidian services, ARM/macOS execution, active host/node gateway handoff and bidirectional data replication remain uncertified. The prototype exposes actual configured native capabilities and labels/gates unsupported placement cases. Android and hosted deployment are outside this implementation.

@@ -30,7 +30,12 @@ preserved. Revision and identity-hash checks reject stale edits. Existing sessio
 keep their frozen context; changes apply to new conversations.
 
 No model, account credential, dataset grant or specialist grant is borrowed from
-another agent. Personalizing an agent does not start inference. Starter prompts
+another agent. Installation onboarding can explicitly configure a native-root
+provider/model for all six presets with one login. Root credential-pool fallback
+is owned by Hermes; rotating OAuth grants are not cloned. Existing individual
+choices are preserved unless replacement is confirmed, and extra instances and
+retained profiles are not bulk targets. Per-agent overrides remain supported.
+Personalizing an agent does not start inference. Starter prompts
 open editable drafts, and new datasets are bound read-only until the user changes
 the permission. Reflection datasets use the same private-channel restrictions as
 the existing notebook data module.
@@ -63,3 +68,8 @@ action. Native policies are immutable; configuring a model changes new sessions,
 not the frozen settings of an already-created conversation. This recovery never
 automatically resubmits work. Account login remains explicit for every profile;
 selecting ChatGPT does not copy another profile's OAuth tokens.
+
+Native configuration is authoritative for model and protocol selection, even after
+CLI changes. Cached application connection labels cannot resurrect a removed model
+or silently route a new conversation through an older selection. Preference forms,
+data permissions and existing frozen session policies are independent of this lookup.

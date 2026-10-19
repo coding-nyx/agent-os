@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from . import domains
+from .cua.tools import CUA_TOOLS, invoke_cua_tool
 from .store import Problem, get, transaction
 
 TOOLS = [
@@ -13,7 +14,7 @@ TOOLS = [
     {"name": "ara_list_swarms", "description": "List available swarm presets and check whether swarm coordination is enabled for this profile.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"name": "ara_spawn_swarm", "description": "Deploy a coordinated swarm of specialized worker bots working in tandem for large or complex tasks (presets: 'research', 'coding', 'analysis', 'custom'). Returns swarm_id and runs workers in tandem.", "inputSchema": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["research", "coding", "analysis", "custom"]}, "task": {"type": "string"}, "operation_id": {"type": "string"}, "custom_roles": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "objective": {"type": "string"}}, "required": ["role", "objective"]}}}, "required": ["preset", "task", "operation_id"], "additionalProperties": False}},
     {"name": "ara_get_swarm", "description": "Inspect a swarm execution started by this profile. Returns worker status, worker outputs, and synthesized outcome.", "inputSchema": {"type": "object", "properties": {"swarm_id": {"type": "string"}}, "required": ["swarm_id"], "additionalProperties": False}},
-]
+] + CUA_TOOLS
 
 
 def invoke(profile_id: str, name: str, args: dict):
@@ -58,6 +59,17 @@ def invoke(profile_id: str, name: str, args: dict):
                 "synthesized_output": task.get("synthesized_output"),
                 "error": task.get("error")
             }
+        if name.startswith("ara_cua_"):
+            import asyncio
+            import concurrent.futures
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            if loop and loop.is_running():
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                    return ex.submit(asyncio.run, invoke_cua_tool(name, args)).result()
+            return asyncio.run(invoke_cua_tool(name, args))
         if name == "ara_list_agents":
             return [{k: p.get(k) for k in ("id", "name", "description", "enabled")} for target in profile.get("delegation_targets", []) for p in [get(session, target, "profile")]]
         if name == "ara_get_task":

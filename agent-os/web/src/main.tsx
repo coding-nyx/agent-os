@@ -1,15 +1,17 @@
 import React, { Component, useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, AudioLines, Bot, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Compass, Database, FileText, HardDrive, Home, Layers, Loader2, Menu, MessageSquare, Mic, Monitor, Network, Notebook, Pause, Play, Plus, RefreshCw, Search, Send, Settings, Shield, Sparkles, Square, Volume2, Wallet, X } from 'lucide-react';
+import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, AudioLines, Bot, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Compass, Database, FileText, HardDrive, Home, Layers, Loader2, Menu, MessageSquare, Mic, Monitor, MonitorPlay, Network, Notebook, Pause, Play, Plus, RefreshCw, Search, Send, Settings, Shield, Sparkles, Square, Volume2, Wallet, X } from 'lucide-react';
 import { api, brand, Item, patch, post, put } from './api';
 import './style.css';
 import { AgentDirectory, AgentHome, AgentReadiness, AgentSetup, PlanningSurface, SwarmPanel } from './agents';
+import { SystemControlView } from './system_control';
 
-type View = 'home' | 'profiles' | 'data' | 'connections' | 'machines' | 'activity' | 'settings';
+type View = 'home' | 'profiles' | 'data' | 'system_control' | 'connections' | 'machines' | 'activity' | 'settings';
 const nav: { id: View; label: string; icon: typeof Home }[] = [
   { id: 'home', label: 'Overview', icon: Home }, { id: 'profiles', label: 'Agents', icon: Bot },
-  { id: 'data', label: 'Data library', icon: Database }, { id: 'connections', label: 'Connections', icon: Network },
-  { id: 'machines', label: 'Machines & sync', icon: Monitor }, { id: 'activity', label: 'Activity', icon: Activity },
+  { id: 'data', label: 'Data library', icon: Database }, { id: 'system_control', label: 'System Control', icon: MonitorPlay },
+  { id: 'connections', label: 'Connections', icon: Network }, { id: 'machines', label: 'Machines & sync', icon: Monitor },
+  { id: 'activity', label: 'Activity', icon: Activity },
 ];
 const colors: Record<string, string> = { ara: 'sage', agnes: 'lavender', atlas: 'sage', ledger: 'sand', titan: 'coral', soma: 'lavender', scout: 'blue', orchestrator: 'slate' };
 const moduleIcons: Record<string, typeof Home> = { finance: Wallet, training: Activity, notebook: Notebook, emotional: Notebook, planning: Layers, research: Compass, custom: Database };
@@ -93,6 +95,7 @@ function App() {
           </>}
           {view === 'profiles' && (current ? <ProfileWorkspace profile={current} datasets={datasets} act={act} refresh={refresh} back={() => selectProfile(null)} /> : <AgentDirectory profiles={allProfiles} open={selectProfile} create={() => setModal('profile')} />)}
           {view === 'data' && (selectedDataset ? <DatasetWorkspace id={selectedDataset} act={act} back={() => selectDataset(null)} /> : <><PageTitle title="Data library" description="Your information has a home, with or without an agent." action={<button className="primary" onClick={() => setModal('dataset')}><Plus size={16} />New dataset</button>} /><div className="module-strip">{catalog.modules.map((m: any) => <span key={m.id}>{React.createElement(moduleIcons[m.id] || Database, { size: 15 })}{m.name}</span>)}</div>{datasets.length ? <div className="dataset-grid">{datasets.map(d => <button className="dataset-card" key={d.id} onClick={() => selectDataset(d.id)}><span className="module-icon">{React.createElement(moduleIcons[d.module] || Database, { size: 22 })}</span><Badge state={d.archived ? 'archived' : 'ready'} /><h3>{d.name}</h3><p>{catalog.modules.find((m: any) => m.id === d.module)?.description}</p><footer><span>{d.summary?.count || 0} records</span><ArrowRight size={16} /></footer></button>)}</div> : <div className="panel"><Empty icon={Database} title="Build your first dataset" action={<button onClick={() => setModal('dataset')}>Create a dataset</button>}>Start with finance, workouts, a private notebook, research, or your own schema.</Empty></div>}</>)}
+          {view === 'system_control' && <SystemControlView />}
           {view === 'connections' && <><PageTitle title="Connections" description="Models, channels, and tools are configured at their actual profile owner." /><div className="connection-intro"><Shield size={23} /><div><h3>Connected, with clear boundaries.</h3><p>Provider credentials stay in the native credential store. Each bot has one connection owner. Select an agent to manage its connections.</p></div></div><div className="profile-grid">{profiles.map(p => <button className="connection-card" key={p.id} onClick={() => { setView('profiles'); selectProfile(p.id); }}><span className={`avatar ${colors[p.preset] || 'sage'}`}>{p.name[0]}</span><div><h3>{p.name}</h3><p>{p.model_connection ? `${p.model_connection.name} · ${p.model_connection.model}` : 'Configure model, channels, tools and voice'}</p></div><ChevronRight size={18} /></button>)}</div></>}
           {view === 'activity' && <><PageTitle title="Activity" description="Execution, tool activity and approvals—without hiding uncertain outcomes." /><RunList profiles={profiles} /></>}
           {view === 'machines' && <Machines act={act} />}

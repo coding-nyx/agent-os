@@ -65,6 +65,7 @@ if needs_refresh:
             cache=cache_dir, extras=lock["runtime"]["extras"], explicit=True), verify_environment)
     if previous:
         print("Previous native environment retained at " + str(previous))
+        print("Restart active Hermes gateways before chatting so they load the refreshed dependencies.")
 stamp.write_text(json.dumps(expected_stamp, indent=2))
 from ara_os.launchers import install_cli
 

@@ -19,6 +19,11 @@ def main():
     subs = parser.add_subparsers(dest="command", required=True)
     serve = subs.add_parser("serve", help="Run the local Agent OS API and built web client")
     serve.add_argument("--port", type=int, default=8787)
+    setup = subs.add_parser("setup", help="Create presets and configure one shared provider/model")
+    setup.add_argument("--skip-model", action="store_true", help="Provision preset runtimes without model/account setup")
+    setup.add_argument("--use-existing", action="store_true", help="Use the model/account already configured in this installation's native root")
+    setup.add_argument("--replace-models", action="store_true", help="Explicitly replace existing preset model choices")
+    setup.add_argument("--non-interactive", action="store_true", help="Never prompt; use --use-existing or skip model setup")
     chat = subs.add_parser("chat", help="Use the native agent CLI for an ARA profile")
     chat.add_argument("profile", help="Profile ID or native profile name")
     chat.add_argument("args", nargs=argparse.REMAINDER)
@@ -44,6 +49,10 @@ def main():
     sync = node_sub.add_parser("sync"); sync.add_argument("--profile", required=True)
     sync.add_argument("--watch", action="store_true", help="Watch committed native assets and periodically snapshot active state")
     sync.add_argument("--interval", type=int, default=5, help="Asset reconciliation interval, minimum 2 seconds")
+    cua = subs.add_parser("cua", help="Computer Use Agent (CUA) system control and MCP server")
+    cua_sub = cua.add_subparsers(dest="action", required=True)
+    cua_sub.add_parser("mcp", help="Run standalone CUA stdio MCP server for Hermes")
+    cua_sub.add_parser("devices", help="List discovered devices available for computer control")
     args = parser.parse_args()
     if args.state:
         os.environ["ARA_STATE_DIR"] = str(Path(args.state).resolve())
@@ -52,7 +61,14 @@ def main():
     from . import config, runtime
     from .store import Problem
     try:
-        if args.command == "serve":
+        if args.command == "setup":
+            from .setup import run_setup
+            try:
+                run_setup(args)
+            except (EOFError, KeyboardInterrupt):
+                print("Setup interrupted. Review preset model settings before rerunning; no work was resubmitted.", file=sys.stderr)
+                raise SystemExit(130)
+        elif args.command == "serve":
             import uvicorn
             uvicorn.run("ara_os.app:app", host="127.0.0.1", port=args.port)
         elif args.command == "import":
@@ -86,6 +102,18 @@ def main():
             asyncio.run(restore_bundle(args))
         elif args.command == "node":
             asyncio.run(node_command(args))
+        elif args.command == "cua":
+            if args.action == "mcp":
+                from .cua.mcp_server import main as run_cua_mcp
+                run_cua_mcp()
+            elif args.action == "devices":
+                from .cua import discover_all_devices
+                async def print_devs():
+                    devs = await discover_all_devices()
+                    for d in devs:
+                        info = await d.get_device_info()
+                        print(json.dumps(info.to_dict(), indent=2))
+                asyncio.run(print_devs())
     except Problem as exc:
         print(f"{exc.code}: {exc.detail}", file=sys.stderr)
         raise SystemExit(1)

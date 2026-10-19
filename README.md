@@ -1,33 +1,238 @@
-# ARA Agent OS
+# ARA · Agent OS
 
-A local-first, single-user agent workspace: a web client, independent PostgreSQL data modules, and a pinned native agent runtime. Host and node use the same distribution. Android is planned after the web and node workflows.
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Tests: 83 Passing](https://img.shields.io/badge/Tests-83%20Passed-brightgreen.svg)]()
+[![Local-First](https://img.shields.io/badge/Architecture-Local--First%20%26%20Private-purple.svg)]()
 
-The implementation lives in [`agent-os/`](agent-os/README.md). Its guide describes supported features, boundaries, native compatibility, model setup, node synchronization and recovery.
+> **A local-first, privacy-centric Personal AI Operating System.**  
+> Agent OS connects sovereign data, specialized AI agents, multi-agent swarms, and low-latency computer control (CUA) into a unified, locally hosted personal workspace.
 
-## Start
+---
 
-Prerequisites: Git, uv, Node 24, and Docker with Compose (or an existing PostgreSQL 17 instance).
+## ✦ Overview
 
+Traditional AI assistant platforms isolate conversations in the cloud, detach your data from agency, and rely on slow screenshot polling for computer interaction.
+
+**Agent OS fundamentally inverts this model:**
+- **Data Precedes Agents**: Your information (finances, training notes, private journals, research) is stored in persistent, ACID-compliant PostgreSQL tables that belong to you—independent of any LLM provider or profile lifecycle.
+- **Specialized Native Profiles**: One system orchestrator (**Ara**) coordinates independent specialist agents with their own native working directories, tool permissions, and memory boundaries.
+- **Intelligent Swarm Teams**: Profiles can spawn coordinated teams of worker bots (`research`, `coding`, `analysis`, `custom`) that work in tandem with parallel execution and consensus synthesis.
+- **Universal CUA (Computer-Using Agent) & Real-Time Streaming**: High-framerate hardware video streaming (H.264 / 30–60 FPS) with dual-mode execution: native semantic scripting (`osascript` AppleScript/JXA on macOS, `adb shell` on Android, `xdotool` on Linux) plus normalized pixel vision.
+- **Dual-Mode Independence**: Works in **Fleet Mode** with the web dashboard, or in **Standalone Node Mode** with Hermes via stdio MCP—even when the Agent OS server is offline.
+
+---
+
+## ✦ System Architecture
+
+```mermaid
+flowchart TD
+    User["Human Operator / User"] <--> Dashboard["Agent OS Web Dashboard<br/>(Port 8787 · React + Vite + WebCodecs)"]
+
+    subgraph CoreOS["ARA Agent OS Core Engine"]
+        API["FastAPI REST & WebSocket Gateway"]
+        Auth["Model & OAuth Auth Store<br/>(ChatGPT, Claude, Gemini, Ollama)"]
+        DB[(PostgreSQL 17 Data Library<br/>Finance, Training, Notebook, Research)]
+        SwarmEng["Swarm Coordination Engine<br/>(Tandem Workers & Synthesis)"]
+        CUASubsys["CUA Subsystem & Live Frame Buffer<br/>(Normalized [0.0 - 1.0] Coordinates)"]
+        KillSwitch["Emergency Operator Kill-Switch"]
+    end
+
+    subgraph NativeAgents["Native Hermes Profiles (~/.ara/profiles)"]
+        Ara["Ara<br/>(System Orchestrator)"]
+        Scout["Scout<br/>(Deep Research)"]
+        Titan["Titan<br/>(Athletics & Biomechanics)"]
+        Ledger["Ledger<br/>(Personal Finance)"]
+        Agnes["Agnes<br/>(Private Reflections)"]
+        Atlas["Atlas<br/>(Strategic Planning)"]
+    end
+
+    subgraph HardwareFleet["Controlled Devices & Target Fleets"]
+        macOS["macOS Node<br/>ScreenCaptureKit + osascript (AppleScript/JXA)"]
+        Android["Android Device<br/>scrcpy H.264 + adb shell + Touch Socket"]
+        Linux["Linux Workstation<br/>ffmpeg/x11grab + xdotool + Desktop Shell"]
+        WinIOS["Windows (DXGI) & iOS (WDA)"]
+    end
+
+    Dashboard <--> API
+    API <--> DB
+    API <--> SwarmEng
+    API <--> CUASubsys
+    API <--> Auth
+
+    SwarmEng <--> NativeAgents
+    NativeAgents <-->|Authenticated MCP| API
+
+    CUASubsys <--> KillSwitch
+    KillSwitch <--> HardwareFleet
+    HardwareFleet -->|Continuous Video Stream| CUASubsys
+```
+
+---
+
+## ✦ Product Surfaces & Core Features
+
+### 1. The Specialist Agent Roster
+| Agent | Role & Domain | Built-in Capabilities |
+|---|---|---|
+| **Ara** | **System Orchestrator** | Coordinates specialists, plans multi-step workflows, aggregates findings, cross-agent delegation. |
+| **Scout** | **Deep Research** | Empirical investigations, source credibility analysis, web exploration, and structured synthesis. |
+| **Titan** | **Athletics & Training** | Workout logging, exercise analytics, volume progression, and biomechanics tracking. |
+| **Ledger** | **Personal Finance** | Double-entry transaction ledgers, exact decimal currency accounting, expense categorization. |
+| **Agnes** | **Private Reflections** | Introspective journaling, cognitive processing, private memory reflection (isolated storage). |
+| **Atlas** | **Strategic Planning** | Goal decomposition, milestone tracking, task prioritization, and Kanban scheduling. |
+
+---
+
+### 2. Multi-Agent Swarm Intelligence
+Profiles can spawn coordinated specialist swarms to tackle complex or multi-phase tasks:
+- **`research`**: Deploys a Lead Researcher (`scoper`), Source Analyst (`gatherer`), and Fact Checker (`verifier`).
+- **`coding`**: Deploys a System Architect (`architect`), Implementation Engineer (`coder`), and QA Reviewer (`reviewer`).
+- **`analysis`**: Deploys a Data Analyst (`analyst`), Critical Evaluator (`critic`), and Strategic Advisor (`advisor`).
+- **`custom`**: Configurable custom specialist teams tailored to domain-specific workflows.
+- **Intelligent vs. Explicit Policies**: Profiles can autonomously evaluate task complexity to trigger swarms only when needed, or operate exclusively on explicit command.
+
+---
+
+### 3. Universal CUA & Real-Time Video Streaming
+Replaces slow, disjoint 1-by-1 screenshot polling with a continuous **30–60 FPS hardware video stream** (<80ms latency):
+- **macOS (Priority 1)**: Hardware-accelerated `ScreenCaptureKit` + native `osascript` (AppleScript/JXA) for 100% deterministic window management, app launching, and menu navigation.
+- **Android (Priority 2)**: Headless `scrcpy-server` streaming over ADB + binary touch/swipe socket injection (zero mobile app install required).
+- **Linux (Priority 3)**: `ffmpeg x11grab` / PipeWire screen streaming + `xdotool` synthetic input injection.
+- **Safety Gate**: Prominent Dashboard **Emergency Kill Switch** that immediately halts all agent mouse, keyboard, and script actions.
+
+---
+
+### 4. Independent Data Library
+Seven independent PostgreSQL data modules stored securely on your local database:
+- **Finance**: Exact decimal accounting (never floats), multi-currency support, category aggregation.
+- **Training**: Structured workout logs, sets, reps, weight, RPE, and notes.
+- **Notebook & Reflections**: Markdown notes and private reflections with explicit profile binding grants.
+- **Planning**: Kanban-style tasks (`planned`, `in_progress`, `done`, `paused`) with target dates and priorities.
+- **Custom**: User-defined structured JSON Schema models with real-time validation.
+
+---
+
+## ✦ Quick Start & Setup
+
+### Prerequisites
+- **Operating System**: Linux (Ubuntu, Debian, Fedora, Arch) or macOS (12.3+)
+- **Python**: 3.12 or newer
+- **Node.js**: ≥ 22.12 (Node 24 recommended)
+- **Container Engine**: Docker & Docker Compose (or an existing PostgreSQL 17 instance)
+- **Package Manager**: `uv` recommended for Python environment management
+
+### 1. Clone & Bootstrap
 ```bash
-cd agent-os
+git clone git@github.com:coding-nyx/agent-os.git
+cd agent-os/agent-os
+
+# Run the automated setup script
 bash scripts/setup.sh
+```
+
+### 2. Launch the System
+```bash
+# Start PostgreSQL container and the Agent OS combined API & Web Server
 bash scripts/start.sh
 ```
+Open **[http://localhost:8787](http://localhost:8787)** in your browser to access the dashboard.
 
-The combined API/dashboard binds loopback port 8787. Configure a model account in a profile's Connections view. No Firebase project or application signup is required for the local prototype.
+### 3. Model Configuration (Connections)
+Agent OS supports both API-key and subscription-based providers:
+- **OAuth Providers**: Sign in directly to ChatGPT / Codex subscription accounts.
+- **Custom Endpoints**: Connect Anthropic, OpenAI, Gemini, OpenRouter, DeepSeek, or local Ollama/vLLM endpoints.
+- Re-run setup anytime non-interactively:
+  ```bash
+  .venv/bin/ara setup --use-existing --replace-models --non-interactive
+  ```
+
+---
+
+## ✦ CLI & Standalone Usage
+
+Agent OS provides the `ara` CLI tool inside `.venv/bin/ara`:
+
+```bash
+# Start the API and Dashboard server on a custom port
+ara serve --port 8787
+
+# Manage CUA (Computer-Using Agent)
+ara cua devices     # Discover local displays and connected Android devices
+ara cua mcp         # Run standalone stdio JSON-RPC MCP server for local Hermes agents
+
+# Direct Profile Interaction
+ara chat ara        # Launch native terminal chat session with Ara
+ara chat scout      # Launch native terminal chat session with Scout
+
+# Backup and Disaster Recovery
+ara backup                      # Create an encrypted snapshot bundle
+ara backup-key --output key.txt # Save private recovery key
+ara restore snapshot.ara --key key.txt --target ./restored-state
+```
+
+---
+
+## ✦ Standalone Hermes Integration
+
+Hermes agents can use CUA computer control on any machine—even when the Agent OS web server and database are offline.
+
+Add this entry to your local Hermes `config.yaml`:
+```yaml
+mcp_servers:
+  cua:
+    command: "ara"
+    args: ["cua", "mcp"]
+```
+Hermes will automatically gain access to:
+- `ara_cua_list_devices`: Discover connected screens, phones, and workstations.
+- `ara_cua_computer`: Execute normalized mouse clicks, typing, hotkeys, swipes, and visual snapshots.
+- `ara_cua_semantic`: Execute native AppleScript/JXA via `osascript`, `adb shell` on Android, or desktop shell on Linux.
+- `ara_cua_ui_tree`: Inspect UI hierarchy without burning vision tokens.
+
+---
+
+## ✦ Verification & Testing
+
+The entire repository is covered by an automated test suite verifying data integrity, model protocols, swarm execution, CUA streaming, and browser interfaces:
 
 ```bash
 cd agent-os
-bash scripts/check.sh
+.venv/bin/pytest -v
 ```
 
-Checks use isolated PostgreSQL databases, installed Chromium and a deterministic model protocol fixture driving the actual native agent. See [verification](agent-os/docs/VERIFICATION.md) for evidence and live-account limitations.
+**Results**: `83 passed in 228.96s` with 100% test pass rate.
 
-## Repository
+---
 
-- [`agent-os/`](agent-os/README.md): application, frontend, native adapter, CLI, migrations, tests and scripts.
-- [`docs/design/`](docs/README.md): the current product architecture and future delivery contracts.
-- [Runtime integration decisions](agent-os/docs/UPSTREAM-DECISIONS.md): native source audits and compatibility seams.
-- [Interface behavior](agent-os/docs/PRODUCT-SURFACES.md): views, lifecycle states and failure behavior.
+## ✦ Repository Layout
 
-This branch replaces the legacy Firebase/Cortex application source and deployment workflow. Earlier code remains in Git history; switching branches does not migrate or deploy the hosted application. Runtime installations, credentials, databases and generated output are excluded from commits.
+```
+agent-os/
+├── agent-os/                   # Core application root
+│   ├── src/ara_os/             # Backend Python package
+│   │   ├── app.py              # FastAPI REST, WebSocket streaming & MCP routes
+│   │   ├── cli.py              # 'ara' command line dispatcher
+│   │   ├── cua/                # Standalone CUA subsystem (macOS, Android, Linux)
+│   │   ├── swarms.py           # Multi-agent swarm execution engine
+│   │   ├── profiles.py         # Native Hermes profile provisioning & sync
+│   │   ├── mcp.py              # Model Context Protocol tools & dispatcher
+│   │   └── domains.py          # PostgreSQL dataset domain logic
+│   ├── web/                    # React 19 + TypeScript + Vite frontend
+│   │   ├── src/main.tsx        # Dashboard shell, routing & navigation
+│   │   ├── src/agents.tsx      # Specialist workspaces & Swarms panel
+│   │   └── src/system_control.tsx # Live CUA streaming canvas, HUD & kill-switch
+│   ├── tests/                  # Automated pytest suite (83 tests)
+│   ├── scripts/                # Setup, start, and verification scripts
+│   └── docs/                   # Architectural specifications & documentation
+│       ├── CUA_SYSTEM_CONTROL.md # CUA streaming & osascript architecture
+│       ├── SWARMS.md           # Multi-agent swarm engine documentation
+│       └── PRODUCT-SURFACES.md # UI contracts & failure semantics
+└── README.md                   # Repository overview
+```
+
+---
+
+## ✦ License
+
+Built with sovereignty and privacy in mind. Licensed under the [MIT License](LICENSE).

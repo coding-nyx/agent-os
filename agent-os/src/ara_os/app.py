@@ -10,9 +10,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
@@ -777,6 +777,106 @@ def storage_export():
     with transaction() as session:
         items = [wire(row) for row in session.scalars(select(Entity).where(Entity.kind.in_(["dataset", "record", "profile", "conversation", "run"]))) ]
     return JSONResponse({"format": "ara-os-v1", "entities": items}, headers={"Content-Disposition": 'attachment; filename="ara-agent-os.json"'})
+
+
+# CUA (Computer-Using Agent) System Control & Streaming
+from .cua import CUAAction, cua_engine
+
+
+@app.get("/api/v1/cua/devices")
+async def list_cua_devices():
+    return await cua_engine.list_devices()
+
+
+@app.post("/api/v1/cua/devices/{device_id}/action")
+async def cua_device_action(device_id: str, body: dict):
+    action = CUAAction.from_dict(body)
+    try:
+        res = await cua_engine.act(device_id, action)
+        return res.to_dict()
+    except ValueError as e:
+        raise Problem("device_not_found", str(e), 404)
+
+
+@app.post("/api/v1/cua/devices/{device_id}/semantic")
+async def cua_device_semantic(device_id: str, body: dict):
+    script = body.get("script", "")
+    engine = body.get("engine", "osascript_applescript")
+    try:
+        res = await cua_engine.execute_semantic(device_id, script, engine)
+        return res.to_dict()
+    except ValueError as e:
+        raise Problem("device_not_found", str(e), 404)
+
+
+@app.get("/api/v1/cua/devices/{device_id}/frame")
+async def cua_device_frame(device_id: str):
+    try:
+        frame_bytes, meta = await cua_engine.get_frame(device_id)
+        fmt = meta.get("format", "png")
+        media_type = "image/jpeg" if fmt in ("jpeg", "jpg") else "image/png"
+        return Response(content=frame_bytes, media_type=media_type)
+    except ValueError as e:
+        raise Problem("device_not_found", str(e), 404)
+
+
+@app.get("/api/v1/cua/devices/{device_id}/ui-tree")
+async def cua_device_ui_tree(device_id: str):
+    try:
+        return await cua_engine.get_ui_tree(device_id)
+    except ValueError as e:
+        raise Problem("device_not_found", str(e), 404)
+
+
+@app.post("/api/v1/cua/kill-switch")
+def cua_kill_switch(body: dict):
+    active = bool(body.get("active", True))
+    state = cua_engine.set_kill_switch(active)
+    return {"kill_switch": state}
+
+
+@app.websocket("/api/v1/cua/devices/{device_id}/stream")
+async def cua_device_stream(websocket: WebSocket, device_id: str):
+    await websocket.accept()
+    try:
+        prov = await cua_engine.get_provider_or_raise(device_id)
+        info = await prov.get_device_info()
+        await websocket.send_json({"type": "init", "device": info.to_dict(), "kill_switch": cua_engine.kill_switch_active})
+
+        async def stream_sender():
+            import base64
+            async for frame in prov.stream_frames():
+                b64 = base64.b64encode(frame).decode()
+                await websocket.send_json({"type": "frame", "data": b64})
+
+        async def command_receiver():
+            while True:
+                msg = await websocket.receive_json()
+                m_type = msg.get("type")
+                if m_type == "input":
+                    action = CUAAction.from_dict(msg.get("action", {}))
+                    res = await cua_engine.act(device_id, action)
+                    await websocket.send_json({"type": "action_result", "result": res.to_dict()})
+                elif m_type == "kill_switch":
+                    cua_engine.set_kill_switch(bool(msg.get("active", True)))
+                    await websocket.send_json({"type": "kill_switch_status", "active": cua_engine.kill_switch_active})
+
+        sender_task = asyncio.create_task(stream_sender())
+        receiver_task = asyncio.create_task(command_receiver())
+        done, pending = await asyncio.wait(
+            [sender_task, receiver_task],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for t in pending:
+            t.cancel()
+    except (WebSocketDisconnect, asyncio.CancelledError):
+        pass
+    except Exception as e:
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.close()
+        except Exception:
+            pass
 
 
 def mount_web():

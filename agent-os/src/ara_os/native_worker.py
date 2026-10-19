@@ -37,7 +37,10 @@ async def native_http(request):
 
 async def main(request):
     operation = request["operation"]
-    if operation == "create":
+    if operation == "setup-model":
+        from native_model_setup import apply_shared_model
+        emit("result", apply_shared_model(request))
+    elif operation == "create":
         from hermes_cli.profiles import create_profile, seed_profile_skills, _scrub_export_secrets
         from hermes_cli import profiles_initialization
         original_finish = profiles_initialization.finish_profile_layout

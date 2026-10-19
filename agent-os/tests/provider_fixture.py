@@ -7,7 +7,7 @@ import json
 import time
 
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 app = FastAPI()
 requests = []
@@ -21,6 +21,8 @@ def models():
 @app.post("/v1/chat/completions")
 async def completion(request: Request):
     body = await request.json()
+    if body.get("model") == "ara-shared-setup-test" and request.headers.get("authorization") != "Bearer shared-setup-test-secret":
+        return JSONResponse({"error": {"message": "Shared setup credential was not used", "type": "authentication_error"}}, status_code=401)
     requests.append(body)
     messages = body.get("messages", [])
     tools = body.get("tools", [])

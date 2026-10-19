@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  printf '%s\n' 'Usage: bash scripts/setup.sh [--skip-model | --use-existing] [--replace-models] [--non-interactive]' \
+    'Installs dependencies, prepares the presets, then opens one shared provider/model wizard.' \
+    'Existing per-agent model choices are preserved unless replacement is confirmed.'
+  exit 0
+fi
 ARA_PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ARA_PROJECT_DIR"
 mkdir -p .runtime .state
@@ -12,5 +18,6 @@ uv run --frozen python scripts/setup_runtime.py
 npm --prefix web ci --no-audit --no-fund
 npm --prefix web run build
 bash scripts/services.sh
+uv run --frozen ara setup "$@"
 printf '%s\n' 'ARA Agent OS installed. Start with: .venv/bin/ara serve'
-printf '%s\n' 'Startup creates the six profiles. Run hermes profiles to list them; configure Ara in Connections > Models or with hermes model before chatting.'
+printf '%s\n' 'Run hermes profiles to list the presets. Rerun .venv/bin/ara setup to configure a shared model, or override individual agents in Connections > Models.'
