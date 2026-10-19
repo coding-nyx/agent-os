@@ -15,8 +15,8 @@ import uuid
 from .conftest import ROOT
 
 
-def cli(system, *args):
-    return subprocess.run([str(ROOT / ".venv/bin/ara"), *args], env=system["env"], cwd=ROOT, capture_output=True, text=True, timeout=150)
+def cli(system, *args, env=None):
+    return subprocess.run([str(ROOT / ".venv/bin/ara"), *args], env=env or system["env"], cwd=ROOT, capture_output=True, text=True, timeout=150)
 
 
 def native_archive(path):
@@ -89,6 +89,92 @@ def test_passive_node_sync_checks_auth_and_checksum(system, tmp_path):
     assert c.post("/nodes/check", json={"machine_id": enrollment["machine_id"]}).status_code == 401
     bad = c.post("/nodes/sync", headers={"X-ARA-Node-Key": enrollment["token"]}, json={"machine_id": enrollment["machine_id"], "profile_name": "test", "sha256": "wrong", "archive": base64.b64encode(b"bad").decode()})
     assert bad.status_code == 409
+
+
+def test_multi_machine_profile_deployment_and_sync(system, tmp_path):
+    c = system["client"]
+    # 1. Enroll Node 1 ("Mac Studio") and Node 2 ("Linux Worker")
+    m1_resp = c.post("/machines", json={"name": "Node 1 - Mac Studio"}).json()
+    m2_resp = c.post("/machines", json={"name": "Node 2 - Linux Worker"}).json()
+    m1_enroll = m1_resp["enrollment"]
+    m2_enroll = m2_resp["enrollment"]
+
+    # 2. Setup isolated state directories for each machine
+    node1_state = tmp_path / "node1"; node1_state.mkdir()
+    node2_state = tmp_path / "node2"; node2_state.mkdir()
+
+    env1 = {**system["env"], "ARA_STATE_DIR": str(node1_state)}
+    env2 = {**system["env"], "ARA_STATE_DIR": str(node2_state)}
+
+    m1_file = node1_state / "enrollment.json"; m1_file.write_text(json.dumps(m1_enroll))
+    m2_file = node2_state / "enrollment.json"; m2_file.write_text(json.dumps(m2_enroll))
+
+    # 3. Pair both nodes
+    pair1 = cli(system, "node", "pair", "--enrollment", str(m1_file), env=env1)
+    assert pair1.returncode == 0, pair1.stdout + pair1.stderr
+    pair2 = cli(system, "node", "pair", "--enrollment", str(m2_file), env=env2)
+    assert pair2.returncode == 0, pair2.stdout + pair2.stderr
+
+    machines = c.get("/machines").json()
+    assert next(m for m in machines if m["id"] == m1_enroll["machine_id"])["state"] == "paired"
+    assert next(m for m in machines if m["id"] == m2_enroll["machine_id"])["state"] == "paired"
+
+    # 4. Create and import custom profile on Node 1
+    initial_archive = tmp_path / "node1_profile.tar.gz"
+    native_archive(initial_archive)
+    import1 = cli(system, "import", "native", str(initial_archive), "--name", "edge-alpha", "--apply", env=env1)
+    assert import1.returncode == 0, import1.stdout + import1.stderr
+    assert (node1_state / "runtime/profiles/edge-alpha/SOUL.md").read_text() == "Imported native identity"
+
+    # 5. Node 1 syncs profile to Host
+    sync1 = cli(system, "node", "sync", "--profile", "edge-alpha", env=env1)
+    assert sync1.returncode == 0, sync1.stdout + sync1.stderr
+    receipt1 = json.loads(sync1.stdout.strip().splitlines()[-1])
+    assert receipt1["acknowledged"] is True
+    snap1_id = receipt1["snapshot_id"]
+
+    # Host replica verification
+    replicas = c.get("/replicas").json()
+    rep1 = next(r for r in replicas if r["id"] == snap1_id)
+    assert rep1["machine_id"] == m1_enroll["machine_id"]
+    assert rep1["profile_name"] == "edge-alpha"
+
+    # 6. Deploy snapshot from Node 1 onto Node 2
+    archive_bytes = c.get(f"/replicas/{snap1_id}/download").content
+    node2_pkg = node2_state / "deployed_edge.tar.gz"
+    node2_pkg.write_bytes(archive_bytes)
+
+    deploy2 = cli(system, "import", "native", str(node2_pkg), "--name", "edge-beta", "--apply", env=env2)
+    assert deploy2.returncode == 0, deploy2.stdout + deploy2.stderr
+
+    node2_profile = node2_state / "runtime/profiles/edge-beta"
+    assert (node2_profile / "SOUL.md").read_text() == "Imported native identity"
+    assert (node2_profile / "memories/MEMORY.md").read_text() == "A curated memory"
+    assert not (node2_profile / ".env").exists()  # Credential safety preserved across machines
+
+    # 7. Incremental sync on Node 1: update definition and re-sync
+    (node1_state / "runtime/profiles/edge-alpha/SOUL.md").write_text("Updated identity on Node 1 with multi-machine consensus")
+    sync2 = cli(system, "node", "sync", "--profile", "edge-alpha", env=env1)
+    assert sync2.returncode == 0, sync2.stdout + sync2.stderr
+    receipt2 = json.loads(sync2.stdout.strip().splitlines()[-1])
+    assert receipt2["acknowledged"] is True
+    snap2_id = receipt2["snapshot_id"]
+    assert snap2_id != snap1_id
+
+    # 8. Node 2 syncs its deployed profile back to host
+    sync_node2 = cli(system, "node", "sync", "--profile", "edge-beta", env=env2)
+    assert sync_node2.returncode == 0, sync_node2.stdout + sync_node2.stderr
+    receipt_node2 = json.loads(sync_node2.stdout.strip().splitlines()[-1])
+    assert receipt_node2["acknowledged"] is True
+    snap_node2_id = receipt_node2["snapshot_id"]
+    assert snap_node2_id not in {snap1_id, snap2_id}
+
+    # Verify host records all replicas partitioned by machine_id
+    all_reps = c.get("/replicas").json()
+    node1_reps = [r for r in all_reps if r["machine_id"] == m1_enroll["machine_id"]]
+    node2_reps = [r for r in all_reps if r["machine_id"] == m2_enroll["machine_id"]]
+    assert len(node1_reps) >= 2
+    assert len(node2_reps) >= 1
 
 
 def test_encrypted_backup_and_isolated_restore(system, tmp_path):

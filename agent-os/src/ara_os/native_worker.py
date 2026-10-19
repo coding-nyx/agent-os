@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -37,7 +38,15 @@ async def native_http(request):
 
 async def main(request):
     operation = request["operation"]
-    if operation == "setup-model":
+    if operation == "swarm-workspace":
+        from native_execution import workspace_operation
+        emit("result", await asyncio.to_thread(workspace_operation, request))
+    elif operation in {"swarm-worker", "computer-control"}:
+        if request.get("contract") != "ara-execution/1":
+            raise ValueError("Unsupported ARA execution contract")
+        from native_execution import run_worker, computer_control
+        emit("result", await asyncio.to_thread(run_worker if operation == "swarm-worker" else computer_control, request))
+    elif operation == "setup-model":
         from native_model_setup import apply_shared_model
         emit("result", apply_shared_model(request))
     elif operation == "create":
@@ -188,7 +197,10 @@ async def main(request):
             for name in (".env", "auth.json", "vault.key", "vault.json.enc"):
                 (path / name).unlink(missing_ok=True)
             if (path / "cron").exists():
-                (path / "cron").rename(path / "imported-cron-disabled")
+                disabled = path / "imported-cron-disabled"
+                if disabled.exists():
+                    shutil.rmtree(disabled)
+                (path / "cron").rename(disabled)
             target.parent.mkdir(parents=True, exist_ok=True)
             path.rename(target)
         emit("result", {"path": str(target), "name": request["name"], "channels": "disabled", "credentials": "excluded"})
@@ -217,7 +229,10 @@ async def main(request):
                 # adapt that generated branding to the downstream product.
                 soul.write_text(soul.read_text().replace("Hermes", "Ara"))
             if (target / "cron").exists():
-                (target / "cron").rename(target / "imported-cron-disabled")
+                disabled = target / "imported-cron-disabled"
+                if disabled.exists():
+                    shutil.rmtree(disabled)
+                (target / "cron").rename(disabled)
         emit("result", report)
     elif operation == "restore":
         from types import SimpleNamespace
@@ -248,7 +263,10 @@ async def main(request):
             for name in (".env", "auth.json", "vault.key", "vault.json.enc"):
                 (stage / name).unlink(missing_ok=True)
             if (stage / "cron").exists():
-                (stage / "cron").rename(stage / "imported-cron-disabled")
+                disabled = stage / "imported-cron-disabled"
+                if disabled.exists():
+                    shutil.rmtree(disabled)
+                (stage / "cron").rename(disabled)
             with tarfile.open(request["output"], "w:gz") as archive:
                 archive.add(stage, arcname=request.get("name", "ara-profile"))
         emit("result", {"path": request["output"], "native_databases": "consistent", "credentials": "excluded", "channels": "disabled"})
