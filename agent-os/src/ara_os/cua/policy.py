@@ -8,7 +8,8 @@ from pathlib import Path
 
 from .. import config
 
-DEFAULT = {"mode": "view_only", "kill_switch": False, "grants": {}, "epoch": 0}
+DEFAULT = {"mode": "view_only", "kill_switch": False, "grants": {}, "epoch": 0,
+           "remote_access": [], "remote_pause": True}
 
 
 def read():
@@ -27,6 +28,11 @@ def update(values):
         if not isinstance(cfg["grants"], dict) or any(not isinstance(k, str) or not isinstance(v, list) or
                 any(item not in {"view", "input"} for item in v) for k, v in cfg["grants"].items()):
             raise ValueError("Computer grants map profile identities to view/input permissions")
+        if (not isinstance(cfg["remote_access"], list) or
+                any(p not in {"view", "input"} for p in cfg["remote_access"]) or
+                ("input" in cfg["remote_access"] and "view" not in cfg["remote_access"]) or
+                type(cfg["remote_pause"]) is not bool):
+            raise ValueError("Remote access requires view before input and a boolean remote pause")
         cfg["epoch"] = read()["epoch"] + 1
         with tempfile.NamedTemporaryFile(mode="w", dir=config.STATE, delete=False) as tmp:
             os.chmod(tmp.name, 0o600)

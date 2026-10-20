@@ -847,7 +847,10 @@ def delete_machine(id: str):
         except OSError:
             pass
     with transaction() as session:
-        return remove(session, id, "machine")
+        machine = remove(session, id, "machine")
+        from .cua.remote import forget
+        forget(session, id)
+        return machine
 
 
 def get_repository_url():
@@ -1091,6 +1094,42 @@ async def node_task_events(request: Request):
         return receive(session, machine["id"], body)
 
 
+@app.post("/api/v1/nodes/computer/poll")
+async def node_computer_poll(request: Request):
+    from .cua import remote
+    data = bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data) > 120_000:
+            raise Problem("computer_status_too_large", "Desktop status is limited to 100 KB", 413)
+    try:
+        body = json.loads(data)
+    except ValueError:
+        raise Problem("invalid_json", "Send a valid desktop status")
+    if not isinstance(body, dict):
+        raise Problem("invalid_json", "Send one desktop status object")
+    machine = authorized_node(request, body.get("machine_id", ""))
+    return remote.poll(machine["id"], body.get("status", {}))
+
+
+@app.post("/api/v1/nodes/computer/results")
+async def node_computer_results(request: Request):
+    from .cua import remote
+    data = bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data) > remote.MAX_RESULT + 1024:
+            raise Problem("computer_result_too_large", "Desktop results are limited to 12 MB", 413)
+    try:
+        body = json.loads(data)
+    except ValueError:
+        raise Problem("invalid_json", "Send a valid desktop result")
+    if not isinstance(body, dict):
+        raise Problem("invalid_json", "Send one desktop result object")
+    machine = authorized_node(request, body.get("machine_id", ""))
+    return remote.receive(machine["id"], body.get("command_id", ""), body.get("result"))
+
+
 @app.get("/api/v1/replicas")
 def replicas():
     with transaction() as session:
@@ -1150,7 +1189,10 @@ async def mcp_route(profile_id: str, request: Request):
         result = {"protocolVersion": body.get("params", {}).get("protocolVersion", "2025-03-26"), "capabilities": {"tools": {}}, "serverInfo": {"name": "ARA data", "version": __version__}}
     elif method == "tools/list":
         from .cua import policy as computer_policy
-        allowed = "view" in computer_policy.read()["grants"].get(profile_id, [])
+        from .cua import remote
+        target = remote.profile_target(find(profile_id, "profile"))
+        cfg = remote.state(target) if target else computer_policy.read()
+        allowed = "view" in cfg["grants"].get(profile_id, [])
         result = {"tools": [t for t in mcp.TOOLS if allowed or not t["name"].startswith("ara_cua_")]}
     elif method == "tools/call":
         params = body.get("params", {})
@@ -1165,9 +1207,13 @@ async def mcp_route(profile_id: str, request: Request):
                 raise Problem("invalid_tool_arguments", exc.message)
             if params["name"].startswith("ara_cua_"):
                 from .cua.tools import invoke_cua_tool, result_content
-                if not find(profile_id, "profile")["enabled"]:
+                profile = find(profile_id, "profile")
+                if not profile["enabled"]:
                     raise Problem("profile_disabled", "This profile is disabled", 403)
-                value = await invoke_cua_tool(params["name"], params.get("arguments", {}), actor=profile_id)
+                from .cua import remote
+                value = (await remote.invoke(profile, params["name"], params.get("arguments", {}))
+                         if remote.profile_target(profile) else
+                         await invoke_cua_tool(params["name"], params.get("arguments", {}), actor=profile_id))
                 result = {"content": result_content(value), "isError": value.get("success") is False and
                           value.get("metadata", {}).get("state") != "pending"}
             else:
@@ -1191,6 +1237,7 @@ def storage_export():
 
 # ARA-managed native computer control. Desktop grants are not dataset grants.
 from .cua import CUAAction, cua_engine
+from .cua import remote as remote_computer
 
 
 @app.get("/api/v1/cua/session")
@@ -1203,14 +1250,18 @@ def cua_operator_session(request: Request):
 
 
 @app.get("/api/v1/cua/state")
-def cua_state():
+def cua_state(machine_id: str = "local"):
     from .cua import policy
-    return policy.read()
+    return policy.read() if machine_id == "local" else remote_computer.state(machine_id)
 
 
 @app.put("/api/v1/cua/state")
-def cua_update_state(body: dict):
+def cua_update_state(body: dict, machine_id: str = "local"):
     from .cua import policy
+    if machine_id != "local":
+        if set(body) != {"kill_switch"}:
+            raise Problem("node_local_policy", "Configure modes and native-profile grants on the node with ara cua remote / ara cua configure", 403)
+        return remote_computer.pause(machine_id, body["kill_switch"])
     try:
         for actor, grants in body.get("grants", {}).items():
             if grants:
@@ -1226,13 +1277,17 @@ def cua_update_state(body: dict):
 
 
 @app.get("/api/v1/cua/approvals")
-def cua_approvals():
+def cua_approvals(machine_id: str = "local"):
+    if machine_id != "local":
+        return remote_computer.approvals(machine_id)
     directory = config.STATE / "computer-approvals"
     return [json.loads(path.read_text()) for path in sorted(directory.glob("*.json"))]
 
 
 @app.post("/api/v1/cua/approvals/{id}/approve")
-async def cua_approve(id: str):
+async def cua_approve(id: str, machine_id: str = "local"):
+    if machine_id != "local":
+        return await remote_computer.command(machine_id, "approve", {"id": id}, operation_id="approve:" + id)
     try:
         if len(id) != 32 or any(c not in "0123456789abcdef" for c in id):
             raise ValueError("Invalid approval ID")
@@ -1252,7 +1307,9 @@ async def cua_approve(id: str):
 
 
 @app.post("/api/v1/cua/approvals/{id}/reject")
-def cua_reject(id: str):
+async def cua_reject(id: str, machine_id: str = "local"):
+    if machine_id != "local":
+        return await remote_computer.command(machine_id, "reject", {"id": id}, operation_id="reject:" + id)
     try:
         return cua_engine.reject(id).to_dict()
     except ValueError as exc:
@@ -1261,13 +1318,18 @@ def cua_reject(id: str):
 
 @app.get("/api/v1/cua/devices")
 async def list_cua_devices():
-    return await cua_engine.list_devices()
+    return [*(await cua_engine.list_devices()), *remote_computer.devices()]
 
 
 @app.post("/api/v1/cua/devices/{device_id}/action")
 async def cua_device_action(device_id: str, body: dict):
     try:
         action = CUAAction.from_dict(body)
+        if device_id.startswith(remote_computer.PREFIX):
+            if action.action.value != "screenshot" and not body.get("operation_id"):
+                raise ValueError("Remote operator input requires a stable operation_id")
+            return await remote_computer.command(remote_computer.machine_id(device_id), "action",
+                {k: v for k, v in body.items() if k != "operation_id"}, operation_id=body.get("operation_id"))
         return (await cua_engine.act(device_id, action, operator=True)).to_dict()
     except ValueError as exc:
         raise Problem("computer_action_unavailable", str(exc), 409)
@@ -1281,7 +1343,7 @@ async def cua_device_semantic(device_id: str, body: dict):
 @app.get("/api/v1/cua/devices/{device_id}/frame")
 async def cua_device_frame(device_id: str):
     try:
-        data, meta = await cua_engine.get_frame(device_id)
+        data, meta = await computer_frame(device_id)
         return Response(content=data, media_type="image/jpeg" if meta.get("format") in {"jpeg", "jpg"} else "image/png")
     except ValueError as exc:
         raise Problem("computer_capture_unavailable", str(exc), 409)
@@ -1290,16 +1352,23 @@ async def cua_device_frame(device_id: str):
 @app.get("/api/v1/cua/devices/{device_id}/ui-tree")
 async def cua_device_ui_tree(device_id: str):
     try:
+        if device_id.startswith(remote_computer.PREFIX):
+            value = await remote_computer.command(remote_computer.machine_id(device_id), "ui_tree")
+            if not value.get("success"):
+                raise ValueError(value.get("error", "Node accessibility inspection failed"))
+            return value["ui_tree"]
         return await cua_engine.get_ui_tree(device_id, operator=True)
     except ValueError as exc:
         raise Problem("computer_tree_unavailable", str(exc), 409)
 
 
 @app.post("/api/v1/cua/kill-switch")
-async def cua_kill_switch(body: dict):
+async def cua_kill_switch(body: dict, machine_id: str = "local"):
     if type(body.get("active")) is not bool:
         raise Problem("invalid_kill_switch", "Provide a boolean active flag")
-    return {"kill_switch": cua_engine.set_kill_switch(body["active"]),
+    active = (cua_engine.set_kill_switch(body["active"]) if machine_id == "local" else
+              remote_computer.pause(machine_id, body["active"])["kill_switch"])
+    return {"kill_switch": active,
             "detail": "Blocks new managed inputs and interrupts active transports; already delivered OS actions cannot be undone."}
 
 
@@ -1314,20 +1383,34 @@ async def cua_device_stream(websocket: WebSocket, device_id: str):
         return
     await websocket.accept(subprotocol="ara-control" if "ara-control" in protocols else None)
     try:
-        await cua_engine.get_provider_or_raise(device_id)
-        await websocket.send_json({"type": "init", "kill_switch": cua_engine.kill_switch_active})
+        if device_id.startswith(remote_computer.PREFIX):
+            paused = remote_computer.state(remote_computer.machine_id(device_id))["kill_switch"]
+        else:
+            await cua_engine.get_provider_or_raise(device_id)
+            paused = cua_engine.kill_switch_active
+        await websocket.send_json({"type": "init", "kill_switch": paused})
         # Socket is observation-only; all inputs use the authenticated policy-gated API.
         while True:
             import base64
-            data, meta = await cua_engine.get_frame(device_id)
+            data, meta = await computer_frame(device_id)
             await websocket.send_json({"type": "frame", "data": base64.b64encode(data).decode(),
-                                       "format": meta.get("format", "png")})
+                                       "format": meta.get("format", "png"), "observation_id": meta.get("observation_id")})
             await asyncio.sleep(1)
     except (WebSocketDisconnect, asyncio.CancelledError):
         pass
     except Exception:
         await websocket.send_json({"type": "error", "message": "Native capture unavailable; inspect device readiness."})
         await websocket.close()
+
+
+async def computer_frame(device_id):
+    if not device_id.startswith(remote_computer.PREFIX):
+        return await cua_engine.get_frame(device_id)
+    import base64
+    result = await remote_computer.command(remote_computer.machine_id(device_id), "action", {"action": "screenshot"})
+    if not result.get("success") or not result.get("frame_base64"):
+        raise ValueError(result.get("error", "Node capture unavailable"))
+    return base64.b64decode(result["frame_base64"], validate=True), result.get("metadata", {})
 
 
 def mount_web():

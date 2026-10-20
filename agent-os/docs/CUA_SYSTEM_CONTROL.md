@@ -93,9 +93,75 @@ Without a local web server, the human operator can run `ara cua approvals`, then
 Input still requires a fresh observation and a matching grant. Consumed approvals
 cannot be replayed; interrupted approval execution remains uncertain, not a retry.
 
-The dashboard currently observes its **local** desktop. Remote-node dashboard
-streaming/desktop routing is not exposed. Android, iOS and additional device
-providers need separately validated implementations; native desktop support is
-not certification of those platforms. Actual physical input, host desktop
-compatibility, macOS permission grants and third-party driver behavior require
-explicit hardware validation. Automated tests use fake capture/input providers.
+## Remote node desktops
+
+System Control includes a **Desktop** selector for the host and paired nodes.
+Both the host and node must have the updated application code. Install the native
+driver deliberately on the node, pair it as usual, then run on that node:
+
+```bash
+# Permit the paired dashboard to observe and send explicit operator inputs.
+# Agent inputs still need their own grants and, in supervised mode, approval.
+ara cua remote --allow-view --allow-input --mode supervised
+ara node work
+```
+
+Keep the continuous worker running in the node's graphical login session with
+its OS capture/accessibility permissions. `ara node work --once` exchanges swarm
+tasks only; it does not serve desktops. Driver presence is reported separately
+from a successful capture. Restart the worker after installing a driver.
+
+For observation without remote input, use `ara cua remote --allow-view`. To revoke
+all paired-host desktop access, run `ara cua remote` with no allow flags.
+Enrollment alone grants no desktop access. The dashboard cannot enable remote
+access or change the node's modes and native-profile grants.
+
+To give a host-managed profile computer tools on its assigned execution node,
+configure that profile's execution placement on the host and grant its matching
+**native name** on the node:
+
+```bash
+ara cua configure --profile coding-agent --allow-view --allow-input --mode supervised
+```
+
+The host MCP endpoint routes those computer calls to that node and never falls
+back to the host desktop. The node checks current enabled placement bindings,
+native-profile grants and mode. Native standalone stdio MCP continues to operate
+locally. Swarm children still do not inherit desktop tools or permissions.
+
+Remote screenshots include `metadata.observation_id`. Agent input must send that
+ID with its stable `operation_id`; the dashboard supplies both for operator
+clicks. The node binds the input to that actor's actual captured window and the
+15-second observation lifetime. Switching desktops clears the dashboard frame,
+tree and approvals, and discards late responses from the previous selection.
+
+Remote supervised approvals appear on the selected node's dashboard panel. They
+remain single-use, node-local receipts; stale observations and changed policy
+still require a new capture and request. A repeated agent operation retrieves
+the final approval receipt without executing the input again.
+
+Desktop commands use separate authenticated pull polling alongside swarm work,
+so snapshot uploads and native swarm execution do not block the desktop loop.
+Commands expire after 15 seconds, execution is bounded to 12 seconds, and a node
+reports offline after 12 seconds without a desktop heartbeat. Link failure pauses
+remote input and cancels outstanding work. Reconnects and host restarts do not
+extend input deadlines. Durable input admissions prevent replay after node
+restarts; an uncertain action stays unknown. Reusing an operation ID retrieves
+the receipt instead of admitting another input.
+
+The dashboard stop flag is separate from the node's emergency kill switch.
+Resuming from the host cannot clear a local stop. Stop propagation follows the
+node polling interval and link timeout; it is not an instantaneous OS-wide stop.
+Already delivered actions cannot be undone. Policy and authority are rechecked
+after the device lock, including command expiry and admission epoch.
+
+Image payloads stay out of durable command receipts and application history.
+Host frame caching is limited to four frames, each result at most 12 MB, expiring
+after 30 seconds. Observation commands and accessibility results are removed from
+the host transport queue after about one minute; input receipts remain durable.
+Screenshots are periodic observations, not hardware video streaming. No capture
+starts merely from listing or selecting a device.
+
+Android, iOS and additional device providers need separately validated
+implementations. Actual node desktop operation, macOS permission grants and
+third-party driver behavior require explicit hardware validation.

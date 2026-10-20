@@ -29,10 +29,12 @@ CUA_TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "device_id": {
                     "type": "string",
-                    "description": "Target device ID. The managed adapter currently exposes 'local_desktop'.",
+                    "description": "Target device ID from ara_cua_list_devices. Defaults to the profile's assigned desktop.",
                 },
                 "operation_id": {"type": "string", "minLength": 1, "maxLength": 120,
                     "description": "Stable operation ID required for agent inputs. Reuse on retries; never resubmit unknown work under a new ID."},
+                "observation_id": {"type": "string", "maxLength": 64,
+                    "description": "For remote node input, copy observation_id from this actor's fresh screenshot metadata."},
                 "action": {
                     "type": "string",
                     "enum": [

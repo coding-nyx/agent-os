@@ -103,6 +103,10 @@ def main():
     cua_config.add_argument("--mode", choices=["view_only", "supervised", "autonomous"], default="view_only")
     cua_config.add_argument("--allow-view", action="store_true")
     cua_config.add_argument("--allow-input", action="store_true")
+    cua_remote = cua_sub.add_parser("remote", help="Enable or revoke paired-host desktop authority on this node")
+    cua_remote.add_argument("--allow-view", action="store_true")
+    cua_remote.add_argument("--allow-input", action="store_true")
+    cua_remote.add_argument("--mode", choices=["view_only", "supervised", "autonomous"])
     args = parser.parse_args()
     if args.state:
         os.environ["ARA_STATE_DIR"] = str(Path(args.state).resolve())
@@ -178,6 +182,15 @@ def main():
                 print(json.dumps(result.to_dict(), indent=2))
                 if args.action == "approve" and not result.success:
                     raise SystemExit(1)
+            elif args.action == "remote":
+                from .cua import policy
+                if args.allow_input and not args.allow_view:
+                    raise Problem("invalid_computer_grant", "Remote input also requires --allow-view")
+                values = {"remote_access": (["view"] if args.allow_view else []) +
+                          (["input"] if args.allow_input else [])}
+                if args.mode:
+                    values["mode"] = args.mode
+                print(json.dumps(policy.update(values), indent=2))
             elif args.action == "configure":
                 from .cua import policy
                 from .swarm_runner import profile
@@ -308,16 +321,24 @@ async def node_command(args):
         if not pair_path.exists():
             raise Problem("node_not_paired", "Pair this node before exchanging execution tasks")
         enrollment = json.loads(pair_path.read_text())
-        while True:
-            try:
-                print(json.dumps(await exchange(enrollment)), flush=True)
-            except httpx.HTTPError:
-                print("Node link unavailable; admitted local work continues and events remain queued.", file=sys.stderr, flush=True)
+        from .cua.node import NodeComputer
+        computer = NodeComputer(enrollment)
+        computer_loop = None if args.once else asyncio.create_task(computer.run())
+        try:
+            while True:
+                try:
+                    print(json.dumps(await exchange(enrollment)), flush=True)
+                except httpx.HTTPError:
+                    print("Node link unavailable; admitted local work continues and events remain queued.", file=sys.stderr, flush=True)
+                    if args.once:
+                        raise SystemExit(1)
                 if args.once:
-                    raise SystemExit(1)
-            if args.once:
-                return
-            await asyncio.sleep(2)
+                    return
+                await asyncio.sleep(2)
+        finally:
+            if computer_loop:
+                computer_loop.cancel()
+                await asyncio.gather(computer_loop, return_exceptions=True)
     if args.action == "status":
         paired = pair_path.exists()
         info = {

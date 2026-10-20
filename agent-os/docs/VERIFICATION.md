@@ -2,6 +2,24 @@
 
 Current-instance validation on x86 Linux; browser timezone Asia/Kolkata. This is not a live deployment or a fresh cloud-machine restoration claim.
 
+## 20 October 2026 — remote node desktop implementation
+
+- Added authenticated node desktop command polling alongside continuous swarm
+  work, node-local remote access opt-in, current placement/grant enforcement,
+  stable input receipts and node-local supervised decisions.
+- System Control selects host or node desktops, clears observations when
+  switching, and supplies the displayed screenshot's observation identity on
+  remote clicks. Host resume cannot clear a node-local emergency stop.
+- Remote input expiry, admission epoch checks and link-loss cancellation prevent
+  queued input from surviving an expired command or disconnected session. Lost
+  result delivery is recovered by reading the original receipt.
+- Production TypeScript/Vite build and Python compilation passed. No new tests
+  were added or run for this implementation. Earlier regression counts below
+  apply to the earlier local desktop/swarm fixes, not this remote transport.
+- Real node desktop capture/input, distributed reconnect behavior and OS driver
+  permissions have not been exercised. Remote access remains disabled until
+  explicitly enabled on each node; see [setup](CUA_SYSTEM_CONTROL.md#remote-node-desktops).
+
 ## 20 October 2026 — swarm outcome and desktop dispatch fixes
 
 - Addressed all five findings in the [implementation review](SWARM-DEVICE-REVIEW-2026-10-20.md)

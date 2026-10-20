@@ -59,6 +59,23 @@ To use computer control with a local Hermes agent without the web server:
 
 ---
 
+## Control a paired node desktop
+
+Update the code on both machines and install the native driver on the node.
+In the node's graphical login session, explicitly enable paired-host control:
+
+```bash
+.venv/bin/ara cua remote --allow-view --allow-input --mode supervised
+.venv/bin/ara node work
+```
+
+Open **System Control → Desktop** on the host and select the node. Pairing alone
+does not grant desktop access. Use `ara cua remote --allow-view` for observation
+only, or `ara cua remote` to revoke remote access. Agent grants are configured
+separately on the node. See [remote desktop setup](docs/CUA_SYSTEM_CONTROL.md#remote-node-desktops).
+
+---
+
 ## Testing & Verification
 
 Run the full pytest suite:

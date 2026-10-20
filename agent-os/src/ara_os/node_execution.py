@@ -63,6 +63,29 @@ async def exchange(enrollment):
         response.raise_for_status()
         data = response.json()
         bindings = {b["native_name"]: b["profile_id"] for b in data["bindings"]}
+        # Automatically provision any deployed profiles that do not yet exist locally on this node
+        for b in data.get("bindings", []):
+            name = b.get("native_name")
+            if not name:
+                continue
+            profile_dir = config.RUNTIME_HOME / "profiles" / name
+            if not profile_dir.is_dir():
+                try:
+                    from .swarm_policy import DEFAULTS
+                    workspace = config.STATE / "workspaces" / name
+                    workspace.mkdir(parents=True, exist_ok=True)
+                    await runtime.call({"operation": "create", "profiles": [{
+                        "name": name,
+                        "soul": b.get("soul") or "You are an ARA node agent. Work within explicit task and tool grants.",
+                        "description": b.get("description") or f"Deployed node profile for {b.get('name', name)}",
+                        "ara_config": {
+                            "terminal": {"backend": "local", "cwd": str(workspace)},
+                            "ara": {"swarm": dict(DEFAULTS)}
+                        }
+                    }]})
+                    print(f"✓ Automatically provisioned profile '{name}' deployed from Host", flush=True)
+                except Exception as err:
+                    print(f"[!] Could not auto-provision profile '{name}': {err}", flush=True)
         j = swarm_runner.journal()
         for task in data["tasks"]:
             local = swarm_runner.admit(task["request"], task["id"])
@@ -134,9 +157,19 @@ def placement(session, profile_id, body):
 
 def bindings(session, machine_id):
     from .store import listing
-    return [{"profile_id": p["id"], "native_name": p["execution_placement"]["native_name"], "enabled": p.get("enabled", False)}
-            for p in listing(session, "profile") if
-            (p.get("execution_placement") or {}).get("machine_id") == machine_id]
+    return [
+        {
+            "profile_id": p["id"],
+            "native_name": p["execution_placement"]["native_name"],
+            "name": p.get("name", p["execution_placement"]["native_name"]),
+            "soul": p.get("soul", ""),
+            "preset": p.get("preset", "custom"),
+            "description": p.get("description", ""),
+            "enabled": p.get("enabled", False)
+        }
+        for p in listing(session, "profile") if
+        (p.get("execution_placement") or {}).get("machine_id") == machine_id
+    ]
 
 
 def receive(session, machine_id, body):

@@ -147,12 +147,13 @@ function SwarmExecutionSettings({ profile, config, saved }: { profile: Item; con
         try { await put('/profiles/' + profile.id + '/placement', { machine_id: f.get('machine_id'), native_name: f.get('native_name') });
           await saved(); setError(''); } catch (e) { setError((e as Error).message); }
       }}>
-        <label>Execution machine<select name="machine_id" defaultValue={profile.execution_placement?.machine_id || 'local'}>
-          <option value="local">This machine</option>{machines.filter(m => m.id !== 'local').map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
-        <label>Installed native profile on that node<input name="native_name" defaultValue={profile.execution_placement?.native_name || profile.native_name} required /></label>
-        <p className="hint">Prepare the model and enable swarm policy on the node explicitly. Run <code>ara node work</code> there to receive tasks and sync receipts.
-          The node’s permissions intersect with these worker limits; credentials are never sent with a task.</p>
-        <button>Assign execution owner</button>
+        <label>Deploy &amp; Run on Machine<select name="machine_id" defaultValue={profile.execution_placement?.machine_id || 'local'}>
+          <option value="local">This machine (Host Local)</option>{machines.filter(m => m.id !== 'local').map(m => <option key={m.id} value={m.id}>Node: {m.name} ({m.state})</option>)}</select></label>
+        <label>Native profile name on node<input name="native_name" defaultValue={profile.execution_placement?.native_name || profile.native_name} required /></label>
+        <p className="hint">{profile.execution_placement?.machine_id && profile.execution_placement.machine_id !== 'local'
+          ? <>Deployed on <strong>{machines.find(m => m.id === profile.execution_placement?.machine_id)?.name || profile.execution_placement?.machine_id}</strong>. The node worker auto-provisions this profile and executes assigned swarm runs.</>
+          : <>Deploy this agent profile to execute on a paired node. The node worker auto-provisions the native profile upon receiving tasks.</>}</p>
+        <button className="primary">{profile.execution_placement?.machine_id && profile.execution_placement.machine_id !== 'local' ? 'Update Node Placement' : 'Deploy Profile to Node'}</button>
       </form>
     </div>
   </details>;

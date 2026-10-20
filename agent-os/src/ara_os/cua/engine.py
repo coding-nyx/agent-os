@@ -20,9 +20,12 @@ from .providers.native import NativeDeviceProvider
 
 
 class CUAEngine:
-    def __init__(self):
+    def __init__(self, *, remote=False):
         self.provider = NativeDeviceProvider()
         self.observations = {}
+        self.remote = remote
+        self.remote_epoch = None
+        self.remote_deadline = None
 
     @property
     def kill_switch_active(self):
@@ -52,6 +55,14 @@ class CUAEngine:
 
     def authorize(self, actor, operator, *, input=False, cfg=None):
         cfg = policy.read() if cfg is None else cfg
+        if self.remote:
+            if "view" not in cfg["remote_access"]:
+                return "Remote desktop observation has not been enabled on this node"
+            if input and ("input" not in cfg["remote_access"] or cfg["remote_pause"]):
+                return "Remote desktop input is disabled or paused on this node"
+            if input and (self.remote_epoch != cfg["epoch"] or
+                          self.remote_deadline is None or self.remote_deadline <= time.time()):
+                return "Remote desktop command expired or its admission policy changed"
         if not operator and (not actor or "view" not in cfg["grants"].get(actor, [])):
             return "This profile has no computer observation grant"
         if input:

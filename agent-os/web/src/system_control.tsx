@@ -3,7 +3,8 @@ import { Camera, Lock, Monitor, RefreshCw, Shield, Unlock } from 'lucide-react';
 import { api, computerToken, post, put } from './api';
 import './system_control.css';
 
-type Policy = { mode: 'view_only' | 'supervised' | 'autonomous'; kill_switch: boolean; grants: Record<string, string[]>; epoch: number };
+type Policy = { mode: 'view_only' | 'supervised' | 'autonomous'; kill_switch: boolean; grants: Record<string, string[]>; epoch: number;
+  remote?: boolean; remote_access?: string[]; local_kill_switch?: boolean; online?: boolean };
 
 export function SystemControlView() {
   const [devices, setDevices] = useState<any[]>([]);
@@ -17,95 +18,172 @@ export function SystemControlView() {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState('');
   const [tree, setTree] = useState<any>(null);
+  const [deviceId, setDeviceId] = useState('local_desktop');
+  const [inputPending, setInputPending] = useState(false);
   const image = useRef<HTMLImageElement>(null);
-  const device = devices[0];
+  const generation = useRef(0);
+  const observationId = useRef<string | undefined>(undefined);
+  const pendingObservationId = useRef<string | undefined>(undefined);
+  const inputLock = useRef(false);
+  const device = devices.find(d => d.id === deviceId);
+  const remote = deviceId.startsWith('node:');
+  const machineId = remote ? deviceId.slice(5) : 'local';
+  const scope = '?machine_id=' + encodeURIComponent(machineId);
+  const unavailable = !device || ['unavailable', 'offline', 'disabled'].includes(device.state);
+
+  function selectDevice(id: string) {
+    generation.current++;
+    observationId.current = undefined;
+    pendingObservationId.current = undefined;
+    setDeviceId(id); setFrame(null); setTree(null); setPolicy(null); setApprovals([]);
+    setObserving(false); setConnected(false); setError('');
+  }
+
+  function showFrame(data: string, format: string, id?: string) {
+    const source = 'data:image/' + (format === 'jpeg' || format === 'jpg' ? 'jpeg' : 'png') + ';base64,' + data;
+    pendingObservationId.current = id;
+    // Wait for the browser to display the new pixels before authorizing a click.
+    observationId.current = image.current?.complete && image.current.currentSrc === source ? id : undefined;
+    setFrame(source);
+  }
 
   async function refresh() {
+    const version = generation.current;
     try {
-      const [d, p, a] = await Promise.all([api('/cua/devices'), api('/cua/state'), api('/cua/approvals')]);
+      const [d, p, a] = await Promise.all([api('/cua/devices'), api('/cua/state' + scope), api('/cua/approvals' + scope)]);
+      if (version !== generation.current) return;
       setDevices(d); setPolicy(p); setApprovals(a); setError('');
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { if (version === generation.current) setError((e as Error).message); }
   }
   useEffect(() => {
-    refresh();
     api('/profiles').then(setProfiles).catch(e => setError(e.message));
-    const timer = setInterval(() => {
-      Promise.all([api('/cua/state'), api('/cua/approvals')]).then(([p, a]) => {
-        setPolicy(p); setApprovals(a);
-      }).catch(e => setError(e.message));
-    }, 2000);
-    return () => clearInterval(timer);
   }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const version = generation.current;
+    refresh();
+    const timer = setInterval(() => {
+      Promise.all([api('/cua/state' + scope), api('/cua/approvals' + scope)]).then(([p, a]) => {
+        if (cancelled || version !== generation.current) return;
+        setPolicy(p); setApprovals(a);
+      }).catch(e => { if (!cancelled && version === generation.current) setError(e.message); });
+    }, 2000);
+    const deviceTimer = setInterval(() => {
+      api('/cua/devices').then(d => { if (!cancelled && version === generation.current) setDevices(d); })
+        .catch(e => { if (!cancelled && version === generation.current) setError(e.message); });
+    }, 5000);
+    return () => { cancelled = true; clearInterval(timer); clearInterval(deviceTimer); };
+  }, [deviceId]);
 
   useEffect(() => {
     if (!observing || !device) return;
     let cancelled = false;
+    const version = generation.current;
     let socket: WebSocket | null = null;
     computerToken().then(token => {
       if (cancelled) return;
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       socket = new WebSocket(protocol + '//' + location.host + '/api/v1/cua/devices/' + device.id + '/stream', ['ara-control', token]);
-      socket.onopen = () => setConnected(true);
-      socket.onclose = () => setConnected(false);
-      socket.onerror = () => setError('Observation connection failed. No device readiness is assumed.');
+      socket.onopen = () => { if (!cancelled && version === generation.current) setConnected(true); };
+      socket.onclose = () => { if (!cancelled && version === generation.current) { setConnected(false); setObserving(false); } };
+      socket.onerror = () => { if (!cancelled && version === generation.current) setError('Observation connection failed. No device readiness is assumed.'); };
       socket.onmessage = event => {
+        if (cancelled || version !== generation.current) return;
         const msg = JSON.parse(event.data);
-        if (msg.type === 'frame') setFrame('data:image/' + (msg.format === 'jpeg' ? 'jpeg' : 'png') + ';base64,' + msg.data);
+        if (msg.type === 'frame') {
+          showFrame(msg.data, msg.format, msg.observation_id);
+        }
         if (msg.type === 'error') setError(msg.message);
       };
-    }).catch(e => setError(e.message));
+    }).catch(e => { if (!cancelled && version === generation.current) setError(e.message); });
     return () => { cancelled = true; socket?.close(); setConnected(false); };
   }, [observing, device?.id]);
 
   async function update(values: Partial<Policy>) {
-    try { setPolicy(await put('/cua/state', values)); setError(''); }
-    catch (e) { setError((e as Error).message); }
+    const version = generation.current;
+    try {
+      const next = await put<Policy>('/cua/state' + scope, values);
+      if (version === generation.current) { setPolicy(next); setError(''); }
+    } catch (e) { if (version === generation.current) setError((e as Error).message); }
   }
 
   async function snapshot() {
     if (!device) return;
+    const version = generation.current;
     try {
       const result = await post<any>('/cua/devices/' + device.id + '/action', { action: 'screenshot' });
+      if (version !== generation.current) return;
       if (!result.success) throw new Error(result.error || 'Capture unavailable');
-      setFrame('data:image/' + (result.metadata?.format === 'jpeg' ? 'jpeg' : 'png') + ';base64,' + result.frame_base64);
+      if (!result.frame_base64) throw new Error('Capture returned no image');
+      showFrame(result.frame_base64, result.metadata?.format, result.metadata?.observation_id);
       setError('');
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { if (version === generation.current) setError((e as Error).message); }
   }
 
   async function click(e: React.MouseEvent<HTMLImageElement>) {
-    if (!device || !policy || policy.mode === 'view_only' || policy.kill_switch || !image.current) return;
+    if (inputLock.current || unavailable || !device || !policy || policy.mode === 'view_only' || policy.kill_switch || !image.current ||
+      (remote && (!policy.remote_access?.includes('input') || !observationId.current))) return;
     const rect = image.current.getBoundingClientRect();
+    const version = generation.current;
+    inputLock.current = true; setInputPending(true);
     try {
       const result = await post<any>('/cua/devices/' + device.id + '/action', {
-        action: 'left_click', coordinate: [(e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height]
+        action: 'left_click', coordinate: [(e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height],
+        operation_id: Array.from(crypto.getRandomValues(new Uint8Array(16)), v => v.toString(16).padStart(2, '0')).join(''),
+        observation_id: observationId.current
       });
+      if (version !== generation.current) return;
       if (!result.success) throw new Error(result.error || 'Input was not confirmed');
       await snapshot();
+      if (version !== generation.current) return;
       if (result.metadata?.effect !== 'confirmed' && result.metadata?.verified !== true)
         setError('Input was delivered; its effect is unconfirmed. Inspect the snapshot before another action.');
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { if (version === generation.current) setError((e as Error).message); }
+    finally { inputLock.current = false; setInputPending(false); }
   }
 
   async function approve(id: string) {
+    const version = generation.current;
     try {
-      const result = await post<any>('/cua/approvals/' + id + '/approve', {});
+      const result = await post<any>('/cua/approvals/' + id + '/approve' + scope, {});
+      if (version !== generation.current) return;
       if (!result.success) throw new Error(result.error || 'Action was not confirmed');
       await refresh();
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { if (version === generation.current) setError((e as Error).message); }
+  }
+
+  async function reject(id: string) {
+    const version = generation.current;
+    try {
+      await post('/cua/approvals/' + id + '/reject' + scope, {});
+      if (version === generation.current) await refresh();
+    } catch (e) { if (version === generation.current) setError((e as Error).message); }
+  }
+
+  async function inspect() {
+    if (!device) return;
+    const version = generation.current;
+    try {
+      const value = await api('/cua/devices/' + device.id + '/ui-tree');
+      if (version === generation.current) setTree(value);
+    } catch (e) { if (version === generation.current) setError((e as Error).message); }
   }
 
   return <div className="system-control-shell">
     <div className="sc-header">
-      <div><div className="eyebrow">LOCAL DEVICE · EXPLICIT AUTHORITY</div>
+      <div><div className="eyebrow">CONNECTED DEVICES · EXPLICIT AUTHORITY</div>
         <h1>System Control</h1><p>Native desktop observation and policy-gated input. OS scripting is a separate permission.</p></div>
       <button className={'sc-kill-switch-btn ' + (policy?.kill_switch ? 'is-active' : '')}
-        disabled={!policy} onClick={() => update({ kill_switch: !policy?.kill_switch })}>
+        disabled={!policy || policy.local_kill_switch} onClick={() => update({ kill_switch: !policy?.kill_switch })}>
         {policy?.kill_switch ? <Lock size={16} /> : <Unlock size={16} />}
-        {policy?.kill_switch ? 'Paused — resume managed inputs' : 'Stop managed inputs'}
+        {policy?.local_kill_switch ? 'Stopped locally on node' : policy?.kill_switch ? 'Paused — resume managed inputs' : 'Stop managed inputs'}
       </button>
     </div>
     {error && <div className="notice warning" role="alert">{error}</div>}
-    <div className="notice">Only this machine’s desktop is exposed here. Remote-node desktop routing and Android are not enabled.
+    <label>Desktop<select aria-label="Desktop" value={deviceId} onChange={e => selectDevice(e.target.value)}>
+      {devices.map(d => <option key={d.id} value={d.id}>{d.name} · {d.state}</option>)}
+    </select></label>
+    <div className="notice">{remote ? 'Remote desktop access, modes and agent grants must be enabled on the selected node. ' : 'Local desktop selected. '}
       Stopping interrupts managed transports; it cannot undo an OS action already delivered.</div>
     <div className="sc-grid">
       <section className="panel sc-viewport-panel">
@@ -116,15 +194,18 @@ export function SystemControlView() {
         </div>
         <div className="sc-stream-tools" style={{ padding: 12 }}>
           {(['view_only', 'supervised', 'autonomous'] as const).map(mode =>
-            <button key={mode} disabled={!policy} className={policy?.mode === mode ? 'active' : ''}
+            <button key={mode} disabled={!policy || remote} className={policy?.mode === mode ? 'active' : ''}
               aria-pressed={policy?.mode === mode}
               onClick={() => update({ mode })}>{mode.replaceAll('_', ' ')}</button>)}
-          <button onClick={() => setObserving(!observing)} disabled={!device || device.state === 'unavailable'}>
+          <button onClick={() => setObserving(!observing)} disabled={unavailable && !observing}>
             {observing ? 'Stop observation' : 'Start observation'}</button>
-          <button onClick={snapshot} disabled={!device || device.state === 'unavailable'}><Camera size={14} /> Snapshot</button>
+          <button onClick={snapshot} disabled={unavailable || inputPending}><Camera size={14} /> Snapshot</button>
+          {inputPending && <span role="status">Waiting for input receipt…</span>}
         </div>
         <div className="sc-canvas-container">
           {frame ? <img ref={image} src={frame} alt="Observed target window. Click to send operator input when enabled."
+            onLoad={e => { if (e.currentTarget.currentSrc === frame) observationId.current = pendingObservationId.current; }}
+            onError={() => { observationId.current = undefined; setFrame(null); setError('The selected desktop returned an unreadable image.'); }}
             className="sc-stream-image" onClick={click} /> :
             <div className="sc-placeholder"><Monitor size={40} /><h2>No screen captured</h2>
               <p>{device?.metadata?.detail || 'Start observation or take a snapshot explicitly.'}</p></div>}
@@ -135,8 +216,8 @@ export function SystemControlView() {
       </section>
       <aside className="sc-sidebar-column">
         <section className="panel padded"><div className="section-title"><h2>Agent permissions</h2><Shield size={18} /></div>
-          <p>No profile has desktop authority by default.</p>
-          <form onSubmit={e => { e.preventDefault(); if (actor && policy) update({
+          <p>{remote ? 'Grants shown here are configured on the node for its assigned native profiles.' : 'No profile has desktop authority by default.'}</p>
+          {!remote && <form onSubmit={e => { e.preventDefault(); if (actor && policy) update({
             grants: { ...policy.grants, [actor]: permission === 'none' ? [] : permission === 'input' ? ['view', 'input'] : ['view'] }
           }); }}>
             <label>Agent<select aria-label="Agent" required value={actor} onChange={e => setActor(e.target.value)}>
@@ -144,21 +225,20 @@ export function SystemControlView() {
             <label>Authority<select aria-label="Authority" value={permission} onChange={e => setPermission(e.target.value)}>
               <option value="view">Observe only</option><option value="input">Observe and input</option><option value="none">Revoke access</option></select></label>
             <button className="primary" disabled={!actor || !policy}>Save permission</button>
-          </form>
+          </form>}
           {Object.entries(policy?.grants || {}).map(([id, grants]) => <p key={id}>
             {profiles.find(p => p.id === id)?.name || id}: {grants.join(', ') || 'revoked'}</p>)}
         </section>
         <section className="panel padded" style={{ marginTop: 20 }}><h2>Pending input approvals</h2>
           {approvals.length ? approvals.map(a => <div className="sc-script-output" key={a.id}>
             <strong>{profiles.find(p => p.id === a.actor)?.name || a.actor}</strong>
-            <pre>{JSON.stringify(a.action, null, 2)}</pre><button disabled={policy?.mode === 'view_only' || policy?.kill_switch}
+            <pre>{JSON.stringify(a.action, null, 2)}</pre><button disabled={unavailable || policy?.mode === 'view_only' || policy?.kill_switch || (remote && !policy?.remote_access?.includes('input'))}
               onClick={() => approve(a.id)}>Approve once</button>
-            <button onClick={() => post('/cua/approvals/' + a.id + '/reject', {}).then(refresh).catch(e => setError(e.message))}>Reject</button>
+            <button disabled={unavailable} onClick={() => reject(a.id)}>Reject</button>
           </div>) : <p className="hint">No pending computer actions.</p>}
         </section>
         <section className="panel padded" style={{ marginTop: 20 }}><h2>Accessibility inspection</h2>
-          <button disabled={!device || device.state === 'unavailable'} onClick={() =>
-            api('/cua/devices/' + device.id + '/ui-tree').then(setTree).catch(e => setError(e.message))}>Inspect target window</button>
+          <button disabled={unavailable} onClick={inspect}>Inspect target window</button>
           {tree && <pre className="sc-script-output">{JSON.stringify(tree, null, 2)}</pre>}
         </section>
       </aside>
