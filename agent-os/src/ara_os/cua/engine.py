@@ -55,6 +55,10 @@ class CUAEngine:
 
     def authorize(self, actor, operator, *, input=False, cfg=None):
         cfg = policy.read() if cfg is None else cfg
+        if actor and not operator:
+            from ..node_deployments import is_disabled
+            if is_disabled(actor):
+                return "This agent deployment is disabled on this node"
         if self.remote:
             if "view" not in cfg["remote_access"]:
                 return "Remote desktop observation has not been enabled on this node"

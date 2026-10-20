@@ -166,7 +166,7 @@ def list_swarms_for_profile(session, profile_id):
     return [r for r in listing(session, "swarm_run") if r.get("profile_id") == profile_id][::-1]
 
 
-def spawn_swarm(session, profile_id, conversation_id, preset, task, operation_id, custom_roles=None):
+def spawn_swarm(session, profile_id, conversation_id, preset, task, operation_id, custom_roles=None, machine_id=None):
     from . import swarm_runner
     from .task_journal import fingerprint
     profile = get(session, profile_id, "profile")
@@ -177,13 +177,16 @@ def spawn_swarm(session, profile_id, conversation_id, preset, task, operation_id
         raise Problem("swarms_disabled", "Swarms are disabled for this profile.", 403)
     if preset not in cfg["allowed_presets"]:
         raise Problem("preset_not_permitted", "This swarm preset is not allowed.", 403)
-    placement = profile.get("execution_placement") or {"machine_id": "local", "native_name": profile["native_name"]}
+    from .deployments import resolve, active
+    placement = resolve(profile, machine_id)
+    get(session, placement["machine_id"], "machine")
     # Validate task/role shape on the host; the node rechecks its own installed policy.
     try:
         req = swarm_runner.request_for(profile["native_name"], preset, task, operation_id, custom_roles)
     except (ValueError, OSError) as exc:
         raise Problem("invalid_swarm_request", str(exc), 409)
     req["native_name"] = placement["native_name"]
+    req["deployment_generation"] = active(profile, placement["machine_id"])["generation"]
     ident = hashlib.sha256(f"swarm:{profile_id}:{operation_id}".encode()).hexdigest()
     digest = fingerprint(req)
     if session.get(Entity, ident):
@@ -273,8 +276,10 @@ async def supervise():
                     local = swarm_runner.admit(record["request"], record["id"])
                 with transaction() as session:
                     owner = get(session, record["profile_id"], "profile")
-                placement = owner.get("execution_placement") or {"machine_id": "local", "native_name": owner["native_name"]}
-                if record.get("cancel_requested") or not owner.get("enabled") or placement != {"machine_id": "local", "native_name": record["request"]["native_name"]}:
+                from .deployments import active
+                deployment = active(owner, "local", record["request"]["native_name"])
+                if (record.get("cancel_requested") or not deployment or
+                        record["request"].get("deployment_generation", deployment["generation"]) != deployment["generation"]):
                     swarm_runner.journal().cancel(record["id"])
                 if local["state"] == "queued":
                     swarm_runner.launch(record["id"])

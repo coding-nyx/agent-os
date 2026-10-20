@@ -21,6 +21,9 @@ def journal():
 def profile(name):
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", name):
         raise ValueError("Invalid native profile name")
+    from .node_deployments import is_disabled
+    if is_disabled(name):
+        raise ValueError("This agent deployment is disabled on this node")
     p = {"native_name": name}
     path = runtime.home(p)
     if path.is_symlink() or path.resolve().parent != (config.RUNTIME_HOME / "profiles").resolve() or not path.is_dir():
@@ -107,7 +110,7 @@ async def execute(task_id):
         # Revalidate current local permissions before any tools or inference.
         checked = request_for(request["native_name"], request["preset"], request["task"], request["operation_id"],
                               request["workers"])
-        if {k: v for k, v in checked.items() if k != "policy"} != {k: v for k, v in request.items() if k != "policy"}:
+        if {k: v for k, v in checked.items() if k != "policy"} != {k: v for k, v in request.items() if k not in {"policy", "deployment_generation"}}:
             raise ValueError("The admitted swarm definition changed")
         admitted_policy = swarm_policy.validate(request.get("policy", {}))
         cfg["toolsets"] = [t for t in cfg["toolsets"] if t in admitted_policy["toolsets"]]
@@ -121,6 +124,9 @@ async def execute(task_id):
         j.append(task_id, "swarm.started", {"workers": request["workers"], "runtime": "native", "contract": runtime_adapter.CONTRACT})
         async def watch_cancel():
             while True:
+                from .node_deployments import is_disabled
+                if is_disabled(request["native_name"]):
+                    j.cancel(task_id)
                 if j.cancel_requested(task_id):
                     cancel_path.touch(mode=0o600, exist_ok=True)
                     return

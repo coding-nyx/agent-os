@@ -394,12 +394,14 @@ def swarm_presets():
 @app.get("/api/v1/profiles/{id}/swarms")
 def profile_swarms(id: str):
     from . import swarms
+    from .deployments import describe
     with transaction() as session:
         profile = get(session, id, "profile")
         return {
             "config": swarms.get_profile_swarm_config(profile),
             "presets": swarms.SWARM_PRESETS,
-            "runs": swarms.list_swarms_for_profile(session, id)
+            "runs": swarms.list_swarms_for_profile(session, id),
+            "deployments": describe(session, profile)
         }
 
 
@@ -421,7 +423,7 @@ async def spawn_profile_swarm(id: str, body: dict):
             preset=body.get("preset", "research"),
             task=body.get("task", ""),
             operation_id=body.get("operation_id"),
-            custom_roles=body.get("custom_roles")
+            custom_roles=body.get("custom_roles"), machine_id=body.get("machine_id")
         )
 
 
@@ -446,6 +448,27 @@ def profile_placement(id: str, body: dict):
     from .node_execution import placement
     with transaction() as session:
         return placement(session, id, body)
+
+
+@app.get("/api/v1/profiles/{id}/deployments")
+def profile_deployments(id: str):
+    from .deployments import describe
+    with transaction() as session:
+        return describe(session, get(session, id, "profile"))
+
+
+@app.post("/api/v1/profiles/{id}/deployments")
+def update_profile_deployments(id: str, body: dict):
+    from .deployments import update
+    with transaction() as session:
+        return update(session, id, body)
+
+
+@app.get("/api/v1/deployments")
+def all_deployments():
+    from .deployments import describe
+    with transaction() as session:
+        return [describe(session, p) for p in listing(session, "profile")]
 
 
 @app.get("/api/v1/profiles/{id}")
@@ -1074,15 +1097,28 @@ async def node_task_poll(request: Request):
     machine = authorized_node(request, body.get("machine_id", ""))
     with transaction() as session:
         assigned = bindings(session, machine["id"])
-        enabled_owners = {(b["profile_id"], b["native_name"]) for b in assigned if b["enabled"]}
+        enabled_owners = {(b["profile_id"], b["native_name"]): b["generation"] for b in assigned if b["enabled"]}
         owned = [r for r in listing(session, "swarm_run") if r.get("owner_machine") == machine["id"]]
         tasks = [{"id": r["id"], "request": r["request"], "profile_id": r["profile_id"],
-                  "cancel_requested": bool(r.get("cancel_requested")) or (r["profile_id"], r["request"]["native_name"]) not in enabled_owners}
+                  "cancel_requested": bool(r.get("cancel_requested")) or (r["profile_id"], r["request"]["native_name"]) not in enabled_owners or
+                    (r["request"].get("deployment_generation") is not None and r["request"]["deployment_generation"] !=
+                     enabled_owners.get((r["profile_id"], r["request"]["native_name"])))}
                  for r in owned if r["state"] not in TERMINAL and r.get("request")]
         receipts = {r["id"]: r.get("event_cursor", 0) for r in owned}
         snapshot_receipts = [r["task_id"] for r in listing(session, "replica") if r.get("machine_id") == machine["id"] and r.get("task_id")]
         change(session, machine["id"], {"last_seen": datetime.now(timezone.utc).isoformat(), "execution_contract": "ara-execution/1"})
     return {"bindings": assigned, "tasks": tasks, "receipts": receipts, "snapshot_receipts": snapshot_receipts}
+
+
+@app.post("/api/v1/nodes/deployments/status")
+async def node_deployment_status(request: Request):
+    from .deployments import receive
+    body = await request.json()
+    if not isinstance(body, dict) or len(json.dumps(body)) > 200_000:
+        raise Problem("invalid_deployment_receipts", "Send a bounded deployment report")
+    machine = authorized_node(request, body.get("machine_id", ""))
+    with transaction() as session:
+        return receive(session, machine["id"], body.get("receipts"))
 
 
 @app.post("/api/v1/nodes/tasks/events")
@@ -1190,9 +1226,12 @@ async def mcp_route(profile_id: str, request: Request):
     elif method == "tools/list":
         from .cua import policy as computer_policy
         from .cua import remote
-        target = remote.profile_target(find(profile_id, "profile"))
-        cfg = remote.state(target) if target else computer_policy.read()
-        allowed = "view" in cfg["grants"].get(profile_id, [])
+        try:
+            target = remote.profile_target(find(profile_id, "profile"))
+            cfg = remote.state(target) if target else computer_policy.read()
+            allowed = "view" in cfg["grants"].get(profile_id, [])
+        except Problem:
+            allowed = False
         result = {"tools": [t for t in mcp.TOOLS if allowed or not t["name"].startswith("ara_cua_")]}
     elif method == "tools/call":
         params = body.get("params", {})

@@ -63,29 +63,11 @@ async def exchange(enrollment):
         response.raise_for_status()
         data = response.json()
         bindings = {b["native_name"]: b["profile_id"] for b in data["bindings"]}
-        # Automatically provision any deployed profiles that do not yet exist locally on this node
-        for b in data.get("bindings", []):
-            name = b.get("native_name")
-            if not name:
-                continue
-            profile_dir = config.RUNTIME_HOME / "profiles" / name
-            if not profile_dir.is_dir():
-                try:
-                    from .swarm_policy import DEFAULTS
-                    workspace = config.STATE / "workspaces" / name
-                    workspace.mkdir(parents=True, exist_ok=True)
-                    await runtime.call({"operation": "create", "profiles": [{
-                        "name": name,
-                        "soul": b.get("soul") or "You are an ARA node agent. Work within explicit task and tool grants.",
-                        "description": b.get("description") or f"Deployed node profile for {b.get('name', name)}",
-                        "ara_config": {
-                            "terminal": {"backend": "local", "cwd": str(workspace)},
-                            "ara": {"swarm": dict(DEFAULTS)}
-                        }
-                    }]})
-                    print(f"✓ Automatically provisioned profile '{name}' deployed from Host", flush=True)
-                except Exception as err:
-                    print(f"[!] Could not auto-provision profile '{name}': {err}", flush=True)
+        from .node_deployments import reconcile
+        deployment_receipts = await reconcile(data["bindings"])
+        response = await client.post(base + "/nodes/deployments/status", headers=headers,
+            json={"machine_id": enrollment["machine_id"], "receipts": deployment_receipts})
+        response.raise_for_status()
         j = swarm_runner.journal()
         for task in data["tasks"]:
             local = swarm_runner.admit(task["request"], task["id"])
@@ -138,38 +120,19 @@ async def exchange(enrollment):
 
 
 def placement(session, profile_id, body):
-    from .store import Problem, get, change
+    from .deployments import update
     machine_id = body.get("machine_id", "local")
-    profile = get(session, profile_id, "profile")
-    name = body.get("native_name", profile["native_name"])
-    if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", name):
-        raise Problem("invalid_profile_name", "Use the native profile name installed on the execution node")
-    if machine_id != "local":
-        get(session, machine_id, "machine")
-    else:
-        name = profile["native_name"]
-    from .store import listing
-    for other in listing(session, "profile"):
-        if other["id"] != profile_id and other.get("execution_placement") == {"machine_id": machine_id, "native_name": name}:
-            raise Problem("placement_in_use", "This native execution profile already belongs to another logical profile", 409)
-    return change(session, profile_id, {"execution_placement": {"machine_id": machine_id, "native_name": name}})
+    update(session, profile_id, {"action": "replace", "machine_ids": [machine_id],
+        **({"native_name": body["native_name"]} if "native_name" in body else {})})
+    from .store import get
+    return get(session, profile_id, "profile")
 
 
 def bindings(session, machine_id):
     from .store import listing
-    return [
-        {
-            "profile_id": p["id"],
-            "native_name": p["execution_placement"]["native_name"],
-            "name": p.get("name", p["execution_placement"]["native_name"]),
-            "soul": p.get("soul", ""),
-            "preset": p.get("preset", "custom"),
-            "description": p.get("description", ""),
-            "enabled": p.get("enabled", False)
-        }
-        for p in listing(session, "profile") if
-        (p.get("execution_placement") or {}).get("machine_id") == machine_id
-    ]
+    from .deployments import entries, binding
+    return [binding(p, e) for p in listing(session, "profile") for e in entries(p)
+            if e["machine_id"] == machine_id]
 
 
 def receive(session, machine_id, body):

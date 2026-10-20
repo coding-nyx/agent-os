@@ -115,17 +115,69 @@ function Stat({ label, value, note, icon: Icon }: { label: string; value: number
 }
 function PageTitle({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) { return <div className="page-title"><div><h1>{title}</h1><p>{description}</p></div>{action}</div>; }
 function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) { return <div className="section-title"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>; }
-function ProfileCard({ profile: p, open }: { profile: Item; open: () => void }) { return <button className="profile-card" onClick={open}><div className="profile-card-top"><span className={`avatar ${colors[p.preset] || 'sage'}`}>{p.name[0]}</span><span className={`profile-status ${p.enabled ? '' : 'off'}`}><i />{p.enabled ? 'Enabled' : 'Disabled'}</span></div><h3>{p.name}</h3><p>{p.description}</p><div className="profile-meta"><span><Database size={13} />{p.bindings.length} dataset{p.bindings.length === 1 ? '' : 's'}</span><span><Monitor size={13} />Local</span></div><footer><span>{p.provision_state === 'ready' ? p.model_connection?.model || 'Connect a model to begin' : 'Setup needs attention'}</span><ArrowRight size={16} /></footer></button>; }
+function ProfileCard({ profile: p, open }: { profile: Item; open: () => void }) {
+  const isRemote = p.execution_placement?.machine_id && p.execution_placement.machine_id !== 'local';
+  return <button className="profile-card" onClick={open}><div className="profile-card-top"><span className={`avatar ${colors[p.preset] || 'sage'}`}>{p.name[0]}</span><span className={`profile-status ${p.enabled ? '' : 'off'}`}><i />{p.enabled ? 'Enabled' : 'Disabled'}</span></div><h3>{p.name}</h3><p>{p.description}</p><div className="profile-meta"><span><Database size={13} />{p.bindings.length} dataset{p.bindings.length === 1 ? '' : 's'}</span><span><Monitor size={13} />{isRemote ? 'Node' : 'Local'}</span></div><footer><span>{p.provision_state === 'ready' ? p.model_connection?.model || 'Connect a model to begin' : 'Setup needs attention'}</span><ArrowRight size={16} /></footer></button>;
+}
 
 function ProfileWorkspace({ profile: p, datasets, act, refresh, back }: { profile: Item; datasets: Item[]; act: (f: () => Promise<any>) => Promise<void>; refresh: () => Promise<void>; back: () => void }) {
   const [tab, setTab] = useState('workspace');
   const [draftPrompt, setDraftPrompt] = useState('');
   const [specialists, setSpecialists] = useState<Item[]>([]);
-  useEffect(() => { api<Item[]>('/profiles').then(setSpecialists); }, [p.id]);
+  const [machines, setMachines] = useState<Item[]>([]);
+  const [deployModal, setDeployModal] = useState(false);
+  useEffect(() => {
+    api<Item[]>('/profiles').then(setSpecialists);
+    api<Item[]>('/machines').then(setMachines);
+  }, [p.id]);
   const tabs = ['workspace', ...(p.preset_spec ? ['setup'] : []), 'conversation', 'swarms', 'history', 'data', 'identity', 'skills', 'memory', 'connections', 'automations', 'voice'];
+  const targetMachine = machines.find(m => m.id === p.execution_placement?.machine_id);
+  const isRemote = p.execution_placement?.machine_id && p.execution_placement.machine_id !== 'local';
   return <><button className="back-link" onClick={back}><ArrowLeft size={14} />All agents</button>
-    <div className="profile-heading"><span className={`avatar large ${colors[p.preset] || 'sage'}`}>{p.name[0]}</span><div><h1>{p.name}</h1><p>{p.preset_spec?.role || p.description}</p><div className="inline-meta"><Monitor size={13} />{p.execution_placement?.machine_id && p.execution_placement.machine_id !== 'local' ? 'Swarm execution on assigned node · verify model there' : 'Local execution'} <span>·</span> <AgentReadiness profile={p} /></div></div><button onClick={() => act(() => patch(`/profiles/${p.id}`, { revision: p.revision, values: { enabled: !p.enabled } }))}>{p.enabled ? <Pause size={15} /> : <Play size={15} />}{p.enabled ? 'Disable agent' : 'Enable agent'}</button></div>
+    <div className="profile-heading"><span className={`avatar large ${colors[p.preset] || 'sage'}`}>{p.name[0]}</span><div><h1>{p.name}</h1><p>{p.preset_spec?.role || p.description}</p><div className="inline-meta" style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}><Monitor size={13} /><span>{isRemote ? `Deployed on node: ${targetMachine?.name || p.execution_placement?.machine_id}` : 'Local host execution'}</span><button type="button" className="secondary" style={{fontSize:11, padding:'2px 8px'}} onClick={() => setDeployModal(true)}>{isRemote ? 'Change Node / Undeploy' : 'Deploy to Node'}</button><span>·</span> <AgentReadiness profile={p} /></div></div><button onClick={() => act(() => patch(`/profiles/${p.id}`, { revision: p.revision, values: { enabled: !p.enabled } }))}>{p.enabled ? <Pause size={15} /> : <Play size={15} />}{p.enabled ? 'Disable agent' : 'Enable agent'}</button></div>
     {p.provision_error && <div className="notice warning">{p.provision_error}<button onClick={() => act(() => post(`/profiles/${p.id}/retry-setup`, {}))}>Retry setup</button></div>}
+    {deployModal && (
+      <Modal title={`Deploy ${p.name} to Node`} close={() => setDeployModal(false)}>
+        <p>Assign this agent profile to execute on a connected node machine. When the node worker runs <code>ara node work</code>, it will automatically provision this profile.</p>
+        <form onSubmit={e => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          act(async () => {
+            await put(`/profiles/${p.id}/placement`, {
+              machine_id: f.get('machine_id'),
+              native_name: f.get('native_name')
+            });
+            setDeployModal(false);
+            refresh();
+          });
+        }}>
+          <label>Target Machine
+            <select name="machine_id" defaultValue={p.execution_placement?.machine_id || 'local'}>
+              <option value="local">This Machine (Host Local)</option>
+              {machines.filter(m => m.id !== 'local').map(m => (
+                <option key={m.id} value={m.id}>Node: {m.name} ({m.state})</option>
+              ))}
+            </select>
+          </label>
+          <label>Native profile name on node
+            <input name="native_name" defaultValue={p.execution_placement?.native_name || p.native_name} required />
+          </label>
+          <div style={{display:'flex', gap:8, marginTop:12}}>
+            <button className="primary">Save &amp; Deploy</button>
+            {isRemote && (
+              <button type="button" className="secondary" onClick={() => {
+                act(async () => {
+                  await put(`/profiles/${p.id}/placement`, { machine_id: 'local', native_name: p.native_name });
+                  setDeployModal(false);
+                  refresh();
+                });
+              }}>Recall to Host Local</button>
+            )}
+            <button type="button" onClick={() => setDeployModal(false)}>Cancel</button>
+          </div>
+        </form>
+      </Modal>
+    )}
     <div className="tabs" role="tablist">{tabs.map(t => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}</div><Boundary key={tab}>
     {tab === 'workspace' && <><AgentHome profile={p} datasets={datasets} navigate={setTab} ask={prompt => { setDraftPrompt(prompt); setTab('conversation'); }} />{p.module && <ProfileDataSurface profile={p} datasets={datasets} act={act} bind={() => setTab('data')} />}</>}
     {tab === 'setup' && <AgentSetup profile={p} refresh={refresh} />}
@@ -288,16 +340,159 @@ function RunList({ profiles }: { profiles: Item[] }) {
 }
 
 function Machines({ act }: { act: (f: () => Promise<any>) => Promise<void> }) {
-  const [machines, setMachines] = useState<Item[]>([]); const [backups, setBackups] = useState<Item[]>([]); const [replicas, setReplicas] = useState<Item[]>([]); const [enrolling, setEnrolling] = useState(false); const [enrolledData, setEnrolledData] = useState<any | null>(null); const [copied, setCopied] = useState(false); const [status, setStatus] = useState('');
-  const [netStatus, setNetStatus] = useState<any>(null); const [togglingNet, setTogglingNet] = useState(false); const [endpointInput, setEndpointInput] = useState('');
+  const [machines, setMachines] = useState<Item[]>([]);
+  const [profiles, setProfiles] = useState<Item[]>([]);
+  const [backups, setBackups] = useState<Item[]>([]);
+  const [replicas, setReplicas] = useState<Item[]>([]);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrolledData, setEnrolledData] = useState<any | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState('');
+  const [netStatus, setNetStatus] = useState<any>(null);
+  const [togglingNet, setTogglingNet] = useState(false);
+  const [endpointInput, setEndpointInput] = useState('');
+
+  const [deployTargetNode, setDeployTargetNode] = useState<Item | null>(null);
+  const [deployProfileId, setDeployProfileId] = useState<string>('');
+  const [deployNativeName, setDeployNativeName] = useState<string>('');
+
   const load = () => {
     api<Item[]>('/machines').then(setMachines);
+    api<Item[]>('/profiles').then(setProfiles).catch(() => {});
     api<Item[]>('/backups').then(setBackups).catch(e => setStatus(e.message));
     api<Item[]>('/replicas').then(setReplicas).catch(e => setStatus(e.message));
-    api<any>('/network/status').then(res => { setNetStatus(res); if (!endpointInput) setEndpointInput(res.endpoints?.tailscale || res.endpoints?.lan || (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8787')); }).catch(() => {});
+    api<any>('/network/status').then(res => {
+      setNetStatus(res);
+      if (!endpointInput) setEndpointInput(res.endpoints?.tailscale || res.endpoints?.lan || (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8787'));
+    }).catch(() => {});
   };
   useEffect(load, []);
-  return <><PageTitle title="Machines & sync" description="Execution placement, protected state and explicit recovery." action={<button className="primary" onClick={() => { setEnrolledData(null); setEnrolling(true); }}><Plus size={16} />Pair a node</button>} /><div className="machine-grid">{machines.map(m => <section className="panel padded" key={m.id}><div className="machine-header"><Monitor size={28} strokeWidth={1.4} /><Badge state={m.state} /></div><h2>{m.name}</h2><p>{m.role} · {m.endpoint || (m.state === 'awaiting_pairing' ? 'Awaiting pairing connection' : 'Registered')}</p><div className="machine-facts"><span>Native runtime <strong>{m.id === 'local' ? 'Installed locally' : 'Reported by node'}</strong></span><span>Profile isolation <strong>Separate native homes</strong></span><span>Remote transport <strong>Capability-gated</strong></span></div>{m.id !== 'local' && <div style={{marginTop:12, display:'flex', gap:8, justifyContent:'space-between', alignItems:'center', flexWrap:'wrap'}}><button type="button" className="secondary" style={{fontSize:11, padding:'4px 10px'}} onClick={async () => { try { const p = await api<any>(`/machines/${m.id}/pairing`); setEnrolledData(p.enrollment); setEnrolling(true); } catch (e: any) { setStatus(e.message); } }}>Pairing & Restart Info</button><button type="button" className="secondary" style={{fontSize:11, padding:'4px 10px', color:'#ef4444', display:'flex', alignItems:'center', gap:4}} onClick={() => { if (window.confirm(`Delete node "${m.name}"? This removes the machine and revokes its pairing token.`)) { act(async () => { await del(`/machines/${m.id}`); setStatus(`Deleted node "${m.name}".`); load(); }); } }}><Trash2 size={12} />Delete</button></div>}</section>)}</div><section className="panel padded" style={{marginBottom:24}}><SectionTitle title="Network & Tailscale" subtitle="Configure network reachability so execution nodes can connect over local Wi-Fi or your private Tailscale mesh." action={<button className={netStatus?.exposed ? 'secondary' : 'primary'} disabled={togglingNet} onClick={() => act(async () => { setTogglingNet(true); try { const next = !netStatus?.exposed; await post('/network/toggle', { exposed: next }); setStatus(`Network exposure saved: ${next ? 'Exposed on 0.0.0.0' : 'Localhost 127.0.0.1 only'}.`); const updated = await api('/network/status'); setNetStatus(updated); } finally { setTogglingNet(false); } })}>{netStatus?.exposed ? 'Restrict to Localhost' : 'Expose over Network & Tailscale'}</button>} /><div className="machine-facts" style={{marginTop:12}}><span>Listening Interface <strong>{netStatus?.exposed ? '0.0.0.0 (All interfaces / LAN / Tailscale)' : '127.0.0.1 (Localhost only)'}</strong></span><span>Tailscale <strong>{netStatus?.tailscale?.available ? (netStatus.tailscale.ip ? `${netStatus.tailscale.node_name} (${netStatus.tailscale.ip})` : 'Connected') : 'Not detected'}</strong></span><span>Local LAN IP <strong>{netStatus?.lan_ip || 'Loopback only'}</strong></span></div><div style={{display:'flex', gap:10, marginTop:14, flexWrap:'wrap'}}>{netStatus?.endpoints?.tailscale && <button type="button" className="secondary" onClick={() => { navigator.clipboard.writeText(netStatus.endpoints.tailscale); setStatus('Copied Tailscale URL: ' + netStatus.endpoints.tailscale); }}>Copy Tailscale URL ({netStatus.tailscale.ip}:8787)</button>}{netStatus?.endpoints?.lan && <button type="button" className="secondary" onClick={() => { navigator.clipboard.writeText(netStatus.endpoints.lan); setStatus('Copied LAN URL: ' + netStatus.endpoints.lan); }}>Copy LAN URL ({netStatus.lan_ip}:8787)</button>}<button type="button" className="secondary" onClick={() => { navigator.clipboard.writeText(`http://127.0.0.1:${netStatus?.port || 8787}`); setStatus('Copied Localhost URL'); }}>Copy Localhost</button></div></section><section className="panel padded" style={{marginBottom:24}}><SectionTitle title="Received node snapshots" subtitle="Acknowledged, encrypted backups. Import explicitly on a node to activate; no remote execution is implied." />{replicas.length ? replicas.map(r => <div className="list-row" key={r.id}><HardDrive size={18} /><span>{r.profile_name}<small>{new Date(r.created_at).toLocaleString()} · {r.machine_id} · passive</small></span><a className="button" href={`/api/v1/replicas/${r.id}/download`}>Download profile</a></div>) : <p className="hint">Pair a node and run ara node sync --profile PROFILE --watch. Only acknowledged snapshots are protected on this host.</p>}</section><div className="two-columns"><section className="panel padded"><SectionTitle title="Protected recovery" subtitle="Native state snapshots are encrypted with your local recovery key." action={<button onClick={() => act(async () => { const b = await post('/backups', {}); setStatus(`Created encrypted recovery bundle ${b.id}. Keep the recovery key separately using the node CLI.`); load(); })}><Plus size={15} />Back up now</button>} />{status && <div className="notice">{status}</div>}{backups.length ? backups.map(b => <div className="list-row" key={b.id}><Shield size={18} /><span>{new Date(b.created_at).toLocaleString()}<small>{b.scope || 'Agent OS native recovery'}</small></span><a className="button" href={`/api/v1/backups/${b.id}/download`}><ArrowDownToLine size={14} />Download</a></div>) : <Empty title="No recovery bundles yet" icon={Shield}>Create one after configuring your workspace.</Empty>}</section><section className="panel padded"><SectionTitle title="Install or import on a node" /><p>Native and OpenClaw profile imports start from the node CLI with a preview. Credentials, bots and schedules are not activated implicitly.</p><pre className="command-example">ara import native ./profile.tar.gz --name my-agent{ '\n'}ara import openclaw ~/.openclaw --name my-agent{ '\n'}ara node pair --enrollment ./node-enrollment.json{ '\n'}ara node work{ '\n'}ara node status{ '\n'}ara node sync --profile PROFILE --watch</pre><div className="notice">A local snapshot is not a remote backup. Only acknowledged remote state is recoverable after losing this machine.</div></section></div>{enrolling && (!enrolledData ? (
+
+  return <>
+    <PageTitle title="Machines & sync" description="Execution placement, protected state and explicit recovery." action={<button className="primary" onClick={() => { setEnrolledData(null); setEnrolling(true); }}><Plus size={16} />Pair a node</button>} />
+    {status && <div className="notice" style={{marginBottom:16}}>{status}</div>}
+    <div className="machine-grid">
+      {machines.map(m => {
+        const assignedProfiles = profiles.filter(p => (
+          m.id === 'local'
+            ? (!p.execution_placement?.machine_id || p.execution_placement?.machine_id === 'local')
+            : p.execution_placement?.machine_id === m.id
+        ));
+        return (
+          <section className="panel padded" key={m.id}>
+            <div className="machine-header"><Monitor size={28} strokeWidth={1.4} /><Badge state={m.state} /></div>
+            <h2>{m.name}</h2>
+            <p>{m.role} · {m.endpoint || (m.state === 'awaiting_pairing' ? 'Awaiting pairing connection' : 'Registered')}</p>
+            <div className="machine-facts">
+              <span>Native runtime <strong>{m.id === 'local' ? 'Installed locally' : 'Reported by node'}</strong></span>
+              <span>Profile isolation <strong>Separate native homes</strong></span>
+              <span>Remote transport <strong>Capability-gated</strong></span>
+            </div>
+
+            <div style={{marginTop:12, padding:'10px 12px', background:'#f8faf6', border:'1px solid #e2e8df', borderRadius:8}}>
+              <div style={{fontSize:11, fontWeight:650, color:'#4a5b4e', marginBottom:6, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                <span>Assigned Agents ({assignedProfiles.length})</span>
+              </div>
+              {assignedProfiles.length ? (
+                <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+                  {assignedProfiles.map(p => (
+                    <span key={p.id} style={{fontSize:11, background:'#fff', border:'1px solid #d4ded0', borderRadius:4, padding:'2px 8px', color:'#28342d', display:'inline-flex', alignItems:'center', gap:5}}>
+                      <Bot size={12} color="#365647" /> <strong>{p.name}</strong>
+                      {m.id !== 'local' && (
+                        <button
+                          type="button"
+                          title={`Recall ${p.name} to local host`}
+                          style={{border:'none', background:'transparent', padding:'0 2px', cursor:'pointer', color:'#888', display:'inline-flex', alignItems:'center'}}
+                          onClick={() => act(async () => {
+                            await put(`/profiles/${p.id}/placement`, { machine_id: 'local', native_name: p.native_name });
+                            setStatus(`Recalled ${p.name} to Local Host.`);
+                            load();
+                          })}
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <small style={{color:'var(--muted)', display:'block'}}>No agents assigned to this {m.id === 'local' ? 'host' : 'node'} yet.</small>
+              )}
+            </div>
+
+            {m.id !== 'local' && (
+              <div style={{marginTop:14, display:'flex', gap:8, justifyContent:'space-between', alignItems:'center', flexWrap:'wrap'}}>
+                <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                  <button
+                    type="button"
+                    className="primary"
+                    style={{fontSize:11, padding:'6px 12px'}}
+                    onClick={() => {
+                      setDeployTargetNode(m);
+                      if (profiles.length > 0) {
+                        const first = profiles.find(p => p.execution_placement?.machine_id !== m.id) || profiles[0];
+                        setDeployProfileId(first.id);
+                        setDeployNativeName(first.execution_placement?.native_name || first.native_name || first.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-'));
+                      }
+                    }}
+                  >
+                    Deploy Agent to this Node
+                  </button>
+                  <button type="button" className="secondary" style={{fontSize:11, padding:'6px 10px'}} onClick={async () => { try { const p = await api<any>(`/machines/${m.id}/pairing`); setEnrolledData(p.enrollment); setEnrolling(true); } catch (e: any) { setStatus(e.message); } }}>Pairing &amp; Restart Info</button>
+                </div>
+                <button type="button" className="secondary" style={{fontSize:11, padding:'6px 10px', color:'#ef4444', display:'flex', alignItems:'center', gap:4}} onClick={() => { if (window.confirm(`Delete node "${m.name}"? This removes the machine and revokes its pairing token.`)) { act(async () => { await del(`/machines/${m.id}`); setStatus(`Deleted node "${m.name}".`); load(); }); } }}><Trash2 size={12} />Delete</button>
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
+
+    {deployTargetNode && (
+      <Modal title={`Deploy Agent to Node: ${deployTargetNode.name}`} close={() => setDeployTargetNode(null)}>
+        <p>Select an agent to execute on <strong>{deployTargetNode.name}</strong>. When the node worker runs <code>ara node work</code>, it will automatically provision and run this profile.</p>
+        <form onSubmit={e => {
+          e.preventDefault();
+          act(async () => {
+            if (!deployProfileId) return;
+            await put(`/profiles/${deployProfileId}/placement`, {
+              machine_id: deployTargetNode.id,
+              native_name: deployNativeName
+            });
+            setStatus(`Deployed agent to ${deployTargetNode.name}.`);
+            setDeployTargetNode(null);
+            load();
+          });
+        }}>
+          <label>Select Agent Profile
+            <select
+              value={deployProfileId}
+              onChange={e => {
+                const id = e.target.value;
+                setDeployProfileId(id);
+                const p = profiles.find(item => item.id === id);
+                if (p) {
+                  setDeployNativeName(p.execution_placement?.native_name || p.native_name || p.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-'));
+                }
+              }}
+            >
+              {profiles.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {p.execution_placement?.machine_id && p.execution_placement.machine_id !== 'local' ? `(Currently on ${machines.find(m => m.id === p.execution_placement.machine_id)?.name || p.execution_placement.machine_id})` : '(Local Host)'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>Native profile name on node
+            <input required value={deployNativeName} onChange={e => setDeployNativeName(e.target.value)} />
+          </label>
+          <div style={{display:'flex', gap:8, marginTop:14}}>
+            <button className="primary">Deploy to {deployTargetNode.name}</button>
+            <button type="button" onClick={() => setDeployTargetNode(null)}>Cancel</button>
+          </div>
+        </form>
+      </Modal>
+    )}<section className="panel padded" style={{marginBottom:24}}><SectionTitle title="Network & Tailscale" subtitle="Configure network reachability so execution nodes can connect over local Wi-Fi or your private Tailscale mesh." action={<button className={netStatus?.exposed ? 'secondary' : 'primary'} disabled={togglingNet} onClick={() => act(async () => { setTogglingNet(true); try { const next = !netStatus?.exposed; await post('/network/toggle', { exposed: next }); setStatus(`Network exposure saved: ${next ? 'Exposed on 0.0.0.0' : 'Localhost 127.0.0.1 only'}.`); const updated = await api('/network/status'); setNetStatus(updated); } finally { setTogglingNet(false); } })}>{netStatus?.exposed ? 'Restrict to Localhost' : 'Expose over Network & Tailscale'}</button>} /><div className="machine-facts" style={{marginTop:12}}><span>Listening Interface <strong>{netStatus?.exposed ? '0.0.0.0 (All interfaces / LAN / Tailscale)' : '127.0.0.1 (Localhost only)'}</strong></span><span>Tailscale <strong>{netStatus?.tailscale?.available ? (netStatus.tailscale.ip ? `${netStatus.tailscale.node_name} (${netStatus.tailscale.ip})` : 'Connected') : 'Not detected'}</strong></span><span>Local LAN IP <strong>{netStatus?.lan_ip || 'Loopback only'}</strong></span></div><div style={{display:'flex', gap:10, marginTop:14, flexWrap:'wrap'}}>{netStatus?.endpoints?.tailscale && <button type="button" className="secondary" onClick={() => { navigator.clipboard.writeText(netStatus.endpoints.tailscale); setStatus('Copied Tailscale URL: ' + netStatus.endpoints.tailscale); }}>Copy Tailscale URL ({netStatus.tailscale.ip}:8787)</button>}{netStatus?.endpoints?.lan && <button type="button" className="secondary" onClick={() => { navigator.clipboard.writeText(netStatus.endpoints.lan); setStatus('Copied LAN URL: ' + netStatus.endpoints.lan); }}>Copy LAN URL ({netStatus.lan_ip}:8787)</button>}<button type="button" className="secondary" onClick={() => { navigator.clipboard.writeText(`http://127.0.0.1:${netStatus?.port || 8787}`); setStatus('Copied Localhost URL'); }}>Copy Localhost</button></div></section><section className="panel padded" style={{marginBottom:24}}><SectionTitle title="Received node snapshots" subtitle="Acknowledged, encrypted backups. Import explicitly on a node to activate; no remote execution is implied." />{replicas.length ? replicas.map(r => <div className="list-row" key={r.id}><HardDrive size={18} /><span>{r.profile_name}<small>{new Date(r.created_at).toLocaleString()} · {r.machine_id} · passive</small></span><a className="button" href={`/api/v1/replicas/${r.id}/download`}>Download profile</a></div>) : <p className="hint">Pair a node and run ara node sync --profile PROFILE --watch. Only acknowledged snapshots are protected on this host.</p>}</section><div className="two-columns"><section className="panel padded"><SectionTitle title="Protected recovery" subtitle="Native state snapshots are encrypted with your local recovery key." action={<button onClick={() => act(async () => { const b = await post('/backups', {}); setStatus(`Created encrypted recovery bundle ${b.id}. Keep the recovery key separately using the node CLI.`); load(); })}><Plus size={15} />Back up now</button>} />{status && <div className="notice">{status}</div>}{backups.length ? backups.map(b => <div className="list-row" key={b.id}><Shield size={18} /><span>{new Date(b.created_at).toLocaleString()}<small>{b.scope || 'Agent OS native recovery'}</small></span><a className="button" href={`/api/v1/backups/${b.id}/download`}><ArrowDownToLine size={14} />Download</a></div>) : <Empty title="No recovery bundles yet" icon={Shield}>Create one after configuring your workspace.</Empty>}</section><section className="panel padded"><SectionTitle title="Install or import on a node" /><p>Native and OpenClaw profile imports start from the node CLI with a preview. Credentials, bots and schedules are not activated implicitly.</p><pre className="command-example">ara import native ./profile.tar.gz --name my-agent{ '\n'}ara import openclaw ~/.openclaw --name my-agent{ '\n'}ara node pair --enrollment ./node-enrollment.json{ '\n'}ara node work{ '\n'}ara node status{ '\n'}ara node sync --profile PROFILE --watch</pre><div className="notice">A local snapshot is not a remote backup. Only acknowledged remote state is recoverable after losing this machine.</div></section></div>{enrolling && (!enrolledData ? (
     <Modal title="Pair a node" close={() => setEnrolling(false)}><p>Use a network address reachable by the node. The node will install its runtime and pair automatically.</p><form onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); act(async () => { const result = await post('/machines', {name:f.get('name'), endpoint:f.get('endpoint')}); setEnrolledData(result.enrollment); load(); }); }}><label>Node name<input name="name" required maxLength={100} placeholder="e.g. macbook-runner" /></label><label>Host API address<div style={{display:'flex', gap:6, margin:'4px 0 8px', flexWrap:'wrap'}}>{netStatus?.endpoints?.tailscale && <button type="button" className="secondary" style={{fontSize:11, padding:'2px 8px'}} onClick={() => setEndpointInput(netStatus.endpoints.tailscale)}>Use Tailscale ({netStatus.tailscale.ip})</button>}{netStatus?.endpoints?.lan && <button type="button" className="secondary" style={{fontSize:11, padding:'2px 8px'}} onClick={() => setEndpointInput(netStatus.endpoints.lan)}>Use LAN ({netStatus.lan_ip})</button>}<button type="button" className="secondary" style={{fontSize:11, padding:'2px 8px'}} onClick={() => setEndpointInput(window.location.origin)}>Use Browser URL</button></div><input name="endpoint" required type="url" value={endpointInput} onChange={e => setEndpointInput(e.target.value)} /></label><button className="primary">Generate Node Pairing</button></form></Modal>
   ) : (
     <Modal title="Node Pairing Ready" close={() => { setEnrolling(false); setEnrolledData(null); load(); }}><p>Run this command in the terminal on the target node machine to bootstrap, pair, and start the node worker:</p><pre className="command-example" style={{ userSelect: 'all', padding: '12px' }}>{enrolledData.bootstrap_cmd}</pre><div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}><button className="primary" onClick={() => { navigator.clipboard.writeText(enrolledData.bootstrap_cmd); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? 'Copied to clipboard!' : 'Copy one-line command'}</button><button onClick={() => download('node-enrollment.json', JSON.stringify(enrolledData, null, 2))}>Download JSON</button><button onClick={() => { setEnrolling(false); setEnrolledData(null); load(); }}>Done</button></div><div className="notice" style={{marginTop:14}}><strong>How to restart pairing &amp; manage this node:</strong><p style={{margin:'6px 0 0', fontSize:12, lineHeight:1.5}}>• <strong>Restart pairing:</strong> <code>cd ~/ara/agent-os &amp;&amp; .venv/bin/ara node pair --enrollment node-enrollment.json</code><br/>• <strong>Start worker:</strong> <code>.venv/bin/ara node work</code> (or background: <code>nohup .venv/bin/ara node work &gt; node-worker.log 2&gt;&amp;1 &amp;</code>)<br/>• <strong>Check status:</strong> <code>.venv/bin/ara node status</code><br/>• <strong>Repeat bootstrap:</strong> Paste the one-line command above into terminal again anytime.</p></div></Modal>

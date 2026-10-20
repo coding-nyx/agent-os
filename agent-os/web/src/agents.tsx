@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, Bot, Brain, Check, CheckCircle2, Circle, Code2, Compass, Loader2, MessageSquare, Play, Settings2, Shield, Sparkles, Target, Users, Wallet, Activity, X } from 'lucide-react';
+import { ArrowRight, Bot, Brain, Check, CheckCircle2, Circle, Code2, Compass, Loader2, MessageSquare, Monitor, Play, Settings2, Shield, Sparkles, Target, Users, Wallet, Activity, X } from 'lucide-react';
 import { api, Item, patch, post, put } from './api';
 import './agents.css';
 
@@ -25,12 +25,13 @@ export function AgentDirectory({ profiles, open, create }: { profiles: Item[]; o
   return <div className="agents-directory">
     <div className="page-title"><div><div className="eyebrow">A SMALL TEAM, BUILT AROUND YOU</div><h1>Your agents</h1><p>One orchestrator. Specialists with their own context, tools, and memories.</p></div><button onClick={create}><Bot size={16} />Create agent</button></div>
     <div className="agents-search"><label><span className="sr-only">Search agents</span><Compass size={17} /><input placeholder="Find an agent or a kind of work…" value={query} onChange={e => setQuery(e.target.value)} /></label><span>{active.length} agents · {active.filter(p => p.chat_ready).length} with a model selected</span></div>
-    {ara && <button className="orchestrator-card" onClick={() => open(ara.id)} aria-label={`Open agent ${ara.name}`}><div className="orchestrator-mark"><Sparkles size={32} strokeWidth={1.3} /></div><div><span className="agent-kicker">YOUR HOME BASE · SYSTEM ORCHESTRATOR</span><h2>{ara.name}</h2><p>{ara.preset_spec?.description || ara.description}</p><AgentReadiness profile={ara} /></div><span className="orchestrator-cta">Open workspace<ArrowRight size={18} /></span></button>}
+    {ara && <button className="orchestrator-card" onClick={() => open(ara.id)} aria-label={`Open agent ${ara.name}`}><div className="orchestrator-mark"><Sparkles size={32} strokeWidth={1.3} /></div><div><span className="agent-kicker">YOUR HOME BASE · SYSTEM ORCHESTRATOR</span><h2>{ara.name}</h2><p>{ara.preset_spec?.description || ara.description}</p><div style={{display:'flex', alignItems:'center', gap:8}}><AgentReadiness profile={ara} />{ara.execution_placement?.machine_id && ara.execution_placement.machine_id !== 'local' && <span style={{fontSize:10, color:'#365647', background:'#e4ede2', padding:'2px 6px', borderRadius:4, display:'inline-flex', alignItems:'center', gap:4}}><Monitor size={11} />Node: {ara.execution_placement.machine_id}</span>}</div></div><span className="orchestrator-cta">Open workspace<ArrowRight size={18} /></span></button>}
     <div className="agent-section-label"><h2>Your specialists</h2><span>Different strengths. Clear boundaries.</span></div>
     <div className="profile-grid specialist-grid">{matches.filter(p => p.id !== ara?.id).map(p => {
       const Icon = icons[p.preset] || Bot;
+      const isRemote = p.execution_placement?.machine_id && p.execution_placement.machine_id !== 'local';
       return <button className={`profile-card specialist-card agent-${p.preset}`} key={p.id} onClick={() => open(p.id)} aria-label={`Open agent ${p.name}`}>
-        <div className="specialist-card-top"><span className={`avatar ${themes[p.preset] || 'sage'}`}><Icon size={23} strokeWidth={1.5} /></span><AgentReadiness profile={p} /></div>
+        <div className="specialist-card-top"><span className={`avatar ${themes[p.preset] || 'sage'}`}><Icon size={23} strokeWidth={1.5} /></span><div style={{display:'flex', alignItems:'center', gap:6}}>{isRemote && <span style={{fontSize:10, color:'#365647', background:'#e4ede2', padding:'2px 6px', borderRadius:4, display:'inline-flex', alignItems:'center', gap:4}}><Monitor size={11} />Node</span>}<AgentReadiness profile={p} /></div></div>
         <h3>{p.name}</h3><strong className="specialist-role">{p.preset_spec?.role || p.description}</strong><p>{p.preset_spec?.description || 'An independent agent configured for your work.'}</p>
         <div className="specialist-capabilities">{(p.preset_spec?.capabilities || ['Native tools', 'Private memory']).slice(0, 2).map((c: string) => <span key={c}>{c}</span>)}</div>
         <footer><span>{p.context_ready ? 'Preferences saved' : 'Personalize this agent'}</span><ArrowRight size={16} /></footer>

@@ -202,7 +202,7 @@ def poll(id, status):
             update_command(status_row, status)
         else:
             session.add(Entity(id="computer-status:" + id, kind="computer_status", data=status))
-        assigned = [{k: b[k] for k in ("profile_id", "native_name", "enabled")} for b in bindings(session, id)]
+        assigned = [{k: b[k] for k in ("profile_id", "native_name", "enabled", "generation")} for b in bindings(session, id)]
         commands = session.scalars(select(Entity).where(Entity.kind == "computer_command",
             Entity.data["machine_id"].astext == id, Entity.data["state"].astext == "queued")
             .order_by(Entity.created_at)).all()
@@ -243,8 +243,8 @@ def receive(id, ident, result):
 
 
 def profile_target(profile):
-    placement = profile.get("execution_placement") or {}
-    id = placement.get("machine_id", "local")
+    from ..deployments import resolve
+    id = resolve(profile)["machine_id"]
     return id if id != "local" else None
 
 
