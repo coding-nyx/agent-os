@@ -207,8 +207,22 @@ export function SystemControlView() {
             onLoad={e => { if (e.currentTarget.currentSrc === frame) observationId.current = pendingObservationId.current; }}
             onError={() => { observationId.current = undefined; setFrame(null); setError('The selected desktop returned an unreadable image.'); }}
             className="sc-stream-image" onClick={click} /> :
-            <div className="sc-placeholder"><Monitor size={40} /><h2>No screen captured</h2>
-              <p>{device?.metadata?.detail || 'Start observation or take a snapshot explicitly.'}</p></div>}
+            <div className="sc-placeholder" style={{padding:'24px 20px', textAlign:'center', maxWidth:460, margin:'0 auto'}}>
+              <Monitor size={40} strokeWidth={1.4} style={{color:'#7b847d', marginBottom:12}} />
+              <h2>No screen captured</h2>
+              <p style={{fontSize:12, color:'#606d62', lineHeight:1.6, marginBottom:16}}>
+                {device?.metadata?.detail || 'Start observation or take a snapshot explicitly.'}
+              </p>
+              <div style={{background:'#f3f6ef', border:'1px solid #dfe5da', borderRadius:8, padding:'12px 14px', textAlign:'left', fontSize:12, lineHeight:1.6}}>
+                <strong style={{color:'#2e4835', display:'block', marginBottom:4}}>How to provide and configure access:</strong>
+                <ol style={{margin:'4px 0 0', paddingLeft:18, color:'#4a5b4e'}}>
+                  <li style={{marginBottom:4}}><strong>Grant an Agent:</strong> In the <em>Agent permissions</em> panel on the right, pick an agent (e.g. <code>Ara</code>), choose <em>Observe only</em> or <em>Observe and input</em>, then click <em>Save permission</em>.</li>
+                  <li style={{marginBottom:4}}><strong>Set Mode:</strong> Switch from <em>view only</em> to <em>supervised</em> (recommended; requires 1-click operator approvals) or <em>autonomous</em> using the mode buttons above.</li>
+                  <li style={{marginBottom:4}}><strong>Verify Display:</strong> Click the <strong>Snapshot</strong> button above to verify display access and capture a test frame.</li>
+                  <li><strong>Driver installation:</strong> If the native driver is ever missing, run in terminal: <code>ara setup --computer-control</code>.</li>
+                </ol>
+              </div>
+            </div>}
         </div>
         <div className="sc-viewport-footer"><small>{policy?.mode === 'view_only' ? 'View only: backend rejects all input.' :
           policy?.mode === 'supervised' ? 'Supervised: agent inputs require operator approval; your clicks are explicit operator actions.' :

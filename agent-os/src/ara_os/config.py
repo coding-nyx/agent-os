@@ -28,8 +28,13 @@ def private_file(name: str, factory= lambda: secrets.token_urlsafe(32)) -> str:
 
 
 def runtime_env() -> dict[str, str]:
-    return {**os.environ, "HERMES_HOME": str(RUNTIME_HOME),
-            "HERMES_RUNTIME_DIR": str(ROOT / ".runtime/tools"),
-            "HERMES_DASHBOARD_SESSION_TOKEN": private_file("runtime-token"),
-            "HERMES_DISABLE_LAZY_INSTALLS": "1", "PYTHONPATH": str(RUNTIME_SOURCE),
-            "UV_CACHE_DIR": os.environ.get("UV_CACHE_DIR", str(ROOT / ".runtime/cache"))}
+    env = {**os.environ, "HERMES_HOME": str(RUNTIME_HOME),
+           "HERMES_RUNTIME_DIR": str(ROOT / ".runtime/tools"),
+           "HERMES_DASHBOARD_SESSION_TOKEN": private_file("runtime-token"),
+           "HERMES_DISABLE_LAZY_INSTALLS": "1", "PYTHONPATH": str(RUNTIME_SOURCE),
+           "UV_CACHE_DIR": os.environ.get("UV_CACHE_DIR", str(ROOT / ".runtime/cache"))}
+    driver = next((p for p in (ROOT / ".runtime/tools").glob("cua-driver*/cua-driver") if p.is_file()), None)
+    if driver:
+        env["HERMES_CUA_DRIVER_CMD"] = str(driver)
+        env["PATH"] = f"{driver.parent}:{env.get('PATH', '')}"
+    return env
