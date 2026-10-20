@@ -2,6 +2,47 @@
 
 Current-instance validation on x86 Linux; browser timezone Asia/Kolkata. This is not a live deployment or a fresh cloud-machine restoration claim.
 
+## 20 October 2026 — swarm outcome and desktop dispatch fixes
+
+- Addressed all five findings in the [implementation review](SWARM-DEVICE-REVIEW-2026-10-20.md)
+  under the [fix plan](SWARM-DEVICE-FIX-PLAN.md).
+- Full isolated regression run: **139 passed in 321.39 seconds**. After the last
+  approval-binding and capture-owner guards, final focused CUA/native-adapter and
+  execution checks passed **57 cases in 11.31 seconds**. The capture-owner test
+  was also repeated with a distinct, still-live target process and passed.
+  Two additional regression cases were added after full-suite collection; they
+  are covered by the final focused run. These counts are separate runs.
+- Production TypeScript/Vite build, Python compilation and Git whitespace checks
+  passed. The existing Starlette/HTTPX test-client deprecation warning remains.
+- Device coverage uses synchronization on actual lock contention to exercise
+  mode changes, revoked queued inputs/observations, observation expiry, stale
+  approvals, original-payload binding and revocation during reads. Single-use
+  decisions and operation receipts are serialized across processes.
+- Native-adapter coverage runs the real pinned target selection, capture,
+  approval gate, hard blocks and input dispatch against an explicit fake driver
+  transport in separate native Python processes. Tests cover exact targeting
+  after foreground changes, click/type/key, changed or absent windows, process
+  creation identity, actor/desktop/geometry/policy mismatch, expiry, capture-owner
+  exit during revalidation, valid coordinate edges and unconfirmed effect metadata.
+  A supervised approval from another application process delivers one fake input
+  to the original target; operation replay does not repeat it. No auxiliary-model
+  inference is used by the target-validation path. The upstream runtime core has
+  no local changes.
+- Swarm checks preserve unknown execution and native handles when artifact
+  collection fails, retain completed summaries/usage, stop dependent stages on
+  missing/invalid/truncated artifacts, and finalize cancellation atomically after
+  synthesis. Node event upload/replay preserves separate artifact diagnostics and
+  unknown states; prior event formats remain readable.
+- The local API was reloaded after checking that all managed runs were terminal,
+  no swarm runs were active and the API had zero child processes. Health returned
+  ready with PostgreSQL available. All **nine** recorded native configuration
+  hashes remained unchanged; computer control remains **view-only with zero
+  agent grants**.
+- Physical desktop capture/input, external scanning and paid inference were not
+  performed. Actual OS/driver input reliability remains a separate hardware
+  validation step. Remote desktop routing and Android/iOS providers remain outside
+  the managed desktop implementation.
+
 ## 19 October 2026 — native swarms, standalone nodes and guarded computer control
 
 - Clean, isolated full regression run: **103 passed in 292.89 seconds**.

@@ -313,7 +313,7 @@ def failure_frame(exc, request):
                     "(storage_unavailable). Check the profile's native storage and service logs. "
                     "A missing model has not been established; do not delete its database.")
     # A lost reply during submission or execution is not a confirmed refusal.
-    ambiguous = (stage in {"prompt.events", "worker.execute"} or
+    ambiguous = (stage in {"prompt.events", "worker.execute", "computer.execute"} or
                  (stage == "prompt.submit" and not isinstance(exc, GatewayRPCError)))
     if ambiguous:
         payload.update(code="native_outcome_unknown", detail="The runtime connection stopped. "

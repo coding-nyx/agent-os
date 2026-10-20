@@ -79,6 +79,8 @@ Run specific test modules:
 
 - [CUA & System Control Architecture](docs/CUA_SYSTEM_CONTROL.md)
 - [Multi-Agent Swarm Intelligence](docs/SWARMS.md)
+- [Host-Node Networking & AgentMesh Roadmap](../docs/design/ARA-NODE-HOST-NETWORKING-AND-AGENTMESH-ROADMAP.md)
+- [Sovereign Voice & Visual Avatar Roadmap](../docs/design/ARA-VOICE-AND-AVATAR-ROADMAP.md)
 - [Agent Presets & Specialist Roles](docs/AGENT-PRESETS.md)
 - [UI Surface Contracts & Failure Semantics](docs/PRODUCT-SURFACES.md)
 - [Source Audits & Upstream Decisions](docs/UPSTREAM-DECISIONS.md)

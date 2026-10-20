@@ -24,6 +24,7 @@ async def frames(request: dict, profile: dict | None = None):
         raise Problem("runtime_not_installed", "Install the Agent OS runtime using scripts/setup.sh.", 503)
     env = config.runtime_env()
     env["HERMES_HOME"] = str(home(profile))
+    env["ARA_STATE_DIR"] = str(config.STATE)
     process = await asyncio.create_subprocess_exec(str(config.RUNTIME_PYTHON), str(WORKER),
         cwd=config.RUNTIME_SOURCE, env=env, stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, limit=8 * 1024 * 1024)

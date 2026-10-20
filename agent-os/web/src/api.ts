@@ -25,3 +25,4 @@ export async function api<T = any>(path: string, options: RequestInit = {}): Pro
 export const post = <T = any>(path: string, data: unknown) => api<T>(path, { method: 'POST', body: JSON.stringify(data) });
 export const put = <T = any>(path: string, data: unknown) => api<T>(path, { method: 'PUT', body: JSON.stringify(data) });
 export const patch = <T = any>(path: string, data: unknown) => api<T>(path, { method: 'PATCH', body: JSON.stringify(data) });
+export const del = <T = any>(path: string) => api<T>(path, { method: 'DELETE' });

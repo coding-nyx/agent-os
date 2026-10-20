@@ -231,12 +231,15 @@ def project_events(session, record, entries):
                         worker["artifacts"] = data["artifacts"]
                     if data.get("native_session_id"):
                         worker["native_session_id"] = data["native_session_id"]
-                    worker.update({k: data[k] for k in ("model", "tokens", "cost_usd", "cost_status", "api_calls") if k in data})
+                    worker.update({k: data[k] for k in ("model", "tokens", "cost_usd", "cost_status", "api_calls",
+                        "workspace", "artifact_status", "artifact_error") if k in data})
         if kind == "swarm.finished":
             from .task_journal import TERMINAL
             if data.get("state") not in TERMINAL:
                 raise Problem("invalid_task_state", "Invalid terminal task state")
             patch.update({k: data.get(k) for k in ("state", "synthesized_output", "error", "usage")})
+            if "synthesis" in data:
+                patch["synthesis"] = data["synthesis"]
             for worker in workers:
                 if worker["state"] == "pending":
                     worker.update(state="not_started", error="A prerequisite stage stopped or the swarm was cancelled")

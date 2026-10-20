@@ -1,8 +1,10 @@
 """Computer policy/transport tests. All capture and input backends are explicit fakes."""
 import asyncio
 import base64
+import fcntl
 import json
 import time
+from contextlib import contextmanager
 
 import pytest
 from fastapi.testclient import TestClient
@@ -125,6 +127,122 @@ async def test_two_agents_cannot_drive_one_device(computer):
     assert (await computer.act("local_desktop", action(), actor="a", operation_id="a1")).success
     refused = await computer.act("local_desktop", action(), actor="b", operation_id="b1")
     assert not refused.success and "controller" in refused.error
+
+
+@contextmanager
+def held_device(monkeypatch):
+    """Signal the actual failed lock acquisition; no timing guess in race tests."""
+    waiting = asyncio.Event()
+    original = fcntl.flock
+    def flock(fd, flags):
+        try:
+            return original(fd, flags)
+        except BlockingIOError:
+            waiting.set()
+            raise
+    with (config.STATE / ".computer-device.lock").open("a") as lock:
+        original(lock, fcntl.LOCK_EX)
+        monkeypatch.setattr(fcntl, "flock", flock)
+        yield waiting, lambda: original(lock, fcntl.LOCK_UN)
+
+
+async def test_queued_autonomous_input_requires_current_supervised_approval(computer, monkeypatch):
+    policy.update({"mode": "autonomous", "grants": {"coder": ["view", "input"]}})
+    await observe(computer, actor="coder")
+    with held_device(monkeypatch) as (waiting, release):
+        work = asyncio.create_task(computer.act("local_desktop", action(), actor="coder", operation_id="queued"))
+        await asyncio.wait_for(waiting.wait(), 2)
+        policy.update({"mode": "supervised"})
+        release()
+        result = await work
+    assert result.metadata["state"] == "pending"
+    assert len(computer.provider.calls) == 1
+    repeated = await computer.act("local_desktop", action(), actor="coder", operation_id="queued")
+    assert repeated.metadata == result.metadata
+    assert len(list((config.STATE / "computer-approvals").glob("*.json"))) == 1
+    assert (await computer.approve(result.metadata["approval_id"])).success
+    assert len(computer.provider.calls) == 2
+
+
+@pytest.mark.parametrize("operation", ["input", "screenshot", "tree"])
+async def test_queued_device_operation_rechecks_revoked_grant(computer, monkeypatch, operation):
+    policy.update({"mode": "autonomous", "grants": {"coder": ["view", "input"]}})
+    await observe(computer, actor="coder")
+    reads = []
+    async def tree():
+        reads.append(True)
+        return {"private": "must not be read"}
+    computer.provider.get_ui_tree = tree
+    with held_device(monkeypatch) as (waiting, release):
+        call = (computer.get_ui_tree("local_desktop", actor="coder") if operation == "tree" else
+            computer.act("local_desktop", action("screenshot" if operation == "screenshot" else "left_click"),
+                actor="coder", operation_id="revoked"))
+        work = asyncio.create_task(call)
+        await asyncio.wait_for(waiting.wait(), 2)
+        policy.update({"grants": {}})
+        release()
+        if operation == "tree":
+            with pytest.raises(ValueError, match="grant"):
+                await work
+        else:
+            result = await work
+            assert not result.success and "grant" in result.error
+    assert len(computer.provider.calls) == 1
+    assert not reads
+
+
+async def test_observation_expiry_is_checked_after_lock_wait(computer, monkeypatch):
+    policy.update({"mode": "autonomous", "grants": {"coder": ["view", "input"]}})
+    await observe(computer, actor="coder")
+    with held_device(monkeypatch) as (waiting, release):
+        work = asyncio.create_task(computer.act("local_desktop", action(), actor="coder", operation_id="expires"))
+        await asyncio.wait_for(waiting.wait(), 2)
+        computer.observations["coder"]["created"] -= 16
+        release()
+        result = await work
+    assert not result.success and "fresh" in result.error
+    assert len(computer.provider.calls) == 1
+
+
+async def test_policy_change_invalidates_single_use_approval(computer):
+    policy.update({"mode": "supervised", "grants": {"coder": ["view", "input"]}})
+    await observe(computer, actor="coder")
+    result = await computer.act("local_desktop", action(), actor="coder", operation_id="stale-approval")
+    policy.update({"mode": "autonomous"})
+    approved = await computer.approve(result.metadata["approval_id"])
+    assert not approved.success and "policy" in approved.error
+    assert len(computer.provider.calls) == 1
+    with pytest.raises(ValueError, match="consumed"):
+        await computer.approve(result.metadata["approval_id"])
+
+
+async def test_approval_must_match_the_original_operation_payload(computer):
+    policy.update({"mode": "supervised", "grants": {"coder": ["view", "input"]}})
+    await observe(computer, actor="coder")
+    result = await computer.act("local_desktop", action(), actor="coder", operation_id="bound-payload")
+    path = config.STATE / "computer-approvals" / (result.metadata["approval_id"] + ".json")
+    value = json.loads(path.read_text())
+    value["action"]["action"] = "right_click"
+    path.write_text(json.dumps(value))
+    approved = await computer.approve(result.metadata["approval_id"])
+    assert not approved.success and "admitted" in approved.error
+    assert len(computer.provider.calls) == 1
+
+
+async def test_revocation_during_accessibility_read_discards_result(computer):
+    policy.update({"grants": {"coder": ["view"]}})
+    started, finish = asyncio.Event(), asyncio.Event()
+    async def tree():
+        started.set()
+        await finish.wait()
+        return {"private": "discard"}
+    computer.provider.get_ui_tree = tree
+    work = asyncio.create_task(computer.get_ui_tree("local_desktop", actor="coder"))
+    await started.wait()
+    policy.update({"grants": {}})
+    finish.set()
+    with pytest.raises(ValueError, match="policy changed"):
+        await work
 
 
 @pytest.mark.parametrize("body", [

@@ -81,6 +81,8 @@ export function SystemControlView() {
       });
       if (!result.success) throw new Error(result.error || 'Input was not confirmed');
       await snapshot();
+      if (result.metadata?.effect !== 'confirmed' && result.metadata?.verified !== true)
+        setError('Input was delivered; its effect is unconfirmed. Inspect the snapshot before another action.');
     } catch (e) { setError((e as Error).message); }
   }
 

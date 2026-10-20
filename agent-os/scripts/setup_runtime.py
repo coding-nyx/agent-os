@@ -69,9 +69,27 @@ if needs_refresh:
 stamp.write_text(json.dumps(expected_stamp, indent=2))
 from ara_os.launchers import install_cli
 
-commands = install_cli(root, Path(os.environ["ARA_CLI_BIN_DIR"]) if os.environ.get("ARA_CLI_BIN_DIR") else None)
+cli_env_dir = os.environ.get("ARA_CLI_BIN_DIR")
+explicit_dir = Path(cli_env_dir) if cli_env_dir else None
+fallback_dir = (root / ".state/bin") if explicit_dir is None else None
+
+try:
+    commands = install_cli(root, explicit_dir, fallback_directory=fallback_dir)
+except FileExistsError as err:
+    if explicit_dir is not None:
+        raise
+    fallback_dir = root / ".state/bin"
+    print(f"\n[NOTICE] {err}")
+    print(f"Preserving foreign command in ~/.local/bin. Installing Agent OS launchers to: {fallback_dir}")
+    commands = install_cli(root, fallback_dir)
+
 for command in commands:
     subprocess.run([str(command), "--help"], cwd=root.parent, check=True,
         env={key: value for key, value in os.environ.items() if key not in {"HERMES_HOME", "HERMES_RUNTIME_DIR", "PYTHONPATH"}},
         stdout=subprocess.DEVNULL, timeout=30)
-print("Agent OS native commands installed in " + str(commands[0].parent))
+
+if explicit_dir is None and commands[0].parent == (root / ".state/bin").resolve():
+    print(f"Agent OS native commands installed in {commands[0].parent} (isolated from foreign host installations).")
+    print(f"Tip: Prepend '{commands[0].parent}' to your PATH to run Agent OS's hermes commands directly.")
+else:
+    print("Agent OS native commands installed in " + str(commands[0].parent))

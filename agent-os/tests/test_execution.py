@@ -235,6 +235,141 @@ async def test_worker_failures_are_not_upgraded_and_grants_intersect(tmp_path, m
         assert final["events"][-1]["data"]["synthesized_output"] is None
 
 
+@pytest.mark.parametrize("execution,collection,expected", [
+    ("unknown", "failed", "unknown"), ("timeout", "failed", "unknown"),
+    ("completed", "failed", "partial"), ("completed", "truncated", "partial"),
+    ("completed", "invalid", "partial")])
+async def test_collection_errors_preserve_execution_and_block_handoff(tmp_path, monkeypatch, execution, collection, expected):
+    from ara_os import config, runtime, runtime_adapter, swarm_runner
+    from ara_os.store import Problem
+    home = native_profile(tmp_path, "http://127.0.0.1:9/v1")
+    cfg = yaml.safe_load((home / "config.yaml").read_text())
+    cfg["ara"]["swarm"]["workspace"] = str(tmp_path / "source")
+    (home / "config.yaml").write_text(yaml.safe_dump(cfg))
+    monkeypatch.setattr(config, "STATE", tmp_path)
+    monkeypatch.setattr(config, "RUNTIME_HOME", tmp_path / "runtime")
+    request = swarm_runner.request_for(home.name, "custom", "Check artifact failure", "collection-once", [
+        {"role": "Writer", "objective": "Write", "stage": 0}, {"role": "Reviewer", "objective": "Verify", "stage": 1}])
+    admitted = swarm_runner.admit(request)
+    calls = []
+    async def worker(profile, body):
+        calls.append(body)
+        if body["goal"].startswith("Role: Writer"):
+            swarm_runner.journal().append(admitted["id"], "swarm.worker_bound", {
+                "worker_id": "custom_1", "native_session_id": "durable-native-handle"})
+            if execution == "unknown":
+                raise Problem("unknown_outcome", "Transport stopped after execution")
+            if execution == "timeout":
+                raise TimeoutError()
+        return {"status": "completed", "summary": "Actual fixture summary", "api_calls": 1, "tokens": {"input": 5, "output": 7}}
+    async def workspace(body, profile=None):
+        if body["action"] == "prepare":
+            return {"path": body["target"], "isolation": "git_worktree"}
+        if collection == "failed":
+            raise ValueError("Artifact collection broke")
+        if collection == "invalid":
+            return None
+        return {"path": body["target"], "diff": "", "untracked_files": [], "truncated": True}
+    monkeypatch.setattr(runtime_adapter, "worker", worker)
+    monkeypatch.setattr(runtime, "call", workspace)
+    await swarm_runner.execute(admitted["id"])
+    final = swarm_runner.journal().read(admitted["id"])
+    assert final["state"] == expected
+    result = next(e["data"] for e in final["events"] if e["type"] == "swarm.worker_finished" and e["data"]["id"] == "custom_1")
+    assert result["status"] == ("unknown" if execution in {"unknown", "timeout"} else "completed")
+    assert result["native_session_id"] == "durable-native-handle"
+    assert result["workspace"] == result["artifacts"]["path"]
+    assert result["artifact_status"] == ("truncated" if collection == "truncated" else "failed")
+    assert result["artifact_error"]
+    assert not any(c["goal"].startswith("Role: Reviewer") for c in calls)
+    if execution == "completed":
+        assert result["summary"] == "Actual fixture summary"
+        assert result["tokens"] == {"input": 5, "output": 7}
+        assert final["events"][-1]["data"]["usage"]["api_calls"] == 2
+    else:
+        assert result["error"] and "Artifact" not in result["error"]
+        assert len(calls) == 1
+
+
+@pytest.mark.parametrize("case,expected", [
+    ("before_synthesis", "cancelled"), ("during_synthesis", "cancelled"),
+    ("before_finalize", "cancelled"), ("unknown_synthesis", "unknown"), ("failed_synthesis", "partial")])
+async def test_final_outcome_includes_synthesis_and_last_cancellation(tmp_path, monkeypatch, case, expected):
+    from ara_os import config, runtime_adapter, swarm_runner
+    from ara_os.store import Problem
+    home = native_profile(tmp_path, "http://127.0.0.1:9/v1")
+    monkeypatch.setattr(config, "STATE", tmp_path)
+    monkeypatch.setattr(config, "RUNTIME_HOME", tmp_path / "runtime")
+    request = swarm_runner.request_for(home.name, "custom", "Synthesis states", "synthesis-once", [
+        {"role": "Writer", "objective": "Produce a result"}])
+    admitted = swarm_runner.admit(request)
+    calls = []
+    async def worker(profile, body):
+        calls.append(body)
+        synthesis = body["goal"].startswith("Role: Coordinator")
+        if (not synthesis and case == "before_synthesis") or (synthesis and case in {"during_synthesis", "unknown_synthesis"}):
+            swarm_runner.journal().cancel(admitted["id"])
+        if synthesis and case == "unknown_synthesis":
+            raise Problem("unknown_outcome", "Synthesis reply lost")
+        return {"status": "interrupted" if synthesis and case == "during_synthesis" else
+            "failed" if synthesis and case == "failed_synthesis" else "completed", "summary": "Retained fixture output",
+            "api_calls": 1, "tokens": {"input": 5, "output": 7}, "error": "Synthesis stopped" if synthesis else None}
+    monkeypatch.setattr(runtime_adapter, "worker", worker)
+    finish = Journal.finish
+    def finalizing(self, ident, data):
+        if case == "before_finalize":
+            self.cancel(ident)
+        return finish(self, ident, data)
+    monkeypatch.setattr(Journal, "finish", finalizing)
+    await swarm_runner.execute(admitted["id"])
+    final = swarm_runner.journal().read(admitted["id"])
+    assert final["state"] == expected
+    assert final["events"][-1]["data"]["state"] == expected
+    first = next(e["data"] for e in final["events"] if e["type"] == "swarm.worker_finished")
+    assert first["status"] == "completed" and first["summary"] == "Retained fixture output"
+    assert len(calls) == (1 if case == "before_synthesis" else 2)
+    assert final["events"][-1]["data"]["usage"]["api_calls"] >= 1
+
+
+def test_finalization_is_single_use_and_late_cancel_does_not_relabel(tmp_path):
+    j = Journal(tmp_path)
+    ident = fingerprint({"operation": "finish"})
+    j.admit(ident, {})
+    j.claim(ident)
+    assert j.finish(ident, {"state": "succeeded"}) == "succeeded"
+    assert not j.cancel(ident)
+    assert j.finish(ident, {"state": "failed"}) == "succeeded"
+    row = j.read(ident)
+    assert not row["cancel_requested"]
+    assert len(row["events"]) == 1
+
+
+def test_node_event_replay_retains_unknown_execution_and_artifact_diagnostics(system):
+    c = system["client"]
+    p = c.post("/profiles", json={"name": "Receipt diagnostics", "preset": "custom"}).json()
+    enrollment = c.post("/machines", json={"name": "Receipt node"}).json()["enrollment"]
+    c.put(f"/profiles/{p['id']}/placement", json={"machine_id": enrollment["machine_id"], "native_name": "coder"}).raise_for_status()
+    workers = [{"id": "one", "role": "Writer", "objective": "Write", "stage": 0}]
+    request = {"contract": "ara-execution/1", "native_name": "coder", "workers": workers,
+        "preset": "custom", "task": "Receipt diagnostics", "operation_id": "diagnostics"}
+    ident = fingerprint(request)
+    result = {"id": "one", "status": "unknown", "error": "Lost execution reply", "native_session_id": "kept-session",
+        "workspace": "/node/worktree", "artifact_status": "failed", "artifact_error": "Collection failed"}
+    payload = {"machine_id": enrollment["machine_id"], "profile_id": p["id"], "task_id": ident, "request": request,
+        "events": [{"sequence": 1, "type": "swarm.worker_finished", "data": result},
+            {"sequence": 2, "type": "swarm.finished", "data": {"state": "unknown", "synthesis": None}}]}
+    headers = {"X-ARA-Node-Key": enrollment["token"]}
+    for _ in range(2):
+        response = c.post("/nodes/tasks/events", headers=headers, json=payload)
+        response.raise_for_status()
+        assert response.json()["acknowledged_sequence"] == 2
+    row = c.get(f"/swarms/{ident}").json()
+    assert row["state"] == "unknown"
+    assert row["workers"][0]["state"] == "unknown"
+    for key in ("workspace", "artifact_status", "artifact_error", "native_session_id"):
+        assert row["workers"][0][key] == result[key]
+
+
 def test_dead_owner_becomes_unknown_not_a_retry(tmp_path):
     j = Journal(tmp_path)
     ident = fingerprint({"test": "dead"})
@@ -246,12 +381,19 @@ def test_dead_owner_becomes_unknown_not_a_retry(tmp_path):
     assert not j.claim(ident)
 
 
-def test_remote_machine_links_require_transport_security():
+def test_remote_machine_links_require_transport_security(monkeypatch):
     from ara_os.node_execution import validate_connection
     validate_connection({"host": "http://127.0.0.1:8787"})
     validate_connection({"host": "https://ara.example.test"})
+    validate_connection({"host": "http://100.121.113.13:8787"})
+    validate_connection({"host": "http://arch.ts.net:8787"})
+    validate_connection({"host": "http://192.168.1.50:8787"})
+    validate_connection({"host": "http://my-node.local:8787"})
+    validate_connection({"host": "http://192.0.2.4:8787", "allow_insecure_http": True})
     with pytest.raises(ValueError, match="HTTPS"):
         validate_connection({"host": "http://192.0.2.4:8787"})
+    monkeypatch.setenv("ARA_ALLOW_INSECURE_HTTP", "1")
+    validate_connection({"host": "http://192.0.2.4:8787"})
 
 
 def test_node_bootstrap_needs_no_application_database(system, tmp_path):

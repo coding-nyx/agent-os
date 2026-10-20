@@ -450,10 +450,15 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
             {w.api_calls !== undefined && <small>Observed model calls: {w.api_calls} · tokens: {w.tokens?.input ?? 'unknown'} in / {w.tokens?.output ?? 'unknown'} out</small>}
             {w.output && <div className="worker-output-preview"><pre>{w.output}</pre></div>}
             {w.error && <div className="notice warning"><small>{w.error}</small></div>}
+            {typeof w.workspace === 'string' && <small>Workspace: {w.workspace}</small>}
+            {typeof w.native_session_id === 'string' && <small>Native session: {w.native_session_id}</small>}
+            <small>Artifact collection: {typeof w.artifact_status === 'string' ? w.artifact_status.replaceAll('_', ' ') : 'not reported'}</small>
+            {typeof w.artifact_error === 'string' && <div className="notice warning"><small>{w.artifact_error}</small></div>}
             {w.artifacts && <details><summary>Workspace evidence · not applied to the original repository</summary>
               <pre>{JSON.stringify(w.artifacts, null, 2).slice(0, 60000)}</pre></details>}
           </div>)}
         </div>
+        {inspectRun.synthesis?.error && <div className="notice warning">Synthesis: {inspectRun.synthesis.error}</div>}
         {inspectRun.synthesized_output && <div style={{marginTop: 20}}>
           <h3>Consolidated Synthesis</h3>
           <div className="native-record">

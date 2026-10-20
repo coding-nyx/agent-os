@@ -90,7 +90,28 @@ class Journal:
 
     def cancel(self, task_id):
         with self.db() as db:
-            db.execute("UPDATE tasks SET cancel_requested=1 WHERE id=?", (task_id,))
+            marks = ",".join("?" for _ in TERMINAL)
+            return bool(db.execute(f"UPDATE tasks SET cancel_requested=1 WHERE id=? AND state NOT IN ({marks})",
+                (task_id, *TERMINAL)).rowcount)
+
+    def finish(self, task_id, data):
+        """Commit cancellation inspection and one terminal event in the same transaction."""
+        if data.get("state") not in TERMINAL:
+            raise ValueError("invalid_terminal_state")
+        with self.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT state,cancel_requested FROM tasks WHERE id=?", (task_id,)).fetchone()
+            if row is None:
+                raise ValueError("task_not_found")
+            if row["state"] in TERMINAL:
+                return row["state"]
+            value = dict(data)
+            if row["cancel_requested"] and value["state"] != "unknown":
+                value.update(state="cancelled", error="Cancellation acknowledged; completed work and artifacts are retained.")
+            seq = db.execute("SELECT COALESCE(MAX(sequence),0)+1 FROM events WHERE task_id=?", (task_id,)).fetchone()[0]
+            db.execute("INSERT INTO events VALUES(?,?,?,?,?)", (task_id, seq, "swarm.finished", json.dumps(value), time.time()))
+            db.execute("UPDATE tasks SET state=? WHERE id=?", (value["state"], task_id))
+        return value["state"]
 
     def cancel_requested(self, task_id):
         with self.db() as db:
@@ -110,8 +131,8 @@ class Journal:
             try:
                 os.kill(value["pid"], 0)
             except ProcessLookupError:
-                self.append(task_id, "swarm.finished", {"state": "unknown", "error":
-                    "Execution owner exited. Inspect native history and artifacts before retrying."}, "unknown")
+                self.finish(task_id, {"state": "unknown", "error":
+                    "Execution owner exited. Inspect native history and artifacts before retrying."})
         return self.read(task_id)
 
     def snapshot(self, task_id):

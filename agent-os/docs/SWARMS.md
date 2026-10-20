@@ -46,6 +46,20 @@ IDs. The coordinator synthesizes actual outputs; reports are self-reports, not
 automatically verified facts. Worktrees are collaboration isolation, not OS
 security sandboxes: granted terminal/file tools still run as the node user.
 
+Execution and artifact collection have separate outcomes. A collection error
+retains the native session handle, execution error/result, workspace and known
+usage. Unknown execution stays unknown even if collection also fails. Missing,
+invalid or truncated artifacts block dependent stages; the inspector shows the
+collection diagnostics separately from the worker's execution state.
+
+Finalization evaluates synthesis before choosing the terminal outcome. Unknown
+effects take precedence over cancellation; cancellation acknowledged by the local
+execution journal before terminal publication produces cancelled. Cancellation
+and terminal publication are serialized in one journal transaction. Completed
+worker results survive synthesis failure or cancellation. A late cancellation
+cannot relabel an already terminal local task. Host cancellation is a request
+until the execution owner acknowledges it. Existing event receipts remain immutable.
+
 ## Standalone node execution
 
 Install ARA and its pinned runtime, and configure the native profile/model on the

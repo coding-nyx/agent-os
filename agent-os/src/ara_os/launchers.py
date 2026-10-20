@@ -21,7 +21,7 @@ def record_default_profile(state: Path, profile: dict) -> None:
         return  # Keep the first Ara selection when another seed or profile creation races us.
 
 
-def install_cli(root: Path, directory: Path | None = None) -> list[Path]:
+def install_cli(root: Path, directory: Path | None = None, fallback_directory: Path | None = None) -> list[Path]:
     root = root.resolve()
     directory = (directory or Path.home() / ".local/bin").expanduser().resolve()
     directory.mkdir(parents=True, exist_ok=True)
@@ -31,7 +31,18 @@ def install_cli(root: Path, directory: Path | None = None) -> list[Path]:
     for target in targets:
         # A setup rerun may refresh this installation's commands, but cannot adopt another one.
         if target.exists() or target.is_symlink():
-            if target.is_symlink() or str(root) not in target.read_text(encoding="utf-8"):
+            owned_by_this = False
+            if not target.is_symlink():
+                try:
+                    content = target.read_text(encoding="utf-8", errors="replace")
+                    owned_by_this = str(root) in content
+                except Exception:
+                    owned_by_this = False
+            if not owned_by_this:
+                if fallback_directory is not None:
+                    fallback_directory = fallback_directory.expanduser().resolve()
+                    if fallback_directory != directory:
+                        return install_cli(root, fallback_directory)
                 raise FileExistsError(f"{target} belongs to another installation; choose a different CLI directory")
     for target in targets:
         command = shlex.join(["env", f"ARA_PROJECT_ROOT={root}", str(python), "-I", str(bridge), target.name])

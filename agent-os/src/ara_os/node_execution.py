@@ -13,18 +13,44 @@ from . import config, swarm_runner, runtime
 from .task_journal import fingerprint, TERMINAL
 
 
-def validate_connection(enrollment):
+def is_safe_plain_http(host_url: str) -> bool:
     from urllib.parse import urlsplit
     import ipaddress
-    value = urlsplit(enrollment["host"])
+    value = urlsplit(host_url)
+    hostname = (value.hostname or "").lower()
+    if hostname in {"localhost", "::1"}:
+        return True
+    if hostname.endswith(".local") or hostname.endswith(".ts.net"):
+        return True
     try:
-        loopback = ipaddress.ip_address(value.hostname or "").is_loopback
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_loopback:
+            return True
+        private_subnets = [
+            ipaddress.ip_network("10.0.0.0/8"),
+            ipaddress.ip_network("172.16.0.0/12"),
+            ipaddress.ip_network("192.168.0.0/16"),
+            ipaddress.ip_network("100.64.0.0/10"),
+        ]
+        return any(ip in net for net in private_subnets)
     except ValueError:
-        loopback = value.hostname == "localhost"
+        return False
+
+
+def validate_connection(enrollment: dict) -> None:
+    import os
+    from urllib.parse import urlsplit
+    value = urlsplit(enrollment["host"])
     if value.scheme not in {"http", "https"} or not value.hostname or value.username or value.password or value.path or value.query or value.fragment:
         raise ValueError("Use a node host base address without credentials or paths")
-    if value.scheme != "https" and not loopback:
-        raise ValueError("Remote execution links require HTTPS; use a loopback SSH tunnel for local HTTP")
+    if value.scheme != "https":
+        allowed = (
+            enrollment.get("allow_insecure_http") is True or
+            os.environ.get("ARA_ALLOW_INSECURE_HTTP") in {"1", "true", "yes"} or
+            is_safe_plain_http(enrollment["host"])
+        )
+        if not allowed:
+            raise ValueError("Remote execution links require HTTPS; use Tailscale (*.ts.net / 100.64.0.0/10), private LAN, or a loopback SSH tunnel for local HTTP")
 
 
 async def exchange(enrollment):

@@ -234,3 +234,76 @@ def test_restore_starts_with_data_history_and_received_node_backups(system, tmp_
             process.terminate(); process.wait(timeout=15)
             with psycopg.connect(admin, autocommit=True) as connection:
                 connection.execute(sql.SQL("DROP DATABASE {} WITH (FORCE)").format(sql.Identifier(db)))
+
+
+def test_node_bootstrap_script_endpoint_validation_and_payload(system):
+    c = system["client"]
+    enroll_resp = c.post("/machines", json={"name": "Auto-bootstrap Node"}).json()
+    enrollment = enroll_resp["enrollment"]
+    assert "bootstrap_cmd" in enrollment
+    assert "bootstrap.sh" in enrollment["bootstrap_cmd"]
+
+    # 1. Missing or invalid parameters
+    assert c.get("/nodes/bootstrap.sh").status_code == 400
+    assert c.get("/nodes/bootstrap.sh", params={"machine_id": "nonexistent", "token": "invalid"}).status_code == 401
+    assert c.get("/nodes/bootstrap.sh", params={"machine_id": enrollment["machine_id"], "token": "wrong-token"}).status_code == 401
+
+    # 2. Valid request returns executable bash script
+    res = c.get("/nodes/bootstrap.sh", params={"machine_id": enrollment["machine_id"], "token": enrollment["token"]})
+    assert res.status_code == 200
+    script = res.text
+    assert "#!/usr/bin/env bash" in script
+    assert enrollment["machine_id"] in script
+    assert enrollment["token"] in script
+    assert "setup-node.sh" in script
+    assert "node pair" in script
+    assert "node work" in script
+    assert "coding-nyx/agent-os" in script or "agent-os" in script
+    assert "bundle.tar.gz" in script
+
+    # 3. Test direct node bundle download endpoint
+    bundle_res = c.get("/nodes/bundle.tar.gz")
+    assert bundle_res.status_code == 200
+    assert len(bundle_res.content) > 10000  # valid archive bytes
+
+    # 4. Test machine pairing info endpoint
+    pairing_res = c.get(f"/machines/{enrollment['machine_id']}/pairing")
+    assert pairing_res.status_code == 200
+    pairing_data = pairing_res.json()
+    assert "instructions" in pairing_data
+    assert "restart_pairing" in pairing_data["instructions"]
+
+    # 5. Cannot delete local machine
+    assert c.delete("/machines/local").status_code == 400
+
+    # 6. Delete remote node removes entity and key
+    del_res = c.delete(f"/machines/{enrollment['machine_id']}")
+    assert del_res.status_code == 200
+    assert not (system["state"] / f"node-key-{enrollment['machine_id']}").exists()
+    assert c.get(f"/machines/{enrollment['machine_id']}/pairing").status_code == 404
+
+
+def test_network_status_and_toggle_endpoints(system):
+    c = system["client"]
+    res = c.get("/network/status")
+    assert res.status_code == 200, res.text
+    status = res.json()
+    assert "exposed" in status
+    assert "endpoints" in status
+    assert "127.0.0.1" in status["endpoints"]["localhost"]
+    assert "tailscale" in status
+
+    # Toggle to exposed
+    t_res = c.post("/network/toggle", json={"exposed": True})
+    assert t_res.status_code == 200
+    assert t_res.json()["exposed"] is True
+
+    updated = c.get("/network/status").json()
+    assert updated["exposed"] is True
+    assert updated["configured_exposed"] is True
+
+    # Toggle back to localhost only
+    t_res2 = c.post("/network/toggle", json={"exposed": False})
+    assert t_res2.status_code == 200
+    assert t_res2.json()["exposed"] is False
+    assert c.get("/network/status").json()["configured_exposed"] is False

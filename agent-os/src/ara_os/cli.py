@@ -13,11 +13,28 @@ import uuid
 from pathlib import Path
 
 
+def default_host():
+    if os.environ.get("ARA_HOST"):
+        return os.environ["ARA_HOST"]
+    try:
+        from . import config
+        net_file = config.STATE / "network.json"
+        if net_file.is_file():
+            data = json.loads(net_file.read_text())
+            if data.get("exposed"):
+                return "0.0.0.0"
+            return data.get("host", "127.0.0.1")
+    except Exception:
+        pass
+    return "127.0.0.1"
+
+
 def main():
     parser = argparse.ArgumentParser(prog="ara", description="ARA Agent OS — local agents, data and connected machines")
     parser.add_argument("--state", help="Agent OS state directory")
     subs = parser.add_subparsers(dest="command", required=True)
     serve = subs.add_parser("serve", help="Run the local Agent OS API and built web client")
+    serve.add_argument("--host", default=None, help="Host address to bind the API and dashboard (defaults to network.json or 127.0.0.1)")
     serve.add_argument("--port", type=int, default=8787)
     setup = subs.add_parser("setup", help="Create presets and configure one shared provider/model")
     setup.add_argument("--skip-model", action="store_true", help="Provision preset runtimes without model/account setup")
@@ -90,7 +107,10 @@ def main():
     if args.state:
         os.environ["ARA_STATE_DIR"] = str(Path(args.state).resolve())
     if args.command == "serve":
-        os.environ.setdefault("ARA_API_URL", f"http://127.0.0.1:{args.port}")
+        args.host = args.host or default_host()
+        api_host = "127.0.0.1" if args.host in {"0.0.0.0", "::"} else args.host
+        os.environ.setdefault("ARA_API_URL", f"http://{api_host}:{args.port}")
+        os.environ["ARA_HOST"] = args.host
     from . import config, runtime
     from .store import Problem
     try:
@@ -112,7 +132,7 @@ def main():
                 raise SystemExit(130)
         elif args.command == "serve":
             import uvicorn
-            uvicorn.run("ara_os.app:app", host="127.0.0.1", port=args.port)
+            uvicorn.run("ara_os.app:app", host=args.host, port=args.port)
         elif args.command == "import":
             asyncio.run(import_profile(args))
         elif args.command in {"chat", "runtime"}:
@@ -299,18 +319,45 @@ async def node_command(args):
                 return
             await asyncio.sleep(2)
     if args.action == "status":
-        print(json.dumps({"product": "ARA Agent OS", "runtime_installed": config.RUNTIME_PYTHON.exists(), "state_directory": str(config.STATE), "paired": pair_path.exists()}, indent=2))
+        paired = pair_path.exists()
+        info = {
+            "product": "ARA Agent OS",
+            "runtime_installed": config.RUNTIME_PYTHON.exists(),
+            "state_directory": str(config.STATE),
+            "paired": paired
+        }
+        if paired:
+            try:
+                conn = json.loads(pair_path.read_text())
+                info["host"] = conn.get("host")
+                info["machine_id"] = conn.get("machine_id")
+                info["worker_command"] = "ara node work"
+                info["background_command"] = "nohup ara node work > node-worker.log 2>&1 &"
+                info["repair_command"] = f"ara node pair --enrollment {pair_path}"
+            except Exception:
+                pass
+        else:
+            info["pairing_instructions"] = "Generate a pairing command from the Host Dashboard, or run: ara node pair --enrollment node-enrollment.json"
+        print(json.dumps(info, indent=2))
     elif args.action == "pair":
         enrollment = json.loads(args.enrollment.read_text())
         from .node_execution import validate_connection
         validate_connection(enrollment)
         async with httpx.AsyncClient(timeout=20) as client:
-            response = await client.post(enrollment["host"] + "/api/v1/nodes/check", headers={"X-ARA-Node-Key": enrollment["token"]}, json={"machine_id": enrollment["machine_id"]})
+            try:
+                response = await client.post(enrollment["host"] + "/api/v1/nodes/check", headers={"X-ARA-Node-Key": enrollment["token"]}, json={"machine_id": enrollment["machine_id"]})
+            except (httpx.ConnectError, httpx.TimeoutException) as err:
+                raise Problem("host_unreachable", f"Could not connect to host at {enrollment['host']}: {err}\nEnsure the host is running, network exposure is enabled, and host is reachable from this machine.")
         if response.status_code != 200:
-            raise Problem("pairing_failed", "The host did not accept this enrollment.")
+            raise Problem("pairing_failed", f"The host did not accept this enrollment (status {response.status_code}). Check machine ID and pairing token.")
         pair_path.parent.mkdir(parents=True, exist_ok=True)
         pair_path.write_text(json.dumps(enrollment)); pair_path.chmod(0o600)
-        print("Node paired. Use ara node sync --profile <native-name> to protect a profile.")
+        print("✓ Node paired successfully with host: " + enrollment["host"])
+        print("Commands & next steps:")
+        print("  • Start worker:     ara node work")
+        print("  • Run background:   nohup ara node work > node-worker.log 2>&1 &")
+        print("  • Check status:     ara node status")
+        print("  • Restart pairing:  ara node pair --enrollment " + str(args.enrollment))
     elif args.action == "sync":
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", args.profile):
             raise Problem("invalid_profile_name", "Use a native profile name from this node.")

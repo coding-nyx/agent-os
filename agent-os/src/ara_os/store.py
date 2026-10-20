@@ -93,6 +93,17 @@ def change(session, id: str, patch: dict, revision: int | None = None) -> dict:
     return wire(row)
 
 
+def remove(session, id: str, kind: str | None = None) -> dict:
+    row = session.get(Entity, id)
+    if row is None or (kind and row.kind != kind):
+        raise Problem("not_found", "This item no longer exists.", 404)
+    data = wire(row)
+    session.delete(row)
+    session.flush()
+    event(session, id, f"{row.kind}.deleted", {})
+    return data
+
+
 def initialize():
     from pathlib import Path
     from alembic.config import Config

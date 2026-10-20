@@ -4,6 +4,8 @@ The [Agent OS master plan](design/ARA-AGENT-OS-MASTER-PLAN.md) is the architectu
 
 - [Provider connections, gateways and conversations](design/ARA-CONNECTIONS-GATEWAYS-AND-CONVERSATIONS.md)
 - [Host/node sync and recovery](design/ARA-HOST-NODE-SYNC-AND-RECOVERY.md)
+- [Host/node networking, optimization and AgentMesh roadmap](design/ARA-NODE-HOST-NETWORKING-AND-AGENTMESH-ROADMAP.md)
+- [Sovereign voice and visual avatar roadmap](design/ARA-VOICE-AND-AVATAR-ROADMAP.md)
 - [Upstream decision and profile compatibility](design/ARA-UPSTREAM-AND-PROFILE-COMPATIBILITY.md)
 - [Supporting V2 technical notes](design/ARA-V2-IMPLEMENTATION-PLAN.md)
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import os
 import time
 
 from ... import runtime_adapter
@@ -15,6 +16,12 @@ class NativeDeviceProvider(BaseDeviceProvider):
         super().__init__("local_desktop", "Local desktop · native driver")
         self.metadata = {}
         self.observed_at = 0
+        self.actor = "operator"
+        self.policy_epoch = None
+
+    def request(self, arguments, **extra):
+        return {"arguments": arguments, "authorized": True, "actor": self.actor,
+            "owner_pid": os.getpid(), "policy_epoch": self.policy_epoch, **extra}
 
     async def get_device_info(self):
         status = await runtime_adapter.computer({"action": "status"})
@@ -26,7 +33,7 @@ class NativeDeviceProvider(BaseDeviceProvider):
             metadata=status)
 
     async def capture_frame(self):
-        result = await runtime_adapter.computer({"arguments": {"action": "capture", "mode": "vision"}, "authorized": True})
+        result = await runtime_adapter.computer(self.request({"action": "capture", "mode": "vision"}))
         if not result.get("success") or not result.get("frame_base64"):
             raise ValueError(result.get("error") or "The native backend did not return a screenshot")
         self.metadata = result.get("metadata", {})
@@ -79,7 +86,7 @@ class NativeDeviceProvider(BaseDeviceProvider):
                 return CUAActionResult(success=True, output="No scrolling requested; no input was delivered")
             args.update(direction=("down" if dy < 0 else "up") if dy else ("left" if dx < 0 else "right"),
                         amount=min(20, max(1, abs(dy or dx))))
-        result = await runtime_adapter.computer({"arguments": args, "authorized": True})
+        result = await runtime_adapter.computer(self.request(args, observation_ref=self.metadata.get("observation_ref")))
         return CUAActionResult(success=bool(result.get("success")), output=result.get("output"),
             error=result.get("error"), metadata=result.get("metadata", {}))
 
@@ -87,7 +94,7 @@ class NativeDeviceProvider(BaseDeviceProvider):
         return CUAActionResult(success=False, error="Arbitrary OS scripting is not enabled by a desktop grant. Use separately authorized terminal tools.")
 
     async def get_ui_tree(self):
-        result = await runtime_adapter.computer({"arguments": {"action": "capture", "mode": "ax"}, "authorized": True})
+        result = await runtime_adapter.computer(self.request({"action": "capture", "mode": "ax"}))
         if not result.get("success"):
             raise ValueError(result.get("error") or "Native accessibility capture unavailable")
         return result["metadata"]

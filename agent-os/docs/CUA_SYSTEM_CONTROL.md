@@ -1,7 +1,8 @@
 # Native computer control
 
 ARA-managed computer control uses the pinned native computer-use adapter and
-cua-driver. The former simulated Linux/macOS/Android providers have been removed.
+cua-driver. The older Linux/macOS/Android provider source files remain in the
+tree but are not registered or routed by the managed engine.
 No driver, missing permissions, unsupported actions and failed captures report
 unavailability; they do not return successful placeholders.
 
@@ -26,6 +27,26 @@ Agent input requires a stable `operation_id`. Repeated IDs return the receipt
 instead of repeating an OS action; changed payloads conflict. Agents must first
 capture a fresh target window. Observation is actor-scoped and expires after
 15 seconds. Approval consumption and operation receipts are saved locally.
+Authorization, approval requirements and freshness are checked after acquiring
+the device lock. Revoked queued reads do not reach the provider; policy changes
+during reads discard their results. A mode change while input waits cannot
+bypass supervised approval. Policy changes invalidate pending approvals.
+
+Captures create an opaque, actor-bound observation reference in protected local
+state. The pinned adapter records the desktop, process creation identity, exact
+window ID/title and image dimensions. Each input process validates that reference,
+captures that exact target and invokes native safety dispatch on the same backend.
+Another foreground window cannot redirect the input. Missing/replaced targets,
+changed dimensions, expired observations, policy changes and capture-owner restarts
+require a fresh capture. Window identity is limited to what the OS/driver exposes;
+this does not establish semantic continuity of the contents inside a window.
+
+Coordinates are relative to the observed window image, including its reported
+pixel dimensions, and clamp to valid image edges. Window movement alone does not
+change those relative coordinates. Unconfirmed native effects retain their
+verification metadata and require inspection before another action. Target
+validation does not use an auxiliary vision model. The native approval grant
+covers one action in a unique temporary session; native hard blocks remain active.
 
 OS scripting is not included in desktop grants. Use separately authorized
 terminal tools. Swarm workers do not inherit computer control.

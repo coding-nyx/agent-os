@@ -29,7 +29,7 @@ CUA_TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "device_id": {
                     "type": "string",
-                    "description": "Target device ID (e.g. 'macos_local', 'android_...', 'linux_local'). If omitted, the default primary device is used.",
+                    "description": "Target device ID. The managed adapter currently exposes 'local_desktop'.",
                 },
                 "operation_id": {"type": "string", "minLength": 1, "maxLength": 120,
                     "description": "Stable operation ID required for agent inputs. Reuse on retries; never resubmit unknown work under a new ID."},
@@ -95,9 +95,8 @@ CUA_TOOLS: List[Dict[str, Any]] = [
     {
         "name": "ara_cua_semantic",
         "description": (
-            "Execute native OS-level automation commands directly without pixel guessing. "
-            "On macOS, executes AppleScript or JXA via osascript (activate apps, click menus, window placement, clipboard). "
-            "On Android, executes adb shell commands (am start, dumpsys, pm). On Linux, executes desktop shell commands."
+            "Compatibility endpoint that refuses OS scripting. Desktop grants do not authorize arbitrary scripts. "
+            "Use separately authorized terminal tools for OS scripting."
         ),
         "inputSchema": {
             "type": "object",

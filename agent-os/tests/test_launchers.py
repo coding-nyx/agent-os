@@ -95,6 +95,19 @@ def test_installation_preserves_foreign_commands_and_default_selection(tmp_path)
         install_cli(ROOT, directory)
     assert {path.name: path.read_bytes() for path in installed} == before
 
+    # Foreign command with fallback directory should preserve the foreign command and install in fallback
+    fallback_dir = tmp_path / "fallback-bin"
+    fallback_commands = install_cli(ROOT, directory, fallback_directory=fallback_dir)
+    assert fallback_commands[0].parent == fallback_dir
+    assert (directory / "hermes-acp").read_text() == "#!/bin/sh\n# Another installation\n"
+
+    # Non-UTF8 binary foreign file does not trigger UnicodeDecodeError
+    binary_dir = tmp_path / "bin-binary"
+    binary_dir.mkdir()
+    (binary_dir / "hermes").write_bytes(b"\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+    with pytest.raises(FileExistsError, match="another installation"):
+        install_cli(ROOT, binary_dir)
+
 
 def test_seeded_profiles_have_a_cli_default_and_separate_model_readiness(system):
     state = system["state"]

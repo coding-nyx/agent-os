@@ -164,35 +164,10 @@ def workspace_operation(request):
 
 
 def computer_control(request):
-    from tools.computer_use.cua_backend_driver import resolve_cua_driver_cmd
-    if request.get("action") == "status":
-        import platform
-        binary = resolve_cua_driver_cmd()
-        return {"installed": bool(binary), "platform": platform.system().lower(),
-                "backend": "native", "ready": None,
-                "detail": "Driver installed; live readiness is checked on capture." if binary else
-                          "Run hermes computer-use install on this execution machine."}
-    if not resolve_cua_driver_cmd():
-        raise ValueError("Computer control is unavailable: the native driver is not installed.")
-    args = request["arguments"]
-    if args.get("action") == "capture":
-        # Dashboard observation must not invoke an auxiliary vision model or bill
-        # inference. Return native pixels/tree directly, not a textual base64 blob.
-        from tools.computer_use.cua_backend import CuaDriverBackend
-        backend = CuaDriverBackend(permission_mode="standard")
-        try:
-            backend.start()
-            cap = backend.capture(mode=args.get("mode", "vision"), app=args.get("app"))
-            return {"success": True, "frame_base64": cap.png_b64, "metadata": {
-                "width": cap.width, "height": cap.height, "format": "jpeg" if cap.image_mime_type == "image/jpeg" or (cap.png_b64 or "").startswith("/9j") else "png",
-                "app": cap.app, "window_title": cap.window_title,
-                "elements": [{"role": e.role, "label": e.label} for e in cap.elements[:200]]}}
-        finally:
-            backend.stop()
-    from tools.computer_use.tool import handle_computer_use, set_approval_callback
-    # The owning ARA process already authorized this exact action, not a model argument.
-    set_approval_callback(lambda *args, **kw: "once" if request.get("authorized") is True else "deny")
-    value = handle_computer_use(args, session_id="ara-managed-computer")
-    value = json.loads(value) if isinstance(value, str) else value
-    return {"success": not bool(value.get("error")) and value.get("ok", True),
-            "output": json.dumps(value), "error": value.get("error"), "metadata": value}
+    from native_computer import control
+    try:
+        return control(request)
+    except ValueError as exc:
+        if request.get("_stage") == "computer.execute":
+            raise  # Delivery may have happened; preserve the unknown frame.
+        return {"success": False, "error": str(exc), "metadata": {"outcome": "not_started"}}

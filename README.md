@@ -2,23 +2,21 @@
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests: 83 Passing](https://img.shields.io/badge/Tests-83%20Passed-brightgreen.svg)]()
+[![Verification](https://img.shields.io/badge/Verification-report-brightgreen.svg)](agent-os/docs/VERIFICATION.md)
 [![Local-First](https://img.shields.io/badge/Architecture-Local--First%20%26%20Private-purple.svg)]()
 
 > **A local-first, privacy-centric Personal AI Operating System.**  
-> Agent OS connects sovereign data, specialized AI agents, multi-agent swarms, and low-latency computer control (CUA) into a unified, locally hosted personal workspace.
+> Agent OS connects independent data, specialized AI agents, coordinated worker teams, and managed local desktop control into a locally hosted personal workspace.
 
 ---
 
 ## ✦ Overview
 
-Traditional AI assistant platforms isolate conversations in the cloud, detach your data from agency, and rely on slow screenshot polling for computer interaction.
-
-**Agent OS fundamentally inverts this model:**
+**Agent OS capabilities:**
 - **Data Precedes Agents**: Your information (finances, training notes, private journals, research) is stored in persistent, ACID-compliant PostgreSQL tables that belong to you—independent of any LLM provider or profile lifecycle.
 - **Specialized Native Profiles**: One system orchestrator (**Ara**) coordinates independent specialist agents with their own native working directories, tool permissions, and memory boundaries.
-- **Intelligent Swarm Teams**: Profiles can spawn coordinated teams of worker bots (`research`, `coding`, `analysis`, `custom`) that work in tandem with parallel execution and consensus synthesis.
-- **Universal CUA (Computer-Using Agent) & Real-Time Streaming**: High-framerate hardware video streaming (H.264 / 30–60 FPS) with dual-mode execution: native semantic scripting (`osascript` AppleScript/JXA on macOS, `adb shell` on Android, `xdotool` on Linux) plus normalized pixel vision.
+- **Coordinated Worker Teams**: Profiles can spawn research, coding, analysis and custom workers. Dependencies run in stages, independent workers run concurrently, and a coordinator synthesizes their reported results.
+- **Managed Local Desktop Control**: Periodic screenshots, accessibility inspection and normalized input through the pinned native adapter, with explicit grants, supervised approvals and an emergency stop. Physical driver compatibility requires separate validation.
 - **Dual-Mode Independence**: Works in **Fleet Mode** with the web dashboard, or in **Standalone Node Mode** with Hermes via stdio MCP—even when the Agent OS server is offline.
 
 ---
@@ -27,7 +25,7 @@ Traditional AI assistant platforms isolate conversations in the cloud, detach yo
 
 ```mermaid
 flowchart TD
-    User["Human Operator / User"] <--> Dashboard["Agent OS Web Dashboard<br/>(Port 8787 · React + Vite + WebCodecs)"]
+    User["Human Operator / User"] <--> Dashboard["Agent OS Web Dashboard<br/>(Port 8787 · React + Vite)"]
 
     subgraph CoreOS["ARA Agent OS Core Engine"]
         API["FastAPI REST & WebSocket Gateway"]
@@ -47,11 +45,8 @@ flowchart TD
         Atlas["Atlas<br/>(Strategic Planning)"]
     end
 
-    subgraph HardwareFleet["Controlled Devices & Target Fleets"]
-        macOS["macOS Node<br/>ScreenCaptureKit + osascript (AppleScript/JXA)"]
-        Android["Android Device<br/>scrcpy H.264 + adb shell + Touch Socket"]
-        Linux["Linux Workstation<br/>ffmpeg/x11grab + xdotool + Desktop Shell"]
-        WinIOS["Windows (DXGI) & iOS (WDA)"]
+    subgraph HardwareFleet["Local desktop · driver validation required"]
+        Desktop["Pinned native computer-use adapter<br/>Exact-window observation and input"]
     end
 
     Dashboard <--> API
@@ -65,7 +60,7 @@ flowchart TD
 
     CUASubsys <--> KillSwitch
     KillSwitch <--> HardwareFleet
-    HardwareFleet -->|Continuous Video Stream| CUASubsys
+    HardwareFleet -->|Periodic screenshots| CUASubsys
 ```
 
 ---
@@ -94,12 +89,14 @@ Profiles can spawn coordinated specialist swarms to tackle complex or multi-phas
 
 ---
 
-### 3. Universal CUA & Real-Time Video Streaming
-Replaces slow, disjoint 1-by-1 screenshot polling with a continuous **30–60 FPS hardware video stream** (<80ms latency):
-- **macOS (Priority 1)**: Hardware-accelerated `ScreenCaptureKit` + native `osascript` (AppleScript/JXA) for 100% deterministic window management, app launching, and menu navigation.
-- **Android (Priority 2)**: Headless `scrcpy-server` streaming over ADB + binary touch/swipe socket injection (zero mobile app install required).
-- **Linux (Priority 3)**: `ffmpeg x11grab` / PipeWire screen streaming + `xdotool` synthetic input injection.
-- **Safety Gate**: Prominent Dashboard **Emergency Kill Switch** that immediately halts all agent mouse, keyboard, and script actions.
+### 3. Managed Local Desktop Control
+
+- **Observation**: Screenshots with a one-second interval between captures, plus accessibility inspection of the local desktop.
+- **Input**: The adapter validates the exact observed window, process identity and image dimensions before native dispatch. Grants and approval requirements are checked after waiting for device access.
+- **Intervention**: The emergency stop blocks new managed inputs and interrupts active transports. Already delivered actions cannot be undone; uncertain effects require inspection.
+- **Supported scope**: Driver presence is distinct from physical readiness. Remote desktop routing, Android/iOS control and arbitrary semantic scripting are unavailable through this managed path.
+
+See [native computer control](agent-os/docs/CUA_SYSTEM_CONTROL.md) for setup and validation limits.
 
 ---
 
@@ -182,26 +179,27 @@ Add this entry to your local Hermes `config.yaml`:
 mcp_servers:
   cua:
     command: "ara"
-    args: ["cua", "mcp"]
+    args: ["cua", "mcp", "--profile", "coding-agent"]
 ```
-Hermes will automatically gain access to:
-- `ara_cua_list_devices`: Discover connected screens, phones, and workstations.
-- `ara_cua_computer`: Execute normalized mouse clicks, typing, hotkeys, swipes, and visual snapshots.
-- `ara_cua_semantic`: Execute native AppleScript/JXA via `osascript`, `adb shell` on Android, or desktop shell on Linux.
+Configure the profile's explicit observation/input grants first. Available tools:
+
+- `ara_cua_list_devices`: Inspect the local desktop adapter and driver availability.
+- `ara_cua_computer`: Execute supported normalized clicks, drags, typing, key combinations and visual snapshots.
+- `ara_cua_semantic`: Compatibility endpoint that refuses arbitrary OS scripting; use separately authorized terminal tools.
 - `ara_cua_ui_tree`: Inspect UI hierarchy without burning vision tokens.
 
 ---
 
 ## ✦ Verification & Testing
 
-The entire repository is covered by an automated test suite verifying data integrity, model protocols, swarm execution, CUA streaming, and browser interfaces:
+The automated suite covers data integrity, native model protocols, swarm execution, managed desktop policy and browser interfaces. Native adapter tests use a fake driver transport; they do not certify physical hardware:
 
 ```bash
 cd agent-os
 .venv/bin/pytest -v
 ```
 
-**Results**: `83 passed in 228.96s` with 100% test pass rate.
+See the [verification report](agent-os/docs/VERIFICATION.md) for recorded results and validation limits.
 
 ---
 
@@ -222,10 +220,10 @@ agent-os/
 │   │   ├── src/main.tsx        # Dashboard shell, routing & navigation
 │   │   ├── src/agents.tsx      # Specialist workspaces & Swarms panel
 │   │   └── src/system_control.tsx # Live CUA streaming canvas, HUD & kill-switch
-│   ├── tests/                  # Automated pytest suite (83 tests)
+│   ├── tests/                  # Automated pytest suite
 │   ├── scripts/                # Setup, start, and verification scripts
 │   └── docs/                   # Architectural specifications & documentation
-│       ├── CUA_SYSTEM_CONTROL.md # CUA streaming & osascript architecture
+│       ├── CUA_SYSTEM_CONTROL.md # Managed native desktop policy and target validation
 │       ├── SWARMS.md           # Multi-agent swarm engine documentation
 │       └── PRODUCT-SURFACES.md # UI contracts & failure semantics
 └── README.md                   # Repository overview

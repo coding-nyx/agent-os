@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -20,7 +21,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from . import __version__, config, domains, mcp, profiles, runs, runtime
 from .catalog import MODULES, PRESETS
-from .store import Entity, Event, Problem, change, create, engine, event, get, initialize, listing, transaction, wire
+from .store import Entity, Event, Problem, change, create, engine, event, get, initialize, listing, transaction, wire, remove
 
 log = logging.getLogger("ara")
 
@@ -110,13 +111,37 @@ async def boundary(request: Request, call_next):
     return response
 
 
+def is_network_exposed():
+    if os.environ.get("ARA_HOST") in {"0.0.0.0", "::"}:
+        return True
+    try:
+        net_file = config.STATE / "network.json"
+        if net_file.is_file():
+            return bool(json.loads(net_file.read_text()).get("exposed", False))
+    except Exception:
+        pass
+    return False
+
+
 def trusted_host(value):
-    # Same-origin checks alone do not stop browser DNS rebinding against a
-    # loopback operator service. A real reverse proxy must use the configured URL.
     from urllib.parse import urlsplit
+    import ipaddress
     try:
         host = urlsplit("//" + value).hostname
-        return bool(host) and host in {"localhost", "127.0.0.1", "::1", urlsplit(config.API_URL).hostname}
+        if not host:
+            return False
+        if host in {"localhost", "127.0.0.1", "::1", urlsplit(config.API_URL).hostname}:
+            return True
+        if is_network_exposed():
+            if host.endswith(".ts.net") or host.endswith(".local"):
+                return True
+            try:
+                ip = ipaddress.ip_address(host)
+                if ip.is_loopback or ip.is_private or ip in ipaddress.ip_network("100.64.0.0/10"):
+                    return True
+            except ValueError:
+                pass
+        return False
     except ValueError:
         return False
 
@@ -174,6 +199,86 @@ def capabilities():
 @app.get("/api/v1/catalog")
 def catalog():
     return {"modules": MODULES, "presets": PRESETS}
+
+
+@app.get("/api/v1/network/status")
+def network_status(request: Request):
+    import socket
+    import subprocess
+    import shutil
+    net_file = config.STATE / "network.json"
+    configured_exposed = False
+    if net_file.is_file():
+        try:
+            configured_exposed = bool(json.loads(net_file.read_text()).get("exposed", False))
+        except Exception:
+            pass
+    current_host = os.environ.get("ARA_HOST", "0.0.0.0" if configured_exposed else "127.0.0.1")
+    is_exposed = current_host in {"0.0.0.0", "::"} or configured_exposed
+    port = request.url.port or 8787
+    localhost_url = f"http://127.0.0.1:{port}"
+    lan_ip = None
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        lan_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+    lan_url = f"http://{lan_ip}:{port}" if lan_ip else None
+    ts_info = {"available": False}
+    ts_bin = shutil.which("tailscale")
+    if ts_bin:
+        try:
+            out = subprocess.check_output([ts_bin, "status", "--json"], text=True, timeout=2)
+            data = json.loads(out)
+            self_node = data.get("Self", {})
+            ips = self_node.get("TailscaleIPs", [])
+            ts_ip = ips[0] if ips else None
+            dns_name = self_node.get("DNSName", "").rstrip(".")
+            ts_info = {
+                "available": True,
+                "ip": ts_ip,
+                "node_name": self_node.get("HostName"),
+                "dns_name": dns_name,
+                "online": self_node.get("Online", True),
+                "url": f"http://{ts_ip}:{port}" if ts_ip else None,
+                "magic_dns_url": f"http://{dns_name}:{port}" if dns_name else None
+            }
+        except Exception as e:
+            ts_info = {"available": False, "error": str(e)}
+    return {
+        "exposed": is_exposed,
+        "configured_exposed": configured_exposed,
+        "bind_host": current_host,
+        "port": port,
+        "endpoints": {
+            "localhost": localhost_url,
+            "lan": lan_url,
+            "tailscale": ts_info.get("url"),
+            "tailscale_dns": ts_info.get("magic_dns_url")
+        },
+        "lan_ip": lan_ip,
+        "tailscale": ts_info
+    }
+
+
+@app.post("/api/v1/network/toggle")
+def toggle_network(body: dict):
+    exposed = bool(body.get("exposed", False))
+    net_file = config.STATE / "network.json"
+    net_file.parent.mkdir(parents=True, exist_ok=True)
+    net_file.write_text(json.dumps({
+        "exposed": exposed,
+        "host": "0.0.0.0" if exposed else "127.0.0.1",
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }, indent=2))
+    os.environ["ARA_HOST"] = "0.0.0.0" if exposed else "127.0.0.1"
+    return {
+        "exposed": exposed,
+        "host": "0.0.0.0" if exposed else "127.0.0.1",
+        "message": "Network exposure setting saved. Server will bind to " + ("0.0.0.0 (all interfaces including Tailscale and LAN)" if exposed else "127.0.0.1 (local loopback only)") + "."
+    }
 
 
 def enrich_profile(p: dict) -> dict:
@@ -680,7 +785,224 @@ def enroll_machine(body: dict):
     token = config.private_file("node-key-" + id)
     with transaction() as session:
         machine = create(session, "machine", {"name": str(body.get("name", "New node"))[:100], "role": "node", "state": "awaiting_pairing", "endpoint": None}, id=id)
-    return {"machine": machine, "enrollment": {"format": "ara-node-v1", "host": host, "machine_id": id, "token": token}}
+    bootstrap_cmd = f"curl -fsSL '{host}/api/v1/nodes/bootstrap.sh?machine_id={id}&token={token}' | bash"
+    allow_insecure = host.startswith("http://")
+    return {
+        "machine": machine,
+        "enrollment": {
+            "format": "ara-node-v1",
+            "host": host,
+            "machine_id": id,
+            "token": token,
+            "allow_insecure_http": allow_insecure,
+            "bootstrap_cmd": bootstrap_cmd,
+        },
+        "instructions": {
+            "restart_pairing": "cd ~/ara/agent-os && .venv/bin/ara node pair --enrollment node-enrollment.json",
+            "start_worker": "cd ~/ara/agent-os && .venv/bin/ara node work",
+            "background_worker": "cd ~/ara/agent-os && nohup .venv/bin/ara node work > node-worker.log 2>&1 &",
+            "status": "cd ~/ara/agent-os && .venv/bin/ara node status"
+        }
+    }
+
+
+
+@app.get("/api/v1/machines/{id}/pairing")
+def machine_pairing_info(request: Request, id: str):
+    machine = find(id, "machine")
+    token_path = config.STATE / ("node-key-" + id)
+    if not token_path.is_file():
+        raise Problem("token_not_found", "No enrollment token on this host for this node. Enroll a new machine.", 404)
+    token = token_path.read_text().strip()
+    host_url = str(request.base_url).rstrip("/")
+    bootstrap_cmd = f"curl -fsSL '{host_url}/api/v1/nodes/bootstrap.sh?machine_id={id}&token={token}' | bash"
+    allow_insecure = host_url.startswith("http://")
+    return {
+        "machine": machine,
+        "enrollment": {
+            "format": "ara-node-v1",
+            "host": host_url,
+            "machine_id": id,
+            "token": token,
+            "allow_insecure_http": allow_insecure,
+            "bootstrap_cmd": bootstrap_cmd,
+        },
+        "instructions": {
+            "restart_pairing": "cd ~/ara/agent-os && .venv/bin/ara node pair --enrollment node-enrollment.json",
+            "start_worker": "cd ~/ara/agent-os && .venv/bin/ara node work",
+            "background_worker": "cd ~/ara/agent-os && nohup .venv/bin/ara node work > node-worker.log 2>&1 &",
+            "status": "cd ~/ara/agent-os && .venv/bin/ara node status"
+        }
+    }
+
+
+@app.delete("/api/v1/machines/{id}")
+def delete_machine(id: str):
+    if id == "local":
+        raise Problem("cannot_delete_local", "The host local machine cannot be removed.", 400)
+    token_path = config.STATE / ("node-key-" + id)
+    if token_path.is_file():
+        try:
+            token_path.unlink()
+        except OSError:
+            pass
+    with transaction() as session:
+        return remove(session, id, "machine")
+
+
+def get_repository_url():
+    import subprocess
+    try:
+        out = subprocess.check_output(["git", "remote", "get-url", "origin"], cwd=config.ROOT.parent, text=True).strip()
+        if out.startswith("git@github.com:"):
+            return "https://github.com/" + out[len("git@github.com:"):]
+        elif out.startswith("git@"):
+            parts = out.split("@", 1)[1].split(":", 1)
+            if len(parts) == 2:
+                return f"https://{parts[0]}/{parts[1]}"
+        return out
+    except Exception:
+        return "https://github.com/coding-nyx/agent-os.git"
+
+
+@app.get("/api/v1/nodes/bundle.tar.gz")
+def node_bundle_archive():
+    import subprocess
+    try:
+        cmd = [
+            "tar", "-czf", "-",
+            "--exclude=.git",
+            "--exclude=*.runtime*",
+            "--exclude=*.venv*",
+            "--exclude=*.state*",
+            "--exclude=*node_modules*",
+            "--exclude=__pycache__",
+            "--exclude=*.pyc",
+            "--exclude=*test-results*",
+            "."
+        ]
+        data = subprocess.check_output(cmd, cwd=config.ROOT.parent)
+        return Response(data, media_type="application/gzip", headers={"Content-Disposition": 'attachment; filename="ara-node-bundle.tar.gz"'})
+    except Exception as e:
+        raise Problem("bundle_failed", f"Failed to generate node archive: {e}", 500)
+
+
+@app.get("/api/v1/nodes/bootstrap.sh")
+def node_bootstrap_script(request: Request, machine_id: str = "", token: str = "", profile: str = "coding-agent"):
+    from fastapi.responses import PlainTextResponse
+    import hmac
+    if not machine_id:
+        raise Problem("missing_machine_id", "machine_id query parameter is required.", 400)
+    token_path = config.STATE / ("node-key-" + machine_id)
+    if not token_path.is_file() or not token or not hmac.compare_digest(token, token_path.read_text().strip()):
+        raise Problem("invalid_node_key", "The bootstrap token or machine enrollment is invalid.", 401)
+    find(machine_id, "machine")
+    host_url = str(request.base_url).rstrip("/")
+    repo_url = get_repository_url()
+    allow_insecure_val = "true" if host_url.startswith("http://") else "false"
+    script = f"""#!/usr/bin/env bash
+# ARA Agent OS - Automated Node Bootstrap Script
+set -euo pipefail
+
+echo "======================================================"
+echo "   ARA Agent OS — Node Bootstrap & Automatic Pairing  "
+echo "======================================================"
+echo "==> Node Machine ID: {machine_id}"
+echo "==> Target Host URL: {host_url}"
+echo "==> Repository:      {repo_url}"
+echo "==> Target Profile:  {profile}"
+echo ""
+
+for cmd in git curl python3; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "ERROR: Required tool '$cmd' is not installed." >&2
+    exit 1
+  fi
+done
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "==> Installing uv package manager..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+fi
+
+ARA_DIR="${{ARA_NODE_DIR:-$HOME/ara}}"
+mkdir -p "$ARA_DIR"
+if [ -d "$ARA_DIR/agent-os" ]; then
+  echo "==> Existing ARA installation detected at $ARA_DIR"
+  echo "==> Updating runtime codebase directly from ARA Host ({host_url})..."
+  curl -fsSL "{host_url}/api/v1/nodes/bundle.tar.gz" | tar -xz -C "$ARA_DIR"
+else
+  echo "==> Resolving ARA codebase from ARA Host ({host_url})..."
+  if ! curl -fsSL "{host_url}/api/v1/nodes/bundle.tar.gz" | tar -xz -C "$ARA_DIR" 2>/dev/null; then
+    echo "==> Direct host bundle fetch failed; falling back to git clone {repo_url}..."
+    git clone "{repo_url}" "$ARA_DIR"
+  else
+    echo "==> Successfully downloaded node bundle directly from ARA Host ({host_url})"
+  fi
+fi
+
+cd "$ARA_DIR/agent-os"
+
+echo "==> Preparing standalone runtime for profile '{profile}'..."
+bash scripts/setup-node.sh --profile "{profile}"
+
+mkdir -p "$ARA_DIR/agent-os/.state"
+cat << 'EOF' > "$ARA_DIR/agent-os/node-enrollment.json"
+{{
+  "format": "ara-node-v1",
+  "host": "{host_url}",
+  "machine_id": "{machine_id}",
+  "token": "{token}",
+  "allow_insecure_http": {allow_insecure_val}
+}}
+EOF
+chmod 600 "$ARA_DIR/agent-os/node-enrollment.json"
+
+echo "==> Pairing node with host at {host_url}..."
+if ! .venv/bin/ara node pair --enrollment "$ARA_DIR/agent-os/node-enrollment.json"; then
+  echo ""
+  echo "======================================================"
+  echo "   [!] Node Pairing Failed                            "
+  echo "======================================================"
+  echo "Common causes & solutions:"
+  echo "  1. Host reachability: Check if this machine can reach {host_url}:"
+  echo "     curl -I '{host_url}/api/v1/network/status'"
+  echo "  2. Insecure HTTP: If connecting via HTTP on custom network, run:"
+  echo "     export ARA_ALLOW_INSECURE_HTTP=1"
+  echo ""
+  echo "To restart pairing on this machine:"
+  echo "  cd \"$ARA_DIR/agent-os\""
+  echo "  .venv/bin/ara node pair --enrollment \"$ARA_DIR/agent-os/node-enrollment.json\""
+  echo ""
+  echo "To start the worker after pairing:"
+  echo "  .venv/bin/ara node work"
+  echo ""
+  echo "To re-run the entire bootstrap from scratch:"
+  echo "  curl -fsSL '{host_url}/api/v1/nodes/bootstrap.sh?machine_id={machine_id}&token={token}' | bash"
+  echo "======================================================"
+  exit 1
+fi
+
+echo ""
+echo "======================================================"
+echo "   ARA Node Paired Successfully!                      "
+echo "======================================================"
+echo "Connected to ARA Host: {host_url}"
+echo ""
+echo "Node Management & Restart Commands:"
+echo "  • Working directory: cd \"$ARA_DIR/agent-os\""
+echo "  • Foreground worker: .venv/bin/ara node work"
+echo "  • Background worker: nohup .venv/bin/ara node work > node-worker.log 2>&1 &"
+echo "  • Check node status: .venv/bin/ara node status"
+echo "  • Restart pairing:   .venv/bin/ara node pair --enrollment node-enrollment.json"
+echo "  • Sync backups:      .venv/bin/ara node sync --profile {profile} --watch"
+echo "======================================================"
+echo ""
+echo "Starting work loop now..."
+exec .venv/bin/ara node work
+"""
+    return PlainTextResponse(script, media_type="text/x-shellscript")
 
 
 def authorized_node(request: Request, id: str):

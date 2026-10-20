@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from . import config, runtime, runtime_adapter, swarm_policy
-from .task_journal import Journal, TERMINAL, fingerprint
+from .task_journal import Journal, fingerprint
 
 
 def journal():
@@ -74,6 +74,19 @@ def launch(task_id):
             stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
 
 
+def outcome(results, total, synthesis=None, *, cancelled=False):
+    receipts = [*results, *([synthesis] if synthesis is not None else [])]
+    if any(r["status"] == "unknown" for r in receipts):
+        return "unknown"
+    if cancelled:
+        return "cancelled"
+    completed = [r for r in results if r["status"] == "completed"]
+    if (len(completed) == total and all(r.get("artifact_status") in {"ready", "not_required"} for r in results)
+            and synthesis is not None and synthesis["status"] == "completed"):
+        return "succeeded"
+    return "partial" if completed else "failed"
+
+
 async def execute(task_id):
     j = journal()
     if not j.claim(task_id):
@@ -83,9 +96,11 @@ async def execute(task_id):
     directory.mkdir(exist_ok=True, mode=0o700)
     cancel_path = directory / "cancel"
     watcher = None
+    results = []
+    synthesis = None
     try:
         if j.cancel_requested(task_id):
-            j.append(task_id, "swarm.finished", {"state": "cancelled"}, "cancelled")
+            j.finish(task_id, {"state": "cancelled"})
             return
         p = profile(request["native_name"])
         cfg = swarm_policy.read(runtime.home(p))
@@ -101,7 +116,7 @@ async def execute(task_id):
         if len(request["workers"]) > cfg["max_workers"]:
             raise ValueError("The admitted swarm exceeds the current worker limit")
         if j.cancel_requested(task_id):
-            j.append(task_id, "swarm.finished", {"state": "cancelled"}, "cancelled")
+            j.finish(task_id, {"state": "cancelled"})
             return
         j.append(task_id, "swarm.started", {"workers": request["workers"], "runtime": "native", "contract": runtime_adapter.CONTRACT})
         async def watch_cancel():
@@ -112,7 +127,6 @@ async def execute(task_id):
                 await asyncio.sleep(.25)
         watcher = asyncio.create_task(watch_cancel())
         semaphore = asyncio.Semaphore(cfg["max_concurrent"])
-        results = []
 
         async def run_one_inner(w, context, *, synthesize=False):
             async with semaphore:
@@ -146,10 +160,26 @@ async def execute(task_id):
                 except Exception as exc:
                     result = {"status": "unknown" if getattr(exc, "code", None) in {"runtime_failed", "unknown_outcome"} else "failed",
                               "summary": None, "error": getattr(exc, "detail", str(exc))[:1200]}
+                if not result.get("native_session_id"):
+                    bound = next((e["data"].get("native_session_id") for e in reversed(j.read(task_id)["events"])
+                        if e["type"] == "swarm.worker_bound" and e["data"].get("worker_id") == w["id"]), None)
+                    if bound:
+                        result["native_session_id"] = bound
+                result.update(workspace=workspace, artifact_status="not_required")
                 if artifacts:
-                    artifacts = await runtime.call({"operation": "swarm-workspace", "action": "collect",
-                        "source": cfg["workspace"], "target": workspace}, p)
                     result["artifacts"] = artifacts
+                    try:
+                        collected = await runtime.call({"operation": "swarm-workspace", "action": "collect",
+                            "source": cfg["workspace"], "target": workspace}, p)
+                        if (not isinstance(collected, dict) or collected.get("path") != workspace or
+                                not isinstance(collected.get("diff"), str) or not isinstance(collected.get("untracked_files"), list)):
+                            raise ValueError("The runtime returned incomplete workspace artifacts")
+                        result["artifacts"] = collected
+                        result["artifact_status"] = "truncated" if collected.get("truncated") else "ready"
+                        if collected.get("truncated"):
+                            result["artifact_error"] = "Workspace artifacts are incomplete; dependent stages were not started"
+                    except Exception as exc:
+                        result.update(artifact_status="failed", artifact_error=getattr(exc, "detail", str(exc))[:1200])
                 result = {**w, **result}
                 j.append(task_id, "swarm.worker_finished", result)
                 return result
@@ -168,30 +198,25 @@ async def execute(task_id):
             context = "Prior stage results (self-reported; verify before relying):\n" + json.dumps(results, ensure_ascii=False)[:100000]
             batch = await asyncio.gather(*(run_one(w, context) for w in request["workers"] if w["stage"] == stage))
             results.extend(batch)
-            if any(r["status"] != "completed" for r in batch) or j.cancel_requested(task_id):
+            if any(r["status"] != "completed" or r.get("artifact_status") not in {"ready", "not_required"} for r in batch) or j.cancel_requested(task_id):
                 break
         succeeded = [r for r in results if r["status"] == "completed"]
-        state = ("unknown" if any(r["status"] == "unknown" for r in results) else
-                 "cancelled" if j.cancel_requested(task_id) else
-                 "succeeded" if len(succeeded) == len(request["workers"]) else "partial" if succeeded else "failed")
         output = None
-        synthesis = None
-        if succeeded and state not in {"cancelled", "unknown"}:
+        if succeeded and not j.cancel_requested(task_id) and not any(r["status"] == "unknown" for r in results):
             synthesis = await run_one({"id": "synthesis", "role": "Coordinator", "objective":
                 "Synthesize actual worker outputs. State disagreements, failures, unverified claims and remaining work. "
                 "Do not claim code was merged or tests passed without evidence."}, json.dumps(results, ensure_ascii=False)[:100000], synthesize=True)
             output = synthesis.get("summary")
-            if synthesis["status"] != "completed":
-                state = "unknown" if synthesis["status"] == "unknown" else "partial"
-        j.append(task_id, "swarm.finished", {"state": state, "synthesized_output": output,
+        state = outcome(results, len(request["workers"]), synthesis, cancelled=j.cancel_requested(task_id))
+        j.finish(task_id, {"state": state, "synthesized_output": output, "synthesis": synthesis,
             "error": None if state == "succeeded" else "Not all work was confirmed complete; inspect worker receipts before retrying.",
             "usage": {"complete": all("api_calls" in r and "tokens" in r for r in [*results, *([synthesis] if synthesis else [])]),
                 "api_calls": sum(r.get("api_calls", 0) for r in [*results, *([synthesis] if synthesis else [])]),
                 "input_tokens": sum((r.get("tokens") or {}).get("input", 0) for r in [*results, *([synthesis] if synthesis else [])]),
                 "output_tokens": sum((r.get("tokens") or {}).get("output", 0) for r in [*results, *([synthesis] if synthesis else [])])},
-            "workers_completed": len(succeeded), "total_workers": len(request["workers"])}, state)
+            "workers_completed": len(succeeded), "total_workers": len(request["workers"])})
     except Exception as exc:
-        j.append(task_id, "swarm.finished", {"state": "failed", "error": str(exc)[:1200]}, "failed")
+        j.finish(task_id, {"state": outcome(results, len(request["workers"]), synthesis), "error": str(exc)[:1200]})
     finally:
         if watcher:
             watcher.cancel()
