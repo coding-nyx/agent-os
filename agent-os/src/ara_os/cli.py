@@ -36,6 +36,9 @@ def main():
     serve = subs.add_parser("serve", help="Run the local Agent OS API and built web client")
     serve.add_argument("--host", default=None, help="Host address to bind the API and dashboard (defaults to network.json or 127.0.0.1)")
     serve.add_argument("--port", type=int, default=8787)
+    role = serve.add_mutually_exclusive_group()
+    role.add_argument("--coordinator-only", action="store_true", help="Persist coordinator mode without a local Hermes runtime")
+    role.add_argument("--with-local-runtime", action="store_true", help="Explicitly switch back to hosting a local Hermes runtime")
     setup = subs.add_parser("setup", help="Create presets and configure one shared provider/model")
     setup.add_argument("--skip-model", action="store_true", help="Provision preset runtimes without model/account setup")
     setup.add_argument("--use-existing", action="store_true", help="Use the model/account already configured in this installation's native root")
@@ -63,6 +66,18 @@ def main():
     node = subs.add_parser("node", help="Node status and profile synchronization")
     node_sub = node.add_subparsers(dest="action", required=True)
     node_sub.add_parser("status")
+    node_sub.add_parser("list", help="List node-owned native runtime instances without PostgreSQL")
+    node_sub.add_parser("daemon", help="Supervise native instances, with an optional coordinator connection")
+    local_mcp = node_sub.add_parser("mcp", help="Run node-local swarm and explicitly granted computer tools")
+    local_mcp.add_argument("--profile", required=True)
+    service = node_sub.add_parser("service", help="Manage the Linux node user service")
+    service.add_argument("service_action", choices=["install", "remove", "status"])
+    for action in ("start", "stop"):
+        command = node_sub.add_parser(action, help="Start or stop the native Hermes instance on this machine")
+        command.add_argument("instance", help="Native profile name or local instance ID")
+    native_worker = node_sub.add_parser("_runtime_worker", help=argparse.SUPPRESS)
+    native_worker.add_argument("command_id")
+    native_worker.add_argument("--observe", action="store_true")
     node_init = node_sub.add_parser("init", help="Create a standalone native node profile without PostgreSQL")
     node_init.add_argument("--profile", required=True)
     node_init.add_argument("--computer-control", action="store_true", help="Explicitly install the native desktop driver; no grants enabled")
@@ -111,6 +126,10 @@ def main():
     if args.state:
         os.environ["ARA_STATE_DIR"] = str(Path(args.state).resolve())
     if args.command == "serve":
+        if args.coordinator_only:
+            os.environ["ARA_COORDINATOR_ONLY"] = "1"
+        elif args.with_local_runtime:
+            os.environ["ARA_COORDINATOR_ONLY"] = "0"
         args.host = args.host or default_host()
         api_host = "127.0.0.1" if args.host in {"0.0.0.0", "::"} else args.host
         os.environ.setdefault("ARA_API_URL", f"http://{api_host}:{args.port}")
@@ -135,19 +154,22 @@ def main():
                 print("Setup interrupted. Review preset model settings before rerunning; no work was resubmitted.", file=sys.stderr)
                 raise SystemExit(130)
         elif args.command == "serve":
+            if args.coordinator_only or args.with_local_runtime:
+                config.set_role("coordinator" if args.coordinator_only else "host")
             import uvicorn
             uvicorn.run("ara_os.app:app", host=args.host, port=args.port)
         elif args.command == "import":
             asyncio.run(import_profile(args))
         elif args.command in {"chat", "runtime"}:
-            from .store import get, transaction
-            try:
+            from . import instances
+            profile = instances.local_profile(args.profile)
+            if profile is None:
+                from .store import get, transaction
                 with transaction() as session:
                     profile = get(session, args.profile, "profile")
-            except Exception:
-                if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", args.profile):
-                    raise Problem("unknown_profile", "Use a profile ID or a valid native profile name.")
-                profile = {"native_name": args.profile}
+            registered = instances.by_name(profile["native_name"])
+            if registered and not registered.get("enabled"):
+                raise Problem("instance_disabled", "Start this node instance before using its native CLI", 409)
             if not runtime.home(profile).is_dir():
                 raise Problem("profile_not_found", "This profile is not installed on this machine.")
             env = config.runtime_env(); env["HERMES_HOME"] = str(runtime.home(profile))
@@ -254,29 +276,21 @@ async def import_profile(args):
             raise Problem("import_incomplete", "The upstream migration did not publish a target profile.")
         target.parent.mkdir(parents=True, exist_ok=True)
         stage.rename(target)
-    # Register directly when local data service is available; keep an offline receipt otherwise.
-    receipt = {"native_name": args.name, "name": args.name, "preset": "custom", "description": "Imported profile", "module": None,
-        "enabled": False, "bindings": [], "learning": "off", "provision_state": "ready", "owner_machine": "local", "imported": args.format,
-        "soul": (target / "SOUL.md").read_text() if (target / "SOUL.md").exists() else "Imported agent profile"}
-    pending = config.STATE / "import-receipts"; pending.mkdir(exist_ok=True)
-    id = str(uuid.uuid4()); (pending / (id + ".json")).write_text(json.dumps({"id": id, **receipt}))
-    try:
-        from .store import transaction, create
-        with transaction() as session:
-            installed = create(session, "profile", receipt, id=id)
-        from .profiles import provision
-        await provision(installed)
-        (pending / (id + ".json")).unlink()
-    except Exception:
-        print("Native import complete. Registration queued locally until the data service is available.")
-    print(json.dumps({"imported": args.name, "profile_id": id, "state": "disabled", "credentials": "reconnect explicitly"}))
+    from . import instances
+    registered = instances.register(args.name, enabled=False)
+    print(json.dumps({"imported": args.name, "instance_id": registered["instance_id"], "state": "disabled",
+        "credentials": "reconnect explicitly", "database_required": False, "next": f"ara node start {args.name}"}))
+
 
 
 async def restore_bundle(args):
     from . import config, runtime
     from .recovery import unpack
     destination = args.target.resolve()
-    unpack(args.source, args.key, destination)
+    manifest = unpack(args.source, args.key, destination)
+    if manifest.get("has_native_runtime") is False:
+        print(json.dumps({"restored_to": str(destination), "role": "coordinator", "next": "Use a separate empty PostgreSQL database and ara --state TARGET serve --coordinator-only. Reconnect nodes explicitly."}, indent=2))
+        return
     env = config.runtime_env(); env["HERMES_HOME"] = str(destination / "runtime")
     command = [str(config.RUNTIME_PYTHON), str(runtime.WORKER)]
     result = subprocess.run(command, input=json.dumps({"operation": "restore", "source": str(destination / "native.zip")}) + "\n", text=True, capture_output=True, cwd=config.RUNTIME_SOURCE, env=env)
@@ -297,22 +311,63 @@ async def node_command(args):
     import hashlib
     import httpx
     pair_path = config.STATE / "node-connection.json"
+    from . import instances
+    if args.action == "mcp":
+        from .node_mcp import serve
+        await serve(args.profile)
+        return
+    if args.action == "service":
+        from .node_service import service
+        print(json.dumps(service(args.service_action), indent=2))
+        return
+    if args.action == "daemon":
+        from .node_service import daemon
+        await daemon()
+        return
+    if args.action == "_runtime_worker":
+        from .node_runtime import worker
+        await worker(args.command_id, observe=args.observe)
+        return
+    if args.action == "list":
+        print(json.dumps(instances.listing(), indent=2))
+        return
+    if args.action in {"start", "stop"}:
+        profile = instances.local_profile(args.instance)
+        if not profile:
+            raise Problem("instance_not_found", "This native instance is not installed on this node", 404)
+        row = instances.by_name(profile["native_name"]) or instances.register(profile["native_name"])
+        enabled = args.action == "start"
+        if enabled:
+            from .node_mcp import install
+            install(profile["native_name"])
+        if not enabled:
+            instances.write(row["instance_id"], {"enabled": False, "local_paused": True, "state": "stopping"})
+        result = await runtime.call({"operation": "instance-lifecycle", "action": args.action}, profile)
+        instances.write(row["instance_id"], {"enabled": enabled, "local_paused": not enabled, "state": result["state"]})
+        print(json.dumps({**result, "instance_id": row["instance_id"]}))
+        return
     if args.action == "init":
         from .swarm_policy import DEFAULTS
         if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", args.profile) or args.profile == "default":
             raise Problem("invalid_profile_name", "Choose a non-default native node profile name")
         workspace = config.STATE / "workspaces" / args.profile
         workspace.mkdir(parents=True, exist_ok=True)
+        from .node_mcp import configuration as local_tools
         await runtime.call({"operation": "create", "profiles": [{"name": args.profile,
             "soul": "You are an ARA node agent. Work within explicit task and tool grants. Inspect uncertain outcomes before retrying.",
             "description": "Standalone ARA execution node profile", "ara_config": {
-                "terminal": {"backend": "local", "cwd": str(workspace)}, "ara": {"swarm": dict(DEFAULTS)}}}]})
+                "terminal": {"backend": "local", "cwd": str(workspace)}, "ara": {"swarm": dict(DEFAULTS)},
+                "mcp_servers": {"ara-node": local_tools(args.profile)}}}]})
         if args.computer_control:
             code = subprocess.call([str(config.RUNTIME_PYTHON), "-m", "hermes_cli.main", "computer-use", "install"],
                                    cwd=config.RUNTIME_SOURCE, env=config.runtime_env())
             if code:
                 raise Problem("computer_setup_incomplete", "Native driver installation failed. No computer grants were enabled.")
-        print(json.dumps({"native_name": args.profile, "model_setup": f"hermes --profile {args.profile} model",
+        previous = instances.by_name(args.profile)
+        from .node_mcp import install
+        install(args.profile)
+        registered = instances.register(args.profile, enabled=previous.get("enabled", True) if previous else True)
+        print(json.dumps({"instance_id": registered["instance_id"], "native_name": args.profile, "start": f"ara node start {args.profile}", "chat": f"ara chat {args.profile}", "model_setup": f"hermes --profile {args.profile} model",
             "swarms": "Configure explicit workspace and tool grants using ara swarm configure",
             "host_link": "Pair with ara node pair; then run ara node work", "database_required": False}, indent=2))
         return
@@ -324,9 +379,13 @@ async def node_command(args):
         from .cua.node import NodeComputer
         computer = NodeComputer(enrollment)
         computer_loop = None if args.once else asyncio.create_task(computer.run())
+        from .node_runtime import run as runtime_loop, exchange as runtime_exchange
+        control_loop = None if args.once else asyncio.create_task(runtime_loop(enrollment))
         try:
             while True:
                 try:
+                    if args.once:
+                        await runtime_exchange(enrollment)
                     print(json.dumps(await exchange(enrollment)), flush=True)
                 except httpx.HTTPError:
                     print("Node link unavailable; admitted local work continues and events remain queued.", file=sys.stderr, flush=True)
@@ -336,9 +395,10 @@ async def node_command(args):
                     return
                 await asyncio.sleep(2)
         finally:
-            if computer_loop:
-                computer_loop.cancel()
-                await asyncio.gather(computer_loop, return_exceptions=True)
+            for loop in (computer_loop, control_loop):
+                if loop:
+                    loop.cancel()
+            await asyncio.gather(*(loop for loop in (computer_loop, control_loop) if loop), return_exceptions=True)
     if args.action == "status":
         paired = pair_path.exists()
         info = {

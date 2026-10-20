@@ -20,8 +20,10 @@ def entries(profile):
 
 
 def binding(profile, entry):
+    from .instances import identity
     enabled = bool(profile.get("enabled") and entry["enabled"])
-    return {"profile_id": profile["id"], "native_name": entry["native_name"], "enabled": enabled,
+    return {"profile_id": profile["id"], "instance_id": entry.get("instance_id") or identity(profile["id"], entry["machine_id"]),
+            "machine_id": entry["machine_id"], "native_name": entry["native_name"], "enabled": enabled,
             "generation": fingerprint([profile["id"], entry, enabled]), "name": profile["name"],
             "soul": profile.get("soul", ""), "description": profile.get("description", ""),
             "preset": profile.get("preset", "custom")}
@@ -47,8 +49,8 @@ def receipt_id(profile_id, machine_id):
     return "deployment:" + hashlib.sha256(f"{profile_id}:{machine_id}".encode()).hexdigest()
 
 
-def describe(session, profile):
-    machines = {m["id"]: m for m in listing(session, "machine")}
+def describe(session, profile, machines=None):
+    machines = machines if machines is not None else {m["id"]: m for m in listing(session, "machine")}
     desired = {e["machine_id"]: e for e in entries(profile)}
     rows = []
     for id in dict.fromkeys([*machines, *desired]):
@@ -56,10 +58,11 @@ def describe(session, profile):
         entry = desired.get(id)
         effective = bool(entry and entry["enabled"] and profile.get("enabled"))
         online = id == "local"
-        if id != "local" and machine.get("last_seen"):
+        if id != "local":
             from datetime import datetime
-            online = datetime.fromisoformat(machine["last_seen"]).timestamp() > time.time() - 20
-        receipt = session.get(Entity, receipt_id(profile["id"], id))
+            seen = datetime.fromisoformat(machine["last_seen"]).timestamp() if machine.get("last_seen") else 0
+            online = max(seen, machine.get("computer_seen", 0)) > time.time() - 20
+        receipt = session.get(Entity, receipt_id(profile["id"], id)) if entry and id != "local" else None
         confirmed = receipt.data if receipt and entry and receipt.data.get("generation") == binding(profile, entry)["generation"] else {}
         if id == "local" and entry:
             from . import runtime
@@ -73,6 +76,9 @@ def describe(session, profile):
             "desired_enabled": bool(entry and entry["enabled"]), "enabled": effective,
             "state": state, "confirmed_at": confirmed.get("confirmed_at"), "error": confirmed.get("error"),
             "model_configured": confirmed.get("model_configured"), "swarm_enabled": confirmed.get("swarm_enabled")})
+        rows[-1].update(instance_id=binding(profile, entry)["instance_id"] if entry else None,
+            runtime_state=confirmed.get("runtime_state"), definition_revision=confirmed.get("definition_revision"),
+            definition_sync=confirmed.get("definition_sync"))
     return {"profile_id": profile["id"], "profile_name": profile["name"], "revision": profile["revision"],
             "profile_enabled": profile.get("enabled", False), "primary_machine_id": (profile.get("execution_placement") or {}).get("machine_id", "local")
                 if any(e["enabled"] for e in entries(profile)) else None, "machines": rows}
@@ -86,26 +92,47 @@ def update(session, profile_id, body):
     if body.get("revision") is not None and body["revision"] != profile["revision"]:
         raise Problem("revision_conflict", "Agent deployment settings changed. Reload before saving", 409)
     action, ids = body.get("action"), body.get("machine_ids")
-    if not isinstance(action, str) or action not in {"deploy", "undeploy", "primary", "replace"} or not isinstance(ids, list) or not 1 <= len(ids) <= 128 or any(not isinstance(i, str) for i in ids):
+    if not isinstance(action, str) or action not in {"deploy", "undeploy", "primary", "replace", "adopt"} or not isinstance(ids, list) or not 1 <= len(ids) <= 128 or any(not isinstance(i, str) for i in ids):
         raise Problem("invalid_deployment", "Select one or more machines and a deploy/undeploy action")
     ids = list(dict.fromkeys(ids))
     if action == "primary" and len(ids) != 1:
         raise Problem("invalid_deployment", "Select one default execution machine")
     existing = {e["machine_id"]: dict(e) for e in entries(profile)}
-    if action in {"deploy", "replace"}:
+    other_profiles = listing(session, "profile")
+    available = {m["id"] for m in listing(session, "machine")}
+    adoption = None
+    if action == "adopt":
+        if len(ids) != 1 or ids[0] == "local":
+            raise Problem("invalid_adoption", "Select one existing node instance")
+        machine = get(session, ids[0], "machine")
+        adoption = next((i for i in machine.get("instances", []) if i["instance_id"] == body.get("instance_id")), None)
+        if not adoption or adoption.get("logical_agent_id") not in {None, profile_id}:
+            raise Problem("instance_owned", "This instance is missing or belongs to another logical agent", 409)
+    if action in {"deploy", "replace", "adopt"}:
+        from .definitions import ensure
+        ensure(session, profile)
+        supplied_name = adoption["native_name"] if adoption else body.get("native_name")
+        if supplied_name is not None and (not isinstance(supplied_name, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", supplied_name)):
+            raise Problem("invalid_profile_name", "Use a valid native profile name")
         for id in ids:
+            from . import config
+            if id == "local" and config.coordinator_only():
+                raise Problem("coordinator_only", "Choose a node; this coordinator has no local runtime", 409)
             get(session, id, "machine")
-            name = (existing[id]["native_name"] if id in existing else body.get("native_name") or profile["native_name"])
+            name = (supplied_name if action in {"replace", "adopt"} and supplied_name else
+                    existing[id]["native_name"] if id in existing else supplied_name or profile["native_name"])
             if id == "local":
                 name = profile["native_name"]
             if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", name):
                 raise Problem("invalid_profile_name", "Use a native profile name of up to 64 lowercase letters, digits, underscores or hyphens")
-            for other in listing(session, "profile"):
+            for other in other_profiles:
                 if other["id"] != profile_id and any(e["machine_id"] == id and e["native_name"] == name for e in entries(other)):
                     raise Problem("placement_in_use", "Another agent owns this native profile name on the selected machine", 409)
             previous = existing.get(id)
-            if not previous or not previous["enabled"]:
-                existing[id] = {"machine_id": id, "native_name": name, "enabled": True, "generation": uuid.uuid4().hex}
+            if adoption or not previous or not previous["enabled"] or previous["native_name"] != name:
+                from .instances import identity
+                existing[id] = {"machine_id": id, "native_name": name, "enabled": True,
+                    "instance_id": adoption["instance_id"] if adoption else (previous or {}).get("instance_id") or identity(profile_id, id), "generation": uuid.uuid4().hex}
     disabled = ids if action == "undeploy" else [i for i in existing if i not in ids] if action == "replace" else []
     for id in disabled:
         if id in existing and existing[id]["enabled"]:
@@ -120,8 +147,8 @@ def update(session, profile_id, body):
         primary = ids[0]
     else:
         primary = (profile.get("execution_placement") or {}).get("machine_id", "local")
-        if primary not in existing or not existing[primary]["enabled"]:
-            primary = next((i for i, e in existing.items() if e["enabled"]), None)
+        if primary not in existing or not existing[primary]["enabled"] or primary not in available:
+            primary = next((i for i, e in existing.items() if e["enabled"] and i in available), None)
     placement = {"machine_id": primary, "native_name": existing[primary]["native_name"]} if primary else None
     updated = change(session, profile_id, {"deployments": list(existing.values()), "execution_placement": placement})
     return describe(session, updated)
@@ -140,9 +167,22 @@ def receive(session, machine_id, receipts):
             continue  # A newer deploy/undeploy request superseded this report.
         if receipt["state"] == "active" and not binding(profile, entry)["enabled"]:
             continue
+        from .swarm_policy import validate
+        try:
+            swarm_config = validate(receipt.get("swarm_config") or {})
+        except (ValueError, TypeError):
+            swarm_config = validate({})
         data = {"profile_id": profile["id"], "machine_id": machine_id, "generation": receipt["generation"],
             "state": receipt["state"], "error": str(receipt.get("error") or "")[:1000] or None,
             "model_configured": receipt.get("model_configured") is True, "swarm_enabled": receipt.get("swarm_enabled") is True,
+            "instance_id": binding(profile, entry)["instance_id"],
+            "runtime_state": receipt.get("runtime_state"), "definition_revision": receipt.get("definition_revision"),
+            "owner_epoch": receipt.get("owner_epoch"),
+            "swarm_config": swarm_config,
+            "context_ready": receipt.get("context_ready"),
+            "definition_sync": receipt.get("definition_sync"),
+            "model_connection": {k: v for k, v in (receipt.get("model_connection") or {}).items()
+                if k in {"model", "provider", "name", "api_mode"}},
             "confirmed_at": time.time()}
         row = session.get(Entity, receipt_id(profile["id"], machine_id))
         if row:

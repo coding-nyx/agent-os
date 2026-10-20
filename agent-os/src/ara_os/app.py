@@ -8,6 +8,7 @@ import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,6 +25,7 @@ from .catalog import MODULES, PRESETS
 from .store import Entity, Event, Problem, change, create, engine, event, get, initialize, listing, transaction, wire, remove
 
 log = logging.getLogger("ara")
+runtime_machine = ContextVar("runtime_machine", default=None)
 
 
 @asynccontextmanager
@@ -98,12 +100,15 @@ async def boundary(request: Request, call_next):
         expected = "Bearer " + config.private_file("computer-operator-token")
         if not hmac.compare_digest(request.headers.get("authorization", ""), expected):
             return JSONResponse({"error": {"code": "computer_auth_required", "detail": "Open System Control in the local dashboard."}}, 401)
+    scope_token = runtime_machine.set(request.query_params.get("machine_id"))
     try:
         response = await call_next(request)
     except Exception:
         id = uuid.uuid4().hex[:12]
         log.exception("Unhandled operation %s", id)
         return JSONResponse({"error": {"code": "unexpected_failure", "detail": "This operation stopped unexpectedly. Existing data is retained.", "reference": id}}, 500)
+    finally:
+        runtime_machine.reset(scope_token)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "same-origin"
     if request.url.path.startswith("/api/v1/cua/"):
@@ -161,6 +166,7 @@ class ProfileBody(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     preset: str = "ara"
     soul: str | None = Field(default=None, max_length=100000)
+    machine_ids: list[str] | None = Field(default=None, max_length=128)
 
 
 class PatchBody(BaseModel):
@@ -171,6 +177,11 @@ class PatchBody(BaseModel):
 def find(id, kind=None):
     with transaction() as session:
         return get(session, id, kind)
+
+
+def runtime_profile(id):
+    from .runtime_commands import selected
+    return selected(find(id, "profile"), runtime_machine.get())
 
 
 @app.get("/api/v1/health")
@@ -283,12 +294,25 @@ def toggle_network(body: dict):
 
 def enrich_profile(p: dict) -> dict:
     from . import swarms
+    from .runtime_commands import selected
+    if "_runtime_target" not in p:
+        try:
+            p = selected(p)
+        except Problem:
+            pass
     conn = profiles.resolve_model_connection(p)
     spec = next((s for s in PRESETS if s["id"] == p["preset"]), None)
     values = {**{f["id"]: f["default"] for f in spec["fields"]}, **p.get("configuration", {})} if spec else {}
     context_ready = bool(spec and not any(f["required"] and values.get(f["id"]) in (None, "") for f in spec["fields"]))
+    native_context = p.get("_runtime_target", {}).get("context_ready")
+    if p.get("_runtime_target", {}).get("machine_id", "local") == "local":
+        path = runtime.home(p) / ".ara-preferences.json"
+        if path.is_file():
+            native_context = json.loads(path.read_text()).get("context_ready")
+    if native_context is not None:
+        context_ready = native_context is True
     return {**p, "model_connection": conn,
-            "model_ready": bool(conn), "chat_ready": bool(conn and p.get("enabled") and p.get("provision_state") == "ready"),
+            "model_ready": bool(conn), "chat_ready": bool(conn and p.get("enabled") and (p.get("provision_state") == "ready" or p.get("_runtime_target", {}).get("machine_id", "local") != "local")),
             "preset_spec": spec, "context_ready": context_ready,
             "swarms": swarms.get_profile_swarm_config(p),
             "retired_preset": p["preset"] not in {s["id"] for s in PRESETS} | {"custom"}}
@@ -298,7 +322,7 @@ def enrich_profile(p: dict) -> dict:
 def dashboard():
     with transaction() as session:
         ps, ds, rs = [enrich_profile(p) for p in listing(session, "profile")], domains.datasets(session), listing(session, "run")
-        return {"profiles": ps, "datasets": [{**d, "summary": domains.summary(session, d["id"])} for d in ds],
+        return {"role": "coordinator" if config.coordinator_only() else "host", "profiles": ps, "datasets": [{**d, "summary": domains.summary(session, d["id"])} for d in ds],
                 "runs": [runs.view(r) for r in rs[-20:][::-1]], "machines": listing(session, "machine"),
                 "waiting": [runs.view(r) for r in rs if r["state"] in {"waiting", "unknown", "failed"}]}
 
@@ -370,19 +394,27 @@ def list_profiles():
 
 @app.post("/api/v1/profiles", status_code=201)
 async def new_profile(body: ProfileBody):
-    return enrich_profile(await profiles.create_profile(body.name, body.preset, body.soul))
+    profile = await profiles.create_profile(body.name, body.preset, body.soul, node_only=bool(body.machine_ids and "local" not in body.machine_ids))
+    if body.machine_ids:
+        from .deployments import update
+        with transaction() as session:
+            update(session, profile["id"], {"action": "deploy", "machine_ids": body.machine_ids})
+            profile = get(session, profile["id"], "profile")
+    return enrich_profile(profile)
 
 
 @app.get("/api/v1/profiles/{id}/configuration")
-def profile_configuration(id: str):
-    from .agent_configuration import configuration
-    return configuration(find(id, "profile"))
+async def profile_configuration(id: str):
+    profile = runtime_profile(id)
+    return await runtime.call({"operation": "instance-preferences", "profile": {
+        k: profile.get(k) for k in ("preset", "name", "configuration")}}, profile)
 
 
 @app.put("/api/v1/profiles/{id}/configuration")
-def update_profile_configuration(id: str, body: dict):
-    from .agent_configuration import save_configuration
-    return save_configuration(id, body)
+async def update_profile_configuration(id: str, body: dict):
+    profile = runtime_profile(id)
+    return await runtime.call({"operation": "instance-preferences", "write": True, "body": body,
+        "profile": {k: profile.get(k) for k in ("preset", "name", "configuration")}}, profile)
 
 
 @app.get("/api/v1/swarms/presets")
@@ -392,23 +424,33 @@ def swarm_presets():
 
 
 @app.get("/api/v1/profiles/{id}/swarms")
-def profile_swarms(id: str):
+async def profile_swarms(id: str):
     from . import swarms
     from .deployments import describe
+    profile = runtime_profile(id)
+    cfg = await runtime.call({"operation": "instance-swarm"}, profile)
+    owner = profile["_runtime_target"]
     with transaction() as session:
-        profile = get(session, id, "profile")
-        return {
-            "config": swarms.get_profile_swarm_config(profile),
-            "presets": swarms.SWARM_PRESETS,
-            "runs": swarms.list_swarms_for_profile(session, id),
-            "deployments": describe(session, profile)
-        }
+        policy_id = "instance-policy:" + owner["instance_id"]
+        row = session.get(Entity, policy_id)
+        if row:
+            row.data = {"config": cfg, "generation": owner["generation"]}
+        else:
+            session.add(Entity(id=policy_id, kind="instance_policy", data={"config": cfg, "generation": owner["generation"]}))
+        return {"config": cfg, "presets": swarms.SWARM_PRESETS,
+            "runs": [r for r in swarms.list_swarms_for_profile(session, id) if r.get("owner_machine", "local") == owner["machine_id"]],
+            "deployments": describe(session, profile)}
 
 
 @app.put("/api/v1/profiles/{id}/swarms")
-def update_profile_swarms(id: str, body: dict):
+async def update_profile_swarms(id: str, body: dict):
     from . import swarms
-    return swarms.save_profile_swarm_config(id, body)
+    profile = runtime_profile(id)
+    cfg = await runtime.call({"operation": "instance-swarm", "write": True, "config": body}, profile)
+    asset = await runtime.call({"operation": "instance-asset", "path": "SOUL.md"}, profile)
+    await runtime.call({"operation": "instance-asset", "path": "SOUL.md", "write": True,
+        "hash": asset["hash"], "content": swarms.identity_with_swarms(asset["content"], cfg)}, profile)
+    return cfg
 
 
 @app.post("/api/v1/profiles/{id}/swarms/spawn")
@@ -423,7 +465,7 @@ async def spawn_profile_swarm(id: str, body: dict):
             preset=body.get("preset", "research"),
             task=body.get("task", ""),
             operation_id=body.get("operation_id"),
-            custom_roles=body.get("custom_roles"), machine_id=body.get("machine_id")
+            custom_roles=body.get("custom_roles"), machine_id=body.get("machine_id") or runtime_machine.get()
         )
 
 
@@ -457,6 +499,49 @@ def profile_placement(id: str, body: dict):
     return result
 
 
+@app.get("/api/v1/profiles/{id}/definition")
+def profile_definition(id: str):
+    from .definitions import current
+    with transaction() as session:
+        value = current(session, get(session, id, "profile"))
+    return {"revision": value["manifest"]["revision"] if value else None,
+            "owner_machine": value["owner_machine"] if value else None,
+            "excluded": value["manifest"].get("excluded", []) if value else []}
+
+
+@app.post("/api/v1/profiles/{id}/definition/publish")
+async def publish_profile_definition(id: str, body: dict):
+    from .definitions import publish
+    profile = runtime_profile(id)
+    manifest = await runtime.call({"operation": "definition-capture"}, profile)
+    with transaction() as session:
+        value = publish(session, profile, manifest, expected=body.get("revision"), owner=profile["_runtime_target"]["machine_id"])
+    return {"revision": value["manifest"]["revision"], "owner_machine": value["owner_machine"]}
+
+
+@app.post("/api/v1/profiles/{id}/definition/preview")
+async def preview_profile_definition(id: str):
+    from .definitions import current
+    profile = runtime_profile(id)
+    with transaction() as session:
+        value = current(session, profile)
+    if not value:
+        raise Problem("definition_missing", "Publish a definition first", 409)
+    return await runtime.call({"operation": "definition-preview", "definition": value["manifest"]}, profile)
+
+
+@app.post("/api/v1/profiles/{id}/definition/apply")
+async def apply_profile_definition(id: str, body: dict):
+    from .definitions import current
+    profile = runtime_profile(id)
+    with transaction() as session:
+        value = current(session, profile)
+    if not value or body.get("published_revision") != value["manifest"]["revision"]:
+        raise Problem("definition_conflict", "The published definition changed; preview it again", 409)
+    return await runtime.call({"operation": "definition-apply", "definition": value["manifest"],
+        "local_revision": body.get("local_revision")}, profile)
+
+
 @app.get("/api/v1/profiles/{id}/deployments")
 def profile_deployments(id: str):
     from .deployments import describe
@@ -465,7 +550,7 @@ def profile_deployments(id: str):
 
 
 @app.post("/api/v1/profiles/{id}/deployments")
-def update_profile_deployments(id: str, body: dict):
+async def update_profile_deployments(id: str, body: dict):
     from .deployments import update, active
     with transaction() as session:
         before = bool(active(get(session, id, "profile"), "local"))
@@ -474,6 +559,10 @@ def update_profile_deployments(id: str, body: dict):
     if local_changed:
         from .cua import policy
         policy.update({})
+        profile = find(id, "profile")
+        local_enabled = bool(active(profile, "local"))
+        if runtime.home(profile).is_dir():
+            await runtime.call({"operation": "instance-lifecycle", "action": "start" if local_enabled else "stop"}, profile)
     return result
 
 
@@ -481,12 +570,19 @@ def update_profile_deployments(id: str, body: dict):
 def all_deployments():
     from .deployments import describe
     with transaction() as session:
-        return [describe(session, p) for p in listing(session, "profile")]
+        machines = {m["id"]: m for m in listing(session, "machine")}
+        result = [describe(session, p, machines) for p in listing(session, "profile")]
+        for item in result:
+            item["machines"] = [m for m in item["machines"] if m["state"] != "not_deployed"]
+        return result
 
 
 @app.get("/api/v1/profiles/{id}")
 def profile_detail(id: str):
-    return enrich_profile(find(id, "profile"))
+    profile = find(id, "profile")
+    if runtime_machine.get():
+        profile = runtime_profile(id)
+    return enrich_profile(profile)
 
 
 @app.patch("/api/v1/profiles/{id}")
@@ -503,8 +599,8 @@ async def profile_patch(id: str, body: PatchBody):
         grants = policy.read()["grants"]
         if id in grants:
             policy.update({"grants": {key: value for key, value in grants.items() if key != id}})
-    if "enabled" in body.values:
-        await runtime.call({"operation": "profile-state", "name": profile["native_name"], "enabled": bool(body.values["enabled"])})
+    if "enabled" in body.values and runtime.home(profile).is_dir():
+        await runtime.call({"operation": "instance-lifecycle", "action": "start" if body.values["enabled"] else "stop"}, profile)
     with transaction() as session:
         return change(session, id, body.values, body.revision)
 
@@ -524,18 +620,47 @@ def instances(id: str):
 
 @app.post("/api/v1/profiles/{id}/instances", status_code=201)
 async def new_instance(id: str, body: dict):
-    source = find(id, "profile")
-    return await profiles.create_profile(str(body.get("name", source["name"] + " instance"))[:100], source["preset"], runtime.read_asset(source, "SOUL.md")["content"], source)
+    from .definitions import current, publish
+    from .deployments import update
+    source = runtime_profile(id)
+    manifest = await runtime.call({"operation": "definition-capture"}, source)
+    clone = await profiles.create_profile(str(body.get("name", source["name"] + " instance"))[:100],
+        source["preset"], manifest["files"].get("SOUL.md"), source, node_only=source["_runtime_target"]["machine_id"] != "local")
+    with transaction() as session:
+        baseline = current(session, clone)
+        publish(session, clone, manifest, expected=baseline["manifest"]["revision"] if baseline else None, owner=source["_runtime_target"]["machine_id"])
+        update(session, clone["id"], {"action": "deploy", "machine_ids": [source["_runtime_target"]["machine_id"]]})
+        return get(session, clone["id"], "profile")
 
 
 @app.get("/api/v1/profiles/{id}/export")
 async def profile_export(id: str):
+    import base64
     from starlette.background import BackgroundTask
-    profile = find(id, "profile")
-    directory = config.STATE / "exports"; directory.mkdir(exist_ok=True)
+    profile = runtime_profile(id)
+    directory = config.STATE / "exports"; directory.mkdir(exist_ok=True, mode=0o700)
     path = directory / (uuid.uuid4().hex + ".tar.gz")
-    await runtime.call({"operation": "portable", "output": str(path), "name": profile["native_name"]}, profile)
-    return FileResponse(path, filename=profile["native_name"] + ".tar.gz", background=BackgroundTask(path.unlink, missing_ok=True))
+    digest, size, receipt = hashlib.sha256(), 0, None
+    try:
+        with path.open("xb") as output:
+            path.chmod(0o600)
+            async for frame in runtime.frames({"operation": "instance-export"}, profile):
+                if frame["type"] in {"error", "unknown"}:
+                    raise Problem("export_unconfirmed", "The owning node did not confirm a coherent export", 409)
+                if frame["type"] == "event" and frame["data"].get("type") == "artifact.chunk":
+                    chunk = base64.b64decode(frame["data"]["payload"]["data"], validate=True)
+                    size += len(chunk)
+                    if size > 32_000_000:
+                        raise Problem("export_too_large", "Use native node tools for exports larger than 32 MB", 413)
+                    digest.update(chunk); output.write(chunk)
+                elif frame["type"] == "result":
+                    receipt = frame["data"]
+        if not receipt or receipt.get("bytes") != size or receipt.get("sha256") != digest.hexdigest():
+            raise Problem("export_integrity", "Native export receipt did not match the downloaded artifact", 409)
+        return FileResponse(path, filename=profile["native_name"] + ".tar.gz", background=BackgroundTask(path.unlink, missing_ok=True))
+    except BaseException:
+        path.unlink(missing_ok=True)
+        raise
 
 
 @app.post("/api/v1/profiles/{id}/retry-setup")
@@ -550,7 +675,7 @@ async def set_bindings(id: str, body: dict):
 
 @app.put("/api/v1/profiles/{id}/learning")
 async def learning(id: str, body: dict):
-    return await profiles.set_learning(find(id, "profile"), body.get("policy", "off"))
+    return await profiles.set_learning(runtime_profile(id), body.get("policy", "off"))
 
 
 @app.api_route("/api/v1/profiles/{id}/pending/{subsystem}", methods=["GET", "POST"])
@@ -560,37 +685,35 @@ async def pending_review(id: str, subsystem: str, request: Request):
     body = await request.json() if request.method == "POST" else {}
     if request.method == "POST" and (set(body) - {"action", "id", "hash"} or body.get("action") not in {"approve", "reject"} or not body.get("id") or not body.get("hash")):
         raise Problem("invalid_review", "Review one pending change with its current hash.")
-    result = await runtime.call({"operation": "pending-review", "subsystem": subsystem, **body}, find(id, "profile"))
+    result = await runtime.call({"operation": "pending-review", "subsystem": subsystem, **body}, runtime_profile(id))
     if isinstance(result, dict) and result.get("state") == "conflict":
         raise Problem("review_conflict", result.get("detail") or "The native write could not be applied. Review its target before retrying.", 409)
     return result
 
 
 @app.get("/api/v1/profiles/{id}/assets")
-def assets(id: str):
-    profile = find(id, "profile")
-    paths = ["SOUL.md", "memories/MEMORY.md", "memories/USER.md", "config.yaml"]
-    base = runtime.home(profile)
-    paths += [str(p.relative_to(base)) for p in (base / "skills").rglob("SKILL.md") if not p.is_symlink()][:300]
-    return [{"path": path, "exists": (base / path).exists()} for path in paths]
+async def assets(id: str):
+    return await runtime.call({"operation": "instance-assets"}, runtime_profile(id))
 
 
 @app.get("/api/v1/profiles/{id}/asset")
-def asset(id: str, path: str):
-    return runtime.read_asset(find(id, "profile"), path)
+async def asset(id: str, path: str):
+    return await runtime.call({"operation": "instance-asset", "path": path}, runtime_profile(id))
 
 
 @app.put("/api/v1/profiles/{id}/asset")
-def save_asset(id: str, body: dict):
-    result = runtime.write_asset(find(id, "profile"), body["path"], body["content"], body["hash"])
+async def save_asset(id: str, body: dict):
+    profile = runtime_profile(id)
+    result = await runtime.call({"operation": "instance-asset", "write": True,
+        "path": body["path"], "content": body["content"], "hash": body["hash"]}, profile)
     with transaction() as session:
-        event(session, id, "asset.saved", {"path": body["path"], "hash": result["hash"]})
-    return {**result, "effective": "next_native_session", "saved": "local"}
+        event(session, id, "asset.saved", {"path": body["path"], "hash": result["hash"], "machine_id": profile["_runtime_target"]["machine_id"]})
+    return {**result, "effective": "next_native_session", "saved": profile["_runtime_target"]["machine_id"]}
 
 
 @app.post("/api/v1/profiles/{id}/model")
 async def model(id: str, body: dict):
-    profile = find(id, "profile")
+    profile = runtime_profile(id)
     required = ("name", "base_url", "model")
     if not all(body.get(k) for k in required):
         raise Problem("incomplete_connection", "Name, endpoint and model are required.")
@@ -605,8 +728,9 @@ async def model(id: str, body: dict):
     result = await runtime.native_http("POST", "/api/providers/custom-endpoints", payload, profile)
     with transaction() as session:
         metadata = {k: payload[k] for k in ["name", "base_url", "model", "api_mode"]}
-        conn = profiles.resolve_model_connection({**profile, "model_connection": metadata})
-        change(session, id, {"model_connection": conn})
+        if profile["_runtime_target"]["machine_id"] == "local":
+            conn = profiles.resolve_model_connection({**profile, "model_connection": metadata})
+            change(session, id, {"model_connection": conn})
     return runtime.redact(result)
 
 
@@ -619,14 +743,14 @@ NATIVE_PREFIXES = ("/api/providers/oauth", "/api/providers/custom-endpoints", "/
 
 @app.get("/api/v1/profiles/{id}/voice-settings")
 async def voice_settings(id: str):
-    data = await runtime.native_http("GET", "/api/config", profile=find(id, "profile"))
+    data = await runtime.native_http("GET", "/api/config", profile=runtime_profile(id))
     cfg = data.get("config", data)
     return runtime.redact({"stt": cfg.get("stt", {}), "tts": cfg.get("tts", {})})
 
 
 @app.put("/api/v1/profiles/{id}/voice-settings")
 async def set_voice_settings(id: str, body: dict):
-    profile = find(id, "profile")
+    profile = runtime_profile(id)
     if set(body) - {"stt", "tts", "api_key"}:
         raise Problem("invalid_voice_setting", "Use the transcription and speech provider settings.")
     data = await runtime.native_http("GET", "/api/config", profile=profile)
@@ -670,9 +794,10 @@ async def native_proxy(id: str, path: str, request: Request):
         raise Problem("native_capability_unavailable", "This native operation is not exposed by the prototype.", 404)
     body = await request.json() if request.method in {"POST", "PUT"} else None
     if isinstance(body, dict):
-        body = {**body, "profile": find(id, "profile")["native_name"]}
-    result = await runtime.native_http(request.method, native_path, body, find(id, "profile"))
-    if native_path == "/api/model/set" and isinstance(body, dict) and body.get("scope") == "main" and body.get("model"):
+        body = {**body, "profile": runtime_profile(id)["native_name"]}
+    query = {k: v for k, v in request.query_params.items() if k in {"refresh", "limit", "offset", "source", "search"}}
+    result = await runtime.native_http(request.method, native_path, body, runtime_profile(id), query=query)
+    if runtime_profile(id)["_runtime_target"]["machine_id"] == "local" and native_path == "/api/model/set" and isinstance(body, dict) and body.get("scope") == "main" and body.get("model"):
         with transaction() as session:
             conn = profiles.resolve_model_connection(get(session, id, "profile"))
             change(session, id, {"model_connection": conn})
@@ -681,7 +806,7 @@ async def native_proxy(id: str, path: str, request: Request):
 
 @app.post("/api/v1/profiles/{id}/channels/telegram")
 async def telegram(id: str, body: dict):
-    profile = find(id, "profile")
+    profile = runtime_profile(id)
     with transaction() as session:
         if any(get(session, b["dataset_id"], "dataset")["module"] in {"notebook", "emotional"} for b in profile.get("bindings", [])):
             raise Problem("private_channel_scope_unverified", "Keep this private notebook instance separate from a bot until per-channel data scoping is certified.", 409)
@@ -701,11 +826,11 @@ async def telegram(id: str, body: dict):
     with transaction() as session:
         channel_id = "telegram-" + bot_id
         row = session.get(Entity, channel_id)
-        if row and row.data["profile_id"] != id:
+        if row and (row.data["profile_id"] != id or row.data.get("owner", "local") != profile["_runtime_target"]["machine_id"]):
             raise Problem("channel_owned", "This bot is already bound to another profile. Pause and transfer that connection first.", 409)
         if not row:
             create(session, "channel", {"profile_id": id, "platform": "telegram", "external_id": bot_id,
-                "name": info["result"].get("username", "Telegram bot"), "owner": "local", "state": "configuring"}, id=channel_id)
+                "name": info["result"].get("username", "Telegram bot"), "owner": profile["_runtime_target"]["machine_id"], "instance_id": profile["_runtime_target"]["instance_id"], "state": "configuring"}, id=channel_id)
     result = await runtime.native_http("PUT", "/api/messaging/platforms/telegram", {"enabled": True,
         "profile": profile["native_name"], "env": {"TELEGRAM_BOT_TOKEN": token, "TELEGRAM_ALLOWED_USERS": users}}, profile)
     with transaction() as session:
@@ -715,7 +840,7 @@ async def telegram(id: str, body: dict):
 
 @app.post("/api/v1/profiles/{id}/channels/{platform}/pause")
 async def pause_channel(id: str, platform: str):
-    profile = find(id, "profile")
+    profile = runtime_profile(id)
     result = await runtime.native_http("PUT", "/api/messaging/platforms/" + platform,
         {"enabled": False, "profile": profile["native_name"]}, profile)
     with transaction() as session:
@@ -734,8 +859,11 @@ def conversations(profile_id: str | None = None):
 @app.post("/api/v1/conversations", status_code=201)
 def conversation(body: dict):
     with transaction() as session:
-        get(session, body["profile_id"], "profile")
-        return create(session, "conversation", {"profile_id": body["profile_id"], "title": str(body.get("title", "New conversation"))[:120], "audience": "application"})
+        from .runtime_commands import target
+        owner = target(get(session, body["profile_id"], "profile"), body.get("machine_id") or runtime_machine.get())
+        if owner["machine_id"] != "local" and not owner.get("owner_epoch"):
+            raise Problem("instance_not_ready", "Wait for the node to confirm its native instance before opening a conversation", 409)
+        return create(session, "conversation", {"profile_id": body["profile_id"], "title": str(body.get("title", "New conversation"))[:120], "audience": "application", "runtime_owner": owner})
 
 
 @app.post("/api/v1/conversations/{id}/messages", status_code=202)
@@ -1105,6 +1233,34 @@ async def node_sync(request: Request):
             change(session, task["id"], {"native_snapshot_id": id, "recovery_state": "received_native_snapshot"})
         change(session, machine["id"], {"state": "paired", "last_received": datetime.now(timezone.utc).isoformat()})
     return {"acknowledged": True, "snapshot_id": id, "native_state": "passive", "credentials": "excluded", "automatic_activation": False}
+
+
+@app.post("/api/v1/nodes/runtime/poll")
+async def node_runtime_poll(request: Request):
+    from .runtime_commands import poll
+    body = await request.json()
+    if not isinstance(body, dict) or len(json.dumps(body)) > 100_000:
+        raise Problem("invalid_runtime_poll", "Send a bounded instance inventory")
+    machine = authorized_node(request, body.get("machine_id", ""))
+    inventory = body.get("instances", [])
+    if not isinstance(inventory, list) or len(inventory) > 128:
+        raise Problem("invalid_inventory", "Report at most 128 instances")
+    clean = [{k: row.get(k) for k in ("instance_id", "native_name", "logical_agent_id", "state", "enabled")} for row in inventory if isinstance(row, dict)]
+    with transaction() as session:
+        change(session, machine["id"], {"instances": clean, "runtime_contract": "ara-runtime/1",
+            "last_seen": datetime.now(timezone.utc).isoformat()})
+        from .node_execution import bindings
+        controls = [{k: v for k, v in b.items() if k != "definition"} for b in bindings(session, machine["id"])]
+        return {"commands": poll(session, machine["id"]), "bindings": controls}
+
+
+@app.post("/api/v1/nodes/runtime/events")
+async def node_runtime_events(request: Request):
+    from .runtime_commands import receive
+    body = await request.json()
+    machine = authorized_node(request, body.get("machine_id", ""))
+    with transaction() as session:
+        return receive(session, machine["id"], body.get("command_id"), body.get("events"), body.get("terminal") is True)
 
 
 @app.post("/api/v1/nodes/tasks/poll")

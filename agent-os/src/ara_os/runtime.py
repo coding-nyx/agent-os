@@ -20,6 +20,11 @@ def home(profile: dict | None = None) -> Path:
 
 
 async def frames(request: dict, profile: dict | None = None):
+    if profile and profile.get("_runtime_target", {}).get("machine_id", "local") != "local":
+        from .runtime_commands import frames as remote_frames
+        async for frame in remote_frames(profile, request):
+            yield frame
+        return
     if not config.RUNTIME_PYTHON.exists():
         raise Problem("runtime_not_installed", "Install the Agent OS runtime using scripts/setup.sh.", 503)
     env = config.runtime_env()
@@ -27,7 +32,7 @@ async def frames(request: dict, profile: dict | None = None):
     env["ARA_STATE_DIR"] = str(config.STATE)
     process = await asyncio.create_subprocess_exec(str(config.RUNTIME_PYTHON), str(WORKER),
         cwd=config.RUNTIME_SOURCE, env=env, stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, limit=8 * 1024 * 1024)
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, limit=12 * 1024 * 1024)
     process.stdin.write((json.dumps(request) + "\n").encode())
     await process.stdin.drain()
     process.stdin.close()
@@ -72,9 +77,9 @@ async def call(request: dict, profile: dict | None = None):
     return result
 
 
-async def native_http(method: str, path: str, body=None, profile: dict | None = None):
+async def native_http(method: str, path: str, body=None, profile: dict | None = None, query=None):
     result = await call({"operation": "http", "method": method, "path": path,
-                         "params": {"profile": profile["native_name"]} if profile else {}, "body": body}, profile)
+                         "params": {**(query or {}), **({"profile": profile["native_name"]} if profile else {})}, "body": body}, profile)
     if result["status"] >= 400:
         detail = result["body"].get("detail", "The native operation was refused.")
         raise Problem("native_operation_refused", str(detail)[:800], result["status"])
@@ -90,7 +95,8 @@ def safe_asset(profile: dict, relative: str) -> Path:
         raise Problem("asset_not_editable", "This asset is managed through its dedicated connection or runtime controls.", 403)
     root = home(profile).resolve()
     target = root / path
-    if target.is_symlink() or root not in target.resolve().parents:
+    if (any(root.joinpath(*path.parts[:i]).is_symlink() for i in range(1, len(path.parts) + 1)) or
+            root not in target.resolve().parents):
         raise Problem("invalid_path", "Asset links outside this profile are not editable.", 403)
     return target
 

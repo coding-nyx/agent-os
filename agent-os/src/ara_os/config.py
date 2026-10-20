@@ -15,6 +15,23 @@ API_URL = os.environ.get("ARA_API_URL", "http://127.0.0.1:8787")
 UPSTREAM_REVISION = json.loads((ROOT / "compatibility.lock.json").read_text())["runtime"]["revision"]
 
 
+def coordinator_only():
+    if "ARA_COORDINATOR_ONLY" in os.environ:
+        return os.environ["ARA_COORDINATOR_ONLY"].lower() in {"1", "yes", "true"}
+    path = STATE / "installation.json"
+    return path.exists() and json.loads(path.read_text()).get("role") == "coordinator"
+
+
+def set_role(role):
+    import tempfile
+    STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with tempfile.NamedTemporaryFile(mode="w", dir=STATE, delete=False) as stream:
+        os.chmod(stream.name, 0o600)
+        json.dump({"role": role}, stream)
+        staged = stream.name
+    os.replace(staged, STATE / "installation.json")
+
+
 def private_file(name: str, factory= lambda: secrets.token_urlsafe(32)) -> str:
     STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
     path = STATE / name

@@ -31,8 +31,13 @@ async def backup():
     id = str(uuid.uuid4())
     with tempfile.TemporaryDirectory(dir=config.STATE, prefix="backup-") as tmp:
         native = Path(tmp) / "native.zip"
-        await runtime.call({"operation": "backup", "output": str(native)})
+        has_native = not config.coordinator_only() and config.RUNTIME_PYTHON.exists()
+        if has_native:
+            await runtime.call({"operation": "backup", "output": str(native)})
+        else:
+            native.write_bytes(b"")
         manifest = {"format": "ara-recovery-v1", "runtime_revision": config.UPSTREAM_REVISION,
+            "has_native_runtime": has_native,
             "native_sha256": hashlib.sha256(native.read_bytes()).hexdigest(),
             "scope": "Native WAL-safe database snapshots and Agent OS records; external vaults, memory services and workspaces excluded",
             "consistency": "native_databases_consistent; application_and_external_services_have_separate_capture_boundaries"}

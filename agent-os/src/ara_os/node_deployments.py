@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-from . import config, runtime
+from . import config, runtime, instances
 
 
 def marker(name):
@@ -29,6 +29,15 @@ def is_disabled(name):
         return json.loads(path.read_text()).get("enabled") is not True
     except (OSError, ValueError):
         return True
+
+
+def authorized(name, profile_id, generation):
+    try:
+        record = json.loads(marker(name).read_text())
+    except (OSError, ValueError):
+        return False
+    return (record.get("enabled") is True and record.get("profile_id") == profile_id and
+            record.get("generation") == generation and record.get("state") == "active")
 
 
 def save(path, value):
@@ -61,6 +70,8 @@ def configure(home, binding):
         before = path.read_bytes()
         cfg = yaml.safe_load(before) or {}
         cfg.setdefault("ara", {})["deployment"] = {k: binding[k] for k in ("profile_id", "enabled", "generation")}
+        from .node_mcp import configuration as local_tools
+        cfg.setdefault("mcp_servers", {})["ara-node"] = local_tools(binding["native_name"])
         with tempfile.NamedTemporaryFile(mode="w", dir=home, delete=False) as stream:
             os.chmod(stream.name, 0o600)
             yaml.safe_dump(cfg, stream, sort_keys=False)
@@ -78,65 +89,159 @@ def readiness(home):
         return {"model_configured": False, "swarm_enabled": False}
     cfg = yaml.safe_load((home / "config.yaml").read_text()) or {}
     model = cfg.get("model") or {}
-    return {"model_configured": bool(model.get("default")) if isinstance(model, dict) else bool(model),
-            "swarm_enabled": (cfg.get("ara") or {}).get("swarm", {}).get("enabled") is True}
+    preferences = home / ".ara-preferences.json"
+    context_ready = json.loads(preferences.read_text()).get("context_ready") if preferences.is_file() else None
+    selected = (model.get("default") or model.get("model")) if isinstance(model, dict) else model
+    return {"model_configured": bool(selected), "model_connection": {
+                "model": selected, "provider": model.get("provider", "native") if isinstance(model, dict) else "native"} if selected else None,
+            "swarm_enabled": (cfg.get("ara") or {}).get("swarm", {}).get("enabled") is True,
+            "swarm_config": (cfg.get("ara") or {}).get("swarm", {}), "context_ready": context_ready}
 
 
-async def reconcile(bindings):
+async def revoke(bindings):
+    """Persist admission revocation before slow native drain/provision operations."""
     from . import swarm_runner
     from .cua import policy as computer_policy
+    for binding in bindings:
+        if binding["enabled"]:
+            continue
+        name = binding["native_name"]
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", name):
+            continue
+        path = marker(name)
+        previous = json.loads(path.read_text()) if path.exists() else {}
+        if previous.get("profile_id") not in {None, binding["profile_id"]}:
+            continue
+        row = instances.by_name(name)
+        if not previous and (not row or row.get("logical_agent_id") != binding["profile_id"]):
+            continue  # A desired tombstone cannot adopt an unrelated standalone agent.
+        if previous.get("generation") == binding["generation"] and previous.get("runtime_state") == "stopped":
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        metadata = {k: v for k, v in binding.items() if k != "definition"}
+        save(path, {**previous, **metadata, "enabled": False, "state": "disabled", "runtime_state": "stopping"})
+        if row:
+            instances.write(row["instance_id"], {"enabled": False, "generation": binding["generation"], "state": "stopping"})
+        for task in swarm_runner.journal().pending():
+            if task["request"].get("native_name") == name:
+                swarm_runner.journal().cancel(task["id"])
+        computer_policy.update({})
+        if runtime.home({"native_name": name}).is_dir():
+            try:
+                state = await runtime.call({"operation": "instance-lifecycle", "action": "stop"}, {"native_name": name})
+                if row:
+                    instances.write(row["instance_id"], {"state": state["state"]})
+                save(path, {**previous, **metadata, "enabled": False, "state": "disabled", "runtime_state": state["state"]})
+            except Exception:
+                pass  # Keep stopping visible and retry; never claim an unconfirmed stop.
+
+
+async def reconcile(bindings, *, provision=True):
     from .swarm_policy import DEFAULTS
+    from .native_definition import apply, status as definition_status
     receipts = []
-    # Apply stops before provisioning work for any other selected agent.
+    offered = {b["native_name"] for b in bindings}
+    bindings = list(bindings)
+    for path in (config.STATE / "node-deployments").glob("*.json"):
+        record = json.loads(path.read_text())
+        if record.get("native_name") not in offered and record.get("enabled"):
+            bindings.append({**record, "enabled": False,
+                "generation": hashlib.sha256((record["generation"] + ":removed").encode()).hexdigest()})
+    await revoke(bindings)
     for binding in sorted(bindings, key=lambda b: bool(b["enabled"])):
         name = binding["native_name"]
         if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", name):
             raise ValueError("Invalid deployed native profile name")
-        path = marker(name)
-        home = runtime.home({"native_name": name})
+        path, home = marker(name), runtime.home({"native_name": name})
+        if not binding["enabled"]:
+            previous = json.loads(path.read_text()) if path.exists() else {}
+            receipts.append({**{k: binding[k] for k in ("profile_id", "native_name", "instance_id", "generation")},
+                **readiness(home), "state": "disabled", "runtime_state": previous.get("runtime_state", "stopping")})
+            continue
+        if not provision:
+            continue
         async with locked(path):
             previous = json.loads(path.read_text()) if path.exists() else {}
-            result = {"profile_id": binding["profile_id"], "generation": binding.get("generation", "legacy")}
+            result = {k: binding[k] for k in ("profile_id", "native_name", "instance_id", "generation")}
             try:
                 if previous.get("profile_id") not in {None, binding["profile_id"]}:
-                    raise ValueError("This node profile belongs to another agent; choose a different native name")
-                current = (previous.get("generation") == result["generation"] and
-                           previous.get("enabled") is binding["enabled"] and
-                           previous.get("state") in {"active", "disabled"})
-                if current and (not binding["enabled"] or home.is_dir()):
-                    receipts.append({**result, "state": previous["state"], **readiness(home)})
+                    raise ValueError("This native profile belongs to another agent")
+                registered = instances.by_name(name)
+                if registered:
+                    result["owner_epoch"] = registered.get("owner_epoch")
+                if registered and registered.get("local_paused"):
+                    result.update(state="disabled", runtime_state="paused", error="Paused by the node operator; start it locally to resume")
+                    receipts.append(result)
                     continue
-                if previous.get("state") == "error" and previous.get("generation") == result["generation"] and previous.get("attempted", 0) > time.time() - 30:
-                    receipts.append({**result, "state": "error", "error": previous.get("error")})
-                    continue
-                # Admission is disabled durably before touching native configuration.
-                if previous or not home.is_dir() or not binding["enabled"]:
-                    save(path, {**result, "enabled": False, "state": "pending"})
-                if not binding["enabled"]:
-                    for task in swarm_runner.journal().pending():
-                        if task["request"].get("native_name") == name:
-                            swarm_runner.journal().cancel(task["id"])
-                    computer_policy.update({})  # Interrupt pending managed desktop operations.
-                    if home.is_dir():
-                        configure(home, binding)
-                    result.update(state="disabled", **readiness(home))
-                else:
-                    if not home.is_dir():
-                        workspace = config.STATE / "workspaces" / name
-                        workspace.mkdir(parents=True, exist_ok=True)
-                        async with asyncio.timeout(60):
-                            await runtime.call({"operation": "create", "profiles": [{"name": name,
-                                "soul": binding.get("soul") or "Work within explicit task and tool grants.",
-                                "description": binding.get("description") or "Deployed ARA agent",
-                                "ara_config": {"terminal": {"backend": "local", "cwd": str(workspace)},
-                                               "ara": {"swarm": dict(DEFAULTS)}}}]})
-                    configure(home, binding)
+                if registered and registered["instance_id"] != binding["instance_id"]:
+                    raise ValueError("Existing standalone instance requires explicit adoption by instance ID")
+                manifest = binding.get("definition")
+                if not manifest:
+                    if home.is_dir() and previous.get("profile_id") == binding["profile_id"]:
+                        # Upgrade a previously managed native owner without
+                        # fabricating its definition from the coordinator's seed.
+                        row = instances.register(name, id=binding["instance_id"], logical_agent_id=binding["profile_id"],
+                            machine_id=binding.get("machine_id"), enabled=True)
+                        instances.write(row["instance_id"], {"generation": binding["generation"]})
+                        state = await runtime.call({"operation": "instance-lifecycle", "action": "status"}, {"native_name": name})
+                        result.update(state="active", owner_epoch=row["owner_epoch"], runtime_state=state["state"],
+                            definition_sync={"state": "unpublished"}, **readiness(home))
+                        save(path, {**result, "enabled": True})
+                        receipts.append(result)
+                        continue
+                    raise ValueError("Publish the agent definition before deploying this instance")
+                if (previous.get("generation") == binding["generation"] and previous.get("enabled") and
+                        (previous.get("definition_revision") == manifest["revision"] or
+                         (previous.get("definition_sync") or {}).get("offered_revision") == manifest["revision"]) and home.is_dir()):
+                    result.update({k: previous.get(k) for k in ("definition_revision", "definition_sync", "runtime_state")})
                     result.update(state="active", **readiness(home))
-                save(path, {**result, "enabled": binding["enabled"]})
+                    status = await runtime.call({"operation": "instance-lifecycle", "action": "status"}, {"native_name": name})
+                    result["runtime_state"] = status["state"] if result["model_configured"] else "setup_required"
+                    if (result.get("definition_sync") or {}).get("state") != "conflict":
+                        result["definition_sync"] = await asyncio.to_thread(definition_status, home) or result.get("definition_sync")
+                    receipts.append(result)
+                    continue
+                new = not home.is_dir()
+                if not new and not previous and not registered:
+                    raise ValueError("An existing native profile needs explicit adoption; deploy under a new native name")
+                save(path, {**result, "enabled": False, "state": "pending"})
+                row = instances.register(name, id=binding["instance_id"], logical_agent_id=binding["profile_id"],
+                    machine_id=binding.get("machine_id"), enabled=False)
+                result["owner_epoch"] = row["owner_epoch"]
+                instances.write(row["instance_id"], {"generation": binding["generation"], "state": "installed"})
+                if new:
+                    workspace = config.STATE / "workspaces" / name
+                    workspace.mkdir(parents=True, exist_ok=True)
+                    async with asyncio.timeout(90):
+                        await runtime.call({"operation": "create", "profiles": [{"name": name, "start_paused": True,
+                            "soul": manifest["files"].get("SOUL.md", "Work within explicit grants."),
+                            "description": binding.get("description", "Deployed ARA agent"),
+                            "ara_config": {"terminal": {"backend": "local", "cwd": str(workspace)}, "ara": {"swarm": dict(DEFAULTS)}}}]})
+                sync = await asyncio.to_thread(apply, home, manifest, initial=new)
+                result.update(definition_sync=sync, definition_revision=sync.get("revision"))
+                if sync["state"] == "conflict":
+                    result["error"] = "Definition has local edits to review: " + ", ".join(sync["conflicts"])[:500]
+                await asyncio.to_thread(configure, home, binding)
+                current = json.loads(path.read_text())
+                if current.get("generation") != binding["generation"]:
+                    raise ValueError("Deployment changed during provisioning; waiting for its latest generation")
+                result.update(state="active", **readiness(home))
+                state = await runtime.call({"operation": "instance-lifecycle", "action": "start"}, {"native_name": name})
+                current = json.loads(path.read_text())
+                if current.get("generation") != binding["generation"]:
+                    await runtime.call({"operation": "instance-lifecycle", "action": "stop"}, {"native_name": name})
+                    raise ValueError("Deployment revoked while native runtime was starting")
+                result["runtime_state"] = state["state"] if result["model_configured"] else "setup_required"
+                save(path, {**result, "enabled": True})
+                instances.write(row["instance_id"], {"enabled": True, "state": result["runtime_state"],
+                    "definition_revision": result.get("definition_revision"), "generation": binding["generation"]})
             except Exception as exc:
-                result.update(state="error", error=getattr(exc, "detail", str(exc))[:1000])
-                # Preserve ownership on collisions; never disable another agent.
-                if previous.get("profile_id") in {None, binding["profile_id"]}:
+                result.update(state="error", runtime_state="error", error=getattr(exc, "detail", str(exc))[:1000])
+                current = json.loads(path.read_text()) if path.exists() else previous
+                if current.get("profile_id") in {None, binding["profile_id"]} and current.get("generation") in {None, binding["generation"]}:
                     save(path, {**result, "enabled": False, "attempted": time.time()})
+                    registered = instances.by_name(name)
+                    if registered and registered.get("logical_agent_id") == binding["profile_id"]:
+                        instances.write(registered["instance_id"], {"enabled": False, "state": "error"})
             receipts.append(result)
-    return receipts
+    return [r for r in receipts if r["native_name"] in offered]

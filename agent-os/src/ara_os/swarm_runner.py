@@ -31,10 +31,9 @@ def profile(name):
     return p
 
 
-def request_for(name, preset, task, operation_id, custom_roles=None):
+def request_for(name, preset, task, operation_id, custom_roles=None, *, policy=None):
     from .swarms import SWARM_PRESET_MAP
-    p = profile(name)
-    cfg = swarm_policy.read(runtime.home(p))
+    cfg = swarm_policy.validate(policy) if policy is not None else swarm_policy.read(runtime.home(profile(name)))
     if not cfg["enabled"] or preset not in cfg["allowed_presets"]:
         raise ValueError("Swarms or this preset are disabled on the execution node")
     if not isinstance(task, str) or not 1 <= len(task.strip()) <= 20000:

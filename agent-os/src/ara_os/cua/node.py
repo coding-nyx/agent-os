@@ -37,10 +37,13 @@ class NodeComputer:
         self.last_error = 0
 
     def status(self):
+        from ..node_deployments import authorized
         cfg = policy.read()
         allowed = "view" in cfg["remote_access"]
         # Never advertise grants for native profiles not assigned to this host.
-        grants = {b["profile_id"]: cfg["grants"].get(b["native_name"], []) for b in self.bindings if b["enabled"]}
+        confirmed = [b for b in self.bindings if b["enabled"] and
+                     authorized(b["native_name"], b["profile_id"], b.get("generation"))]
+        grants = {b["profile_id"]: cfg["grants"].get(b["native_name"], []) for b in confirmed}
         approvals = []
         if allowed:
             for path in sorted((config.STATE / "computer-approvals").glob("*.json")):
@@ -48,7 +51,7 @@ class NodeComputer:
                     value = json.loads(path.read_text())
                 except FileNotFoundError:
                     continue  # A local operator may consume it during discovery.
-                if any(b["enabled"] and b["native_name"] == value["actor"] for b in self.bindings):
+                if any(b["native_name"] == value["actor"] for b in confirmed):
                     approvals.append({k: value[k] for k in ("id", "actor", "action", "created")})
                 if len(approvals) >= 32:
                     break
@@ -74,6 +77,9 @@ class NodeComputer:
         binding = next((b for b in self.bindings if b["profile_id"] == profile_id and b["enabled"]), None)
         if not binding:
             raise ValueError("This profile is no longer enabled and assigned to this node")
+        from ..node_deployments import authorized
+        if not authorized(binding["native_name"], profile_id, binding.get("generation")):
+            raise ValueError("This agent deployment has not been confirmed on this node")
         return binding["native_name"]
 
     async def execute(self, command):
@@ -168,7 +174,9 @@ class NodeComputer:
                 raise ValueError("Invalid approval identity")
             path = config.STATE / "computer-approvals" / (approval_id + ".json")
             value = json.loads(path.read_text()) if path.exists() else {}
-            if not any(b["enabled"] and b["native_name"] == value.get("actor") for b in self.bindings):
+            from ..node_deployments import authorized
+            if not any(b["enabled"] and b["native_name"] == value.get("actor") and
+                       authorized(b["native_name"], b["profile_id"], b.get("generation")) for b in self.bindings):
                 raise ValueError("Approval profile is not enabled and assigned to this node")
             result = (await self.engine.approve(approval_id) if kind == "approve" else
                       await asyncio.to_thread(self.engine.reject, approval_id))

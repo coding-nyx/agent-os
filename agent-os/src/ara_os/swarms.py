@@ -127,6 +127,8 @@ SWARM_MARKER_END = "<!-- ara:agent-swarms:end -->"
 
 def get_profile_swarm_config(profile):
     from . import swarm_policy
+    if profile.get("_runtime_target", {}).get("machine_id", "local") != "local":
+        return swarm_policy.validate(profile["_runtime_target"].get("swarm_config") or {})
     legacy = {**(profile.get("swarms") or {}), "enabled": False}
     try:
         return swarm_policy.read(runtime.home(profile), legacy)
@@ -172,7 +174,17 @@ def spawn_swarm(session, profile_id, conversation_id, preset, task, operation_id
     profile = get(session, profile_id, "profile")
     if not profile.get("enabled"):
         raise Problem("profile_disabled", "Enable this profile before starting swarm work.", 409)
-    cfg = get_profile_swarm_config(profile)
+    from .deployments import resolve, active
+    placement = resolve(profile, machine_id)
+    if placement["machine_id"] != "local":
+        entry = session.get(Entity, "instance-policy:" + active(profile, placement["machine_id"])["instance_id"])
+        from .deployments import receipt_id
+        receipt = session.get(Entity, receipt_id(profile_id, placement["machine_id"]))
+        cfg = receipt.data.get("swarm_config") if receipt and receipt.data.get("generation") == active(profile, placement["machine_id"])["generation"] else None
+        cfg = cfg or (entry.data["config"] if entry and entry.data.get("generation") == active(profile, placement["machine_id"])["generation"] else
+            {**get_profile_swarm_config(profile), "enabled": False})
+    else:
+        cfg = get_profile_swarm_config(profile)
     if not cfg["enabled"]:
         raise Problem("swarms_disabled", "Swarms are disabled for this profile.", 403)
     if preset not in cfg["allowed_presets"]:
@@ -182,7 +194,7 @@ def spawn_swarm(session, profile_id, conversation_id, preset, task, operation_id
     get(session, placement["machine_id"], "machine")
     # Validate task/role shape on the host; the node rechecks its own installed policy.
     try:
-        req = swarm_runner.request_for(profile["native_name"], preset, task, operation_id, custom_roles)
+        req = swarm_runner.request_for(profile["native_name"], preset, task, operation_id, custom_roles, policy=cfg)
     except (ValueError, OSError) as exc:
         raise Problem("invalid_swarm_request", str(exc), 409)
     req["native_name"] = placement["native_name"]

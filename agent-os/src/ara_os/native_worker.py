@@ -22,6 +22,11 @@ async def native_http(request):
     from hermes_cli.gateway_client import _session_ticket
     from hermes_constants import get_hermes_home
     home = get_hermes_home().resolve()
+    # A command is bound to one native home; callers cannot select another one.
+    if home.parent.name == "profiles":
+        request["params"] = {**request.get("params", {}), "profile": home.name}
+        if isinstance(request.get("body"), dict):
+            request["body"] = {**request["body"], "profile": home.name}
     ready = await asyncio.to_thread(ensure_gateway_runtime, home, idle_exit=True)
     if ready.state != "ready" or ready.endpoint is None:
         raise RuntimeError(f"Runtime {ready.state}: {ready.reason_code}")
@@ -38,7 +43,45 @@ async def native_http(request):
 
 async def main(request):
     operation = request["operation"]
-    if operation == "swarm-workspace":
+    if operation in {"definition-preview", "definition-apply"}:
+        from native_definition import capture, apply, digest
+        home = Path(os.environ["HERMES_HOME"])
+        local = capture(home)
+        incoming = request["definition"]
+        if operation == "definition-preview":
+            record = home / ".ara-definition.json"
+            baseline = json.loads(record.read_text()) if record.exists() else {}
+            paths = sorted(set(baseline.get("files", {})) | set(incoming["files"]))
+            emit("result", {"local_revision": local["revision"], "published_revision": incoming["revision"],
+                "changes": [{"path": p, "action": "remove" if p not in incoming["files"] else "add" if p not in local["files"] else "replace"}
+                    for p in paths if local["files"].get(p) != incoming["files"].get(p) or
+                    bool(local.get("modes", {}).get(p) == 0o700) != bool(incoming.get("modes", {}).get(p) == 0o700)],
+                "config_changed": local["config"] != incoming["config"]})
+        else:
+            if request.get("local_revision") != local["revision"]:
+                raise ValueError("Node files changed after the preview; reload before applying")
+            emit("result", apply(home, incoming, force=True, expected_local=request.get("local_revision")))
+    elif operation == "instance-preferences":
+        from native_preferences import preferences
+        emit("result", preferences(Path(os.environ["HERMES_HOME"]), request))
+    elif operation == "instance-lifecycle":
+        from native_instance import lifecycle
+        emit("result", await asyncio.to_thread(lifecycle, Path(os.environ["HERMES_HOME"]), request["action"]))
+    elif operation in {"instance-assets", "instance-asset", "definition-capture", "instance-swarm"}:
+        home = Path(os.environ["HERMES_HOME"])
+        if operation == "instance-swarm":
+            from swarm_policy import read, write
+            cfg = read(home)
+            if request.get("write"):
+                cfg = write(home, {**cfg, **request["config"]})
+            emit("result", cfg)
+        elif operation == "definition-capture":
+            from native_definition import capture
+            emit("result", capture(home))
+        else:
+            from native_instance import assets, asset
+            emit("result", assets(home) if operation == "instance-assets" else asset(home, request))
+    elif operation == "swarm-workspace":
         from native_execution import workspace_operation
         emit("result", await asyncio.to_thread(workspace_operation, request))
     elif operation in {"swarm-worker", "computer-control"}:
@@ -72,6 +115,8 @@ async def main(request):
                 cfg[key] = {**cfg.get(key, {}), **value}
             atomic_config_replace(path, cfg)
             path.chmod(0o600)
+            if profile.get("start_paused"):
+                (staging / "gateway.parked").touch(mode=0o600)
 
         profiles_initialization.finish_profile_layout = finish_without_borrowed_credentials
         results = []
@@ -93,6 +138,30 @@ async def main(request):
             if params.get("session_id") and request["method"] not in {"session.resume", "session.create"}:
                 await client.rpc("session.resume", session_id=params["session_id"])
             emit("result", await client.rpc(request["method"], **params))
+    elif operation == "observe":
+        request["_stage"] = "prompt.events"
+        from hermes_cli.gateway_client import connect_gateway
+        async with connect_gateway() as client:
+            sid, admission = request["session_id"], request["admission_id"]
+            snapshot = await client.rpc("session.resume", session_id=sid)
+            for prompt in snapshot.get("prompts", []):
+                emit("event", {"type": "clarify.request" if prompt.get("kind") == "clarify" else "approval.request",
+                    "payload": prompt, "execution_generation": snapshot.get("execution_generation")})
+            while True:
+                receipt = await client.rpc("prompt.receipt", session_id=sid, admission_id=admission, include_result=True)
+                if receipt.get("status") in {"terminal", "unknown"}:
+                    emit("receipt" if receipt["status"] == "terminal" else "unknown", receipt)
+                    break
+                try:
+                    frame = await asyncio.wait_for(client.events.get(), 2)
+                except TimeoutError:
+                    continue
+                if isinstance(frame, Exception):
+                    raise frame
+                params = frame.get("params", {})
+                event_admission = params.get("admission_id") or params.get("payload", {}).get("admission_id")
+                if params.get("session_id") == sid and (not event_admission or event_admission == admission):
+                    emit("event", params)
     elif operation == "run":
         from hermes_cli.gateway_client import connect_gateway
         async with connect_gateway() as client:
@@ -242,34 +311,27 @@ async def main(request):
             raise RuntimeError("Native restore was incomplete; the original archive is retained.")
         emit("result", {"restored": True, "target": os.environ["HERMES_HOME"]})
     elif operation == "portable":
-        import tempfile
-        import tarfile
-        from types import SimpleNamespace
-        from hermes_cli.backup import _write_full_zip_backup, run_import
-        from hermes_cli.profile_channels import strip_channel_settings
-        from hermes_cli.profiles import _scrub_export_secrets
-        source_home = Path(os.environ["HERMES_HOME"])
-        with tempfile.TemporaryDirectory(dir=source_home.parent, prefix="ara-portable-") as tmp:
-            tmp = Path(tmp)
-            snapshot = _write_full_zip_backup(tmp / "native.zip", source_home)
-            if not snapshot:
-                raise RuntimeError("Cannot capture a consistent native snapshot.")
-            stage = tmp / "profile"
-            os.environ["HERMES_HOME"] = str(stage)
-            if run_import(SimpleNamespace(zipfile=str(snapshot), force=True)):
-                raise RuntimeError("Cannot validate the captured native snapshot.")
-            strip_channel_settings(stage, include_state=True)
-            _scrub_export_secrets(stage)
-            for name in (".env", "auth.json", "vault.key", "vault.json.enc"):
-                (stage / name).unlink(missing_ok=True)
-            if (stage / "cron").exists():
-                disabled = stage / "imported-cron-disabled"
-                if disabled.exists():
-                    shutil.rmtree(disabled)
-                (stage / "cron").rename(disabled)
-            with tarfile.open(request["output"], "w:gz") as archive:
-                archive.add(stage, arcname=request.get("name", "ara-profile"))
+        from native_export import portable
+        portable(Path(os.environ["HERMES_HOME"]), request["output"], request.get("name", "ara-profile"))
         emit("result", {"path": request["output"], "native_databases": "consistent", "credentials": "excluded", "channels": "disabled"})
+    elif operation == "instance-export":
+        import base64
+        import hashlib
+        import tempfile
+        from native_export import portable
+        home = Path(os.environ["HERMES_HOME"])
+        with tempfile.TemporaryDirectory(dir=home.parent, prefix="ara-export-") as tmp:
+            output = Path(tmp) / "profile.tar.gz"
+            portable(home, output, home.name)
+            if output.stat().st_size > 32_000_000:
+                raise ValueError("Use native node tools for exports larger than 32 MB")
+            digest = hashlib.sha256()
+            with output.open("rb") as stream:
+                while chunk := stream.read(512_000):
+                    digest.update(chunk)
+                    emit("event", {"type": "artifact.chunk", "payload": {"data": base64.b64encode(chunk).decode()}})
+            emit("result", {"sha256": digest.hexdigest(), "bytes": output.stat().st_size,
+                "native_databases": "consistent", "credentials": "excluded", "channels": "disabled"})
     elif operation == "profile-state":
         from gateway.control_socket import request_serve_profile_hot, request_unserve_profile
         root = Path(os.environ["HERMES_HOME"])
@@ -314,7 +376,9 @@ def failure_frame(exc, request):
                     "A missing model has not been established; do not delete its database.")
     # A lost reply during submission or execution is not a confirmed refusal.
     ambiguous = (stage in {"prompt.events", "worker.execute", "computer.execute"} or
-                 (stage == "prompt.submit" and not isinstance(exc, GatewayRPCError)))
+                 (stage == "prompt.submit" and not isinstance(exc, GatewayRPCError)) or
+                 (request.get("operation") == "rpc" and request.get("method") != "prompt.receipt" and not isinstance(exc, GatewayRPCError)) or
+                 (request.get("operation") == "http" and request.get("method", "GET") != "GET" and not isinstance(exc, GatewayRPCError)))
     if ambiguous:
         payload.update(code="native_outcome_unknown", detail="The runtime connection stopped. "
             "Inspect the native session outcome before retrying; work may already have run.")

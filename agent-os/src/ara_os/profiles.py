@@ -8,7 +8,7 @@ import yaml
 from . import config, runtime
 from .catalog import PRESETS
 from .launchers import record_default_profile
-from .store import Problem, change, create, get, listing, transaction
+from .store import Problem, change, create, get, listing, transaction, remove
 
 
 def data_token(id: str) -> str:
@@ -16,6 +16,11 @@ def data_token(id: str) -> str:
 
 
 def resolve_model_connection(profile: dict) -> dict | None:
+    owner = profile.get("_runtime_target", {})
+    if owner.get("machine_id", "local") == "local" and config.coordinator_only():
+        return None
+    if owner.get("machine_id", "local") != "local":
+        return owner.get("model_connection") or None
     # Native CLI and dashboard controls both own this file. Application metadata is
     # a display-name cache, never authority for model selection or wire protocol.
     try:
@@ -79,7 +84,7 @@ async def provision(profile: dict):
     return apply_preset_identity(ready)
 
 
-async def create_profile(name: str, preset: str, soul: str | None = None, source: dict | None = None):
+async def create_profile(name: str, preset: str, soul: str | None = None, source: dict | None = None, *, node_only=False):
     if preset not in {p["id"] for p in PRESETS} | {"custom"}:
         raise Problem("unknown_preset", "Choose an installed preset or custom agent.")
     template = next((p for p in PRESETS if p["id"] == preset), PRESETS[0])
@@ -92,6 +97,15 @@ async def create_profile(name: str, preset: str, soul: str | None = None, source
             "logical_profile_id": source.get("logical_profile_id", source["id"]) if source else id,
             "clone_from": source["native_name"] if source else None}, id=id)
     try:
+        if config.coordinator_only() or node_only:
+            from .native_definition import digest
+            from .definitions import publish
+            manifest = {"contract": "ara-definition/1", "files": {"SOUL.md": profile["soul"]}, "config": {},
+                "excluded": ["credentials", "memory", "sessions", "channels", "schedules", "machine paths", "tool grants"]}
+            manifest["revision"] = digest(manifest)
+            with transaction() as session:
+                publish(session, profile, manifest, owner="definition")
+                return change(session, id, {"deployments": [], "execution_placement": None, "provision_state": "definition_ready"})
         return await provision(profile)
     except Problem as exc:
         with transaction() as session:
@@ -99,6 +113,15 @@ async def create_profile(name: str, preset: str, soul: str | None = None, source
 
 
 async def seed():
+    if config.coordinator_only():
+        with transaction() as session:
+            if not any(m["id"] == "local" for m in listing(session, "machine")):
+                create(session, "machine", {"name": "Coordinator", "role": "coordinator", "state": "local", "endpoint": config.API_URL}, id="local")
+            existing_presets = {p["preset"] for p in listing(session, "profile")}
+        for preset in PRESETS:
+            if preset["id"] not in existing_presets:
+                await create_profile(preset["name"], preset["id"])
+        return
     config.RUNTIME_HOME.mkdir(parents=True, exist_ok=True)
     (config.STATE / "workspaces").mkdir(parents=True, exist_ok=True)
     if not (config.RUNTIME_HOME / "config.yaml").exists():
@@ -116,6 +139,8 @@ async def seed():
         if not machines:
             create(session, "machine", {"name": "This machine", "role": "host", "state": "local", "endpoint": config.API_URL}, id="local")
     for profile in existing:
+        if profile.get("provision_state") == "definition_ready":
+            continue  # Node-only definitions never acquire a host runtime on restart.
         record_default_profile(config.STATE, profile)
         if not (config.STATE / ("data-token-" + profile["id"])).exists():
             await provision(profile)
@@ -148,6 +173,12 @@ async def delete_profile(id: str):
         profile = get(session, id, "profile")
         if profile.get("preset") == "ara":
             raise Problem("cannot_delete_orchestrator", "Ara is the system orchestrator and cannot be deleted.", 400)
+        change(session, id, {"enabled": False, "pending_delete": True})
+    if runtime.home(profile).is_dir():
+        stopped = await runtime.call({"operation": "instance-lifecycle", "action": "stop"}, profile)
+        if stopped["state"] != "stopped":
+            raise Problem("native_stop_pending", "Agent paused. Native shutdown is still pending; retry deletion once its work has stopped", 409)
+    with transaction() as session:
         for run in listing(session, "run"):
             if run.get("profile_id") == id:
                 remove(session, run["id"], "run")

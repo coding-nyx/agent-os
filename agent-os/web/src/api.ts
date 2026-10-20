@@ -1,6 +1,11 @@
 export type Item = { id: string; revision: number; [key: string]: any };
 // Runtime diagnostics, commands, paths and model output are user content, not UI branding.
 export const brand = (s: unknown) => String(s ?? '');
+
+export function profilePath(profile: Item, suffix: string): string {
+  const machine = profile._runtime_target?.machine_id;
+  return `/profiles/${profile.id}${suffix}${machine ? (suffix.includes('?') ? '&' : '?') + 'machine_id=' + encodeURIComponent(machine) : ''}`;
+}
 let computerSession: Promise<string> | null = null;
 
 export function computerToken(): Promise<string> {

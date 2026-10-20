@@ -127,6 +127,8 @@ def initialize():
                     data.update(enabled=False, provision_state="ready", model_connection=None)
                 if row["kind"] == "machine":
                     data["state"] = "needs_reconnection" if row["id"] != "local" else "local"
+                if row["kind"] == "runtime_command":
+                    data.update(state="unknown", payload="")
                 if row["kind"] == "channel":
                     data["state"] = "disabled_after_restore"
                 if row["kind"] == "swarm_run" and data.get("state") in {"queued", "running"}:
@@ -148,5 +150,5 @@ def initialize():
     # An unclean process restart cannot prove the outcome of an executing native turn.
     with transaction() as session:
         for run in listing(session, "run"):
-            if run.get("state") in {"running", "accepted", "waiting", "cancel_requested"}:
+            if run.get("state") in {"running", "accepted", "waiting", "cancel_requested"} and not run.get("runtime_command_id"):
                 change(session, run["id"], {"state": "unknown", "error": "Server restarted. Resume the native conversation to inspect its outcome."})

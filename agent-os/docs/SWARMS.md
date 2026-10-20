@@ -60,6 +60,57 @@ worker results survive synthesis failure or cancellation. A late cancellation
 cannot relabel an already terminal local task. Host cancellation is a request
 until the execution owner acknowledges it. Existing event receipts remain immutable.
 
+## Deploy an agent to several machines
+
+Current scope: deployment provisions a native profile and routes managed swarm
+and computer operations. Dashboard conversations still use the host runtime;
+full native service lifecycle and live profile synchronization are covered by the
+[node-owned Hermes runtime fix plan](NODE-AGENT-RUNTIME-FIX-PLAN.md).
+
+Open an agent's **Deployments** tab or **Deploy / manage machines** button. The
+machine list shows assignments, online/offline state and node-confirmed deployment
+state. Select one or several machines, or **Select all nodes**, then choose
+**Deploy to selected**. This adds or re-enables those deployments without moving
+the agent off its other machines. **Machines & sync** includes an agent deployment
+directory and a list of assigned agents on each machine.
+
+The paired node worker provisions missing native profiles and reports success or
+failure. An existing native profile retains its model, credentials, tool policy
+and history. The advanced profile-name field can select an already-installed
+profile; existing deployments keep their names. Names reserved by another agent
+on the same node are refused, including disabled instances whose history remains.
+New instances need their own model and swarm permission setup; credentials and
+desktop grants are not copied from the host. A confirmed enabled deployment is
+not proof that its provider connection or native driver is usable.
+
+**Undeploy selected** or a row's **Undeploy** disables that agent on those
+machines. New host-managed jobs and computer calls are refused there immediately.
+The node applies a persistent disabled marker and requests cancellation of its
+existing managed swarm work when it receives the update. ARA standalone swarm
+and computer tools also respect that marker. Files, credentials and history are
+retained for an explicit redeployment. Other agents and node pairing stay enabled.
+These controls govern ARA-managed execution, not independently launched Hermes
+processes or arbitrary OS programs.
+
+Offline nodes display deployment/disable pending until they reconnect and confirm
+the current request. Stale reports cannot confirm a superseded request, and old
+jobs remain cancelled after a fast undeploy/redeploy. Node workers refresh host
+authority after provisioning before admitting tasks. Removed managed bindings
+are disabled; native profiles that were never managed by deployment stay local.
+
+One enabled deployment is the default execution machine. **Use by default**
+changes that choice; the swarm launch form can choose any enabled deployment for
+a specific run. Each run has exactly one execution owner. MCP `ara_spawn_swarm`
+also accepts an optional `machine_id`, and `ara_list_swarms` includes deployment
+choices. Deploying to several machines does not broadcast a submitted task.
+Computer tools list granted desktops across enabled deployments and accept the
+chosen desktop's device ID. Fully undeployed agents do not fall back to the host.
+
+Update and restart both the host API and each node worker for this protocol.
+Older workers cannot acknowledge disablement and remain pending in the dashboard.
+This feature requires no schema migration; desired state and receipts use the
+existing entity store. Legacy single-machine placements remain readable.
+
 ## Standalone node execution
 
 Install ARA and its pinned runtime, and configure the native profile/model on the

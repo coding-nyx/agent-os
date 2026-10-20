@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ChevronRight, Loader2, Monitor, Network, RefreshCw, Server } from 'lucide-react';
-import { api, Item, post } from './api';
+import { profilePath, api, Item, post } from './api';
 
 export type MachineDeployment = { machine_id: string; machine_name: string; available: boolean; online: boolean;
   native_name: string; desired_enabled: boolean; enabled: boolean; state: string; error?: string;
@@ -14,12 +14,18 @@ export function desiredDeployments(profile: Item): { machine_id: string; native_
 }
 
 export function deploymentLabel(row: MachineDeployment) {
+  if (!row.online && row.state === 'active') return 'Last confirmed enabled';
+  if (!row.online && row.state === 'disabled') return 'Last confirmed disabled';
   const names: Record<string, string> = { active: 'Enabled on machine', disabled: 'Disabled on machine',
     not_deployed: 'Not deployed', deploy_pending: 'Deployment pending', disable_pending: 'Disable pending', error: 'Needs attention' };
   return names[row.state] || row.state;
 }
 
 export function AgentDeployments({ profile, refresh }: { profile: Item; refresh: () => Promise<void> }) {
+  const [definition, setDefinition] = useState<any>(null);
+  const [preview, setPreview] = useState<any>(null);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [adoption, setAdoption] = useState('');
   const [data, setData] = useState<DeploymentSet | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [nativeName, setNativeName] = useState(profile.native_name);
@@ -30,7 +36,12 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
   const load = useCallback(async () => {
     try {
       const next = await api<DeploymentSet>('/profiles/' + profile.id + '/deployments');
-      if (alive.current) { setData(next); setError(''); }
+      if (alive.current) setData(previous => previous && previous.revision > next.revision ? previous : next);
+      const [manifest, machines] = await Promise.all([api('/profiles/' + profile.id + '/definition'), api<Item[]>('/machines')]);
+      if (alive.current) {
+        setDefinition(manifest);
+        setInventory(machines.flatMap(m => (m.instances || []).filter((i: any) => !i.logical_agent_id).map((i: any) => ({...i, machine_id:m.id, machine_name:m.name}))));
+      }
     } catch (e) { if (alive.current) setError((e as Error).message); }
   }, [profile.id]);
   useEffect(() => {
@@ -65,7 +76,7 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
       <span><strong>{rows.filter(r => r.state === 'active').length}</strong> confirmed enabled</span>
       <span><strong>{rows.filter(r => r.state.endsWith('_pending')).length}</strong> awaiting node confirmation</span></div>
     {!data && !error && <p role="status"><Loader2 size={16} className="spin" /> Loading machine deployments…</p>}
-    {error && <div className="notice warning" role="alert">{error}<button onClick={load}>Reload settings</button></div>}
+    {error && <div className="notice warning" role="alert">{error}<button onClick={() => { setError(''); load(); }}>Reload settings</button></div>}
     {message && <div className="notice" role="status">{message}</div>}
     {data && !data.profile_enabled && <div className="notice warning">This agent is paused globally. Deployments remain assigned; enable the agent to resume them.</div>}
     <div className="deployment-selection"><div className="button-row">
@@ -83,6 +94,9 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
         <div className="deployment-machine-state"><span className={'deployment-state ' + (row.state === 'active' ? 'is-enabled' : '')}>
           <i />{deploymentLabel(row)}</span>
           {row.error && <small className="error">{row.error}</small>}
+          {(row as any).runtime_state && <small>Runtime: {(row as any).runtime_state.replaceAll('_',' ')}</small>}
+          {(row as any).definition_sync?.state === 'conflict' && <small>Definition conflict: {(row as any).definition_sync.conflicts.join(', ')}</small>}
+          {(row as any).definition_sync?.state === 'local_changes' && <small>Local definition edits · publish this instance to share them</small>}
           {row.state === 'active' && row.machine_id !== 'local' && row.model_configured === false && <small>Model setup needed on this node</small>}
           {!row.online && row.state.endsWith('_pending') && <small>Applies when the node reconnects</small>}</div>
         <div className="deployment-machine-actions">{row.desired_enabled && data?.primary_machine_id === row.machine_id
@@ -92,10 +106,28 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
       </article>)}
     </div>
     {!nodes.length && <p className="hint">Pair a machine in Machines &amp; sync to deploy this agent to a node.</p>}
+    <section className="padded" aria-label="Profile definition sync">
+      <h3>Published profile definition</h3><p className="hint">Identity, instructions and skill files are versioned. Model accounts, memory, sessions, channels and machine grants remain with each instance.</p>
+      <p>{definition?.revision ? `Revision ${definition.revision.slice(0, 12)} · published from ${definition.owner_machine}` : 'No published revision yet'}</p>
+      <div className="button-row"><button disabled={busy || !profile._runtime_target} onClick={async () => {
+        setBusy(true); setError(''); try { await post(profilePath(profile, '/definition/publish'), {revision:definition?.revision}); setMessage('Published the selected instance’s current definition. Nodes will compare it with their local files.'); await load(); } catch(e) {setError((e as Error).message);} finally {setBusy(false);}
+      }}>Publish selected instance</button><button disabled={busy || !definition?.revision || !profile._runtime_target} onClick={async () => {
+        setBusy(true); setError(''); try {setPreview(await post(profilePath(profile, '/definition/preview'), {}));} catch(e) {setError((e as Error).message);} finally {setBusy(false);}
+      }}>Review published changes</button></div>
+      {preview && <div className="notice"><strong>Apply published definition to {profile._runtime_target?.machine_name}</strong>
+        <p>This replaces changed definition files on this instance. Review identity and skills before applying.</p>
+        <ul>{preview.changes.map((c:any) => <li key={c.path}>{c.action} · {c.path}</li>)}</ul>{preview.config_changed && <p>Portable native configuration also changes.</p>}
+        <div className="button-row"><button onClick={() => setPreview(null)}>Close review</button><button disabled={busy} onClick={async () => {setBusy(true); try {await post(profilePath(profile, '/definition/apply'), preview);setPreview(null);setMessage('Published definition applied to the selected instance.');await load();} catch(e) {setError((e as Error).message);} finally {setBusy(false);}}}>Apply reviewed changes</button></div>
+      </div>}
+      {inventory.length > 0 && <details><summary>Adopt an existing standalone instance</summary><p className="hint">Pairing keeps existing instances independent. Adoption links the selected native instance to this agent; its credentials and sessions stay on that node. Conflicting files require review.</p>
+        <label>Standalone instance<select value={adoption} onChange={e => setAdoption(e.target.value)}><option value="">Choose an instance</option>{inventory.map(i => <option key={i.instance_id} value={i.instance_id}>{i.machine_name} · {i.native_name} · {i.instance_id.slice(0,8)}</option>)}</select></label>
+        <button disabled={!adoption || busy} onClick={async () => {const instance=inventory.find(i=>i.instance_id===adoption);if(!instance||!data)return;setBusy(true);try {await post('/profiles/'+profile.id+'/deployments',{action:'adopt',machine_ids:[instance.machine_id],instance_id:instance.instance_id,revision:data.revision});setAdoption('');await load();await refresh();} catch(e) {setError((e as Error).message);} finally {setBusy(false);}}}>Adopt selected instance</button>
+      </details>}
+    </section>
     <footer className="deployment-footer"><details><summary>Profile name for new deployments</summary>
       <label>Native profile name<input value={nativeName} onChange={e => setNativeName(e.target.value)} maxLength={64}
         pattern="[a-z0-9][a-z0-9_-]{0,63}" disabled={busy} /></label>
-      <p className="hint">Use an installed profile name to keep its model setup. Existing deployments keep their current names.</p></details>
+      <p className="hint">Choose an unused native profile name for a new deployment. Use explicit adoption to link an existing standalone instance.</p></details>
       <div className="button-row"><button disabled={busy || !selected.some(id => rows.find(r => r.machine_id === id)?.desired_enabled)} onClick={() => apply('undeploy')}>Undeploy selected</button>
         <button className="primary" disabled={busy || !selected.length || selected.some(id => !rows.find(r => r.machine_id === id)?.available) || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(nativeName)}
           onClick={() => apply('deploy')}>{busy ? <Loader2 size={15} className="spin" /> : <Network size={15} />}Deploy to selected</button></div></footer>
@@ -118,7 +150,7 @@ export function MachineAgentDeployments({ open }: { open: (id: string) => void }
       <h2>Agents across your machines</h2><p>See every agent’s assignments and the latest node-confirmed state.</p></div><Network size={22} /></header>
     {error && <div role="alert" className="notice warning">{error}</div>}
     <div className="deployment-directory">{data.map(p => <button key={p.profile_id} onClick={() => open(p.profile_id)}>
-      <strong>{p.profile_name}</strong><span>{p.machines.filter(m => m.desired_enabled || m.state === 'disable_pending').map(m =>
+      <strong>{p.profile_name}</strong><span>{p.machines.filter(m => m.desired_enabled || ['disable_pending', 'error'].includes(m.state)).map(m =>
         <span className="deployment-directory-machine" key={m.machine_id}>{m.machine_name}<small>{deploymentLabel(m)}{!m.online ? ' · offline' : ''}</small></span>)}
         {!p.machines.some(m => m.desired_enabled) && <small>No assigned machines</small>}</span><ChevronRight size={16} /></button>)}</div>
   </section>;

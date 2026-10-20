@@ -68,8 +68,20 @@ async def exchange(enrollment):
         response = await client.post(base + "/nodes/deployments/status", headers=headers,
             json={"machine_id": enrollment["machine_id"], "receipts": deployment_receipts})
         response.raise_for_status()
+        # Provisioning can take time. Fetch current authority before admitting
+        # work, and apply intervening stops without provisioning further agents.
+        response = await client.post(base + "/nodes/tasks/poll", headers=headers,
+                                     json={"machine_id": enrollment["machine_id"]})
+        response.raise_for_status()
+        data = response.json()
+        await reconcile(data["bindings"], provision=False)
+        bindings = {b["native_name"]: b["profile_id"] for b in data["bindings"]}
+        ready = {r["profile_id"]: r["generation"] for r in deployment_receipts if r["state"] == "active"}
         j = swarm_runner.journal()
         for task in data["tasks"]:
+            if not task.get("cancel_requested") and (task["profile_id"] not in ready or
+                    ready[task["profile_id"]] != task["request"].get("deployment_generation", ready[task["profile_id"]])):
+                continue
             local = swarm_runner.admit(task["request"], task["id"])
             if task.get("cancel_requested"):
                 j.cancel(task["id"])
@@ -131,8 +143,10 @@ def placement(session, profile_id, body):
 def bindings(session, machine_id):
     from .store import listing
     from .deployments import entries, binding
-    return [binding(p, e) for p in listing(session, "profile") for e in entries(p)
-            if e["machine_id"] == machine_id]
+    from .definitions import current, ensure
+    return [{**binding(p, e), "definition": (current(session, p) or
+            (ensure(session, p) if runtime.home(p).is_dir() else {})).get("manifest")}
+            for p in listing(session, "profile") for e in entries(p) if e["machine_id"] == machine_id]
 
 
 def receive(session, machine_id, body):

@@ -1,6 +1,39 @@
 # v0.1 verification
 
+## 20 October 2026 — node-owned native runtime implementation
+
+- Added local instance identities and ownership epochs, node-only creation,
+  standalone lifecycle and Linux service commands, and persisted coordinator mode.
+- Normal chat and native settings use the selected node through an encrypted
+  command inbox and ordered event outbox. Conversations retain their owner;
+  observer recovery reads receipts without resubmitting admitted prompts.
+- Added actual-file definition publication, local overlay/conflict handling,
+  reviewed application, explicit adoption and coherent remote profile export.
+- Python compilation, the TypeScript/Vite production build and `git diff --check`
+  passed. No test suite, paid inference, remote deployment, service installation
+  or physical desktop checks were run for these additions. The delivery gates
+  in `NODE-AGENT-RUNTIME-FIX-PLAN.md` remain outstanding live acceptance checks.
+- The local dashboard service was stopped with no pending runs or swarms. It
+  was started on the existing configured address; health reports database and
+  application ready, and the active browser receives dashboard responses.
+
 Current-instance validation on x86 Linux; browser timezone Asia/Kolkata. This is not a live deployment or a fresh cloud-machine restoration claim.
+
+## 20 October 2026 — deployments on multiple machines
+
+- Added per-agent deployment management, node selection and bulk deploy/undeploy,
+  a machine/agent directory, default execution selection and per-run machine choice.
+- Desired assignments are separate from node-confirmed state. Generation-bound
+  receipts cannot confirm superseded requests; disabled assignments remain as
+  tombstones until nodes acknowledge them. Undeploy cancels managed work and
+  blocks new admission without deleting node data or unpairing other agents.
+- Node reconciliation writes persistent disable markers, preserves existing
+  model/tool configuration, disables removed managed bindings and refreshes
+  authority after provisioning. Host and standalone computer tools recheck
+  deployment authority; MCP can select among enabled machines and granted desktops.
+- Production TypeScript/Vite build, Python compilation and whitespace checks
+  passed. No tests or live multi-node deployment exercises were run for this
+  change. Earlier regression results below do not cover this implementation.
 
 ## 20 October 2026 — remote node desktop implementation
 

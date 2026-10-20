@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Bot, Brain, Check, CheckCircle2, Circle, Code2, Compass, Loader2, MessageSquare, Monitor, Play, Settings2, Shield, Sparkles, Target, Users, Wallet, Activity, X } from 'lucide-react';
-import { api, Item, patch, post, put } from './api';
+import { profilePath, api, Item, patch, post, put } from './api';
 import './agents.css';
 import { desiredDeployments } from './deployments';
 
@@ -26,7 +26,7 @@ export function AgentDirectory({ profiles, open, create }: { profiles: Item[]; o
   return <div className="agents-directory">
     <div className="page-title"><div><div className="eyebrow">A SMALL TEAM, BUILT AROUND YOU</div><h1>Your agents</h1><p>One orchestrator. Specialists with their own context, tools, and memories.</p></div><button onClick={create}><Bot size={16} />Create agent</button></div>
     <div className="agents-search"><label><span className="sr-only">Search agents</span><Compass size={17} /><input placeholder="Find an agent or a kind of work…" value={query} onChange={e => setQuery(e.target.value)} /></label><span>{active.length} agents · {active.filter(p => p.chat_ready).length} with a model selected</span></div>
-    {ara && <button className="orchestrator-card" onClick={() => open(ara.id)} aria-label={`Open agent ${ara.name}`}><div className="orchestrator-mark"><Sparkles size={32} strokeWidth={1.3} /></div><div><span className="agent-kicker">YOUR HOME BASE · SYSTEM ORCHESTRATOR</span><h2>{ara.name}</h2><p>{ara.preset_spec?.description || ara.description}</p><div style={{display:'flex', alignItems:'center', gap:8}}><AgentReadiness profile={ara} />{ara.execution_placement?.machine_id && ara.execution_placement.machine_id !== 'local' && <span style={{fontSize:10, color:'#365647', background:'#e4ede2', padding:'2px 6px', borderRadius:4, display:'inline-flex', alignItems:'center', gap:4}}><Monitor size={11} />Node: {ara.execution_placement.machine_id}</span>}</div></div><span className="orchestrator-cta">Open workspace<ArrowRight size={18} /></span></button>}
+    {ara && <button className="orchestrator-card" onClick={() => open(ara.id)} aria-label={`Open agent ${ara.name}`}><div className="orchestrator-mark"><Sparkles size={32} strokeWidth={1.3} /></div><div><span className="agent-kicker">YOUR HOME BASE · SYSTEM ORCHESTRATOR</span><h2>{ara.name}</h2><p>{ara.preset_spec?.description || ara.description}</p><div className="agent-placement-badges"><AgentReadiness profile={ara} /><span className="deployment-card-count"><Monitor size={11} />{desiredDeployments(ara).length} assigned machines</span></div></div><span className="orchestrator-cta">Open workspace<ArrowRight size={18} /></span></button>}
     <div className="agent-section-label"><h2>Your specialists</h2><span>Different strengths. Clear boundaries.</span></div>
     <div className="profile-grid specialist-grid">{matches.filter(p => p.id !== ara?.id).map(p => {
       const Icon = icons[p.preset] || Bot;
@@ -70,13 +70,13 @@ export function AgentSetup({ profile: p, refresh }: AgentProps & { refresh: () =
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
   const load = useCallback(async () => {
-    try { const next = await api<Configuration>(`/profiles/${p.id}/configuration`); setData(next); setValues(next.values); setError(''); }
+    try { const next = await api<Configuration>(profilePath(p, `/configuration`)); setData(next); setValues(next.values); setError(''); }
     catch (e) { setError((e as Error).message); }
   }, [p.id]);
   useEffect(() => { load(); }, [load]);
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (!data) return; setBusy(true); setError(''); setSaved('');
-    try { const result = await put<Configuration>(`/profiles/${p.id}/configuration`, { values, revision: data.revision, identity_hash: data.identity_hash }); setData(result); setValues(result.values); setSaved('Preferences saved for new conversations. Existing sessions keep their current context.'); await refresh(); }
+    try { const result = await put<Configuration>(profilePath(p, `/configuration`), { values, revision: data.revision, identity_hash: data.identity_hash }); setData(result); setValues(result.values); setSaved('Preferences saved for new conversations. Existing sessions keep their current context.'); await refresh(); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -168,7 +168,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
 
   const load = useCallback(async () => {
     try {
-      const res = await api(`/profiles/${p.id}/swarms`);
+      const res = await api(profilePath(p, `/swarms`));
       setData(res);
       setEnabled(!!res.config?.enabled);
       setTriggerMode(res.config?.trigger_mode || 'intelligent');
@@ -194,7 +194,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
     try {
       setStatus('Saving swarm configuration…');
       await act(async () => {
-        await put(`/profiles/${p.id}/swarms`, {
+        await put(profilePath(p, `/swarms`), {
           enabled: newEnabled,
           trigger_mode: newTrigger,
           allowed_presets: newAllowed
@@ -223,7 +223,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
     setSubmitting(true);
     setError('');
     try {
-      const run = await post(`/profiles/${p.id}/swarms/spawn`, {
+      const run = await post(profilePath(p, `/swarms/spawn`), {
         preset: deployPreset,
         task: taskText.trim(),
         operation_id: deploymentId, machine_id: executionMachine || undefined,

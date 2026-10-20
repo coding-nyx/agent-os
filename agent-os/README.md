@@ -13,6 +13,9 @@ This directory contains the core implementation of **ARA Agent OS**:
 
 ## Getting Started
 
+See [Native agents on nodes](docs/NODE-RUNTIMES.md) for standalone setup,
+node-owned dashboard chat, deployment and profile sync.
+
 ### 1. Setup & Installation
 ```bash
 # Automated setup (provisions venv, dependencies, PostgreSQL schema, and seed profiles)
@@ -96,6 +99,7 @@ Run specific test modules:
 
 - [CUA & System Control Architecture](docs/CUA_SYSTEM_CONTROL.md)
 - [Multi-Agent Swarm Intelligence](docs/SWARMS.md)
+- [Node-Owned Hermes Runtime Fix Plan](docs/NODE-AGENT-RUNTIME-FIX-PLAN.md)
 - [Host-Node Networking & AgentMesh Roadmap](../docs/design/ARA-NODE-HOST-NETWORKING-AND-AGENTMESH-ROADMAP.md)
 - [Sovereign Voice & Visual Avatar Roadmap](../docs/design/ARA-VOICE-AND-AVATAR-ROADMAP.md)
 - [Agent Presets & Specialist Roles](docs/AGENT-PRESETS.md)
