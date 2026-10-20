@@ -142,6 +142,42 @@ async def set_learning(profile: dict, policy: str):
         return change(session, profile["id"], {"learning": policy})
 
 
+async def delete_profile(id: str):
+    import shutil
+    with transaction() as session:
+        profile = get(session, id, "profile")
+        if profile.get("preset") == "ara":
+            raise Problem("cannot_delete_orchestrator", "Ara is the system orchestrator and cannot be deleted.", 400)
+        for run in listing(session, "run"):
+            if run.get("profile_id") == id:
+                remove(session, run["id"], "run")
+        for srun in listing(session, "swarm_run"):
+            if srun.get("profile_id") == id:
+                remove(session, srun["id"], "swarm_run")
+        for ch in listing(session, "channel"):
+            if ch.get("profile_id") == id:
+                remove(session, ch["id"], "channel")
+        for other in listing(session, "profile"):
+            targets = other.get("delegation_targets") or []
+            if id in targets:
+                change(session, other["id"], {"delegation_targets": [t for t in targets if t != id]})
+        remove(session, id, "profile")
+
+    native_name = profile.get("native_name")
+    if native_name:
+        rt_dir = config.RUNTIME_HOME / "profiles" / native_name
+        if rt_dir.exists():
+            shutil.rmtree(rt_dir, ignore_errors=True)
+        ws_dir = config.STATE / "workspaces" / native_name
+        if ws_dir.exists():
+            shutil.rmtree(ws_dir, ignore_errors=True)
+    dt_file = config.STATE / f"data-token-{id}"
+    if dt_file.exists():
+        dt_file.unlink(missing_ok=True)
+
+    return {"status": "deleted", "id": id, "name": profile.get("name")}
+
+
 async def bind(profile: dict, bindings: list[dict]):
     if not isinstance(bindings, list) or len(bindings) > 200 or any(not isinstance(b, dict) or not isinstance(b.get("dataset_id"), str) for b in bindings):
         raise Problem("invalid_binding", "Bind a list of dataset IDs and read/write permissions.")

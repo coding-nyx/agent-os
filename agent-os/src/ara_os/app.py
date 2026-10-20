@@ -446,8 +446,15 @@ def cancel_swarm(swarm_id: str):
 @app.put("/api/v1/profiles/{id}/placement")
 def profile_placement(id: str, body: dict):
     from .node_execution import placement
+    from .deployments import active
     with transaction() as session:
-        return placement(session, id, body)
+        before = bool(active(get(session, id, "profile"), "local"))
+        result = placement(session, id, body)
+        local_changed = before != bool(active(result, "local"))
+    if local_changed:
+        from .cua import policy
+        policy.update({})
+    return result
 
 
 @app.get("/api/v1/profiles/{id}/deployments")
@@ -459,9 +466,15 @@ def profile_deployments(id: str):
 
 @app.post("/api/v1/profiles/{id}/deployments")
 def update_profile_deployments(id: str, body: dict):
-    from .deployments import update
+    from .deployments import update, active
     with transaction() as session:
-        return update(session, id, body)
+        before = bool(active(get(session, id, "profile"), "local"))
+        result = update(session, id, body)
+        local_changed = before != bool(active(get(session, id, "profile"), "local"))
+    if local_changed:
+        from .cua import policy
+        policy.update({})
+    return result
 
 
 @app.get("/api/v1/deployments")
@@ -494,6 +507,11 @@ async def profile_patch(id: str, body: PatchBody):
         await runtime.call({"operation": "profile-state", "name": profile["native_name"], "enabled": bool(body.values["enabled"])})
     with transaction() as session:
         return change(session, id, body.values, body.revision)
+
+
+@app.delete("/api/v1/profiles/{id}")
+async def profile_delete(id: str):
+    return await profiles.delete_profile(id)
 
 
 @app.get("/api/v1/profiles/{id}/instances")
@@ -1224,14 +1242,8 @@ async def mcp_route(profile_id: str, request: Request):
     if method == "initialize":
         result = {"protocolVersion": body.get("params", {}).get("protocolVersion", "2025-03-26"), "capabilities": {"tools": {}}, "serverInfo": {"name": "ARA data", "version": __version__}}
     elif method == "tools/list":
-        from .cua import policy as computer_policy
         from .cua import remote
-        try:
-            target = remote.profile_target(find(profile_id, "profile"))
-            cfg = remote.state(target) if target else computer_policy.read()
-            allowed = "view" in cfg["grants"].get(profile_id, [])
-        except Problem:
-            allowed = False
+        allowed = bool(remote.view_targets(find(profile_id, "profile")))
         result = {"tools": [t for t in mcp.TOOLS if allowed or not t["name"].startswith("ara_cua_")]}
     elif method == "tools/call":
         params = body.get("params", {})
@@ -1250,9 +1262,14 @@ async def mcp_route(profile_id: str, request: Request):
                 if not profile["enabled"]:
                     raise Problem("profile_disabled", "This profile is disabled", 403)
                 from .cua import remote
-                value = (await remote.invoke(profile, params["name"], params.get("arguments", {}))
-                         if remote.profile_target(profile) else
-                         await invoke_cua_tool(params["name"], params.get("arguments", {}), actor=profile_id))
+                arguments = params.get("arguments", {})
+                if params["name"] == "ara_cua_list_devices":
+                    found = await remote.profile_devices(profile)
+                    value = {"devices": found, "count": len(found)}
+                else:
+                    value = (await remote.invoke(profile, params["name"], arguments)
+                             if remote.profile_target(profile, arguments.get("device_id")) else
+                             await invoke_cua_tool(params["name"], arguments, actor=profile_id))
                 result = {"content": result_content(value), "isError": value.get("success") is False and
                           value.get("metadata", {}).get("state") != "pending"}
             else:
@@ -1277,6 +1294,24 @@ def storage_export():
 # ARA-managed native computer control. Desktop grants are not dataset grants.
 from .cua import CUAAction, cua_engine
 from .cua import remote as remote_computer
+
+
+def host_computer_identity_guard(actor):
+    try:
+        uuid.UUID(actor)
+    except ValueError:
+        return None  # Native-name identities use standalone policy.
+    from .deployments import active
+    try:
+        profile = find(actor, "profile")
+    except Problem:
+        return "This agent profile no longer exists"
+    if not active(profile, "local"):
+        return "This agent is not enabled on the host machine"
+    return None
+
+
+cua_engine.identity_guard = host_computer_identity_guard
 
 
 @app.get("/api/v1/cua/session")

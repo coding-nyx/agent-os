@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Bot, Brain, Check, CheckCircle2, Circle, Code2, Compass, Loader2, MessageSquare, Monitor, Play, Settings2, Shield, Sparkles, Target, Users, Wallet, Activity, X } from 'lucide-react';
 import { api, Item, patch, post, put } from './api';
 import './agents.css';
+import { desiredDeployments } from './deployments';
 
 interface AgentProps { profile: Item; }
 interface SetupField { id: string; label: string; type: string; required: boolean; options: string[]; hint: string; default: string; min: number | null; max: number | null; }
@@ -29,9 +30,9 @@ export function AgentDirectory({ profiles, open, create }: { profiles: Item[]; o
     <div className="agent-section-label"><h2>Your specialists</h2><span>Different strengths. Clear boundaries.</span></div>
     <div className="profile-grid specialist-grid">{matches.filter(p => p.id !== ara?.id).map(p => {
       const Icon = icons[p.preset] || Bot;
-      const isRemote = p.execution_placement?.machine_id && p.execution_placement.machine_id !== 'local';
+      const deployedCount = desiredDeployments(p).length;
       return <button className={`profile-card specialist-card agent-${p.preset}`} key={p.id} onClick={() => open(p.id)} aria-label={`Open agent ${p.name}`}>
-        <div className="specialist-card-top"><span className={`avatar ${themes[p.preset] || 'sage'}`}><Icon size={23} strokeWidth={1.5} /></span><div style={{display:'flex', alignItems:'center', gap:6}}>{isRemote && <span style={{fontSize:10, color:'#365647', background:'#e4ede2', padding:'2px 6px', borderRadius:4, display:'inline-flex', alignItems:'center', gap:4}}><Monitor size={11} />Node</span>}<AgentReadiness profile={p} /></div></div>
+        <div className="specialist-card-top"><span className={`avatar ${themes[p.preset] || 'sage'}`}><Icon size={23} strokeWidth={1.5} /></span><div className="agent-placement-badges"><span className="deployment-card-count"><Monitor size={11} />{deployedCount} machine{deployedCount === 1 ? '' : 's'}</span><AgentReadiness profile={p} /></div></div>
         <h3>{p.name}</h3><strong className="specialist-role">{p.preset_spec?.role || p.description}</strong><p>{p.preset_spec?.description || 'An independent agent configured for your work.'}</p>
         <div className="specialist-capabilities">{(p.preset_spec?.capabilities || ['Native tools', 'Private memory']).slice(0, 2).map((c: string) => <span key={c}>{c}</span>)}</div>
         <footer><span>{p.context_ready ? 'Preferences saved' : 'Personalize this agent'}</span><ArrowRight size={16} /></footer>
@@ -47,6 +48,7 @@ export function AgentHome({ profile: p, datasets, navigate, ask }: AgentProps & 
   const spec = p.preset_spec;
   const bound = datasets.filter(d => (p.bindings || []).some((b: Item) => b.dataset_id === d.id));
   const checks = [
+    { title: 'Machine deployments', description: `${desiredDeployments(p).length} assigned machines · deploy or undeploy instances`, ready: desiredDeployments(p).length > 0, tab: 'deployments' },
     { title: 'Runtime', description: 'Native profile and working directory', ready: p.provision_state === 'ready', tab: 'connections' },
     { title: 'Model connection', description: p.model_connection?.model || 'Choose an account and model', ready: p.model_ready, tab: 'connections' },
     { title: 'Personal context', description: p.context_ready ? 'Your preferences are saved' : 'Make this agent work your way', ready: p.context_ready, tab: 'setup' },
@@ -115,9 +117,7 @@ export function PlanningSurface({ id }: { id: string }) {
 }
 
 function SwarmExecutionSettings({ profile, config, saved }: { profile: Item; config: any; saved: () => Promise<void> }) {
-  const [machines, setMachines] = useState<any[]>([]);
   const [error, setError] = useState('');
-  useEffect(() => { api('/machines').then(setMachines).catch(e => setError(e.message)); }, []);
   return <details className="panel padded" style={{ marginBottom: 20 }}>
     <summary><strong>Execution owner, workspace and worker limits</strong></summary>
     <p>Every profile can coordinate its own swarm. Worker model connections resolve on the selected execution machine.</p>
@@ -143,19 +143,10 @@ function SwarmExecutionSettings({ profile, config, saved }: { profile: Item; con
           <label>Seconds per worker<input type="number" name="timeout_seconds" min="1" max="1800" defaultValue={config.timeout_seconds} required /></label>
         </div><button>Save worker policy</button>
       </form>
-      <form onSubmit={async e => {
-        e.preventDefault(); const f = new FormData(e.currentTarget);
-        try { await put('/profiles/' + profile.id + '/placement', { machine_id: f.get('machine_id'), native_name: f.get('native_name') });
-          await saved(); setError(''); } catch (e) { setError((e as Error).message); }
-      }}>
-        <label>Deploy &amp; Run on Machine<select name="machine_id" defaultValue={profile.execution_placement?.machine_id || 'local'}>
-          <option value="local">This machine (Host Local)</option>{machines.filter(m => m.id !== 'local').map(m => <option key={m.id} value={m.id}>Node: {m.name} ({m.state})</option>)}</select></label>
-        <label>Native profile name on node<input name="native_name" defaultValue={profile.execution_placement?.native_name || profile.native_name} required /></label>
-        <p className="hint">{profile.execution_placement?.machine_id && profile.execution_placement.machine_id !== 'local'
-          ? <>Deployed on <strong>{machines.find(m => m.id === profile.execution_placement?.machine_id)?.name || profile.execution_placement?.machine_id}</strong>. The node worker auto-provisions this profile and executes assigned swarm runs.</>
-          : <>Deploy this agent profile to execute on a paired node. The node worker auto-provisions the native profile upon receiving tasks.</>}</p>
-        <button className="primary">{profile.execution_placement?.machine_id && profile.execution_placement.machine_id !== 'local' ? 'Update Node Placement' : 'Deploy Profile to Node'}</button>
-      </form>
+      <aside className="deployment-settings-note"><Monitor size={25} />
+        <h3>Run on your deployed machines</h3><p>Manage this agent’s machine assignments in the Deployments tab. You can enable it on several nodes and choose one for each swarm run.</p>
+        <p>Each node keeps its own model connection, workspace and worker permissions.</p>
+      </aside>
     </div>
   </details>;
 }
@@ -169,7 +160,8 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
   const [inspectRun, setInspectRun] = useState<Item | null>(null);
   const [taskText, setTaskText] = useState('');
   const [roles, setRoles] = useState('[{"role":"Implementer A","objective":"Implement an independent component","stage":0},{"role":"Implementer B","objective":"Implement a different independent component","stage":0},{"role":"Reviewer","objective":"Review inherited changes and run tests","stage":1}]');
-  const [deploymentId, setDeploymentId] = useState(() => crypto.randomUUID());
+  const [deploymentId, setDeploymentId] = useState(() => Array.from(crypto.getRandomValues(new Uint8Array(16)), v => v.toString(16).padStart(2, '0')).join(''));
+  const [executionMachine, setExecutionMachine] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
@@ -234,7 +226,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
       const run = await post(`/profiles/${p.id}/swarms/spawn`, {
         preset: deployPreset,
         task: taskText.trim(),
-        operation_id: deploymentId,
+        operation_id: deploymentId, machine_id: executionMachine || undefined,
         ...(deployPreset === 'custom' ? { custom_roles: JSON.parse(roles) } : {})
       });
       setDeployPreset(null);
@@ -349,7 +341,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
             </div>
           </div>
           <div className="swarm-card-actions">
-            <button className="primary" disabled={!enabled || !isAllowed} onClick={() => { setDeploymentId(crypto.randomUUID()); setDeployPreset(spec.id); }}>
+            <button className="primary" disabled={!enabled || !isAllowed || !data?.deployments?.machines.some((m: any) => m.enabled && m.available)} onClick={() => { setDeploymentId(Array.from(crypto.getRandomValues(new Uint8Array(16)), v => v.toString(16).padStart(2, '0')).join('')); setExecutionMachine(data?.deployments?.primary_machine_id || ''); setDeployPreset(spec.id); }}>
               <Play size={14} /> Deploy swarm
             </button>
           </div>
@@ -404,6 +396,11 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
           <button className="icon-button" onClick={() => setDeployPreset(null)}><X size={18} /></button>
         </div>
         <form onSubmit={handleDeploy}>
+          <label>Execution machine<select required value={executionMachine} onChange={e => setExecutionMachine(e.target.value)}>
+            <option value="" disabled>Choose a deployed machine</option>
+            {data?.deployments?.machines.filter((m: any) => m.enabled && m.available).map((m: any) =>
+              <option key={m.machine_id} value={m.machine_id}>{m.machine_name}{m.online ? '' : ' · offline, work will queue'}</option>)}
+          </select></label>
           <label>
             Task or problem for the swarm
             <textarea rows={5} required placeholder="Describe the task in detail. The swarm will break it down across specialized roles and synthesize the findings." value={taskText} onChange={e => setTaskText(e.target.value)} />
@@ -414,7 +411,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
           </label>}
           <div className="button-row" style={{marginTop: 18}}>
             <button type="button" onClick={() => setDeployPreset(null)}>Cancel</button>
-            <button className="primary" type="submit" disabled={submitting || !taskText.trim()}>
+            <button className="primary" type="submit" disabled={submitting || !taskText.trim() || !executionMachine}>
               {submitting ? <Loader2 size={15} className="spin" /> : <Play size={15} />}
               Launch swarm
             </button>

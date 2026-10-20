@@ -110,7 +110,8 @@ async def reconcile(bindings):
                     receipts.append({**result, "state": "error", "error": previous.get("error")})
                     continue
                 # Admission is disabled durably before touching native configuration.
-                save(path, {**result, "enabled": False, "state": "pending"})
+                if previous or not home.is_dir() or not binding["enabled"]:
+                    save(path, {**result, "enabled": False, "state": "pending"})
                 if not binding["enabled"]:
                     for task in swarm_runner.journal().pending():
                         if task["request"].get("native_name") == name:

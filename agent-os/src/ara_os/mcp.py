@@ -12,7 +12,7 @@ TOOLS = [
     {"name": "ara_delegate_task", "description": "Start one scoped specialist task. Returns a task ID; inspect it using ara_get_task. Reuse operation_id on retries.", "inputSchema": {"type": "object", "properties": {"profile_id": {"type": "string"}, "text": {"type": "string"}, "operation_id": {"type": "string"}}, "required": ["profile_id", "text", "operation_id"], "additionalProperties": False}},
     {"name": "ara_get_task", "description": "Inspect a specialist task started by this profile. A pending or unknown task is not permission to run it again.", "inputSchema": {"type": "object", "properties": {"run_id": {"type": "string"}}, "required": ["run_id"], "additionalProperties": False}},
     {"name": "ara_list_swarms", "description": "List available swarm presets and check whether swarm coordination is enabled for this profile.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "ara_spawn_swarm", "description": "Start scoped native workers on this profile's assigned machine. Dependent stages run in order; independent workers run concurrently. Results are self-reports, not verified facts. Reuse operation_id after disconnects.", "inputSchema": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["research", "coding", "analysis", "custom"]}, "task": {"type": "string", "minLength": 1, "maxLength": 20000}, "operation_id": {"type": "string", "minLength": 1, "maxLength": 120}, "custom_roles": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "object", "properties": {"role": {"type": "string"}, "objective": {"type": "string"}, "stage": {"type": "integer", "minimum": 0, "maximum": 7}}, "required": ["role", "objective"], "additionalProperties": False}}}, "required": ["preset", "task", "operation_id"], "additionalProperties": False}},
+    {"name": "ara_spawn_swarm", "description": "Start scoped native workers on this profile's assigned machine. Dependent stages run in order; independent workers run concurrently. Results are self-reports, not verified facts. Reuse operation_id after disconnects.", "inputSchema": {"type": "object", "properties": {"preset": {"type": "string", "enum": ["research", "coding", "analysis", "custom"]}, "task": {"type": "string", "minLength": 1, "maxLength": 20000}, "operation_id": {"type": "string", "minLength": 1, "maxLength": 120}, "machine_id": {"type": "string", "description": "Enabled deployment machine ID; omit to use the default execution machine."}, "custom_roles": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "object", "properties": {"role": {"type": "string"}, "objective": {"type": "string"}, "stage": {"type": "integer", "minimum": 0, "maximum": 7}}, "required": ["role", "objective"], "additionalProperties": False}}}, "required": ["preset", "task", "operation_id"], "additionalProperties": False}},
     {"name": "ara_get_swarm", "description": "Inspect a swarm execution started by this profile. Returns worker status, worker outputs, and synthesized outcome.", "inputSchema": {"type": "object", "properties": {"swarm_id": {"type": "string"}}, "required": ["swarm_id"], "additionalProperties": False}},
     {"name": "ara_cancel_swarm", "description": "Request cancellation of a swarm owned by this profile. Cancellation is not confirmation that in-flight OS actions were undone.", "inputSchema": {"type": "object", "properties": {"swarm_id": {"type": "string"}}, "required": ["swarm_id"], "additionalProperties": False}},
 ] + CUA_TOOLS
@@ -22,6 +22,7 @@ def invoke(profile_id: str, name: str, args: dict):
     import hashlib
     from .store import Entity, create
     from . import runs, swarms
+    from .deployments import describe
     delegation = None
     with transaction() as session:
         profile = get(session, profile_id, "profile")
@@ -33,6 +34,7 @@ def invoke(profile_id: str, name: str, args: dict):
             return {
                 "enabled": cfg["enabled"],
                 "trigger_mode": cfg["trigger_mode"],
+                "deployments": describe(session, profile),
                 "allowed_presets": [p for p in swarms.SWARM_PRESETS if p["id"] in cfg["allowed_presets"]]
             }
         if name == "ara_spawn_swarm":
@@ -40,7 +42,7 @@ def invoke(profile_id: str, name: str, args: dict):
             task_text = args.get("task", "")
             op_id = args.get("operation_id", "")
             roles = args.get("custom_roles")
-            swarm_record = swarms.spawn_swarm(session, profile_id, None, preset, task_text, op_id, roles)
+            swarm_record = swarms.spawn_swarm(session, profile_id, None, preset, task_text, op_id, roles, machine_id=args.get("machine_id"))
             return {
                 "swarm_id": swarm_record["id"],
                 "state": swarm_record["state"],

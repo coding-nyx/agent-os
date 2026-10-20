@@ -86,7 +86,7 @@ def update(session, profile_id, body):
     if body.get("revision") is not None and body["revision"] != profile["revision"]:
         raise Problem("revision_conflict", "Agent deployment settings changed. Reload before saving", 409)
     action, ids = body.get("action"), body.get("machine_ids")
-    if action not in {"deploy", "undeploy", "primary", "replace"} or not isinstance(ids, list) or not 1 <= len(ids) <= 128 or any(not isinstance(i, str) for i in ids):
+    if not isinstance(action, str) or action not in {"deploy", "undeploy", "primary", "replace"} or not isinstance(ids, list) or not 1 <= len(ids) <= 128 or any(not isinstance(i, str) for i in ids):
         raise Problem("invalid_deployment", "Select one or more machines and a deploy/undeploy action")
     ids = list(dict.fromkeys(ids))
     if action == "primary" and len(ids) != 1:

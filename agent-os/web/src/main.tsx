@@ -5,6 +5,7 @@ import { api, brand, del, Item, patch, post, put } from './api';
 import './style.css';
 import { AgentDirectory, AgentHome, AgentReadiness, AgentSetup, PlanningSurface, SwarmPanel } from './agents';
 import { SystemControlView } from './system_control';
+import { AgentDeployments, MachineAgentDeployments, desiredDeployments } from './deployments';
 
 type View = 'home' | 'profiles' | 'data' | 'system_control' | 'connections' | 'machines' | 'activity' | 'settings';
 const nav: { id: View; label: string; icon: typeof Home }[] = [
@@ -13,7 +14,7 @@ const nav: { id: View; label: string; icon: typeof Home }[] = [
   { id: 'connections', label: 'Connections', icon: Network }, { id: 'machines', label: 'Machines & sync', icon: Monitor },
   { id: 'activity', label: 'Activity', icon: Activity },
 ];
-const colors: Record<string, string> = { ara: 'sage', agnes: 'lavender', atlas: 'sage', ledger: 'sand', titan: 'coral', soma: 'lavender', scout: 'blue', orchestrator: 'slate' };
+const colors: Record<string, string> = { ara: 'sage', agnes: 'lavender', atlas: 'sage', ledger: 'sand', titan: 'coral', soma: 'lavender', scout: 'blue' };
 const moduleIcons: Record<string, typeof Home> = { finance: Wallet, training: Activity, notebook: Notebook, emotional: Notebook, planning: Layers, research: Compass, custom: Database };
 
 function download(name: string, content: string) {
@@ -49,6 +50,7 @@ function App() {
   const [dashboard, setDashboard] = useState<any>(null);
   const [catalog, setCatalog] = useState<any>({ modules: [], presets: [] });
   const [selectedProfile, selectProfile] = useState<string | null>(null);
+  const [deploymentProfile, setDeploymentProfile] = useState<string | null>(null);
   const [selectedDataset, selectDataset] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -93,12 +95,12 @@ function App() {
             <div className="profile-grid">{profiles.slice(0, 6).map(p => <ProfileCard key={p.id} profile={p} open={() => { route('profiles'); selectProfile(p.id); }} />)}</div>
             <div className="overview-bottom"><section className="panel"><SectionTitle title="Your data, connected" action={<button className="text-button" onClick={() => route('data')}>Open library<ArrowRight size={14} /></button>} />{datasets.length ? datasets.slice(0, 4).map(d => <button className="list-row" key={d.id} onClick={() => { route('data'); selectDataset(d.id); }}><span className="module-icon">{React.createElement(moduleIcons[d.module] || Database, { size: 19 })}</span><span>{d.name}<small>{d.module} · {d.summary?.count || 0} records</small></span><ChevronRight size={16} /></button>) : <Empty icon={Database} title="Start with your data" action={<button onClick={() => setModal('dataset')}><Plus size={15} />Create dataset</button>}>Create a dataset, then give an agent access when you’re ready.</Empty>}</section><section className="panel"><SectionTitle title="Recent activity" />{dashboard.runs.length ? dashboard.runs.slice(0, 4).map((r: Item) => <div className="list-row" key={r.id}><span className="module-icon"><MessageSquare size={18} /></span><span className="truncate">{r.input}<small>{profiles.find(p => p.id === r.profile_id)?.name} · {new Date(r.created_at).toLocaleTimeString()}</small></span><Badge state={r.state} /></div>) : <Empty icon={MessageSquare} title="Room for your next idea">Start a conversation with an agent. Its work will appear here.</Empty>}</section></div>
           </>}
-          {view === 'profiles' && (current ? <ProfileWorkspace profile={current} datasets={datasets} act={act} refresh={refresh} back={() => selectProfile(null)} /> : <AgentDirectory profiles={allProfiles} open={selectProfile} create={() => setModal('profile')} />)}
+          {view === 'profiles' && (current ? <ProfileWorkspace key={current.id} initialTab={deploymentProfile === current.id ? 'deployments' : 'workspace'} profile={current} datasets={datasets} act={act} refresh={refresh} back={() => selectProfile(null)} /> : <AgentDirectory profiles={allProfiles} open={selectProfile} create={() => setModal('profile')} />)}
           {view === 'data' && (selectedDataset ? <DatasetWorkspace id={selectedDataset} act={act} back={() => selectDataset(null)} /> : <><PageTitle title="Data library" description="Your information has a home, with or without an agent." action={<button className="primary" onClick={() => setModal('dataset')}><Plus size={16} />New dataset</button>} /><div className="module-strip">{catalog.modules.map((m: any) => <span key={m.id}>{React.createElement(moduleIcons[m.id] || Database, { size: 15 })}{m.name}</span>)}</div>{datasets.length ? <div className="dataset-grid">{datasets.map(d => <button className="dataset-card" key={d.id} onClick={() => selectDataset(d.id)}><span className="module-icon">{React.createElement(moduleIcons[d.module] || Database, { size: 22 })}</span><Badge state={d.archived ? 'archived' : 'ready'} /><h3>{d.name}</h3><p>{catalog.modules.find((m: any) => m.id === d.module)?.description}</p><footer><span>{d.summary?.count || 0} records</span><ArrowRight size={16} /></footer></button>)}</div> : <div className="panel"><Empty icon={Database} title="Build your first dataset" action={<button onClick={() => setModal('dataset')}>Create a dataset</button>}>Start with finance, workouts, a private notebook, research, or your own schema.</Empty></div>}</>)}
           {view === 'system_control' && <SystemControlView />}
           {view === 'connections' && <><PageTitle title="Connections" description="Models, channels, and tools are configured at their actual profile owner." /><div className="connection-intro"><Shield size={23} /><div><h3>Connected, with clear boundaries.</h3><p>Provider credentials stay in the native credential store. Each bot has one connection owner. Select an agent to manage its connections.</p></div></div><div className="profile-grid">{profiles.map(p => <button className="connection-card" key={p.id} onClick={() => { setView('profiles'); selectProfile(p.id); }}><span className={`avatar ${colors[p.preset] || 'sage'}`}>{p.name[0]}</span><div><h3>{p.name}</h3><p>{p.model_connection ? `${p.model_connection.name} · ${p.model_connection.model}` : 'Configure model, channels, tools and voice'}</p></div><ChevronRight size={18} /></button>)}</div></>}
           {view === 'activity' && <><PageTitle title="Activity" description="Execution, tool activity and approvals—without hiding uncertain outcomes." /><RunList profiles={profiles} /></>}
-          {view === 'machines' && <Machines act={act} />}
+          {view === 'machines' && <Machines act={act} open={id => { setDeploymentProfile(id); selectProfile(id); setView('profiles'); }} />}
           {view === 'settings' && <SettingsView />}
         </Boundary>}
         <footer className="page-footer"><span>ARA · Agent OS</span><span>Built around your data. Run on your terms.</span></footer>
@@ -120,8 +122,8 @@ function ProfileCard({ profile: p, open }: { profile: Item; open: () => void }) 
   return <button className="profile-card" onClick={open}><div className="profile-card-top"><span className={`avatar ${colors[p.preset] || 'sage'}`}>{p.name[0]}</span><span className={`profile-status ${p.enabled ? '' : 'off'}`}><i />{p.enabled ? 'Enabled' : 'Disabled'}</span></div><h3>{p.name}</h3><p>{p.description}</p><div className="profile-meta"><span><Database size={13} />{p.bindings.length} dataset{p.bindings.length === 1 ? '' : 's'}</span><span><Monitor size={13} />{isRemote ? 'Node' : 'Local'}</span></div><footer><span>{p.provision_state === 'ready' ? p.model_connection?.model || 'Connect a model to begin' : 'Setup needs attention'}</span><ArrowRight size={16} /></footer></button>;
 }
 
-function ProfileWorkspace({ profile: p, datasets, act, refresh, back }: { profile: Item; datasets: Item[]; act: (f: () => Promise<any>) => Promise<void>; refresh: () => Promise<void>; back: () => void }) {
-  const [tab, setTab] = useState('workspace');
+function ProfileWorkspace({ profile: p, datasets, act, refresh, back, initialTab = 'workspace' }: { profile: Item; datasets: Item[]; act: (f: () => Promise<any>) => Promise<void>; refresh: () => Promise<void>; back: () => void; initialTab?: string }) {
+  const [tab, setTab] = useState(initialTab);
   const [draftPrompt, setDraftPrompt] = useState('');
   const [specialists, setSpecialists] = useState<Item[]>([]);
   const [machines, setMachines] = useState<Item[]>([]);
@@ -130,57 +132,20 @@ function ProfileWorkspace({ profile: p, datasets, act, refresh, back }: { profil
     api<Item[]>('/profiles').then(setSpecialists);
     api<Item[]>('/machines').then(setMachines);
   }, [p.id]);
-  const tabs = ['workspace', ...(p.preset_spec ? ['setup'] : []), 'conversation', 'swarms', 'history', 'data', 'identity', 'skills', 'memory', 'connections', 'automations', 'voice'];
+  const tabs = ['workspace', 'deployments', ...(p.preset_spec ? ['setup'] : []), 'conversation', 'swarms', 'history', 'data', 'identity', 'skills', 'memory', 'connections', 'automations', 'voice'];
+  const assignedMachines = desiredDeployments(p);
   const targetMachine = machines.find(m => m.id === p.execution_placement?.machine_id);
   const isRemote = p.execution_placement?.machine_id && p.execution_placement.machine_id !== 'local';
   return <><button className="back-link" onClick={back}><ArrowLeft size={14} />All agents</button>
-    <div className="profile-heading"><span className={`avatar large ${colors[p.preset] || 'sage'}`}>{p.name[0]}</span><div><h1>{p.name}</h1><p>{p.preset_spec?.role || p.description}</p><div className="inline-meta" style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}><Monitor size={13} /><span>{isRemote ? `Deployed on node: ${targetMachine?.name || p.execution_placement?.machine_id}` : 'Local host execution'}</span><button type="button" className="secondary" style={{fontSize:11, padding:'2px 8px'}} onClick={() => setDeployModal(true)}>{isRemote ? 'Change Node / Undeploy' : 'Deploy to Node'}</button><span>·</span> <AgentReadiness profile={p} /></div></div><button onClick={() => act(() => patch(`/profiles/${p.id}`, { revision: p.revision, values: { enabled: !p.enabled } }))}>{p.enabled ? <Pause size={15} /> : <Play size={15} />}{p.enabled ? 'Disable agent' : 'Enable agent'}</button></div>
+    <div className="profile-heading"><span className={`avatar large ${colors[p.preset] || 'sage'}`}>{p.name[0]}</span><div><h1>{p.name}</h1><p>{p.preset_spec?.role || p.description}</p><div className="inline-meta" style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}><Monitor size={13} /><span>{assignedMachines.length > 1 ? `Assigned to ${assignedMachines.length} machines` : assignedMachines.length ? (isRemote ? `Assigned to ${targetMachine?.name || 'node'}` : 'Assigned to host') : 'No assigned machines'}</span><button type="button" className="secondary" style={{fontSize:11, padding:'2px 8px'}} onClick={() => setDeployModal(true)}>Deploy / manage machines</button><span>·</span> <AgentReadiness profile={p} /></div></div><div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}><button onClick={() => act(() => patch(`/profiles/${p.id}`, { revision: p.revision, values: { enabled: !p.enabled } }))}>{p.enabled ? <Pause size={15} /> : <Play size={15} />}{p.enabled ? 'Disable agent' : 'Enable agent'}</button>{p.preset !== 'ara' && <button type="button" className="secondary" style={{color:'#ef4444', display:'flex', alignItems:'center', gap:4}} onClick={() => { if (window.confirm(`Permanently delete agent "${p.name}"? This removes its workspace, configuration, and data bindings.`)) { act(async () => { await del(`/profiles/${p.id}`); back(); }); } }}><Trash2 size={14} />Delete agent</button>}</div></div>
     {p.provision_error && <div className="notice warning">{p.provision_error}<button onClick={() => act(() => post(`/profiles/${p.id}/retry-setup`, {}))}>Retry setup</button></div>}
-    {deployModal && (
-      <Modal title={`Deploy ${p.name} to Node`} close={() => setDeployModal(false)}>
-        <p>Assign this agent profile to execute on a connected node machine. When the node worker runs <code>ara node work</code>, it will automatically provision this profile.</p>
-        <form onSubmit={e => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          act(async () => {
-            await put(`/profiles/${p.id}/placement`, {
-              machine_id: f.get('machine_id'),
-              native_name: f.get('native_name')
-            });
-            setDeployModal(false);
-            refresh();
-          });
-        }}>
-          <label>Target Machine
-            <select name="machine_id" defaultValue={p.execution_placement?.machine_id || 'local'}>
-              <option value="local">This Machine (Host Local)</option>
-              {machines.filter(m => m.id !== 'local').map(m => (
-                <option key={m.id} value={m.id}>Node: {m.name} ({m.state})</option>
-              ))}
-            </select>
-          </label>
-          <label>Native profile name on node
-            <input name="native_name" defaultValue={p.execution_placement?.native_name || p.native_name} required />
-          </label>
-          <div style={{display:'flex', gap:8, marginTop:12}}>
-            <button className="primary">Save &amp; Deploy</button>
-            {isRemote && (
-              <button type="button" className="secondary" onClick={() => {
-                act(async () => {
-                  await put(`/profiles/${p.id}/placement`, { machine_id: 'local', native_name: p.native_name });
-                  setDeployModal(false);
-                  refresh();
-                });
-              }}>Recall to Host Local</button>
-            )}
-            <button type="button" onClick={() => setDeployModal(false)}>Cancel</button>
-          </div>
-        </form>
-      </Modal>
-    )}
+    {deployModal && <Modal title={`Deploy ${p.name}`} close={() => setDeployModal(false)}>
+      <AgentDeployments key={p.id} profile={p} refresh={refresh} />
+    </Modal>}
     <div className="tabs" role="tablist">{tabs.map(t => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}</div><Boundary key={tab}>
     {tab === 'workspace' && <><AgentHome profile={p} datasets={datasets} navigate={setTab} ask={prompt => { setDraftPrompt(prompt); setTab('conversation'); }} />{p.module && <ProfileDataSurface profile={p} datasets={datasets} act={act} bind={() => setTab('data')} />}</>}
     {tab === 'setup' && <AgentSetup profile={p} refresh={refresh} />}
+    {tab === 'deployments' && <AgentDeployments key={p.id} profile={p} refresh={refresh} />}
     {tab === 'conversation' && <Chat key={draftPrompt} profile={p} initialText={draftPrompt} />}
     {tab === 'swarms' && <SwarmPanel profile={p} act={act} refresh={refresh} />}
     {tab === 'history' && <NativeHistory profile={p} />}
@@ -339,7 +304,7 @@ function RunList({ profiles }: { profiles: Item[] }) {
   return <section className="panel">{rows.length ? rows.map(r => <button className="list-row" key={r.id} onClick={() => api<Item>(`/runs/${r.id}`).then(setSelected)}><span className="module-icon"><Activity size={18} /></span><span className="truncate"><strong>{r.input}</strong><small>{profiles.find(p => p.id === r.profile_id)?.name} · {new Date(r.created_at).toLocaleString()}</small></span><Badge state={r.state} /><ChevronRight size={15} /></button>) : <Empty icon={Activity} title="No runs yet">Start a conversation. Its execution and tool activity appear here.</Empty>}{selected && <Modal title="Run details" close={() => setSelected(null)}><Badge state={selected.state} /><p>{selected.input}</p><div className="native-record"><pre>{brand(selected.output || selected.error || 'No completed output yet.')}</pre></div><h3>Runtime events</h3>{selected.events?.map((e: any) => <details key={e.sequence}><summary>{e.type}</summary><pre>{brand(JSON.stringify(e.data, null, 2))}</pre></details>)}</Modal>}</section>;
 }
 
-function Machines({ act }: { act: (f: () => Promise<any>) => Promise<void> }) {
+function Machines({ act, open }: { act: (f: () => Promise<any>) => Promise<void>; open: (id: string) => void }) {
   const [machines, setMachines] = useState<Item[]>([]);
   const [profiles, setProfiles] = useState<Item[]>([]);
   const [backups, setBackups] = useState<Item[]>([]);
@@ -371,13 +336,10 @@ function Machines({ act }: { act: (f: () => Promise<any>) => Promise<void> }) {
   return <>
     <PageTitle title="Machines & sync" description="Execution placement, protected state and explicit recovery." action={<button className="primary" onClick={() => { setEnrolledData(null); setEnrolling(true); }}><Plus size={16} />Pair a node</button>} />
     {status && <div className="notice" style={{marginBottom:16}}>{status}</div>}
+    <MachineAgentDeployments open={open} />
     <div className="machine-grid">
       {machines.map(m => {
-        const assignedProfiles = profiles.filter(p => (
-          m.id === 'local'
-            ? (!p.execution_placement?.machine_id || p.execution_placement?.machine_id === 'local')
-            : p.execution_placement?.machine_id === m.id
-        ));
+        const assignedProfiles = profiles.filter(p => desiredDeployments(p).some(d => d.machine_id === m.id));
         return (
           <section className="panel padded" key={m.id}>
             <div className="machine-header"><Monitor size={28} strokeWidth={1.4} /><Badge state={m.state} /></div>
@@ -401,11 +363,12 @@ function Machines({ act }: { act: (f: () => Promise<any>) => Promise<void> }) {
                       {m.id !== 'local' && (
                         <button
                           type="button"
-                          title={`Recall ${p.name} to local host`}
+                          title={`Undeploy ${p.name} from ${m.name}`} aria-label={`Undeploy ${p.name} from ${m.name}`}
                           style={{border:'none', background:'transparent', padding:'0 2px', cursor:'pointer', color:'#888', display:'inline-flex', alignItems:'center'}}
                           onClick={() => act(async () => {
-                            await put(`/profiles/${p.id}/placement`, { machine_id: 'local', native_name: p.native_name });
-                            setStatus(`Recalled ${p.name} to Local Host.`);
+                            const current = await api<any>(`/profiles/${p.id}/deployments`);
+                            await post(`/profiles/${p.id}/deployments`, { action: 'undeploy', machine_ids: [m.id], revision: current.revision });
+                            setStatus(`Undeploy requested for ${p.name} on ${m.name}. Awaiting node confirmation.`);
                             load();
                           })}
                         >
@@ -430,7 +393,7 @@ function Machines({ act }: { act: (f: () => Promise<any>) => Promise<void> }) {
                     onClick={() => {
                       setDeployTargetNode(m);
                       if (profiles.length > 0) {
-                        const first = profiles.find(p => p.execution_placement?.machine_id !== m.id) || profiles[0];
+                        const first = profiles.find(p => !desiredDeployments(p).some(d => d.machine_id === m.id)) || profiles[0];
                         setDeployProfileId(first.id);
                         setDeployNativeName(first.execution_placement?.native_name || first.native_name || first.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-'));
                       }
@@ -450,16 +413,17 @@ function Machines({ act }: { act: (f: () => Promise<any>) => Promise<void> }) {
 
     {deployTargetNode && (
       <Modal title={`Deploy Agent to Node: ${deployTargetNode.name}`} close={() => setDeployTargetNode(null)}>
-        <p>Select an agent to execute on <strong>{deployTargetNode.name}</strong>. When the node worker runs <code>ara node work</code>, it will automatically provision and run this profile.</p>
+        <p>Select an agent to execute on <strong>{deployTargetNode.name}</strong>. When the node worker runs <code>ara node work</code>, it will provision this profile and confirm the deployment. Model and tool setup remain on the node.</p>
         <form onSubmit={e => {
           e.preventDefault();
           act(async () => {
             if (!deployProfileId) return;
-            await put(`/profiles/${deployProfileId}/placement`, {
-              machine_id: deployTargetNode.id,
-              native_name: deployNativeName
+            const current = await api<any>(`/profiles/${deployProfileId}/deployments`);
+            await post(`/profiles/${deployProfileId}/deployments`, {
+              action: 'deploy', machine_ids: [deployTargetNode.id],
+              native_name: deployNativeName, revision: current.revision
             });
-            setStatus(`Deployed agent to ${deployTargetNode.name}.`);
+            setStatus(`Deployment requested on ${deployTargetNode.name}. Awaiting node confirmation.`);
             setDeployTargetNode(null);
             load();
           });
@@ -478,7 +442,7 @@ function Machines({ act }: { act: (f: () => Promise<any>) => Promise<void> }) {
             >
               {profiles.map(p => (
                 <option key={p.id} value={p.id}>
-                  {p.name} {p.execution_placement?.machine_id && p.execution_placement.machine_id !== 'local' ? `(Currently on ${machines.find(m => m.id === p.execution_placement.machine_id)?.name || p.execution_placement.machine_id})` : '(Local Host)'}
+                  {p.name} ({desiredDeployments(p).length} assigned machines)
                 </option>
               ))}
             </select>

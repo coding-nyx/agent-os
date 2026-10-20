@@ -26,6 +26,7 @@ class CUAEngine:
         self.remote = remote
         self.remote_epoch = None
         self.remote_deadline = None
+        self.identity_guard = None
 
     @property
     def kill_switch_active(self):
@@ -59,6 +60,10 @@ class CUAEngine:
             from ..node_deployments import is_disabled
             if is_disabled(actor):
                 return "This agent deployment is disabled on this node"
+            if self.identity_guard:
+                denied = self.identity_guard(actor)
+                if denied:
+                    return denied
         if self.remote:
             if "view" not in cfg["remote_access"]:
                 return "Remote desktop observation has not been enabled on this node"

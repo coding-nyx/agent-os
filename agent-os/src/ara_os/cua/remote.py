@@ -242,10 +242,35 @@ def receive(id, ident, result):
     return {"acknowledged": ident}
 
 
-def profile_target(profile):
+def profile_target(profile, device_id=None):
     from ..deployments import resolve
-    id = resolve(profile)["machine_id"]
+    target = machine_id(device_id) if device_id and device_id.startswith(PREFIX) else "local" if device_id == "local_desktop" else None
+    id = resolve(profile, target)["machine_id"]
     return id if id != "local" else None
+
+
+def view_targets(profile):
+    from ..deployments import entries, active
+    from . import policy
+    result = []
+    for entry in entries(profile):
+        id = entry["machine_id"]
+        if not active(profile, id):
+            continue
+        try:
+            cfg = policy.read() if id == "local" else state(id)
+        except Problem:
+            continue
+        if "view" in cfg["grants"].get(profile["id"], []) and (id == "local" or "view" in cfg["remote_access"]):
+            result.append(id)
+    return result
+
+
+async def profile_devices(profile):
+    from .engine import cua_engine
+    targets = view_targets(profile)
+    found = await cua_engine.list_devices() if "local" in targets else []
+    return [*found, *(d for d in devices() if d["machine_id"] in targets)]
 
 
 def forget(session, id):
@@ -259,7 +284,7 @@ def forget(session, id):
 
 
 async def invoke(profile, name, args):
-    id = profile_target(profile)
+    id = profile_target(profile, args.get("device_id"))
     if not profile.get("enabled"):
         raise Problem("profile_disabled", "This profile is disabled", 403)
     if args.get("device_id") not in {None, "local_desktop", PREFIX + id}:
