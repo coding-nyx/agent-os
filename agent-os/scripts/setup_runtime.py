@@ -44,6 +44,8 @@ from ara_os.runtime_setup import refresh_environment
 def verify_environment(candidate):
     subprocess.run([str(candidate / "bin/python"), "-c",
         "import ruamel.yaml, anthropic, hermes_cli.main, hermes_cli.gateway_client, fastapi, mcp, telegram; "
+        f"import sys; sys.path.insert(0, {str(root / 'src')!r}); "
+        "from ara_os import native_definition, native_instance, native_preferences, swarm_policy; "
         "from agent.anthropic_adapter import _require_sdk; _require_sdk('Anthropic Messages'); "
         "print('Agent OS native runtime imports and provider adapters verified')"],
         cwd=source, check=True, env={**os.environ, "PYTHONPATH": str(source)})

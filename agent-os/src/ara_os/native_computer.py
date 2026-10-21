@@ -55,15 +55,11 @@ def metadata(cap):
 
 
 def control(request):
-    from tools.computer_use.cua_backend_driver import resolve_cua_driver_cmd
+    from .native_computer_setup import driver, status
     if request.get("action") == "status":
-        import platform
-        installed = bool(resolve_cua_driver_cmd())
-        return {"installed": installed, "platform": platform.system().lower(), "backend": "native", "ready": None,
-            "detail": "Driver installed; live readiness is checked on capture." if installed else
-                "Run hermes computer-use install on this execution machine."}
-    if not resolve_cua_driver_cmd():
-        raise ValueError("Computer control is unavailable: the native driver is not installed.")
+        return status()
+    if not driver()[0]:
+        raise ValueError("Computer control is unavailable: this worker cannot locate the native driver. Check desktop setup.")
     if request.get("authorized") is not True or not isinstance(request.get("actor"), str) or not request["actor"]:
         raise ValueError("A managed computer action requires an authorized actor")
 

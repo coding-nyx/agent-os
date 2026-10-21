@@ -3,7 +3,50 @@ from __future__ import annotations
 
 import re
 import shlex
+import os
 from pathlib import Path
+
+
+def install_ara_cli(root: Path, directory: Path | None = None, *, source_root: Path | None = None, state: Path | None = None) -> Path:
+    """Keep the public command bound to its original data after release updates."""
+    root = root.resolve()
+    directory = (directory or Path.home() / ".local/bin").expanduser().resolve()
+    target = directory / "ara"
+    source = (source_root or root).resolve()
+    marker = "# ARA CLI installation: " + str(root)
+    if target.exists() or target.is_symlink():
+        if target.is_symlink() or marker not in target.read_text(errors="replace").splitlines():
+            raise FileExistsError(f"{target} belongs to another installation; choose ARA_CLI_BIN_DIR explicitly")
+    directory.mkdir(parents=True, exist_ok=True)
+    command = shlex.join(["env", f"ARA_INSTALL_ROOT={root}", str(source / ".venv/bin/python"), "-I", str(source / "src/ara_os/ara_launcher.py")])
+    state_line = ("if [ -z \"${ARA_STATE_DIR+x}\" ]; then export ARA_STATE_DIR=" + shlex.quote(str(state.resolve())) + "; fi\n") if state else ""
+    target.write_text(f'#!/bin/sh\n{marker}\n{state_line}exec {command} "$@"\n')
+    target.chmod(0o755)
+    return target
+
+
+def ensure_shell_path(directory: Path) -> list[Path]:
+    """Add a visible, idempotent PATH entry for new login and interactive shells."""
+    directory = directory.expanduser().resolve()
+    line = "export PATH=" + shlex.quote(str(directory)) + ':"$PATH"'
+    home = Path.home()
+    shell = Path(os.environ.get("SHELL", "/bin/sh")).name
+    files = [home / ".profile"]
+    if shell == "zsh":
+        files.extend([home / ".zprofile", home / ".zshrc"])
+    elif shell == "bash":
+        login = next((home / name for name in (".bash_profile", ".bash_login") if (home / name).exists()), None)
+        if login:
+            files.append(login)
+        files.append(home / ".bashrc")
+    changed = []
+    for path in files:
+        content = path.read_text() if path.exists() else ""
+        if line not in content.splitlines():
+            with path.open("a") as stream:
+                stream.write("\n# ARA Agent OS CLI\n" + line + "\n")
+            changed.append(path)
+    return changed
 
 
 def record_default_profile(state: Path, profile: dict) -> None:

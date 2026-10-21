@@ -11,6 +11,13 @@ import shutil
 import sys
 from pathlib import Path
 
+# This file is launched directly in Hermes's environment. Exposing its containing
+# package as a top-level search path would shadow the MCP SDK with ara_os/mcp.py.
+if not __package__:
+    package = Path(__file__).resolve().parent
+    sys.path[:] = [entry for entry in sys.path if Path(entry or os.curdir).resolve() != package]
+    sys.path.insert(0, str(package.parent))
+
 
 def emit(type, data):
     print(json.dumps({"ara_frame": True, "type": type, "data": data}, default=str), flush=True)
@@ -44,7 +51,7 @@ async def native_http(request):
 async def main(request):
     operation = request["operation"]
     if operation in {"definition-preview", "definition-apply"}:
-        from native_definition import capture, apply, digest
+        from ara_os.native_definition import capture, apply, digest
         home = Path(os.environ["HERMES_HOME"])
         local = capture(home)
         incoming = request["definition"]
@@ -62,35 +69,38 @@ async def main(request):
                 raise ValueError("Node files changed after the preview; reload before applying")
             emit("result", apply(home, incoming, force=True, expected_local=request.get("local_revision")))
     elif operation == "instance-preferences":
-        from native_preferences import preferences
+        from ara_os.native_preferences import preferences
         emit("result", preferences(Path(os.environ["HERMES_HOME"]), request))
     elif operation == "instance-lifecycle":
-        from native_instance import lifecycle
+        from ara_os.native_instance import lifecycle
         emit("result", await asyncio.to_thread(lifecycle, Path(os.environ["HERMES_HOME"]), request["action"]))
     elif operation in {"instance-assets", "instance-asset", "definition-capture", "instance-swarm"}:
         home = Path(os.environ["HERMES_HOME"])
         if operation == "instance-swarm":
-            from swarm_policy import read, write
+            from ara_os.swarm_policy import read, write
             cfg = read(home)
             if request.get("write"):
                 cfg = write(home, {**cfg, **request["config"]})
             emit("result", cfg)
         elif operation == "definition-capture":
-            from native_definition import capture
+            from ara_os.native_definition import capture
             emit("result", capture(home))
         else:
-            from native_instance import assets, asset
+            from ara_os.native_instance import assets, asset
             emit("result", assets(home) if operation == "instance-assets" else asset(home, request))
     elif operation == "swarm-workspace":
-        from native_execution import workspace_operation
+        from ara_os.native_execution import workspace_operation
         emit("result", await asyncio.to_thread(workspace_operation, request))
+    elif operation == "computer-setup":
+        from ara_os.native_computer_setup import run
+        emit("result", await asyncio.to_thread(run, request))
     elif operation in {"swarm-worker", "computer-control"}:
         if request.get("contract") != "ara-execution/1":
             raise ValueError("Unsupported ARA execution contract")
-        from native_execution import run_worker, computer_control
+        from ara_os.native_execution import run_worker, computer_control
         emit("result", await asyncio.to_thread(run_worker if operation == "swarm-worker" else computer_control, request))
     elif operation == "setup-model":
-        from native_model_setup import apply_shared_model
+        from ara_os.native_model_setup import apply_shared_model
         emit("result", apply_shared_model(request))
     elif operation == "create":
         from hermes_cli.profiles import create_profile, seed_profile_skills, _scrub_export_secrets
@@ -311,14 +321,14 @@ async def main(request):
             raise RuntimeError("Native restore was incomplete; the original archive is retained.")
         emit("result", {"restored": True, "target": os.environ["HERMES_HOME"]})
     elif operation == "portable":
-        from native_export import portable
+        from ara_os.native_export import portable
         portable(Path(os.environ["HERMES_HOME"]), request["output"], request.get("name", "ara-profile"))
         emit("result", {"path": request["output"], "native_databases": "consistent", "credentials": "excluded", "channels": "disabled"})
     elif operation == "instance-export":
         import base64
         import hashlib
         import tempfile
-        from native_export import portable
+        from ara_os.native_export import portable
         home = Path(os.environ["HERMES_HOME"])
         with tempfile.TemporaryDirectory(dir=home.parent, prefix="ara-export-") as tmp:
             output = Path(tmp) / "profile.tar.gz"
@@ -357,6 +367,9 @@ async def main(request):
 
 def failure_frame(exc, request):
     from hermes_cli.gateway_client import GatewayRPCError
+    from ara_os.native_errors import NativeRefusal
+    if isinstance(exc, NativeRefusal):
+        return "error", {"code": exc.code, "detail": str(exc), "action": "Reload the current values and review the change before saving."}
     stage = request.get("_stage")
     detail = str(exc)[:1200]
     payload = {"code": type(exc).__name__, "detail": detail, "stage": stage}
@@ -364,7 +377,7 @@ def failure_frame(exc, request):
         payload["code"] = "native_" + str(exc)
         payload["native_reason"] = str(exc)
         if str(exc) == "storage_unavailable":
-            from native_diagnostics import session_recovery
+            from ara_os.native_diagnostics import session_recovery
             home = os.environ.get("HERMES_HOME")
             recovery = session_recovery(Path(home), session_id=request.get("session_id"),
                 request_id=request.get("conversation_id")) if home else None

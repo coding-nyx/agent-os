@@ -98,6 +98,35 @@ async def test_supervised_approval_is_single_use(computer):
     assert len(computer.provider.calls) == 2
 
 
+async def test_input_is_bound_to_the_displayed_observation(computer):
+    policy.update({"mode": "supervised"})
+    first = await observe(computer, operator=True)
+    second = await observe(computer, operator=True)
+    old_id, current_id = first.metadata["observation_id"], second.metadata["observation_id"]
+    assert old_id != current_id
+    stale = CUAAction.from_dict({"action": "left_click", "coordinate": [.5, .5], "observation_id": old_id})
+    denied = await computer.act("local_desktop", stale, operator=True, operation_id="stale-display")
+    assert not denied.success and "observation" in denied.error
+    assert len(computer.provider.calls) == 2
+    current = CUAAction.from_dict({"action": "left_click", "coordinate": [.5, .5], "observation_id": current_id})
+    accepted = await computer.act("local_desktop", current, operator=True, operation_id="current-display")
+    assert accepted.success
+    assert len(computer.provider.calls) == 3
+
+
+async def test_operator_receipt_replay_does_not_repeat_input(computer):
+    policy.update({"mode": "supervised"})
+    observed = await observe(computer, operator=True)
+    command = CUAAction.from_dict({"action": "type", "text": "send once", "observation_id": observed.metadata["observation_id"]})
+    first = await computer.act("local_desktop", command, operator=True, operation_id="operator-once")
+    await observe(computer, operator=True)
+    replayed = await computer.act("local_desktop", command, operator=True, operation_id="operator-once")
+    assert first.success and replayed.success
+    assert len([a for a in computer.provider.calls if a.action.value == "type"]) == 1
+    conflict = await computer.act("local_desktop", action(), operator=True, operation_id="operator-once")
+    assert not conflict.success and "different" in conflict.error
+
+
 @pytest.mark.asyncio
 async def test_kill_switch_interrupts_inflight_transport(computer):
     policy.update({"mode": "autonomous"})
@@ -278,6 +307,7 @@ async def test_native_adapter_does_not_interpolate_shell_text(monkeypatch):
 def test_http_and_websocket_authorization(computer, monkeypatch):
     import ara_os.app as module
     monkeypatch.setattr(module, "cua_engine", computer)
+    monkeypatch.setattr(module.remote_computer, "devices", lambda: [])
     client = TestClient(module.app, base_url=config.API_URL)
     assert client.get("/api/v1/cua/devices").status_code == 401
     assert client.get("/api/v1/cua/session", headers={"Origin": "https://untrusted.invalid"}).status_code == 403
@@ -303,7 +333,7 @@ def test_mcp_returns_native_image_blocks_and_enforces_grants(computer, monkeypat
     import ara_os.cua.tools as tools
     monkeypatch.setattr(module, "cua_engine", computer)
     monkeypatch.setattr(tools, "cua_engine", computer)
-    monkeypatch.setattr(module, "find", lambda *args: {"enabled": True})
+    monkeypatch.setattr(module, "find", lambda *args: {"id": "coder", "name": "Coder", "native_name": "coder", "enabled": True})
     (config.STATE / "data-token-coder").write_text("test-data-token")
     client = TestClient(module.app, base_url=config.API_URL)
     headers = {"Authorization": "Bearer test-data-token"}

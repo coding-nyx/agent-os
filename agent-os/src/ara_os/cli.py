@@ -30,9 +30,13 @@ def default_host():
 
 
 def main():
+    from . import __version__
     parser = argparse.ArgumentParser(prog="ara", description="ARA Agent OS — local agents, data and connected machines")
+    parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
     parser.add_argument("--state", help="Agent OS state directory")
     subs = parser.add_subparsers(dest="command", required=True)
+    package = subs.add_parser("package", help="Build an immutable, checksummed node release")
+    package.add_argument("--output", type=Path, help="Copy the release archive to this directory")
     serve = subs.add_parser("serve", help="Run the local Agent OS API and built web client")
     serve.add_argument("--host", default=None, help="Host address to bind the API and dashboard (defaults to network.json or 127.0.0.1)")
     serve.add_argument("--port", type=int, default=8787)
@@ -56,6 +60,9 @@ def main():
     importer.add_argument("source", type=Path)
     importer.add_argument("--name", required=True)
     importer.add_argument("--apply", action="store_true", help="Apply the preview; credentials, channels and schedules stay inactive")
+    exporter = subs.add_parser("export", help="Export an installed native profile without credentials, active channels or schedules")
+    exporter.add_argument("profile", help="Native profile name or local instance ID")
+    exporter.add_argument("--output", type=Path, required=True, help="New .tar.gz file; existing files are never replaced")
     subs.add_parser("backup", help="Create an encrypted native/application recovery bundle")
     key = subs.add_parser("backup-key", help="Save the recovery key to a protected separate file")
     key.add_argument("--output", type=Path, required=True)
@@ -68,9 +75,12 @@ def main():
     node_sub.add_parser("status")
     node_sub.add_parser("list", help="List node-owned native runtime instances without PostgreSQL")
     node_sub.add_parser("daemon", help="Supervise native instances, with an optional coordinator connection")
+    node_sub.add_parser("_daemon", help=argparse.SUPPRESS)
+    internal_work = node_sub.add_parser("_work", help=argparse.SUPPRESS)
+    internal_work.add_argument("--once", action="store_true")
     local_mcp = node_sub.add_parser("mcp", help="Run node-local swarm and explicitly granted computer tools")
     local_mcp.add_argument("--profile", required=True)
-    service = node_sub.add_parser("service", help="Manage the Linux node user service")
+    service = node_sub.add_parser("service", help="Manage the Linux systemd or macOS launchd node user service")
     service.add_argument("service_action", choices=["install", "remove", "status"])
     for action in ("start", "stop"):
         command = node_sub.add_parser(action, help="Start or stop the native Hermes instance on this machine")
@@ -137,7 +147,18 @@ def main():
     from . import config, runtime
     from .store import Problem
     try:
-        if args.command == "setup":
+        if args.command == "package":
+            from .releases import current, package as package_path
+            import shutil
+            release = current()
+            path, _ = package_path(release["build_id"])
+            if args.output:
+                args.output.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, args.output / release["filename"])
+                (args.output / (release["filename"] + ".sha256")).write_text(release["sha256"] + "  " + release["filename"] + "\n")
+                (args.output / (release["filename"] + ".json")).write_text(json.dumps(release, indent=2) + "\n")
+            print(json.dumps(release, indent=2))
+        elif args.command == "setup":
             from .setup import run_setup
             try:
                 run_setup(args)
@@ -160,6 +181,22 @@ def main():
             uvicorn.run("ara_os.app:app", host=args.host, port=args.port)
         elif args.command == "import":
             asyncio.run(import_profile(args))
+        elif args.command == "export":
+            from . import instances
+            profile = instances.local_profile(args.profile)
+            if profile is None:
+                raise Problem("profile_not_found", "Use the native name or instance ID from ara node list.", 404)
+            destination = args.output.expanduser().absolute()
+            if destination.exists() or destination.is_symlink():
+                raise Problem("output_exists", "Choose a new export path; the existing file was preserved.", 409)
+            if not destination.parent.is_dir():
+                raise Problem("output_directory_missing", "Create the export directory first.")
+            with tempfile.TemporaryDirectory(dir=destination.parent, prefix=".ara-export-") as directory:
+                staged = Path(directory) / "profile.tar.gz"
+                asyncio.run(runtime.call({"operation": "portable", "output": str(staged), "name": profile["native_name"]}, profile))
+                staged.chmod(0o600)
+                os.link(staged, destination)  # Exclusive publication; a racing file is preserved.
+            print(json.dumps({"exported": str(destination), "profile": profile["native_name"], "credentials": "excluded", "schedules": "inactive"}, indent=2))
         elif args.command in {"chat", "runtime"}:
             from . import instances
             profile = instances.local_profile(args.profile)
@@ -189,7 +226,9 @@ def main():
         elif args.command == "restore":
             asyncio.run(restore_bundle(args))
         elif args.command == "node":
-            asyncio.run(node_command(args))
+            code = asyncio.run(node_command(args))
+            if isinstance(code, int):
+                raise SystemExit(code)
         elif args.command == "swarm":
             asyncio.run(swarm_command(args))
         elif args.command == "cua":
@@ -241,7 +280,7 @@ def main():
 async def import_profile(args):
     from . import config, runtime
     from .store import Problem
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", args.name) or args.name == "default":
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", args.name) or args.name == "default":
         raise Problem("invalid_profile_name", "Use a lowercase name with letters, digits and hyphens; default is reserved.")
     source = args.source.expanduser().resolve()
     if not source.exists():
@@ -312,6 +351,9 @@ async def node_command(args):
     import httpx
     pair_path = config.STATE / "node-connection.json"
     from . import instances
+    if args.action in {"work", "daemon"} and not getattr(args, "once", False):
+        from .node_install import supervise
+        return supervise(config.ROOT, config.STATE, mode=args.action)
     if args.action == "mcp":
         from .node_mcp import serve
         await serve(args.profile)
@@ -320,10 +362,9 @@ async def node_command(args):
         from .node_service import service
         print(json.dumps(service(args.service_action), indent=2))
         return
-    if args.action == "daemon":
+    if args.action == "_daemon":
         from .node_service import daemon
-        await daemon()
-        return
+        return await daemon()
     if args.action == "_runtime_worker":
         from .node_runtime import worker
         await worker(args.command_id, observe=args.observe)
@@ -371,7 +412,7 @@ async def node_command(args):
             "swarms": "Configure explicit workspace and tool grants using ara swarm configure",
             "host_link": "Pair with ara node pair; then run ara node work", "database_required": False}, indent=2))
         return
-    if args.action == "work":
+    if args.action in {"work", "_work"}:
         from .node_execution import exchange
         if not pair_path.exists():
             raise Problem("node_not_paired", "Pair this node before exchanging execution tasks")
@@ -381,6 +422,9 @@ async def node_command(args):
         computer_loop = None if args.once else asyncio.create_task(computer.run())
         from .node_runtime import run as runtime_loop, exchange as runtime_exchange
         control_loop = None if args.once else asyncio.create_task(runtime_loop(enrollment))
+        from .node_updates import NodeUpdater
+        updater = NodeUpdater(enrollment)
+        update_loop = None if args.once else asyncio.create_task(updater.run())
         try:
             while True:
                 try:
@@ -393,12 +437,14 @@ async def node_command(args):
                         raise SystemExit(1)
                 if args.once:
                     return
+                if updater.ready(computer):
+                    return 75  # The stable supervisor activates the staged release.
                 await asyncio.sleep(2)
         finally:
-            for loop in (computer_loop, control_loop):
+            for loop in (computer_loop, control_loop, update_loop):
                 if loop:
                     loop.cancel()
-            await asyncio.gather(*(loop for loop in (computer_loop, control_loop) if loop), return_exceptions=True)
+            await asyncio.gather(*(loop for loop in (computer_loop, control_loop, update_loop) if loop), return_exceptions=True)
     if args.action == "status":
         paired = pair_path.exists()
         info = {
@@ -407,6 +453,12 @@ async def node_command(args):
             "state_directory": str(config.STATE),
             "paired": paired
         }
+        from . import releases
+        from .node_install import read
+        info["software"] = releases.installed()
+        info["active_release"] = read(config.STATE / "node-active-release.json")
+        info["cli"] = read(config.STATE / "node-cli-status.json")
+        info["update"] = {k: v for k, v in (read(config.STATE / "node-update.json", {}) or {}).items() if k != "plan"}
         if paired:
             try:
                 conn = json.loads(pair_path.read_text())
@@ -440,7 +492,7 @@ async def node_command(args):
         print("  • Check status:     ara node status")
         print("  • Restart pairing:  ara node pair --enrollment " + str(args.enrollment))
     elif args.action == "sync":
-        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", args.profile):
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", args.profile):
             raise Problem("invalid_profile_name", "Use a native profile name from this node.")
         if not pair_path.exists():
             raise Problem("node_not_paired", "Pair this node using a host-generated enrollment file first.")

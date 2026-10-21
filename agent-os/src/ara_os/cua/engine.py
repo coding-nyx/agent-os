@@ -10,12 +10,11 @@ import re
 import tempfile
 import time
 import uuid
-from dataclasses import asdict
 from contextlib import asynccontextmanager
 
 from .. import config
 from . import policy
-from .models import CUAAction, CUAActionResult, CUAActionKind
+from .models import CUAAction, CUAActionResult, CUAActionKind, local_platform
 from .providers.native import NativeDeviceProvider
 
 
@@ -42,10 +41,11 @@ class CUAEngine:
         try:
             info = await self.provider.get_device_info()
             value = info.to_dict()
-        except Exception:
-            value = {"id": "local_desktop", "name": "Local desktop", "platform": "linux",
+        except Exception as exc:
+            value = {"id": "local_desktop", "name": "Local desktop", "platform": local_platform(),
                      "state": "unavailable", "resolution": [0, 0], "capabilities": [],
-                     "metadata": {"detail": "Native backend unavailable; run the node's computer-use readiness checks."}}
+                     "metadata": {"installed": None, "error_code": getattr(exc, "code", type(exc).__name__),
+                         "detail": "Desktop adapter check failed. Check driver and permissions on this machine; installation status is unknown."}}
         cfg = policy.read()
         return [{**value, "mode": cfg["mode"], "kill_switch": cfg["kill_switch"]}]
 
@@ -149,19 +149,22 @@ class CUAEngine:
             yield
 
     async def act(self, device_id, action, *, actor=None, operator=False, operation_id=None):
-        if operator or action.action == CUAActionKind.SCREENSHOT:
+        if action.action == CUAActionKind.SCREENSHOT or (operator and operation_id is None):
             return await self._act(device_id, action, actor=actor, operator=operator, operation_id=operation_id)
         denied = self.authorize(actor, operator, input=True)
         if denied:
             return CUAActionResult(success=False, error=denied)
         if not isinstance(operation_id, str) or not 1 <= len(operation_id) <= 120:
             return CUAActionResult(success=False, error="Agent input requires a stable operation_id; do not retry unknown work")
+        actor = "operator" if operator else actor
         async with self.operation_lock(self.operation_path(actor, operation_id)):
-            return await self._recorded_act(device_id, action, actor, operation_id)
+            return await self._recorded_act(device_id, action, actor, operation_id, operator=operator)
 
-    async def _recorded_act(self, device_id, action, actor, operation_id):
+    async def _recorded_act(self, device_id, action, actor, operation_id, *, operator=False):
         path = self.operation_path(actor, operation_id)
-        request = json.loads(json.dumps({"device_id": device_id, "action": asdict(action)}))
+        request = json.loads(json.dumps({"device_id": device_id, "action": action.to_dict()}))
+        if operator:
+            request["operator"] = True
         try:
             with path.open("x") as stream:
                 os.chmod(path, 0o600)
@@ -177,7 +180,7 @@ class CUAEngine:
                 return CUAActionResult(success=False, error="Action outcome is pending or unknown; inspect before retrying")
             return CUAActionResult(**prior["result"])
         try:
-            result = await self._act(device_id, action, actor=actor, operation_id=operation_id)
+            result = await self._act(device_id, action, actor=actor, operator=operator, operation_id=operation_id)
         except Exception:
             result = CUAActionResult(success=False, error="Execution outcome was not confirmed. Inspect the device before retrying.",
                                      metadata={"outcome": "unknown"})
@@ -199,10 +202,12 @@ class CUAEngine:
             if is_input:
                 if not observation or time.time() - observation["created"] > 15:
                     return CUAActionResult(success=False, error="Capture a fresh target window before requesting input")
+                if action.observation_id and action.observation_id != observation["id"]:
+                    return CUAActionResult(success=False, error="The displayed observation is no longer current. Capture a fresh target window before sending input.")
                 if approval is not None and (approval.get("policy_epoch") != cfg["epoch"] or
                         approval.get("actor") != actor or approval.get("device_id") != device_id or
                         approval.get("operation_id") != operation_id or
-                        approval.get("action") != json.loads(json.dumps(asdict(action))) or
+                        approval.get("action") != json.loads(json.dumps(action.to_dict())) or
                         approval.get("observation", {}).get("id") != observation.get("id")):
                     return CUAActionResult(success=False, error="Approval no longer matches this action or policy; capture and request again")
                 if cfg["mode"] == "supervised" and not operator and approval is None:
@@ -210,7 +215,7 @@ class CUAEngine:
                     directory.mkdir(exist_ok=True, mode=0o700)
                     ident = uuid.uuid4().hex
                     self.save_receipt(directory / (ident + ".json"), {"id": ident, "device_id": device_id, "actor": actor,
-                        "action": asdict(action), "operation_id": operation_id, "observation": observation,
+                        "action": action.to_dict(), "operation_id": operation_id, "observation": observation,
                         "policy_epoch": cfg["epoch"], "created": time.time()})
                     result = CUAActionResult(success=False, error="Operator approval required",
                         metadata={"approval_id": ident, "state": "pending"})
@@ -228,6 +233,8 @@ class CUAEngine:
             if result.success and result.frame_base64 and policy.read()["epoch"] == cfg["epoch"]:
                 self.observations["operator" if operator else actor] = {
                     "id": uuid.uuid4().hex, "metadata": result.metadata, "created": time.time()}
+                result.metadata = {**result.metadata,
+                    "observation_id": self.observations["operator" if operator else actor]["id"]}
             return result
         return await self._execute(invoke)
 

@@ -15,9 +15,10 @@ export npm_config_cache="${npm_config_cache:-$ARA_PROJECT_DIR/.runtime/npm-cache
 uv python install --no-bin --no-registry 3.14.8 || true
 uv sync --frozen --python 3.12
 uv run --frozen python scripts/setup_runtime.py
+uv run --frozen python scripts/install_cli.py
 npm --prefix web ci --no-audit --no-fund
 npm --prefix web run build
 bash scripts/services.sh
 uv run --frozen ara setup "$@"
-printf '%s\n' 'ARA Agent OS installed. Start with: .venv/bin/ara serve'
-printf '%s\n' 'Run hermes profiles to list the presets. Rerun .venv/bin/ara setup to configure a shared model, or override individual agents in Connections > Models.'
+printf '%s\n' 'ARA Agent OS installed. Open a new terminal, then run: ara serve'
+printf '%s\n' 'Run hermes profiles to list the presets. Rerun ara setup to configure a shared model, or override individual agents in Connections > Models.'

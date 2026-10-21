@@ -6,6 +6,7 @@ import hashlib
 import json
 import time
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
 
@@ -23,6 +24,8 @@ RPC_METHODS = {"prompt.receipt", "prompt.cancel", "session.interrupt", "approval
 
 def permitted(request):
     operation = request.get("operation")
+    if operation == "instance-lifecycle":
+        return request.get("action") in {"status", "start"}
     if operation == "rpc":
         return request.get("method") in RPC_METHODS
     if operation == "http":
@@ -66,9 +69,12 @@ def target(profile, machine_id=None, *, pinned=None):
         machine = get(session, placement["machine_id"], "machine")
         value["machine_name"] = machine["name"]
         value["runtime_contract"] = machine.get("runtime_contract")
+        seen = datetime.fromisoformat(machine["last_seen"]).timestamp() if machine.get("last_seen") else 0
+        value["online"] = placement["machine_id"] == "local" or seen > time.time() - 20
         receipt = session.get(Entity, receipt_id(profile["id"], placement["machine_id"]))
         if receipt and receipt.data.get("generation") == current["generation"]:
-            value.update({k: receipt.data.get(k) for k in ("model_connection", "runtime_state", "definition_revision", "owner_epoch", "swarm_config", "context_ready")})
+            value.update({k: receipt.data.get(k) for k in ("model_connection", "runtime_state", "runtime_reason", "runtime_detail", "definition_revision", "owner_epoch", "swarm_config", "context_ready")})
+            value["deployment_state"] = receipt.data.get("state")
         policy = session.get(Entity, "instance-policy:" + value["instance_id"])
         if policy and policy.data.get("generation") == current["generation"]:
             value["swarm_config"] = policy.data["config"]

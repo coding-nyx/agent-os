@@ -1,0 +1,21 @@
+.node-software { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line, #dfe5da); }
+.node-software > header, .node-software-title { display: flex; align-items: center; gap: 8px; }
+.node-software > header { justify-content: space-between; }
+.node-software-title { font-size: 13px; font-weight: 650; color: #354c3d; }
+.node-software-versions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.node-software-versions div { padding: 12px; background: #f4f6f1; border: 1px solid #e2e8dc; border-radius: 9px; min-width: 0; }
+.node-software-versions strong, .node-software-versions small, .node-software-versions span { display: block; }
+.node-software-versions strong { margin: 6px 0; font-size: 18px; letter-spacing: -.04em; }
+.node-software-versions small, .node-software-versions span { font-size: 11px; color: #566350; overflow-wrap: anywhere; }
+.node-software p { font-size: 12px; line-height: 1.6; color: #566350; }
+.node-software-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.node-update-progress { display: flex; gap: 9px; align-items: flex-start; padding: 12px; margin: 12px 0; border-left: 3px solid #56745d; background: #eef3e9; border-radius: 4px; }
+.node-update-progress.has-error { border-color: #ac6958; background: #fbf1ec; }
+.node-update-progress strong, .node-update-progress small { display: block; font-size: 12px; }
+.node-update-progress small { margin-top: 4px; line-height: 1.5; color: #566350; }
+.node-update-command { padding: 12px; margin-top: 12px; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; background: #f4f6f1; border: 1px solid #e2e8dc; border-radius: 8px; }
+.node-release-details { margin-top: 14px; font-size: 12px; }
+.node-release-details summary { cursor: pointer; color: #526b58; }
+.node-release-details code { display: block; overflow-wrap: anywhere; font-size: 10px; margin: 4px 0 10px; color: #566350; }
+.node-release-details a { display: block; margin-top: 8px; }
+@media (max-width: 440px) { .node-software-versions { grid-template-columns: 1fr; } }

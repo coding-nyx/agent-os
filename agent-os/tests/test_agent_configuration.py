@@ -64,6 +64,7 @@ def test_personalization_updates_native_identity_and_preserves_user_edits(system
     assert identity.read_text() == content
     clone = c.post(f"/profiles/{p['id']}/instances", json={"name": "Agnes preferences clone"})
     assert clone.status_code == 201, clone.text
+    assert clone.json().get("configuration", {}).get("goals") == "Make space for reflection", clone.json()
     copied = c.get(f"/profiles/{clone.json()['id']}/configuration").json()
     assert copied["values"]["goals"] == "Make space for reflection"
     assert copied["values"]["engagement_mode"] == "casual"

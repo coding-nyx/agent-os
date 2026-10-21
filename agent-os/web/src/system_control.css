@@ -191,7 +191,7 @@
 }
 
 .sc-placeholder p {
-  color: #abb8bf;
+  color: #b1bdb3;
 }
 
 .sc-viewport-footer small {
@@ -305,3 +305,14 @@
   font-size: 0.75rem;
   color: #cbd5e1;
 }
+.sc-input-controls {
+  padding: 16px;
+  border-top: 1px solid var(--border, #dfe5da);
+  display: grid;
+  gap: 12px;
+}
+.sc-input-controls form { display: grid; gap: 8px; }
+.sc-input-controls textarea { width: 100%; min-width: 0; resize: vertical; }
+.sc-input-controls form button { justify-self: start; }
+.sc-input-controls .button-row { flex-wrap: wrap; }
+.sc-input-controls small { color: var(--muted, #606d62); line-height: 1.5; }

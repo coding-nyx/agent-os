@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 STATE = Path(os.environ.get("ARA_STATE_DIR", ROOT / ".state")).resolve()
 RUNTIME_SOURCE = Path(os.environ.get("ARA_RUNTIME_SOURCE", ROOT / ".runtime/ara-agent"))
 RUNTIME_PYTHON = Path(os.environ.get("ARA_RUNTIME_PYTHON", ROOT / ".runtime/env/bin/python"))
+RUNTIME_TOOLS = Path(os.environ.get("ARA_RUNTIME_TOOLS", ROOT / ".runtime/tools"))
 RUNTIME_HOME = STATE / "runtime"
 DATABASE_URL = os.environ.get("ARA_DATABASE_URL", "postgresql+psycopg://ara_os:ara_os_local@127.0.0.1:55432/ara_os")
 API_URL = os.environ.get("ARA_API_URL", "http://127.0.0.1:8787")
@@ -46,12 +47,12 @@ def private_file(name: str, factory= lambda: secrets.token_urlsafe(32)) -> str:
 
 def runtime_env() -> dict[str, str]:
     env = {**os.environ, "HERMES_HOME": str(RUNTIME_HOME),
-           "HERMES_RUNTIME_DIR": str(ROOT / ".runtime/tools"),
+           "HERMES_RUNTIME_DIR": str(RUNTIME_TOOLS),
            "HERMES_DASHBOARD_SESSION_TOKEN": private_file("runtime-token"),
            "HERMES_DISABLE_LAZY_INSTALLS": "1", "PYTHONPATH": str(RUNTIME_SOURCE),
            "UV_CACHE_DIR": os.environ.get("UV_CACHE_DIR", str(ROOT / ".runtime/cache"))}
-    driver = next((p for p in (ROOT / ".runtime/tools").glob("cua-driver*/cua-driver") if p.is_file()), None)
-    if driver:
+    driver = next((p for p in RUNTIME_TOOLS.glob("cua-driver*/cua-driver") if p.is_file()), None)
+    if driver and not env.get("HERMES_CUA_DRIVER_CMD"):
         env["HERMES_CUA_DRIVER_CMD"] = str(driver)
         env["PATH"] = f"{driver.parent}:{env.get('PATH', '')}"
     return env

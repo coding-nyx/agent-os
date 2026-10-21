@@ -8,7 +8,10 @@ import os
 import tempfile
 from pathlib import Path
 
-import yaml
+try:
+    import hermes_yaml as yaml
+except ModuleNotFoundError:
+    import yaml
 
 CONFIG_KEYS = {"agent", "display", "compression", "context_files", "personalities", "reasoning_effort"}
 

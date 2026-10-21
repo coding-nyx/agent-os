@@ -38,8 +38,23 @@ def test_native_import_preview_apply_and_credentials_exclusion(system, tmp_path)
     assert not (target / ".env").exists()
     assert not (target / "cron/jobs.json").exists()
     assert (target / "imported-cron-disabled/jobs.json").exists()
-    rows = system["client"].get("/profiles").json()
+    rows = json.loads(cli(system, "node", "list").stdout)
     assert next(p for p in rows if p["native_name"] == "imported-native")["enabled"] is False
+    # A disabled standalone profile can still be backed up without the host DB.
+    output = tmp_path / "portable export.tar.gz"
+    offline_env = {**system["env"], "ARA_DATABASE_URL": "postgresql+psycopg://invalid:invalid@127.0.0.1:1/missing"}
+    exported = cli(system, "export", "imported-native", "--output", str(output), env=offline_env)
+    assert exported.returncode == 0, exported.stderr + exported.stdout
+    assert output.stat().st_mode & 0o777 == 0o600
+    with tarfile.open(output) as archive:
+        names = archive.getnames()
+        assert not any(name.endswith(("/.env", "/auth.json", "/cron/jobs.json")) for name in names)
+    before = output.read_bytes()
+    repeated = cli(system, "export", "imported-native", "--output", str(output), env=offline_env)
+    assert repeated.returncode == 1 and output.read_bytes() == before
+    roundtrip = cli(system, "import", "native", str(output), "--name", "roundtrip-native", "--apply")
+    assert roundtrip.returncode == 0, roundtrip.stderr + roundtrip.stdout
+    assert (system["state"] / "runtime/profiles/roundtrip-native/SOUL.md").read_text() == "Imported native identity"
 
 
 def test_unsafe_import_preserves_source_and_does_not_publish(system, tmp_path):
@@ -254,12 +269,23 @@ def test_node_bootstrap_script_endpoint_validation_and_payload(system):
     script = res.text
     assert "#!/usr/bin/env bash" in script
     assert enrollment["machine_id"] in script
-    assert enrollment["token"] in script
+    import base64
+    import re
+    payload = re.search(r'"\$ara_boot_state" ([A-Za-z0-9+/]+=*) <<', script).group(1)
+    assert json.loads(base64.b64decode(payload))["enrollment"]["token"] == enrollment["token"]
     assert "setup-node.sh" in script
     assert "node pair" in script
     assert "node work" in script
     assert "coding-nyx/agent-os" in script or "agent-os" in script
-    assert "bundle.tar.gz" in script
+    assert "/api/v1/releases/" in script
+    assert "Installer checksum mismatch" in script
+    assert "installer.unpack" in script
+    assert "tar -xz" not in script and "git clone" not in script
+    import subprocess
+    assert subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True).returncode == 0
+    malicious = c.get("/nodes/bootstrap.sh", params={"machine_id": enrollment["machine_id"],
+        "token": enrollment["token"], "profile": 'test$(touch /tmp/unwanted)'})
+    assert malicious.status_code == 400
 
     # 3. Test direct node bundle download endpoint
     bundle_res = c.get("/nodes/bundle.tar.gz")

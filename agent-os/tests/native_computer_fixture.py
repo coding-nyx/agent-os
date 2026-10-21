@@ -10,9 +10,9 @@ import struct
 import sys
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src/ara_os"))
-from native_execution import computer_control
-import native_computer
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from ara_os.native_execution import computer_control
+from ara_os import native_computer
 from tools.bot_desktop import runtime as desktop_runtime
 from tools.computer_use import cua_backend, cua_backend_driver, tool
 from tools.computer_use.cua_backend_session import _CuaDriverSession

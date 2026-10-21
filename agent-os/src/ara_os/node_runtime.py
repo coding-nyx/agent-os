@@ -28,6 +28,10 @@ async def worker(id, *, observe=False):
     except BlockingIOError:
         lock.close()
         return
+    from .node_updates import draining
+    if draining() and not observe and journal.read(id)["request"]["request"].get("operation") != "rpc":
+        lock.close()
+        return
     if not journal.claim(id, observe=observe):
         lock.close()
         return
@@ -87,7 +91,9 @@ async def exchange(enrollment):
                 journal.append(id, {"type": "error", "data": {"code": "instance_revoked",
                     "detail": "The node rejected this command before native admission because its deployment was revoked or expired."}}, terminal=True)
             elif row["state"] == "queued":
-                launch(id)
+                from .node_updates import draining
+                if not draining() or row["request"]["request"].get("operation") == "rpc":
+                    launch(id)
             else:
                 if journal.recover(row):
                     launch(id, observe=True)

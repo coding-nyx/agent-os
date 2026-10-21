@@ -66,9 +66,13 @@ def describe(session, profile, machines=None):
         confirmed = receipt.data if receipt and entry and receipt.data.get("generation") == binding(profile, entry)["generation"] else {}
         if id == "local" and entry:
             from . import runtime
+            from .node_deployments import readiness
             installed = runtime.home(profile).is_dir()
             confirmed = {"state": "active" if effective and installed else "error" if effective else "disabled",
-                         "error": "Local native profile needs setup" if effective and not installed else None}
+                         "error": "Local native profile needs setup" if effective and not installed else None,
+                         **readiness(runtime.home(profile))}
+            if effective and confirmed.get("error"):
+                confirmed["state"] = "error"
         state = ("not_deployed" if not entry else confirmed.get("state") or
                  ("deploy_pending" if effective else "disable_pending"))
         rows.append({"machine_id": id, "machine_name": machine.get("name", "Removed machine"),
@@ -78,7 +82,8 @@ def describe(session, profile, machines=None):
             "model_configured": confirmed.get("model_configured"), "swarm_enabled": confirmed.get("swarm_enabled")})
         rows[-1].update(instance_id=binding(profile, entry)["instance_id"] if entry else None,
             runtime_state=confirmed.get("runtime_state"), definition_revision=confirmed.get("definition_revision"),
-            definition_sync=confirmed.get("definition_sync"))
+            definition_sync=confirmed.get("definition_sync"), runtime_reason=confirmed.get("runtime_reason"),
+            runtime_detail=confirmed.get("runtime_detail"))
     return {"profile_id": profile["id"], "profile_name": profile["name"], "revision": profile["revision"],
             "profile_enabled": profile.get("enabled", False), "primary_machine_id": (profile.get("execution_placement") or {}).get("machine_id", "local")
                 if any(e["enabled"] for e in entries(profile)) else None, "machines": rows}
@@ -177,6 +182,8 @@ def receive(session, machine_id, receipts):
             "model_configured": receipt.get("model_configured") is True, "swarm_enabled": receipt.get("swarm_enabled") is True,
             "instance_id": binding(profile, entry)["instance_id"],
             "runtime_state": receipt.get("runtime_state"), "definition_revision": receipt.get("definition_revision"),
+            "runtime_reason": str(receipt.get("runtime_reason") or "")[:200] or None,
+            "runtime_detail": str(receipt.get("runtime_detail") or "")[:1000] or None,
             "owner_epoch": receipt.get("owner_epoch"),
             "swarm_config": swarm_config,
             "context_ready": receipt.get("context_ready"),

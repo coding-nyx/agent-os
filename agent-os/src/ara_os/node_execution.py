@@ -64,7 +64,8 @@ async def exchange(enrollment):
         data = response.json()
         bindings = {b["native_name"]: b["profile_id"] for b in data["bindings"]}
         from .node_deployments import reconcile
-        deployment_receipts = await reconcile(data["bindings"])
+        from .node_updates import draining
+        deployment_receipts = await reconcile(data["bindings"], provision=not draining())
         response = await client.post(base + "/nodes/deployments/status", headers=headers,
             json={"machine_id": enrollment["machine_id"], "receipts": deployment_receipts})
         response.raise_for_status()
@@ -79,6 +80,8 @@ async def exchange(enrollment):
         ready = {r["profile_id"]: r["generation"] for r in deployment_receipts if r["state"] == "active"}
         j = swarm_runner.journal()
         for task in data["tasks"]:
+            if draining() and not task.get("cancel_requested"):
+                continue
             if not task.get("cancel_requested") and (task["profile_id"] not in ready or
                     ready[task["profile_id"]] != task["request"].get("deployment_generation", ready[task["profile_id"]])):
                 continue

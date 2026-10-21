@@ -13,6 +13,10 @@ This directory contains the core implementation of **ARA Agent OS**:
 
 ## Getting Started
 
+Versioned node packages and dashboard updates are documented in
+[Node releases and updates](docs/NODE-UPDATES.md). Use `ara --version` to inspect
+the application version and `ara package --output ./dist` to build a node package.
+
 See [Native agents on nodes](docs/NODE-RUNTIMES.md) for standalone setup,
 node-owned dashboard chat, deployment and profile sync.
 

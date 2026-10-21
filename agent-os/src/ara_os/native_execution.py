@@ -73,7 +73,7 @@ def run_worker(request):
             # Bind the native handle durably before inference/tools. A lost
             # transport must not erase the identity needed to inspect its outcome.
             # This is ARA's separate journal, never the native session database.
-            from task_journal import Journal
+            from ara_os.task_journal import Journal
             task_id, worker_id = request["worker_id"].split(":", 1)
             journal = Journal(Path(request["cancel_path"]).parent.parent)
             admission = journal.read(task_id)
@@ -164,7 +164,7 @@ def workspace_operation(request):
 
 
 def computer_control(request):
-    from native_computer import control
+    from .native_computer import control
     try:
         return control(request)
     except ValueError as exc:

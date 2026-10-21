@@ -1,5 +1,8 @@
 import time
 
+from ara_os import config
+from ara_os.app import is_network_exposed
+
 
 def test_data_survives_agent_disable_and_validates_exact_amounts(system):
     c = system["client"]
@@ -67,3 +70,18 @@ def test_real_native_harness_model_and_bound_mcp_tool(system):
     assert c.get(f"/conversations/{conversation['id']}").json()["native_session_id"].startswith("local-")
     repeated = c.post(f"/conversations/{conversation['id']}/messages", json={"text": run["input"], "operation_id": "native-tool-once"})
     assert repeated.json()["id"] == run["id"]
+
+
+def test_network_health_uses_effective_bind_before_saved_mode(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "STATE", tmp_path)
+    (tmp_path / "network.json").write_text('{"exposed":true}')
+    for address in ("127.0.0.1", "::1", "localhost"):
+        monkeypatch.setenv("ARA_HOST", address)
+        assert is_network_exposed() is False
+    for address in ("0.0.0.0", "::", "192.168.1.10", "ara.example.test"):
+        monkeypatch.setenv("ARA_HOST", address)
+        assert is_network_exposed() is True
+    monkeypatch.delenv("ARA_HOST")
+    assert is_network_exposed() is True
+    (tmp_path / "network.json").write_text('{"exposed":false}')
+    assert is_network_exposed() is False

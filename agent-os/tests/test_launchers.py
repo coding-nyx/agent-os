@@ -7,6 +7,59 @@ from ara_os.launchers import install_cli, record_default_profile
 from .conftest import ROOT
 
 
+def test_public_ara_command_selects_active_release_and_preserves_original_state(tmp_path):
+    import json
+    import sys
+    from pathlib import Path
+    from ara_os.launchers import install_ara_cli
+    root = tmp_path / "original installation"
+    for project, version in [(root, "first"), (tmp_path / "new release", "second")]:
+        (project / "src/ara_os").mkdir(parents=True)
+        (project / "src/ara_os/__init__.py").write_text("")
+        (project / "src/ara_os/cli.py").write_text('import os,json\ndef main(): print(json.dumps(dict(version=' + repr(version) + ',state=os.environ["ARA_STATE_DIR"],native=os.environ.get("ARA_RUNTIME_SOURCE"))))\n')
+        (project / ".venv/bin").mkdir(parents=True)
+        (project / ".venv/bin/python").symlink_to(sys.executable)
+    source = ROOT
+    # The bootstrapping interpreter lives with the original installation.
+    (root / "src/ara_os/ara_launcher.py").write_bytes((source / "src/ara_os/ara_launcher.py").read_bytes())
+    command = install_ara_cli(root, tmp_path / "public bin")
+    def call(*args):
+        env = {k:v for k,v in os.environ.items() if k not in {"ARA_STATE_DIR", "ARA_INSTALL_ROOT", "PYTHONPATH"}}
+        reply = subprocess.run([str(command), *args], cwd=tmp_path, env=env, text=True, capture_output=True)
+        assert reply.returncode == 0, reply.stderr
+        return json.loads(reply.stdout)
+    assert call()["version"] == "first"
+    state = root / ".state"
+    state.mkdir()
+    (state / "node-active-release.json").write_text(json.dumps({"project": str(tmp_path / "new release"),
+        "python": str(tmp_path / "new release/.venv/bin/python"), "native": {"source": "shared-native"}}))
+    result = call()
+    assert result == {"version": "second", "state": str(state), "native": "shared-native"}
+    assert call("--state", str(tmp_path / "separate state"))["version"] == "first"
+    custom_state = tmp_path / "custom state"
+    install_ara_cli(root, command.parent, state=custom_state)
+    assert call()["state"] == str(custom_state)
+    foreign = command.read_bytes()
+    with pytest.raises(FileExistsError):
+        install_ara_cli(tmp_path / "different installation", command.parent)
+    assert command.read_bytes() == foreign
+
+
+def test_shell_path_setup_is_quoted_and_idempotent(tmp_path, monkeypatch):
+    from ara_os.launchers import ensure_shell_path
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("SHELL", "/bin/zsh")
+    (tmp_path / ".zshrc").write_text("# Existing shell settings\n")
+    directory = tmp_path / "commands with spaces"
+    files = ensure_shell_path(directory)
+    assert {p.name for p in files} == {".profile", ".zprofile", ".zshrc"}
+    assert ensure_shell_path(directory) == []
+    shell = subprocess.run(["/bin/sh", "-c", '. "$1"; command -v sh; printf "%s" "$PATH"', "sh", str(tmp_path / ".profile")], text=True, capture_output=True)
+    assert shell.returncode == 0
+    assert str(directory) in shell.stdout
+    assert (tmp_path / ".zshrc").read_text().startswith("# Existing shell settings\n")
+
+
 def run_cli(command, state, *arguments, home=None):
     env = {key: value for key, value in os.environ.items()
            if key not in {"HERMES_HOME", "HERMES_RUNTIME_DIR", "PYTHONPATH"}}

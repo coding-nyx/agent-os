@@ -1,5 +1,6 @@
 """Durability and actual native execution; no paid accounts or physical input."""
 import asyncio
+import hashlib
 import json
 import os
 import subprocess
@@ -32,11 +33,12 @@ def test_journal_atomic_claim_conflicts_and_acknowledgements(tmp_path):
 
 
 def native_profile(state, provider_url, name="coding-agent"):
+    from ara_os.swarm_policy import DEFAULTS
     home = state / "runtime/profiles" / name
     home.mkdir(parents=True)
     cfg = {"model": {"provider": "custom", "default": "ara-protocol-test", "base_url": provider_url,
                      "api_mode": "chat_completions"}, "terminal": {"backend": "local"},
-           "ara": {"swarm": {"enabled": True, "toolsets": []}}}
+           "ara": {"swarm": {**DEFAULTS, "enabled": True, "toolsets": []}}}
     (home / "config.yaml").write_text(yaml.safe_dump(cfg))
     return home
 
@@ -107,6 +109,15 @@ def test_real_node_execution_event_sync_and_idempotent_replay(system, tmp_path):
     env = {**system["env"], "ARA_STATE_DIR": str(node_state), "ARA_DATABASE_URL": "postgresql+psycopg://invalid@127.0.0.1:9/missing"}
     (node_state / "node-connection.json").write_text(json.dumps(enrollment))
     c.put(f"/profiles/{p['id']}/placement", json={"machine_id": enrollment["machine_id"], "native_name": home.name}).raise_for_status()
+    # This fixture represents a previously managed node, which can upgrade its
+    # ownership receipt without adopting an unrelated standalone native profile.
+    legacy = node_state / "node-deployments" / (hashlib.sha256(home.name.encode()).hexdigest() + ".json")
+    legacy.parent.mkdir()
+    legacy.write_text(json.dumps({"profile_id": p["id"]}))
+    # The coordinator needs the node's installed swarm policy receipt before
+    # authorizing work for that deployment generation.
+    observed = command(env, "node", "work", "--once")
+    assert observed.returncode == 0, observed.stderr + observed.stdout
     submitted = c.post(f"/profiles/{p['id']}/swarms/spawn", json={"preset": "custom", "task": "Execute on assigned node", "operation_id": "remote-once"})
     submitted.raise_for_status()
     task = submitted.json()

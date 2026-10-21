@@ -1,0 +1,18 @@
+.computer-setup { padding: 22px; }
+.computer-setup > header { display: flex; justify-content: space-between; gap: 12px; align-items: center; color: #526b58; }
+.computer-setup .eyebrow { display: block; margin: 0 0 6px; }
+.computer-setup p { font-size: 12px; line-height: 1.7; }
+.computer-setup-checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 18px 0; }
+.computer-setup-checks > div { background: #f5f7f1; border: 1px solid #e2e8dc; padding: 12px; border-radius: 8px; }
+.computer-setup-checks small, .computer-setup-checks strong { display: block; font-size: 12px; overflow-wrap: anywhere; }
+.computer-setup-checks strong { margin-top: 7px; color: #425b48; }
+.computer-setup .button-row { margin: 16px 0; }
+.computer-setup details { font-size: 12px; margin: 16px 0; }
+.computer-setup summary { cursor: pointer; }
+.computer-setup code { display: block; overflow-wrap: anywhere; margin: 8px 0; font-size: 11px; }
+.computer-setup-access { border-top: 1px solid #e5e9e1; padding-top: 16px; margin-top: 16px; }
+.computer-setup-access label { flex-direction: row; align-items: flex-start; gap: 10px; }
+.computer-setup-access input { flex: 0 0 auto; margin: 3px 0 0; }
+.computer-setup-access small { display: block; margin-top: 5px; font-size: 11px; }
+.computer-setup-next { display: flex; gap: 7px; align-items: flex-start; margin-bottom: 0; }
+.computer-setup-next svg { margin-top: 3px; }

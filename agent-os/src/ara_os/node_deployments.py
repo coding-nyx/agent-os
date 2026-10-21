@@ -69,9 +69,13 @@ def configure(home, binding):
         fcntl.flock(lock, fcntl.LOCK_EX)
         before = path.read_bytes()
         cfg = yaml.safe_load(before) or {}
-        cfg.setdefault("ara", {})["deployment"] = {k: binding[k] for k in ("profile_id", "enabled", "generation")}
         from .node_mcp import configuration as local_tools
-        cfg.setdefault("mcp_servers", {})["ara-node"] = local_tools(binding["native_name"])
+        deployment = {k: binding[k] for k in ("profile_id", "enabled", "generation")}
+        tools = local_tools(binding["native_name"])
+        if (cfg.get("ara") or {}).get("deployment") == deployment and (cfg.get("mcp_servers") or {}).get("ara-node") == tools:
+            return
+        cfg.setdefault("ara", {})["deployment"] = deployment
+        cfg.setdefault("mcp_servers", {})["ara-node"] = tools
         with tempfile.NamedTemporaryFile(mode="w", dir=home, delete=False) as stream:
             os.chmod(stream.name, 0o600)
             yaml.safe_dump(cfg, stream, sort_keys=False)
@@ -85,6 +89,14 @@ def configure(home, binding):
 
 
 def readiness(home):
+    try:
+        return _readiness(home)
+    except (OSError, ValueError, TypeError, AttributeError, yaml.YAMLError):
+        return {"model_configured": False, "swarm_enabled": False,
+                "error": "Native profile configuration could not be read; inspect it on the execution machine"}
+
+
+def _readiness(home):
     if not (home / "config.yaml").is_file():
         return {"model_configured": False, "swarm_enabled": False}
     cfg = yaml.safe_load((home / "config.yaml").read_text()) or {}
@@ -92,10 +104,20 @@ def readiness(home):
     preferences = home / ".ara-preferences.json"
     context_ready = json.loads(preferences.read_text()).get("context_ready") if preferences.is_file() else None
     selected = (model.get("default") or model.get("model")) if isinstance(model, dict) else model
+    selected = selected.strip() if isinstance(selected, str) else None
     return {"model_configured": bool(selected), "model_connection": {
                 "model": selected, "provider": model.get("provider", "native") if isinstance(model, dict) else "native"} if selected else None,
             "swarm_enabled": (cfg.get("ara") or {}).get("swarm", {}).get("enabled") is True,
             "swarm_config": (cfg.get("ara") or {}).get("swarm", {}), "context_ready": context_ready}
+
+
+def runtime_observation(status, model_configured):
+    """Keep native failures visible even when model setup is also incomplete."""
+    state = status["state"]
+    return {"runtime_state": "setup_required" if not model_configured and state in {"running", "installed"} else state,
+            "runtime_reason": status.get("reason"), "runtime_detail": status.get("detail"),
+            **({"state": "error", "error": status.get("detail") or status.get("reason") or "Native runtime unavailable"}
+               if state == "error" else {})}
 
 
 async def revoke(bindings):
@@ -186,6 +208,7 @@ async def reconcile(bindings, *, provision=True):
                         state = await runtime.call({"operation": "instance-lifecycle", "action": "status"}, {"native_name": name})
                         result.update(state="active", owner_epoch=row["owner_epoch"], runtime_state=state["state"],
                             definition_sync={"state": "unpublished"}, **readiness(home))
+                        result.update(runtime_observation(state, result["model_configured"]))
                         save(path, {**result, "enabled": True})
                         receipts.append(result)
                         continue
@@ -195,8 +218,9 @@ async def reconcile(bindings, *, provision=True):
                          (previous.get("definition_sync") or {}).get("offered_revision") == manifest["revision"]) and home.is_dir()):
                     result.update({k: previous.get(k) for k in ("definition_revision", "definition_sync", "runtime_state")})
                     result.update(state="active", **readiness(home))
+                    await asyncio.to_thread(configure, home, binding)
                     status = await runtime.call({"operation": "instance-lifecycle", "action": "status"}, {"native_name": name})
-                    result["runtime_state"] = status["state"] if result["model_configured"] else "setup_required"
+                    result.update(runtime_observation(status, result["model_configured"]))
                     if (result.get("definition_sync") or {}).get("state") != "conflict":
                         result["definition_sync"] = await asyncio.to_thread(definition_status, home) or result.get("definition_sync")
                     receipts.append(result)
@@ -231,7 +255,7 @@ async def reconcile(bindings, *, provision=True):
                 if current.get("generation") != binding["generation"]:
                     await runtime.call({"operation": "instance-lifecycle", "action": "stop"}, {"native_name": name})
                     raise ValueError("Deployment revoked while native runtime was starting")
-                result["runtime_state"] = state["state"] if result["model_configured"] else "setup_required"
+                result.update(runtime_observation(state, result["model_configured"]))
                 save(path, {**result, "enabled": True})
                 instances.write(row["instance_id"], {"enabled": True, "state": result["runtime_state"],
                     "definition_revision": result.get("definition_revision"), "generation": binding["generation"]})

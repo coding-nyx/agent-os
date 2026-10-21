@@ -5,11 +5,13 @@ import asyncio
 import json
 import sys
 
-from . import config, swarm_runner, swarm_policy, runtime
+from . import __version__, config, swarm_runner, swarm_policy, runtime
 
 
 def configuration(name):
-    return {"command": sys.executable, "args": ["-m", "ara_os.cli", "--state", str(config.STATE), "node", "mcp", "--profile", name]}
+    return {"command": sys.executable, "args": ["-m", "ara_os.cli", "--state", str(config.STATE), "node", "mcp", "--profile", name],
+        "env": {"ARA_RUNTIME_SOURCE": str(config.RUNTIME_SOURCE), "ARA_RUNTIME_PYTHON": str(config.RUNTIME_PYTHON),
+                "ARA_RUNTIME_TOOLS": str(config.RUNTIME_TOOLS)}}
 
 
 def install(name):
@@ -78,7 +80,7 @@ async def serve(name):
                 continue
             if method == "initialize":
                 result = {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "ara-node", "version": "0.1.0"}}
+                    "serverInfo": {"name": "ara-node", "version": __version__}}
             elif method == "ping":
                 result = {}
             elif method == "tools/list":

@@ -14,6 +14,8 @@ from ..node_execution import validate_connection
 from . import policy
 from .engine import CUAEngine
 from .models import CUAAction
+from .models import local_platform
+from . import setup
 
 log = logging.getLogger(__name__)
 
@@ -32,8 +34,8 @@ class NodeComputer:
         self.job = None
         self.job_id = None
         self.completed = {}
-        self.device = {"platform": "linux", "state": "needs_verification", "capabilities": []}
-        self.checked = False
+        self.device = {"platform": local_platform(), "state": "needs_verification", "capabilities": []}
+        self.checked = 0
         self.last_error = 0
 
     def status(self):
@@ -55,7 +57,7 @@ class NodeComputer:
                     approvals.append({k: value[k] for k in ("id", "actor", "action", "created")})
                 if len(approvals) >= 32:
                     break
-        status = {"device": self.device, "policy": {**{k: cfg[k] for k in
+        status = {"device": self.device, "setup_contract": setup.CONTRACT, "setup": setup.cached(), "policy": {**{k: cfg[k] for k in
             ("mode", "kill_switch", "epoch", "remote_access", "remote_pause")}, "grants": grants if allowed else {}},
                 "approvals": approvals}
         # Include complete actions within the status budget. Further approvals
@@ -88,7 +90,7 @@ class NodeComputer:
         path = self.receipt_path(ident)
         request = command["request"]
         readonly = request["kind"] in {"ui_tree", "receipt"} or (request["kind"] == "action" and
-                    request["body"].get("action") == "screenshot")
+                    request["body"].get("action") == "screenshot") or (request["kind"] == "setup" and request["body"].get("action") == "check")
         if readonly:
             return await self.perform(command)
         async with self.engine.operation_lock(path):
@@ -122,7 +124,7 @@ class NodeComputer:
         self.engine.remote_epoch = policy.read()["epoch"]
         self.engine.remote_deadline = command["expires"]
         try:
-            async with asyncio.timeout(min(12, command["expires"] - time.time())):
+            async with asyncio.timeout(min(240 if command["request"]["kind"] == "setup" else 12, command["expires"] - time.time())):
                 return await self.dispatch(command["id"], command["request"])
         except TimeoutError:
             return failure("Desktop command timed out; inspect before retrying", "unknown")
@@ -134,6 +136,23 @@ class NodeComputer:
 
     async def dispatch(self, ident, request):
         kind, body = request["kind"], request["body"]
+        if kind == "setup":
+            if request.get("actor") is not None:
+                return failure("Desktop setup is an operator action, not an agent capability")
+            if body.get("action") == "configure":
+                values = body.get("values", {})
+                if not isinstance(values, dict) or set(values) - {"mode", "remote_access", "grants"}:
+                    raise ValueError("Use mode, remote access and assigned-agent grants")
+                values = dict(values)
+                if "grants" in values:
+                    if not isinstance(values["grants"], dict):
+                        raise ValueError("Agent grants must be an object")
+                    values["grants"] = {**policy.read()["grants"], **{self.actor(id): grants for id, grants in values["grants"].items()}}
+                policy.update(values)
+                return {"success": True, "policy": self.status()["policy"]}
+            result = await setup.perform(body.get("action"))
+            self.checked = 0  # Refresh the advertised driver after setup/checks.
+            return result
         actor = self.actor(request["actor"])
         operator = actor is None
         denied = self.engine.authorize(actor, operator, input=kind == "approve")
@@ -194,12 +213,12 @@ class NodeComputer:
         base = self.enrollment["host"].rstrip("/") + "/api/v1/nodes/computer"
         headers = {"X-ARA-Node-Key": self.enrollment["token"]}
         machine = self.enrollment["machine_id"]
-        if not self.checked:
+        if not self.checked or time.monotonic() - self.checked > 30:
             try:
                 self.device = (await asyncio.wait_for(self.engine.list_devices(), 5))[0]
             except TimeoutError:
                 self.device["state"] = "unavailable"
-            self.checked = True
+            self.checked = time.monotonic()
         async with httpx.AsyncClient(timeout=4, trust_env=False) as client:
             started = time.monotonic()
             response = await client.post(base + "/poll", headers=headers,
@@ -223,12 +242,13 @@ class NodeComputer:
                 response.raise_for_status()
                 self.completed.pop(ident)
                 acknowledged.add(ident)
-            if not self.job and data["commands"]:
+            from ..node_updates import draining
+            if not self.job and data["commands"] and not draining():
                 command = data["commands"][0]
                 # Translate the host deadline conservatively into this machine's
                 # clock; a skewed wall clock must not extend an input's lifetime.
                 remaining = command["expires"] - data["server_time"] - (time.monotonic() - started)
-                command["expires"] = time.time() + max(0, min(15, remaining))
+                command["expires"] = time.time() + max(0, min(240 if command["request"]["kind"] == "setup" else 15, remaining))
                 # Do not re-admit a command just acknowledged in this same poll.
                 if command["id"] not in acknowledged:
                     self.job_id = command["id"]

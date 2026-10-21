@@ -8,6 +8,20 @@ unavailability; they do not return successful placeholders.
 
 ## Setup and authorization
 
+In **System Control**, select the host or paired node and use **Check driver &
+permissions**. Existing managed, PATH, standard macOS app and ordinary Hermes
+driver installations are reused. The panel shows driver detection separately
+from Screen Recording, Accessibility and successful screen capture. A failed
+check means installation status is unknown, not that the driver is absent.
+
+On macOS, **Request macOS permissions** starts the native CuaDriver permission
+flow on the selected Mac. Approve CuaDriver in **System Settings → Privacy &
+Security → Screen Recording / Accessibility**, then check again. The browser
+cannot grant TCC permissions and never claims that opening a prompt granted
+them. Checks do not capture the screen. **Snapshot** is the separate explicit
+capture verification. **Install managed driver** is available when needed;
+checking or opening this page never installs software automatically.
+
 `ara setup --computer-control` explicitly invokes the native driver installer.
 Ordinary setup checks driver presence without capturing a screen or enabling
 computer access. Presence is not proof of live readiness; native
@@ -54,6 +68,13 @@ terminal tools. Swarm workers do not inherit computer control.
 ## Dashboard
 
 The System Control surface starts observation only on explicit user action.
+Operator controls support clicking the image, typing text, Enter/Tab/Escape/
+Backspace and vertical scrolling. Each dashboard input carries the displayed
+image's observation ID on both host and node desktops. A changed or expired
+observation is refused. Input pauses live observation and requests a new snapshot
+after confirmed delivery. An input delivery receipt does not certify its visual
+effect. Local operator inputs with stable operation IDs retain receipts so replay
+does not dispatch them again; older callers without an ID retain legacy behavior.
 Frames are periodic native observations, not a claimed 30–60 FPS hardware stream.
 Clicks map against the actual image bounds. Missing readiness and capture errors
 remain visible.
@@ -109,12 +130,16 @@ ara node work
 Keep the continuous worker running in the node's graphical login session with
 its OS capture/accessibility permissions. `ara node work --once` exchanges swarm
 tasks only; it does not serve desktops. Driver presence is reported separately
-from a successful capture. Restart the worker after installing a driver.
+from a successful capture. Version 0.2.1 workers refresh discovery after setup
+and periodically, so installing a driver does not require restarting the worker.
 
 For observation without remote input, use `ara cua remote --allow-view`. To revoke
 all paired-host desktop access, run `ara cua remote` with no allow flags.
-Enrollment alone grants no desktop access. The dashboard cannot enable remote
-access or change the node's modes and native-profile grants.
+Enrollment alone grants no desktop access. With a 0.2.1 node, the dashboard's
+explicit operator controls can enable observation/input, change mode and grant
+access to assigned agents. Requests execute on that node and preserve its local
+emergency stop. Agent MCP tools cannot invoke setup or grant themselves access.
+Older nodes retain the local CLI setup flow until they are updated.
 
 To give a host-managed profile computer tools on its assigned execution node,
 configure that profile's execution placement on the host and grant its matching

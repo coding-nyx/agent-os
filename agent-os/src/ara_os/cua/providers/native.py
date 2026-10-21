@@ -6,7 +6,7 @@ import os
 import time
 
 from ... import runtime_adapter
-from ..models import CUAActionKind, CUAActionResult, DeviceInfo, DevicePlatform
+from ..models import CUAActionKind, CUAActionResult, DeviceInfo, DevicePlatform, local_platform
 from .base import BaseDeviceProvider
 
 
@@ -25,7 +25,7 @@ class NativeDeviceProvider(BaseDeviceProvider):
 
     async def get_device_info(self):
         status = await runtime_adapter.computer({"action": "status"})
-        platform = {"darwin": "macos"}.get(status.get("platform"), status.get("platform", "linux"))
+        platform = {"darwin": "macos", "win32": "windows"}.get(status.get("platform"), status.get("platform", local_platform()))
         return DeviceInfo(id=self.device_id, name=self.name, platform=DevicePlatform(platform),
             state="needs_verification" if status.get("installed") else "unavailable",
             resolution=(self.metadata.get("width", 0), self.metadata.get("height", 0)),

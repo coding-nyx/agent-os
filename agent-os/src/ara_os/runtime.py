@@ -67,21 +67,33 @@ async def frames(request: dict, profile: dict | None = None):
 
 async def call(request: dict, profile: dict | None = None):
     result = None
+    received = False
     async for frame in frames(request, profile):
         if frame["type"] == "error":
-            raise Problem("runtime_error", frame["data"]["detail"], 502, "Inspect the connection or resume the native session.")
+            data = frame["data"]
+            from .native_errors import STATUSES
+            raise Problem(data.get("code") or "runtime_error", data.get("detail") or "The native operation failed.",
+                          STATUSES.get(data.get("code"), 502), data.get("action") or "Inspect the connection or resume the native session.")
         if frame["type"] == "unknown":
-            raise Problem("unknown_outcome", frame["data"]["detail"], 409, "Inspect the native session before retrying.")
+            raise Problem("unknown_outcome", frame["data"].get("detail") or "The native outcome was not confirmed.",
+                          409, "Inspect the native session before retrying.")
         if frame["type"] == "result":
             result = frame["data"]
+            received = True
+    if not received:
+        raise Problem("runtime_result_missing", "The native runtime closed without returning an operation result. "
+                      "Its outcome is unconfirmed; inspect native state before retrying.", 502)
     return result
 
 
 async def native_http(method: str, path: str, body=None, profile: dict | None = None, query=None):
     result = await call({"operation": "http", "method": method, "path": path,
                          "params": {**(query or {}), **({"profile": profile["native_name"]} if profile else {})}, "body": body}, profile)
+    if not isinstance(result, dict) or type(result.get("status")) is not int or "body" not in result:
+        raise Problem("invalid_native_response", "The native runtime returned an invalid HTTP response.", 502)
     if result["status"] >= 400:
-        detail = result["body"].get("detail", "The native operation was refused.")
+        body = result["body"]
+        detail = (body.get("detail") or body.get("error") or "The native operation was refused.") if isinstance(body, dict) else body
         raise Problem("native_operation_refused", str(detail)[:800], result["status"])
     return result["body"]
 

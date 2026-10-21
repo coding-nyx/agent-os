@@ -4,7 +4,8 @@ import { profilePath, api, Item, post } from './api';
 
 export type MachineDeployment = { machine_id: string; machine_name: string; available: boolean; online: boolean;
   native_name: string; desired_enabled: boolean; enabled: boolean; state: string; error?: string;
-  model_configured?: boolean; swarm_enabled?: boolean; confirmed_at?: number };
+  model_configured?: boolean; swarm_enabled?: boolean; confirmed_at?: number;
+  runtime_state?: string; runtime_reason?: string; runtime_detail?: string };
 export type DeploymentSet = { profile_id: string; profile_name: string; revision: number; profile_enabled: boolean;
   primary_machine_id: string | null; machines: MachineDeployment[] };
 
@@ -16,6 +17,13 @@ export function desiredDeployments(profile: Item): { machine_id: string; native_
 export function deploymentLabel(row: MachineDeployment) {
   if (!row.online && row.state === 'active') return 'Last confirmed enabled';
   if (!row.online && row.state === 'disabled') return 'Last confirmed disabled';
+  if (row.state === 'active') {
+    const runtime: Record<string, string> = { running: 'Runtime running', starting: 'Runtime starting',
+      stopping: 'Runtime stopping', stopped: 'Runtime stopped', installed: 'Installed · runtime stopped',
+      setup_required: 'Model setup required', error: 'Runtime needs attention', paused: 'Paused on node' };
+    if (row.runtime_state && runtime[row.runtime_state]) return runtime[row.runtime_state];
+    return row.model_configured === false ? 'Model setup required' : 'Installed · check runtime';
+  }
   const names: Record<string, string> = { active: 'Enabled on machine', disabled: 'Disabled on machine',
     not_deployed: 'Not deployed', deploy_pending: 'Deployment pending', disable_pending: 'Disable pending', error: 'Needs attention' };
   return names[row.state] || row.state;
@@ -32,6 +40,7 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [runtimeChecks, setRuntimeChecks] = useState<Record<string, Partial<MachineDeployment>>>({});
   const alive = useRef(true);
   const load = useCallback(async () => {
     try {
@@ -58,6 +67,7 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
       });
       if (!alive.current) return;
       setData(next); setSelected([]);
+      setRuntimeChecks({});
       setMessage(action === 'primary' ? 'Default execution machine updated.' : action === 'deploy'
         ? `Deployment requested on ${ids.length} machine${ids.length === 1 ? '' : 's'}. Node confirmation appears below.`
         : `Undeploy requested on ${ids.length} machine${ids.length === 1 ? '' : 's'}. The agent is blocked from new managed work there.`);
@@ -65,7 +75,23 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
     } catch (e) { if (alive.current) setError((e as Error).message); }
     finally { if (alive.current) setBusy(false); }
   }
-  const rows = data?.machines || [];
+  async function checkRuntime(row: MachineDeployment, start = false) {
+    if (busy) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const target = { ...profile, _runtime_target: { machine_id: row.machine_id } };
+      const result = start ? await post(profilePath(target, '/runtime/start'), {}) : await api(profilePath(target, '/runtime'));
+      if (!alive.current) return;
+      setRuntimeChecks(previous => ({ ...previous, [row.machine_id]: {
+        runtime_state: result.state, runtime_reason: result.reason, runtime_detail: result.detail, confirmed_at: Date.now() / 1000 } }));
+      setMessage(`${row.machine_name}: native runtime ${result.state.replaceAll('_', ' ')}${result.reason ? ` (${result.reason})` : ''}.`);
+    } catch (e) { if (alive.current) setError((e as Error).message); }
+    finally { if (alive.current) setBusy(false); }
+  }
+  const rows = (data?.machines || []).map(row => {
+    const check = runtimeChecks[row.machine_id];
+    return check && (check.confirmed_at || 0) > (row.confirmed_at || 0) ? { ...row, ...check } : row;
+  });
   const nodes = rows.filter(r => r.machine_id !== 'local' && r.available);
   const assigned = rows.filter(r => r.desired_enabled);
   return <section className="panel deployment-panel" aria-label={`Machine deployments for ${profile.name}`}>
@@ -73,7 +99,7 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
       <h2>Deploy {profile.name}</h2><p>Choose where this agent is enabled. Each machine keeps its own model connection and working state.</p></div>
       <button aria-label="Refresh deployments" disabled={busy} onClick={load}><RefreshCw size={16} /></button></header>
     <div className="deployment-totals"><span><strong>{assigned.length}</strong> assigned machines</span>
-      <span><strong>{rows.filter(r => r.state === 'active').length}</strong> confirmed enabled</span>
+      <span><strong>{rows.filter(r => r.state === 'active' && r.online && r.runtime_state === 'running').length}</strong> runtimes running</span>
       <span><strong>{rows.filter(r => r.state.endsWith('_pending')).length}</strong> awaiting node confirmation</span></div>
     {!data && !error && <p role="status"><Loader2 size={16} className="spin" /> Loading machine deployments…</p>}
     {error && <div className="notice warning" role="alert">{error}<button onClick={() => { setError(''); load(); }}>Reload settings</button></div>}
@@ -91,10 +117,11 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
           <span className="deployment-machine-icon">{row.machine_id === 'local' ? <Monitor size={21} /> : <Server size={21} />}</span>
           <span><strong>{row.machine_name}</strong><small>{row.machine_id === 'local' ? 'Host machine' : row.online ? 'Node online' : 'Node offline'}
             {row.desired_enabled && <> · {row.native_name}</>}</small></span></label>
-        <div className="deployment-machine-state"><span className={'deployment-state ' + (row.state === 'active' ? 'is-enabled' : '')}>
+        <div className="deployment-machine-state"><span className={'deployment-state ' + (row.state === 'active' && row.online && row.runtime_state === 'running' ? 'is-enabled' : '')}>
           <i />{deploymentLabel(row)}</span>
           {row.error && <small className="error">{row.error}</small>}
-          {(row as any).runtime_state && <small>Runtime: {(row as any).runtime_state.replaceAll('_',' ')}</small>}
+          {row.runtime_reason && <small>Native status: {row.runtime_reason}</small>}
+          {row.runtime_detail && <small>{row.runtime_detail}</small>}
           {(row as any).definition_sync?.state === 'conflict' && <small>Definition conflict: {(row as any).definition_sync.conflicts.join(', ')}</small>}
           {(row as any).definition_sync?.state === 'local_changes' && <small>Local definition edits · publish this instance to share them</small>}
           {row.state === 'active' && row.machine_id !== 'local' && row.model_configured === false && <small>Model setup needed on this node</small>}
@@ -102,6 +129,10 @@ export function AgentDeployments({ profile, refresh }: { profile: Item; refresh:
         <div className="deployment-machine-actions">{row.desired_enabled && data?.primary_machine_id === row.machine_id
           ? <span className="deployment-default"><CheckCircle2 size={13} /> Default execution</span>
           : row.desired_enabled && <button disabled={busy || !row.available} onClick={() => apply('primary', [row.machine_id])}>Use by default</button>}
+          {row.enabled && row.available && <>
+            <button disabled={busy || !row.online || row.state === 'deploy_pending'} onClick={() => checkRuntime(row)}>Check runtime</button>
+            <button disabled={busy || !row.online || row.state === 'deploy_pending'} onClick={() => checkRuntime(row, true)}>Start runtime</button>
+          </>}
           {row.desired_enabled && <button disabled={busy} onClick={() => apply('undeploy', [row.machine_id])}>Undeploy</button>}</div>
       </article>)}
     </div>

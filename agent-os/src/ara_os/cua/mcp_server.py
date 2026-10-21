@@ -5,6 +5,7 @@ import json
 import sys
 from typing import Any, Dict
 
+from .. import __version__
 from .tools import CUA_TOOLS, invoke_cua_tool, result_content
 
 
@@ -19,7 +20,7 @@ async def handle_jsonrpc(request: Dict[str, Any], *, actor=None) -> Dict[str, An
             "result": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "ara-cua", "version": "0.1.0"},
+                "serverInfo": {"name": "ara-cua", "version": __version__},
             },
         }
 

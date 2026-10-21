@@ -34,7 +34,7 @@ CUA_TOOLS: List[Dict[str, Any]] = [
                 "operation_id": {"type": "string", "minLength": 1, "maxLength": 120,
                     "description": "Stable operation ID required for agent inputs. Reuse on retries; never resubmit unknown work under a new ID."},
                 "observation_id": {"type": "string", "maxLength": 64,
-                    "description": "For remote node input, copy observation_id from this actor's fresh screenshot metadata."},
+                    "description": "Copy observation_id from this actor's fresh screenshot metadata to bind input to the observed target."},
                 "action": {
                     "type": "string",
                     "enum": [

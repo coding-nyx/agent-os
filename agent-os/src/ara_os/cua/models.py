@@ -1,17 +1,23 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import math
+import sys
 from enum import Enum
 from typing import Any, List, Optional, Tuple
 
 
 class DevicePlatform(str, Enum):
+    UNKNOWN = "unknown"
     MACOS = "macos"
     ANDROID = "android"
     LINUX = "linux"
     WINDOWS = "windows"
     IOS = "ios"
+
+
+def local_platform():
+    return {"darwin": "macos", "win32": "windows", "linux": "linux"}.get(sys.platform, "unknown")
 
 
 class CUAActionKind(str, Enum):
@@ -74,6 +80,13 @@ class CUAAction:
     button: str = "left"
     scroll_delta: Optional[Tuple[int, int]] = None
     duration_ms: int = 200
+    observation_id: Optional[str] = None
+
+    def to_dict(self):
+        value = asdict(self)
+        if self.observation_id is None:
+            value.pop("observation_id")
+        return value
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CUAAction:
@@ -130,6 +143,9 @@ class CUAAction:
         duration = data.get("duration_ms", 200)
         if type(duration) is not int or not 1 <= duration <= 5000:
             raise ValueError("Duration must be between 1 and 5000 milliseconds")
+        observation_id = data.get("observation_id")
+        if observation_id is not None and (not isinstance(observation_id, str) or not 1 <= len(observation_id) <= 64):
+            raise ValueError("Observation ID must be a bounded string")
         return cls(
             action=kind,
             coordinate=coord,
@@ -139,6 +155,7 @@ class CUAAction:
             button=data.get("button", "left"),
             scroll_delta=scroll,
             duration_ms=int(data.get("duration_ms", 200)),
+            observation_id=observation_id,
         )
 
 

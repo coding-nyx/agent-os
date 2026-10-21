@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Bot, Brain, Check, CheckCircle2, Circle, Code2, Compass, Loader2, MessageSquare, Monitor, Play, Settings2, Shield, Sparkles, Target, Users, Wallet, Activity, X } from 'lucide-react';
-import { profilePath, api, Item, patch, post, put } from './api';
+import { operationId, profilePath, api, Item, patch, post, put } from './api';
 import './agents.css';
 import { desiredDeployments } from './deployments';
 
@@ -14,7 +14,14 @@ const order = ['ara', 'agnes', 'titan', 'ledger', 'atlas', 'scout'];
 
 export function AgentReadiness({ profile: p }: AgentProps) {
   const ready = p.chat_ready ?? (p.model_connection && p.enabled && p.provision_state === 'ready');
-  return <span className={`agent-readiness ${ready ? 'is-ready' : ''}`}><i />{!p.enabled ? 'Paused' : p.provision_state !== 'ready' ? 'Runtime needs attention' : ready ? 'Model selected' : 'Connect a model'}</span>;
+  const owner = p._runtime_target;
+  const remote = owner && owner.machine_id !== 'local';
+  const label = !p.enabled ? 'Paused' : p.runtime_error ? 'Deployment needs attention' : remote
+    ? !owner.online ? 'Node offline' : owner.deployment_state !== 'active' ? 'Deployment needs attention'
+      : !p.model_ready ? 'Connect a model' : owner.runtime_state === 'running' ? 'Runtime running'
+        : `Runtime ${(owner.runtime_state || 'unverified').replaceAll('_', ' ')}`
+    : p.provision_state !== 'ready' ? 'Runtime needs attention' : ready ? 'Model selected' : 'Connect a model';
+  return <span className={`agent-readiness ${ready ? 'is-ready' : ''}`}><i />{label}</span>;
 }
 
 export function AgentDirectory({ profiles, open, create }: { profiles: Item[]; open: (id: string) => void; create: () => void }) {
@@ -49,7 +56,10 @@ export function AgentHome({ profile: p, datasets, navigate, ask }: AgentProps & 
   const bound = datasets.filter(d => (p.bindings || []).some((b: Item) => b.dataset_id === d.id));
   const checks = [
     { title: 'Machine deployments', description: `${desiredDeployments(p).length} assigned machines · deploy or undeploy instances`, ready: desiredDeployments(p).length > 0, tab: 'deployments' },
-    { title: 'Runtime', description: 'Native profile and working directory', ready: p.provision_state === 'ready', tab: 'connections' },
+    { title: 'Runtime', description: p._runtime_target?.machine_id && p._runtime_target.machine_id !== 'local'
+      ? `${p._runtime_target.machine_name} · ${(p._runtime_target.runtime_state || 'unverified').replaceAll('_', ' ')}` : 'Native profile and working directory',
+      ready: p._runtime_target?.machine_id && p._runtime_target.machine_id !== 'local'
+        ? p._runtime_target.online && p._runtime_target.runtime_state === 'running' : p.provision_state === 'ready', tab: 'deployments' },
     { title: 'Model connection', description: p.model_connection?.model || 'Choose an account and model', ready: p.model_ready, tab: 'connections' },
     { title: 'Personal context', description: p.context_ready ? 'Your preferences are saved' : 'Make this agent work your way', ready: p.context_ready, tab: 'setup' },
     { title: p.preset === 'ara' ? 'Specialist access' : 'Data access', description: p.preset === 'ara' ? `${p.delegation_targets?.length || 0} permitted specialists` : `${bound.length} explicitly bound datasets`, ready: p.preset === 'ara' ? !!p.delegation_targets?.length : !!bound.length, tab: 'data' },
@@ -97,7 +107,7 @@ export function PlanningSurface({ id }: { id: string }) {
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setBusy(true); setError('');
     const payload = Object.fromEntries(new FormData(e.currentTarget));
-    try { await post(`/datasets/${id}/records`, { payload, operation_id: crypto.randomUUID() }); setAdding(false); await load(); }
+    try { await post(`/datasets/${id}/records`, { payload, operation_id: operationId() }); setAdding(false); await load(); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -160,7 +170,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
   const [inspectRun, setInspectRun] = useState<Item | null>(null);
   const [taskText, setTaskText] = useState('');
   const [roles, setRoles] = useState('[{"role":"Implementer A","objective":"Implement an independent component","stage":0},{"role":"Implementer B","objective":"Implement a different independent component","stage":0},{"role":"Reviewer","objective":"Review inherited changes and run tests","stage":1}]');
-  const [deploymentId, setDeploymentId] = useState(() => Array.from(crypto.getRandomValues(new Uint8Array(16)), v => v.toString(16).padStart(2, '0')).join(''));
+  const [deploymentId, setDeploymentId] = useState(() => operationId());
   const [executionMachine, setExecutionMachine] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState('');
@@ -341,7 +351,7 @@ export function SwarmPanel({ profile: p, act, refresh }: { profile: Item; act: (
             </div>
           </div>
           <div className="swarm-card-actions">
-            <button className="primary" disabled={!enabled || !isAllowed || !data?.deployments?.machines.some((m: any) => m.enabled && m.available)} onClick={() => { setDeploymentId(Array.from(crypto.getRandomValues(new Uint8Array(16)), v => v.toString(16).padStart(2, '0')).join('')); setExecutionMachine(data?.deployments?.primary_machine_id || ''); setDeployPreset(spec.id); }}>
+            <button className="primary" disabled={!enabled || !isAllowed || !data?.deployments?.machines.some((m: any) => m.enabled && m.available)} onClick={() => { setDeploymentId(operationId()); setExecutionMachine(data?.deployments?.primary_machine_id || ''); setDeployPreset(spec.id); }}>
               <Play size={14} /> Deploy swarm
             </button>
           </div>

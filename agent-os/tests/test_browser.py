@@ -12,6 +12,7 @@ def test_web_data_profile_workspace_and_mobile_navigation(system):
         chrome_candidate = "/usr/bin/chromium" if Path("/usr/bin/chromium").exists() else "/usr/bin/google-chrome"
         browser = playwright.chromium.launch(executable_path=os.environ.get("ARA_BROWSER_EXECUTABLE", chrome_candidate), args=["--no-sandbox"])
         context = browser.new_context(viewport={"width": 1440, "height": 1000}, timezone_id="Asia/Kolkata")
+        context.add_init_script("Object.defineProperty(Crypto.prototype, 'randomUUID', {value: undefined, configurable: true})")
         page = context.new_page()
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(f"http://127.0.0.1:{system['port']}", wait_until="domcontentloaded")
@@ -45,7 +46,7 @@ def test_web_data_profile_workspace_and_mobile_navigation(system):
         original = editor.input_value()
         editor.fill(original + "\nBrowser-edited identity.")
         page.get_by_role("button", name="Save changes").click()
-        expect(page.get_by_role("status")).to_contain_text("Saved locally")
+        expect(page.get_by_role("status")).to_contain_text("Saved on the selected runtime")
         profile = next(p for p in system["client"].get("/profiles").json() if p["preset"] == "ledger")
         system["client"].post(f"/profiles/{profile['id']}/model", json={"name": "Browser wire fixture", "base_url": system["provider_url"], "model": "ara-protocol-test", "api_key": "test-only-placeholder", "api_mode": "chat_completions"}).raise_for_status()
         page.get_by_role("tab", name="Voice", exact=True).click()
@@ -65,9 +66,13 @@ def test_web_data_profile_workspace_and_mobile_navigation(system):
         enrollment = page.get_by_role("dialog")
         enrollment.get_by_label("Node name", exact=True).fill("Browser paired node")
         enrollment.get_by_label("Host API address", exact=True).fill(f"http://127.0.0.1:{system['port']}")
+        enrollment.get_by_role("button", name="Generate Node Pairing", exact=True).click()
+        enrollment = page.get_by_role("dialog")
+        expect(enrollment.get_by_role("heading", name="Node Pairing Ready", exact=True)).to_be_visible()
         with page.expect_download() as download_info:
-            enrollment.get_by_role("button", name="Download enrollment file").click()
+            enrollment.get_by_role("button", name="Download JSON", exact=True).click()
         assert download_info.value.suggested_filename == "node-enrollment.json"
+        enrollment.get_by_role("button", name="Done", exact=True).click()
         expect(page.get_by_role("heading", name="Browser paired node", exact=True)).to_be_visible()
         page.set_viewport_size({"width": 390, "height": 844})
         page.get_by_role("button", name="Open navigation").click()

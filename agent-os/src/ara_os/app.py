@@ -117,8 +117,15 @@ async def boundary(request: Request, call_next):
 
 
 def is_network_exposed():
-    if os.environ.get("ARA_HOST") in {"0.0.0.0", "::"}:
-        return True
+    import ipaddress
+    bind = os.environ.get("ARA_HOST")
+    if bind:
+        if bind.lower() == "localhost":
+            return False
+        try:
+            return not ipaddress.ip_address(bind).is_loopback
+        except ValueError:
+            return True
     try:
         net_file = config.STATE / "network.json"
         if net_file.is_file():
@@ -194,7 +201,7 @@ def health():
         database = "unavailable"
     ready = bool(getattr(app.state, "ready", False))
     return JSONResponse({"product": "ARA Agent OS", "version": __version__, "database": database,
-            "runtime": "installed" if config.RUNTIME_PYTHON.exists() else "missing", "local_only": True,
+            "runtime": "installed" if config.RUNTIME_PYTHON.exists() else "missing", "local_only": not is_network_exposed(),
             "ready": ready, "initialization_error": getattr(app.state, "initialization_error", None)}, status_code=200 if ready and database == "ready" else 503)
 
 
@@ -295,11 +302,12 @@ def toggle_network(body: dict):
 def enrich_profile(p: dict) -> dict:
     from . import swarms
     from .runtime_commands import selected
+    selection_error = None
     if "_runtime_target" not in p:
         try:
             p = selected(p)
-        except Problem:
-            pass
+        except Problem as exc:
+            selection_error = exc.detail
     conn = profiles.resolve_model_connection(p)
     spec = next((s for s in PRESETS if s["id"] == p["preset"]), None)
     values = {**{f["id"]: f["default"] for f in spec["fields"]}, **p.get("configuration", {})} if spec else {}
@@ -311,8 +319,11 @@ def enrich_profile(p: dict) -> dict:
             native_context = json.loads(path.read_text()).get("context_ready")
     if native_context is not None:
         context_ready = native_context is True
-    return {**p, "model_connection": conn,
-            "model_ready": bool(conn), "chat_ready": bool(conn and p.get("enabled") and (p.get("provision_state") == "ready" or p.get("_runtime_target", {}).get("machine_id", "local") != "local")),
+    owner = p.get("_runtime_target", {})
+    remote = owner.get("machine_id", "local") != "local"
+    available = (owner.get("online") and owner.get("deployment_state") == "active" and owner.get("runtime_state") == "running") if remote else p.get("provision_state") == "ready"
+    return {**p, "model_connection": conn, "runtime_error": selection_error,
+            "model_ready": bool(conn), "chat_ready": bool(conn and p.get("enabled") and available and not selection_error),
             "preset_spec": spec, "context_ready": context_ready,
             "swarms": swarms.get_profile_swarm_config(p),
             "retired_preset": p["preset"] not in {s["id"] for s in PRESETS} | {"custom"}}
@@ -322,7 +333,7 @@ def enrich_profile(p: dict) -> dict:
 def dashboard():
     with transaction() as session:
         ps, ds, rs = [enrich_profile(p) for p in listing(session, "profile")], domains.datasets(session), listing(session, "run")
-        return {"role": "coordinator" if config.coordinator_only() else "host", "profiles": ps, "datasets": [{**d, "summary": domains.summary(session, d["id"])} for d in ds],
+        return {"version": __version__, "role": "coordinator" if config.coordinator_only() else "host", "profiles": ps, "datasets": [{**d, "summary": domains.summary(session, d["id"])} for d in ds],
                 "runs": [runs.view(r) for r in rs[-20:][::-1]], "machines": listing(session, "machine"),
                 "waiting": [runs.view(r) for r in rs if r["state"] in {"waiting", "unknown", "failed"}]}
 
@@ -549,6 +560,18 @@ def profile_deployments(id: str):
         return describe(session, get(session, id, "profile"))
 
 
+@app.get("/api/v1/profiles/{id}/runtime")
+async def profile_runtime_status(id: str):
+    profile = runtime_profile(id)
+    return await runtime.call({"operation": "instance-lifecycle", "action": "status"}, profile)
+
+
+@app.post("/api/v1/profiles/{id}/runtime/start")
+async def start_profile_runtime(id: str):
+    profile = runtime_profile(id)
+    return await runtime.call({"operation": "instance-lifecycle", "action": "start"}, profile)
+
+
 @app.post("/api/v1/profiles/{id}/deployments")
 async def update_profile_deployments(id: str, body: dict):
     from .deployments import update, active
@@ -623,7 +646,12 @@ async def new_instance(id: str, body: dict):
     from .definitions import current, publish
     from .deployments import update
     source = runtime_profile(id)
+    preferences = await runtime.call({"operation": "instance-preferences", "profile": {
+        k: source.get(k) for k in ("preset", "name", "configuration")}}, source)
     manifest = await runtime.call({"operation": "definition-capture"}, source)
+    if preferences["identity_hash"] != hashlib.sha256(manifest["files"].get("SOUL.md", "").encode()).hexdigest():
+        raise Problem("asset_conflict", "The source identity changed while copying. Reload before creating an instance.", 409)
+    source = {**source, "configuration": preferences["values"]}
     clone = await profiles.create_profile(str(body.get("name", source["name"] + " instance"))[:100],
         source["preset"], manifest["files"].get("SOUL.md"), source, node_only=source["_runtime_target"]["machine_id"] != "local")
     with transaction() as session:
@@ -939,8 +967,114 @@ async def events(request: Request, after: int = 0, entity_id: str | None = None)
 
 @app.get("/api/v1/machines")
 def machines():
+    from . import releases, node_updates
+    target = releases.current()
     with transaction() as session:
-        return listing(session, "machine")
+        return [{**m, "update_status": node_updates.describe(m, target)} for m in listing(session, "machine")]
+
+
+@app.get("/api/v1/releases/current")
+def current_release():
+    from .releases import current
+    return current()
+
+
+@app.get("/api/v1/releases/current/notes")
+def release_notes():
+    from fastapi.responses import PlainTextResponse
+    path = config.ROOT / "CHANGELOG.md"
+    return PlainTextResponse(path.read_text() if path.is_file() else "No release notes available")
+
+
+@app.get("/api/v1/releases/{build_id}/package")
+def release_package(build_id: str):
+    from .releases import package
+    try:
+        path, descriptor = package(build_id)
+    except (ValueError, FileNotFoundError) as exc:
+        raise Problem("release_unavailable", str(exc), 404)
+    return FileResponse(path, filename=descriptor["filename"], media_type="application/gzip",
+        headers={"ETag": '"' + descriptor["sha256"] + '"', "Cache-Control": "public, max-age=31536000, immutable"})
+
+
+@app.get("/api/v1/releases/{build_id}/installer")
+def release_installer(build_id: str):
+    import tarfile
+    from .releases import package
+    try:
+        path, _ = package(build_id)
+    except (ValueError, FileNotFoundError) as exc:
+        raise Problem("release_unavailable", str(exc), 404)
+    with tarfile.open(path) as archive:
+        data = archive.extractfile("agent-os/src/ara_os/node_install.py").read()
+    return Response(data, media_type="text/x-python", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
+@app.get("/api/v1/machines/{id}/update")
+def machine_update_status(id: str):
+    from . import releases, node_updates
+    return node_updates.describe(find(id, "machine"), releases.current())
+
+
+@app.post("/api/v1/machines/{id}/update")
+def request_machine_update(id: str, body: dict):
+    from . import releases, node_updates
+    target = releases.current()
+    with transaction() as session:
+        return node_updates.request_update(session, id, body, target)
+
+
+@app.get("/api/v1/machines/{id}/update/bootstrap")
+def machine_update_bootstrap(id: str, request: Request):
+    find(id, "machine")
+    net = network_status(request)
+    host = (net["endpoints"].get("tailscale") or net["endpoints"].get("lan")) if is_network_exposed() else None
+    host = host or str(request.base_url).rstrip("/")
+    return {"command": f"curl -fsSL '{host}/api/v1/nodes/install-update.sh' | bash",
+            "instruction": "Stop the old node worker first. Run this once on the paired node; later updates use the dashboard."}
+
+
+@app.post("/api/v1/machines/{id}/update/cancel")
+def cancel_machine_update(id: str, body: dict):
+    from . import releases, node_updates
+    with transaction() as session:
+        node_updates.cancel_update(session, id, body.get("request_id"))
+    return node_updates.describe(find(id, "machine"), releases.current())
+
+
+@app.get("/api/v1/nodes/install-update.sh")
+def node_update_installer(request: Request):
+    import shlex
+    import tarfile
+    from .releases import current, package
+    from fastapi.responses import PlainTextResponse
+    release = current()
+    archive, _ = package(release["build_id"])
+    with tarfile.open(archive) as bundle:
+        checksum = hashlib.sha256(bundle.extractfile("agent-os/src/ara_os/node_install.py").read()).hexdigest()
+    url = str(request.base_url).rstrip("/") + f"/api/v1/releases/{release['build_id']}/installer"
+    script = f'''#!/usr/bin/env bash
+set -euo pipefail
+cd "${{ARA_NODE_DIR:-$HOME/ara}}/agent-os"
+ara_update_state="${{ARA_STATE_DIR:-$PWD/.state}}"
+mkdir -p "$ara_update_state"
+ara_update_file="$ara_update_state/installer-{release['build_id']}.py"
+curl -fsSL {shlex.quote(url)} -o "$ara_update_file"
+.venv/bin/python -c 'import hashlib,sys; assert hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest() == sys.argv[2], "Installer checksum mismatch"' "$ara_update_file" {shlex.quote(checksum)}
+exec .venv/bin/python "$ara_update_file" --root "$PWD" --state "$ara_update_state" --build {shlex.quote(release['build_id'])}
+'''
+    return PlainTextResponse(script, media_type="text/x-shellscript")
+
+
+@app.post("/api/v1/nodes/updates/poll")
+async def node_update_poll(request: Request):
+    from .node_updates import receive
+    body = await request.json()
+    if not isinstance(body, dict) or len(json.dumps(body)) > 32_000:
+        raise Problem("invalid_update_poll", "Send bounded node software metadata")
+    machine = authorized_node(request, body.get("machine_id", ""))
+    with transaction() as session:
+        return receive(session, machine["id"], body)
 
 
 @app.post("/api/v1/machines", status_code=201)
@@ -1039,141 +1173,88 @@ def get_repository_url():
 
 @app.get("/api/v1/nodes/bundle.tar.gz")
 def node_bundle_archive():
-    import subprocess
-    try:
-        cmd = [
-            "tar", "-czf", "-",
-            "--exclude=.git",
-            "--exclude=*.runtime*",
-            "--exclude=*.venv*",
-            "--exclude=*.state*",
-            "--exclude=*node_modules*",
-            "--exclude=__pycache__",
-            "--exclude=*.pyc",
-            "--exclude=*test-results*",
-            "."
-        ]
-        data = subprocess.check_output(cmd, cwd=config.ROOT.parent)
-        return Response(data, media_type="application/gzip", headers={"Content-Disposition": 'attachment; filename="ara-node-bundle.tar.gz"'})
-    except Exception as e:
-        raise Problem("bundle_failed", f"Failed to generate node archive: {e}", 500)
+    from .releases import current
+    # Preserve the old bootstrap URL while serving the same audited release.
+    return release_package(current()["build_id"])
 
 
 @app.get("/api/v1/nodes/bootstrap.sh")
 def node_bootstrap_script(request: Request, machine_id: str = "", token: str = "", profile: str = "coding-agent"):
     from fastapi.responses import PlainTextResponse
     import hmac
+    import re
     if not machine_id:
         raise Problem("missing_machine_id", "machine_id query parameter is required.", 400)
     token_path = config.STATE / ("node-key-" + machine_id)
     if not token_path.is_file() or not token or not hmac.compare_digest(token, token_path.read_text().strip()):
         raise Problem("invalid_node_key", "The bootstrap token or machine enrollment is invalid.", 401)
     find(machine_id, "machine")
+    import base64
+    import shlex
+    import tarfile
+    from .releases import current, package
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", profile):
+        raise Problem("invalid_profile_name", "Use a lowercase profile name with letters, numbers, underscores or hyphens.")
     host_url = str(request.base_url).rstrip("/")
-    repo_url = get_repository_url()
-    allow_insecure_val = "true" if host_url.startswith("http://") else "false"
-    script = f"""#!/usr/bin/env bash
-# ARA Agent OS - Automated Node Bootstrap Script
+    release = current()
+    archive, _ = package(release["build_id"])
+    with tarfile.open(archive) as bundle:
+        checksum = hashlib.sha256(bundle.extractfile("agent-os/src/ara_os/node_install.py").read()).hexdigest()
+    enrollment = {"format": "ara-node-v1", "host": host_url, "machine_id": machine_id,
+        "token": token, "allow_insecure_http": host_url.startswith("http://")}
+    payload = base64.b64encode(json.dumps({"release": release, "enrollment": enrollment}).encode()).decode()
+    installer_url = host_url + f"/api/v1/releases/{release['build_id']}/installer"
+    package_url = host_url + release["download_path"]
+    # The verifier is pinned to this script; no archive is extracted until all
+    # paths, sizes and hashes pass. A paired rerun uses the staged updater.
+    script = f'''#!/usr/bin/env bash
 set -euo pipefail
-
-echo "======================================================"
-echo "   ARA Agent OS — Node Bootstrap & Automatic Pairing  "
-echo "======================================================"
-echo "==> Node Machine ID: {machine_id}"
-echo "==> Target Host URL: {host_url}"
-echo "==> Repository:      {repo_url}"
-echo "==> Target Profile:  {profile}"
-echo ""
-
-for cmd in git curl python3; do
-  if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "ERROR: Required tool '$cmd' is not installed." >&2
-    exit 1
-  fi
+umask 077
+for cmd in curl python3; do
+  command -v "$cmd" >/dev/null || {{ echo "Install $cmd before setting up ARA." >&2; exit 1; }}
 done
-
-if ! command -v uv >/dev/null 2>&1; then
-  echo "==> Installing uv package manager..."
-  curl -LsSf https://astral.sh/uv/install.sh | sh
+if ! command -v uv >/dev/null; then
+  curl -fsSL https://astral.sh/uv/install.sh | sh
   export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 fi
-
-ARA_DIR="${{ARA_NODE_DIR:-$HOME/ara}}"
-mkdir -p "$ARA_DIR"
-if [ -d "$ARA_DIR/agent-os" ]; then
-  echo "==> Existing ARA installation detected at $ARA_DIR"
-  echo "==> Updating runtime codebase directly from ARA Host ({host_url})..."
-  curl -fsSL "{host_url}/api/v1/nodes/bundle.tar.gz" | tar -xz -C "$ARA_DIR"
-else
-  echo "==> Resolving ARA codebase from ARA Host ({host_url})..."
-  if ! curl -fsSL "{host_url}/api/v1/nodes/bundle.tar.gz" | tar -xz -C "$ARA_DIR" 2>/dev/null; then
-    echo "==> Direct host bundle fetch failed; falling back to git clone {repo_url}..."
-    git clone "{repo_url}" "$ARA_DIR"
-  else
-    echo "==> Successfully downloaded node bundle directly from ARA Host ({host_url})"
-  fi
+ara_boot_dir="${{ARA_NODE_DIR:-$HOME/ara}}"
+ara_boot_project="$ara_boot_dir/agent-os"
+ara_boot_state="${{ARA_STATE_DIR:-$ara_boot_project/.state}}"
+ara_boot_tmp="$(mktemp -d)"
+trap 'rm -rf "$ara_boot_tmp"' EXIT
+curl -fsSL {shlex.quote(installer_url)} -o "$ara_boot_tmp/installer.py"
+python3 -c 'import hashlib,sys; assert hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest()==sys.argv[2], "Installer checksum mismatch"' "$ara_boot_tmp/installer.py" {shlex.quote(checksum)}
+if [ -f "$ara_boot_state/node-connection.json" ]; then
+  python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["machine_id"]==sys.argv[2], "This installation is paired to another node"' "$ara_boot_state/node-connection.json" {shlex.quote(machine_id)}
+  echo "Paired installation detected. Stop its existing worker before continuing."
+  uv python install 3.12
+  ara_boot_python="$(uv python find 3.12)"
+  "$ara_boot_python" "$ara_boot_tmp/installer.py" --root "$ara_boot_project" --state "$ara_boot_state" --build {shlex.quote(release['build_id'])}
+  exit $?
 fi
-
-cd "$ARA_DIR/agent-os"
-
-echo "==> Preparing standalone runtime for profile '{profile}'..."
-bash scripts/setup-node.sh --profile "{profile}"
-
-mkdir -p "$ARA_DIR/agent-os/.state"
-cat << 'EOF' > "$ARA_DIR/agent-os/node-enrollment.json"
-{{
-  "format": "ara-node-v1",
-  "host": "{host_url}",
-  "machine_id": "{machine_id}",
-  "token": "{token}",
-  "allow_insecure_http": {allow_insecure_val}
-}}
-EOF
-chmod 600 "$ARA_DIR/agent-os/node-enrollment.json"
-
-echo "==> Pairing node with host at {host_url}..."
-if ! .venv/bin/ara node pair --enrollment "$ARA_DIR/agent-os/node-enrollment.json"; then
-  echo ""
-  echo "======================================================"
-  echo "   [!] Node Pairing Failed                            "
-  echo "======================================================"
-  echo "Common causes & solutions:"
-  echo "  1. Host reachability: Check if this machine can reach {host_url}:"
-  echo "     curl -I '{host_url}/api/v1/network/status'"
-  echo "  2. Insecure HTTP: If connecting via HTTP on custom network, run:"
-  echo "     export ARA_ALLOW_INSECURE_HTTP=1"
-  echo ""
-  echo "To restart pairing on this machine:"
-  echo "  cd \"$ARA_DIR/agent-os\""
-  echo "  .venv/bin/ara node pair --enrollment \"$ARA_DIR/agent-os/node-enrollment.json\""
-  echo ""
-  echo "To start the worker after pairing:"
-  echo "  .venv/bin/ara node work"
-  echo ""
-  echo "To re-run the entire bootstrap from scratch:"
-  echo "  curl -fsSL '{host_url}/api/v1/nodes/bootstrap.sh?machine_id={machine_id}&token={token}' | bash"
-  echo "======================================================"
+if [ -d "$ara_boot_project" ] && [ -n "$(ls -A "$ara_boot_project")" ]; then
+  echo "Existing unpaired installation preserved at $ara_boot_project. Pair it with ara node pair, or choose an empty ARA_NODE_DIR." >&2
   exit 1
 fi
-
-echo ""
-echo "======================================================"
-echo "   ARA Node Paired Successfully!                      "
-echo "======================================================"
-echo "Connected to ARA Host: {host_url}"
-echo ""
-echo "Node Management & Restart Commands:"
-echo "  • Working directory: cd \"$ARA_DIR/agent-os\""
-echo "  • Foreground worker: .venv/bin/ara node work"
-echo "  • Background worker: nohup .venv/bin/ara node work > node-worker.log 2>&1 &"
-echo "  • Check node status: .venv/bin/ara node status"
-echo "  • Restart pairing:   .venv/bin/ara node pair --enrollment node-enrollment.json"
-echo "  • Sync backups:      .venv/bin/ara node sync --profile {profile} --watch"
-echo "======================================================"
-echo ""
-echo "Starting work loop now..."
-exec .venv/bin/ara node work
-"""
+curl -fsSL {shlex.quote(package_url)} -o "$ara_boot_tmp/package.tar.gz"
+python3 - "$ara_boot_tmp" "$ara_boot_dir" "$ara_boot_state" {shlex.quote(payload)} <<'ARA_VERIFY'
+import base64, importlib.util, json, pathlib, sys
+stage, destination, state, payload = sys.argv[1:]
+data = json.loads(base64.b64decode(payload))
+spec = importlib.util.spec_from_file_location("ara_installer", pathlib.Path(stage)/"installer.py")
+installer = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(installer)
+installer.unpack(pathlib.Path(stage)/"package.tar.gz", pathlib.Path(destination).resolve(), data["release"])
+installer.atomic(pathlib.Path(stage)/"enrollment.json", data["enrollment"])
+ARA_VERIFY
+cd "$ara_boot_project"
+export ARA_STATE_DIR="$ara_boot_state"
+bash scripts/setup-node.sh --profile {shlex.quote(profile)}
+.venv/bin/ara node pair --enrollment "$ara_boot_tmp/enrollment.json"
+echo "ARA paired. In a new terminal, use: ara node work; ara node status"
+echo "For background service options, run: ara node service --help"
+.venv/bin/ara node work
+'''
     return PlainTextResponse(script, media_type="text/x-shellscript")
 
 
@@ -1486,12 +1567,19 @@ def cua_state(machine_id: str = "local"):
 
 
 @app.put("/api/v1/cua/state")
-def cua_update_state(body: dict, machine_id: str = "local"):
+async def cua_update_state(body: dict, machine_id: str = "local"):
     from .cua import policy
     if machine_id != "local":
-        if set(body) != {"kill_switch"}:
-            raise Problem("node_local_policy", "Configure modes and native-profile grants on the node with ara cua remote / ara cua configure", 403)
-        return remote_computer.pause(machine_id, body["kill_switch"])
+        if set(body) == {"kill_switch"}:
+            return remote_computer.pause(machine_id, body["kill_switch"])
+        if not body or set(body) - {"mode", "grants", "remote_access"}:
+            raise Problem("invalid_computer_policy", "Use desktop mode, remote access or assigned-agent grants")
+        result = await remote_computer.command(machine_id, "setup", {"action": "configure", "values": body})
+        if not result.get("success"):
+            raise Problem("computer_setup_failed", result.get("error") or "Node policy change was not confirmed", 409)
+        cfg = result["policy"]
+        return {**cfg, "remote": True, "online": True, "setup_supported": True,
+                "local_kill_switch": cfg.get("kill_switch", False)}
     try:
         for actor, grants in body.get("grants", {}).items():
             if grants:
@@ -1504,6 +1592,22 @@ def cua_update_state(body: dict, machine_id: str = "local"):
         return policy.update({k: body[k] for k in ("mode", "kill_switch", "grants") if k in body})
     except ValueError as exc:
         raise Problem("invalid_computer_policy", str(exc))
+
+
+@app.get("/api/v1/cua/setup")
+def computer_setup_status(machine_id: str = "local"):
+    from .cua import setup
+    return setup.local_status() if machine_id == "local" else remote_computer.setup_status(machine_id)
+
+
+@app.post("/api/v1/cua/setup")
+async def computer_setup_action(body: dict, machine_id: str = "local"):
+    from .cua import setup
+    if body.get("action") not in {"check", "request_permissions", "install"} or set(body) - {"action", "operation_id"}:
+        raise Problem("invalid_computer_setup", "Choose check, request_permissions or install")
+    if machine_id == "local":
+        return await setup.perform(body["action"])
+    return await remote_computer.command(machine_id, "setup", {"action": body["action"]}, operation_id=body.get("operation_id"))
 
 
 @app.get("/api/v1/cua/approvals")
@@ -1560,7 +1664,7 @@ async def cua_device_action(device_id: str, body: dict):
                 raise ValueError("Remote operator input requires a stable operation_id")
             return await remote_computer.command(remote_computer.machine_id(device_id), "action",
                 {k: v for k, v in body.items() if k != "operation_id"}, operation_id=body.get("operation_id"))
-        return (await cua_engine.act(device_id, action, operator=True)).to_dict()
+        return (await cua_engine.act(device_id, action, operator=True, operation_id=body.get("operation_id"))).to_dict()
     except ValueError as exc:
         raise Problem("computer_action_unavailable", str(exc), 409)
 

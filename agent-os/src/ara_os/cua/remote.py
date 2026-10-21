@@ -69,11 +69,23 @@ def devices():
 def state(id):
     with transaction() as session:
         machine = get(session, id, "machine")
-        cfg = private_status(session, id).get("policy", {})
+        status = private_status(session, id)
+        cfg = status.get("policy", {})
     return {"mode": cfg.get("mode", "view_only"), "grants": cfg.get("grants", {}),
             "kill_switch": cfg.get("kill_switch", False) or machine.get("computer_pause", False),
             "local_kill_switch": cfg.get("kill_switch", False), "epoch": cfg.get("epoch", 0),
-            "remote_access": cfg.get("remote_access", []), "remote": True, "online": online(machine)}
+            "remote_access": cfg.get("remote_access", []), "remote": True, "online": online(machine),
+            "setup_supported": status.get("setup_contract") == "ara-computer-setup/1"}
+
+
+def setup_status(id):
+    from .setup import CONTRACT
+    with transaction() as session:
+        machine = get(session, id, "machine")
+        status = private_status(session, id)
+    return {"supported": status.get("setup_contract") == CONTRACT, "contract": status.get("setup_contract"),
+        "diagnostics": status.get("setup"), "online": online(machine),
+        "platform": (machine.get("software") or {}).get("platform") or status.get("device", {}).get("platform", "unknown")}
 
 
 def approvals(id):
@@ -127,14 +139,18 @@ async def command(id, kind, body=None, *, actor=None, operation_id=None):
         else:
             if not online(machine):
                 raise Problem("node_offline", "The node desktop worker is offline; run ara node work on the node", 409)
-            if "view" not in private_status(session, id).get("policy", {}).get("remote_access", []):
+            if kind == "setup":
+                from .setup import CONTRACT
+                if actor is not None or private_status(session, id).get("setup_contract") != CONTRACT:
+                    raise Problem("node_setup_upgrade_required", "Update this node from Machines & sync to use desktop setup controls", 409)
+            elif "view" not in private_status(session, id).get("policy", {}).get("remote_access", []):
                 raise Problem("node_desktop_disabled", "Enable remote desktop access on the node with ara cua remote --allow-view", 403)
             pending = session.scalars(select(Entity).where(Entity.kind == "computer_command",
                 Entity.data["machine_id"].astext == id, Entity.data["state"].astext == "queued")).all()
             if len([r for r in pending if r.data["expires"] > time.time()]) >= 8:
                 raise Problem("computer_busy", "This node has queued desktop commands; wait for completion", 409)
             session.add(Entity(id=ident, kind="computer_command", data={"machine_id": id, "request": request,
-                "expires": time.time() + 15, "state": "queued"}))
+                "expires": time.time() + (240 if kind == "setup" else 15), "state": "queued"}))
     while True:
         with transaction() as session:
             row = get(session, ident, "computer_command")

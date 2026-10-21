@@ -5,7 +5,10 @@ import os
 import tempfile
 from pathlib import Path
 
-import yaml
+try:
+    import hermes_yaml as yaml
+except ModuleNotFoundError:
+    import yaml
 
 DEFAULTS = {"enabled": False, "trigger_mode": "explicit", "allowed_presets": ["research", "coding", "analysis", "custom"],
     "custom_presets": [], "max_workers": 4, "max_concurrent": 3, "max_iterations": 12,
